@@ -36,6 +36,7 @@ function transformProperties(page) {
         acc[key] = value.date?.start ?? null;
         break;
 
+        
       case "checkbox":
         acc[key] = value.checkbox ?? false;
         break;
