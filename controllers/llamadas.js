@@ -1,5 +1,4 @@
 const axios = require('axios');
-
 const getCallsData = async (req, res) => {
     try {
         const response = await axios.post(
