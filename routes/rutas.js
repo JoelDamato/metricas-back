@@ -5,11 +5,15 @@ const { getCallsDatas } = require('../controllers/ofertasganadas'); // Importa e
 const { getfactt } = require('../controllers/facturacionycash');
 const { getCallsData } = require('../controllers/llamadas');
 const { getInteractionsData } = require('../controllers/estatico'); // Cambié la referencia de "estatico" a "notionController"
+const webhookController = require('../controllers/webhookController');
+
+
 
 // Define la ruta y enlaza al controlador
 router.get('/notion-data', getCallsDatas);
 router.get('/facturacion-cash', getfactt);
 router.get('/llamadas', getCallsData);
 router.get('/estatico', getInteractionsData);
+router.post('/webhook', webhookController.handleWebhook);
 
 module.exports = router;
