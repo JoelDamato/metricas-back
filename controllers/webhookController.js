@@ -17,17 +17,31 @@ exports.handleWebhook = async (req, res) => {
         // Crear un objeto con el ID y las propiedades
         const filteredData = { id: pageId, properties };
 
-        // Buscar el documento por su ID y actualizarlo, o crear uno nuevo si no existe
+        console.log('Buscando el ID en la base de datos:', pageId);
+
+        // Intentar encontrar el documento por su ID
+        const existingDocument = await NotionData.findOne({ id: pageId });
+
+        let operationType = 'actualizado'; // Por defecto, se asume que es una actualización
+
+        // Si no existe el documento, se creará uno nuevo
+        if (!existingDocument) {
+            operationType = 'creado';
+        }
+
+        // Actualizar o crear el documento en la base de datos
         const updatedOrCreatedData = await NotionData.findOneAndUpdate(
             { id: pageId }, // Criterio de búsqueda
             filteredData, // Datos a guardar
             { upsert: true, new: true, setDefaultsOnInsert: true } // Opciones
         );
 
-        console.log('Documento procesado:', updatedOrCreatedData);
+        console.log(`Documento ${operationType}:`, updatedOrCreatedData);
 
+        // Responder con la operación realizada y los datos procesados
         res.status(200).json({
-            message: 'Datos procesados con éxito',
+            message: `Datos ${operationType} con éxito`,
+            operation: operationType,
             data: updatedOrCreatedData
         });
     } catch (error) {
