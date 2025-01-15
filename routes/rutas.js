@@ -6,10 +6,11 @@ const { getfactt } = require('../controllers/facturacionycash');
 const { getCallsData } = require('../controllers/llamadas');
 const { getInteractionsData } = require('../controllers/estatico'); // Cambié la referencia de "estatico" a "notionController"
 const webhookController = require('../controllers/webhookController');
+const mongoDataController = require('../controllers/getmongo');
 
-
-
-// Define la ruta y enlaza al controlador
+// Ruta para obtener todos los documentos
+router.get('/data', mongoDataController.getAllData);
+router.get('/data/:id', mongoDataController.getDataById);
 router.get('/notion-data', getCallsDatas);
 router.get('/facturacion-cash', getfactt);
 router.get('/llamadas', getCallsData);
