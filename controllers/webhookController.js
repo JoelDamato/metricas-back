@@ -14,6 +14,28 @@ exports.handleWebhook = async (req, res) => {
         const pageId = data.id; // ID único de la página en Notion
         const properties = data.properties; // Propiedades dinámicas de la página
 
+        // Verificar si la propiedad ELIMINAR existe y está marcada como true
+        if (properties.ELIMINAR && properties.ELIMINAR.type === 'checkbox' && properties.ELIMINAR.checkbox === true) {
+            console.log(`Eliminando el documento con ID: ${pageId}`);
+            
+            // Intentar eliminar el documento de la base de datos
+            const deletedDocument = await NotionData.findOneAndDelete({ id: pageId });
+
+            if (deletedDocument) {
+                console.log(`Documento eliminado:`, deletedDocument);
+                return res.status(200).json({
+                    message: 'Documento eliminado con éxito',
+                    operation: 'eliminado',
+                    data: deletedDocument
+                });
+            } else {
+                console.log(`No se encontró un documento con ID: ${pageId} para eliminar.`);
+                return res.status(404).json({
+                    error: 'Documento no encontrado para eliminar'
+                });
+            }
+        }
+
         // Crear un objeto con el ID y las propiedades
         const filteredData = { id: pageId, properties };
 
