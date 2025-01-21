@@ -11,7 +11,18 @@ exports.getAllData = async (req, res) => {
             // Construir un nuevo objeto con la estructura deseada
             const transformedProperties = {};
             for (const [key, value] of Object.entries(item.properties)) {
-                transformedProperties[key] = value?.formula?.string || value?.formula?.number || value?.select?.name || value?.checkbox || value?.number || null;
+                if (key === 'Fecha correspondiente' && value?.formula?.date?.start) {
+                    // Extraer la fecha del campo formula.date.start
+                    transformedProperties[key] = value.formula.date.start;
+                } else {
+                    // Transformar otros tipos de datos
+                    transformedProperties[key] = value?.formula?.string 
+                        || value?.formula?.number 
+                        || value?.select?.name 
+                        || value?.checkbox 
+                        || value?.number 
+                        || null;
+                }
             }
 
             return {
@@ -27,31 +38,5 @@ exports.getAllData = async (req, res) => {
     } catch (error) {
         console.error('Error al transformar los datos:', error);
         res.status(500).json({ error: 'Error al obtener y transformar los datos' });
-    }
-};
-
-
-// Controlador para obtener un documento por ID
-exports.getDataById = async (req, res) => {
-    try {
-        // Obtener el ID de los parámetros de la solicitud
-        const { id } = req.params;
-
-        // Buscar el documento por su ID
-        const document = await NotionData.findOne({ id });
-
-        // Si no se encuentra el documento, responder con un error
-        if (!document) {
-            return res.status(404).json({ message: `No se encontró un documento con el ID: ${id}` });
-        }
-
-        // Responder con el documento encontrado
-        res.status(200).json({
-            message: 'Documento encontrado con éxito',
-            data: document,
-        });
-    } catch (error) {
-        console.error('Error al obtener el documento:', error);
-        res.status(500).json({ error: 'Error al obtener el documento' });
     }
 };
