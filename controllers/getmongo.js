@@ -14,6 +14,9 @@ exports.getAllData = async (req, res) => {
                 if (key === 'Fecha correspondiente' && value?.formula?.date?.start) {
                     // Extraer la fecha del campo formula.date.start
                     transformedProperties[key] = value.formula.date.start;
+                } else if (key === 'Nombre cliente' && value?.relation?.[0]?.id) {
+                    // Extraer el ID de la relación en "Nombre cliente"
+                    transformedProperties[key] = value.relation[0].id;
                 } else {
                     // Transformar otros tipos de datos
                     transformedProperties[key] = value?.formula?.string 
