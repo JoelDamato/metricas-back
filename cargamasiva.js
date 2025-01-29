@@ -1,6 +1,6 @@
 const axios = require('axios');
 const mongoose = require('mongoose');
-const NotionData = require('../models/notiondata'); // Asegúrate de que este modelo exista
+const NotionData = require('./models/notiondata'); // Asegúrate de que este modelo exista
 
 
  mongoose.connect('mongodb+srv://Scalo:4NAcuxyWdpCk3c1D@scalo.fgada.mongodb.net/nombreBaseDeDatos?retryWrites=true&w=majority', {
