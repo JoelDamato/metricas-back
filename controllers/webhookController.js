@@ -168,7 +168,7 @@ exports.handleWebhook = async (req, res) => {
     console.log(`Procesando página de Notion con ID: ${normalizedPageId}`);
 
     // Si la propiedad "Eliminar" existe y está marcada en true, se procede a borrar el documento
-    if (props.Eliminar && props.Eliminar.type === 'checkbox' && props.Eliminar.checkbox === true) {
+    if (props.ELIMINAR && props.ELIMINAR.type === 'checkbox' && props.ELIMINAR.checkbox === true) {
       console.log(`La propiedad "Eliminar" está en true. Se eliminará el documento con ID: ${normalizedPageId}`);
       
       const deletedDocument = await NotionData.findOneAndDelete({ id: normalizedPageId });
@@ -204,7 +204,7 @@ exports.handleWebhook = async (req, res) => {
       "CC / Precio": getNumberFromFormula(props['CC / Precio']),
       "Closer Actual": getPersonOrString(props['Closer Actual']),
       "Creado por": getPerson(props['Creado por']),
-      Eliminar: getCheckbox(props['Eliminar']),
+      ELIMINAR: getCheckbox(props['Eliminar']),
       Facturacion: getNumberFromFormula(props['Facturacion']),
       "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
       "Fecha creada": getDate(props['Fecha creada']),
