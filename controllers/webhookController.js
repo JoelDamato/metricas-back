@@ -1,4 +1,4 @@
-const NotionData = require('../models/notiondata');
+const NotionData = require('../models/metricasdata');
 
 // Controlador para manejar el webhook
 exports.handleWebhook = async (req, res) => {
