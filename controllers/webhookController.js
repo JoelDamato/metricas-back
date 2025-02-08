@@ -15,38 +15,34 @@ exports.handleWebhook = async (req, res) => {
     const properties = data.properties; // Propiedades dinámicas de la página
 
     // Verificar si la propiedad ELIMINAR existe y está marcada como true
-    if (
-      properties.ELIMINAR &&
-      properties.ELIMINAR.type === 'checkbox' &&
-      properties.ELIMINAR.checkbox === true
-    ) {
-      console.log(`Eliminando el documento con "Nombre cliente": ${pageId}`);
-
-      // Eliminar el documento usando "Nombre cliente" para la comparación
-      const deletedDocument = await NotionData.findOneAndDelete({ "Nombre cliente": pageId });
+    if (properties.ELIMINAR && properties.ELIMINAR.type === 'checkbox' && properties.ELIMINAR.checkbox === true) {
+      console.log(`Eliminando el documento con nombreCliente: ${pageId}`);
+      
+      // Eliminar el documento usando el campo 'nombreCliente'
+      const deletedDocument = await NotionData.findOneAndDelete({ nombreCliente: pageId });
 
       if (deletedDocument) {
         console.log(`Documento eliminado:`, deletedDocument);
         return res.status(200).json({
           message: 'Documento eliminado con éxito',
           operation: 'eliminado',
-          data: deletedDocument,
+          data: deletedDocument
         });
       } else {
-        console.log(`No se encontró un documento con "Nombre cliente": ${pageId} para eliminar.`);
+        console.log(`No se encontró un documento con nombreCliente: ${pageId} para eliminar.`);
         return res.status(404).json({
-          error: 'Documento no encontrado para eliminar',
+          error: 'Documento no encontrado para eliminar'
         });
       }
     }
 
-    // Crear un objeto con "Nombre cliente" y las propiedades
-    const filteredData = { "Nombre cliente": pageId, properties };
+    // Crear un objeto con el campo 'nombreCliente' y las propiedades
+    const filteredData = { nombreCliente: pageId, properties };
 
-    console.log('Buscando el documento en la base de datos con "Nombre cliente":', pageId);
+    console.log('Buscando el documento en la base de datos con nombreCliente:', pageId);
 
-    // Buscar el documento usando "Nombre cliente"
-    const existingDocument = await NotionData.findOne({ "Nombre cliente": pageId });
+    // Buscar el documento usando 'nombreCliente'
+    const existingDocument = await NotionData.findOne({ nombreCliente: pageId });
 
     let operationType = 'actualizado'; // Por defecto, se asume que es una actualización
 
@@ -57,9 +53,9 @@ exports.handleWebhook = async (req, res) => {
 
     // Actualizar o crear el documento en la base de datos
     const updatedOrCreatedData = await NotionData.findOneAndUpdate(
-      { "Nombre cliente": pageId }, // Criterio de búsqueda basado en "Nombre cliente"
-      filteredData, // Datos a guardar
-      { upsert: true, new: true, setDefaultsOnInsert: true } // Opciones
+      { nombreCliente: pageId },
+      filteredData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
     console.log(`Documento ${operationType}:`, updatedOrCreatedData);
@@ -68,7 +64,7 @@ exports.handleWebhook = async (req, res) => {
     res.status(200).json({
       message: `Datos ${operationType} con éxito`,
       operation: operationType,
-      data: updatedOrCreatedData,
+      data: updatedOrCreatedData
     });
   } catch (error) {
     console.error('Error al procesar los datos:', error);
