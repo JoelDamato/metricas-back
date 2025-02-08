@@ -1,73 +1,248 @@
+// controllers/webhookController.js
+
 const NotionData = require('../models/metricasdata');
 
-// Controlador para manejar el webhook
-exports.handleWebhook = async (req, res) => {
-    try {
-        // Extraer datos de la solicitud
-        const { data } = req.body;
+/* ======================
+   Helper functions para transformar propiedades de Notion
+   ====================== */
 
-        // Validar que el dato contenga un ID y propiedades
-        if (!data || !data.id || !data.properties) {
-            return res.status(400).json({ error: 'Datos inválidos o incompletos en la solicitud' });
-        }
+/**
+ * Extrae el texto de propiedades de tipo "title" o "rich_text"
+ */
+const getTextValue = (prop) => {
+  if (!prop) return '';
+  if (prop.type === 'title') {
+    return prop.title.map((item) => item.plain_text).join(' ');
+  }
+  if (prop.type === 'rich_text') {
+    return prop.rich_text.map((item) => item.plain_text).join(' ');
+  }
+  return '';
+};
 
-        const pageId = data.id; // ID único de la página en Notion
-        const properties = data.properties; // Propiedades dinámicas de la página
+/**
+ * Para campos de tipo Number (no fórmula)
+ */
+const getNumber = (prop) => {
+  if (!prop) return null;
+  return prop.number || null;
+};
 
-        // Verificar si la propiedad ELIMINAR existe y está marcada como true
-        if (properties.ELIMINAR && properties.ELIMINAR.type === 'checkbox' && properties.ELIMINAR.checkbox === true) {
-            console.log(`Eliminando el documento con ID: ${pageId}`);
-            
-            // Intentar eliminar el documento de la base de datos
-            const deletedDocument = await NotionData.findOneAndDelete({ id: pageId });
+/**
+ * Para propiedades de tipo Select
+ */
+const getSelectValue = (prop) => {
+  if (!prop) return '';
+  return prop.select ? prop.select.name : '';
+};
 
-            if (deletedDocument) {
-                console.log(`Documento eliminado:`, deletedDocument);
-                return res.status(200).json({
-                    message: 'Documento eliminado con éxito',
-                    operation: 'eliminado',
-                    data: deletedDocument
-                });
-            } else {
-                console.log(`No se encontró un documento con ID: ${pageId} para eliminar.`);
-                return res.status(404).json({
-                    error: 'Documento no encontrado para eliminar'
-                });
-            }
-        }
+/**
+ * Para propiedades de tipo Checkbox
+ */
+const getCheckbox = (prop) => {
+  if (!prop) return false;
+  return prop.checkbox || false;
+};
 
-        // Crear un objeto con el ID y las propiedades
-        const filteredData = { id: pageId, properties };
+/**
+ * Para propiedades de tipo Date (no fórmula)
+ */
+const getDate = (prop) => {
+  if (!prop) return null;
+  if (prop.date) {
+    return prop.date.start;
+  }
+  return null;
+};
 
-        console.log('Buscando el ID en la base de datos:', pageId);
+/**
+ * Para propiedades de tipo URL
+ */
+const getURL = (prop) => {
+  if (!prop) return '';
+  return prop.url || '';
+};
 
-        // Intentar encontrar el documento por su ID
-        const existingDocument = await NotionData.findOne({ id: pageId });
+/**
+ * Para propiedades de tipo Person (retorna el nombre o id de la primera persona)
+ */
+const getPerson = (prop) => {
+  if (!prop || !prop.people || prop.people.length === 0) return '';
+  return prop.people[0].name || prop.people[0].id;
+};
 
-        let operationType = 'actualizado'; // Por defecto, se asume que es una actualización
+/**
+ * Para propiedades de tipo Relation (retorna un array con los id de los elementos relacionados)
+ */
+const getRelation = (prop) => {
+  if (!prop) return [];
+  return prop.relation ? prop.relation.map((rel) => rel.id) : [];
+};
 
-        // Si no existe el documento, se creará uno nuevo
-        if (!existingDocument) {
-            operationType = 'creado';
-        }
+/**
+ * Para propiedades de tipo Fórmula que retornan Number
+ */
+const getNumberFromFormula = (prop) => {
+  if (!prop) return null;
+  if (prop.type === 'formula' && prop.formula.type === 'number') {
+    return prop.formula.number;
+  }
+  return null;
+};
 
-        // Actualizar o crear el documento en la base de datos
-        const updatedOrCreatedData = await NotionData.findOneAndUpdate(
-            { id: pageId }, // Criterio de búsqueda
-            filteredData, // Datos a guardar
-            { upsert: true, new: true, setDefaultsOnInsert: true } // Opciones
-        );
+/**
+ * Para propiedades de tipo Fórmula que retornan String
+ */
+const getTextFromFormula = (prop) => {
+  if (!prop) return '';
+  if (prop.type === 'formula' && prop.formula.type === 'string') {
+    return prop.formula.string;
+  }
+  return '';
+};
 
-        console.log(`Documento ${operationType}:`, updatedOrCreatedData);
+/**
+ * Para propiedades de tipo Fórmula que retornan Date
+ */
+const getDateFromFormula = (prop) => {
+  if (!prop) return null;
+  if (prop.type === 'formula' && prop.formula.type === 'date') {
+    return prop.formula.date.start;
+  }
+  return null;
+};
 
-        // Responder con la operación realizada y los datos procesados
-        res.status(200).json({
-            message: `Datos ${operationType} con éxito`,
-            operation: operationType,
-            data: updatedOrCreatedData
-        });
-    } catch (error) {
-        console.error('Error al procesar los datos:', error);
-        res.status(500).json({ error: 'Error al procesar los datos' });
+/**
+ * Para propiedades que pueden ser Persona o String en fórmula.
+ */
+const getPersonOrString = (prop) => {
+  if (!prop) return '';
+  if (prop.type === 'formula') {
+    if (prop.formula.type === 'string') {
+      return prop.formula.string;
     }
+    return '';
+  }
+  return '';
+};
+
+/* ======================
+   Controlador para manejar el webhook de Notion
+   ====================== */
+exports.handleWebhook = async (req, res) => {
+  try {
+    console.log("=====================================");
+    console.log("Webhook recibido:");
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log("=====================================");
+
+    // Extraer datos del payload
+    const { data } = req.body;
+    if (!data || !data.id || !data.properties) {
+      console.error("Datos inválidos o incompletos en la solicitud:", req.body);
+      return res.status(400).json({ error: 'Datos inválidos o incompletos en la solicitud' });
+    }
+    
+    const pageId = data.id;
+    const props = data.properties;
+    console.log(`Procesando página de Notion con ID: ${pageId}`);
+
+    // Si la propiedad "Eliminar" existe y está marcada en true, se procede a borrar el documento
+    if (props.Eliminar && props.Eliminar.type === 'checkbox' && props.Eliminar.checkbox === true) {
+      console.log(`La propiedad "Eliminar" está en true. Se eliminará el documento con ID: ${pageId}`);
+      
+      const deletedDocument = await NotionData.findOneAndDelete({ id: pageId });
+      if (deletedDocument) {
+        console.log("Documento eliminado correctamente:", deletedDocument);
+        return res.status(200).json({
+          message: 'Documento eliminado con éxito',
+          operation: 'eliminado',
+          data: deletedDocument
+        });
+      } else {
+        console.warn(`No se encontró documento con ID: ${pageId} para eliminar.`);
+        return res.status(404).json({
+          error: 'Documento no encontrado para eliminar'
+        });
+      }
+    }
+
+    // Transformar todas las propiedades recibidas para que queden con la estructura esperada
+    console.log(`Transformando propiedades para el registro con ID: ${pageId}`);
+    const transformedData = {
+      id: pageId,
+      Interaccion: getTextValue(props['Interaccion']),
+      Agenda: getNumberFromFormula(props['Agenda']),
+      "Aplica?": getSelectValue(props['Aplica?']),
+      Aplicacion: getNumberFromFormula(props['Aplicacion']),
+      "Asistio?": getSelectValue(props['Asistio?']),
+      "Call Confirm Exitoso": getNumberFromFormula(props['Call Confirm Exitoso']),
+      "Call Confirm No exitoso": getNumberFromFormula(props['Call Confirm No exitoso']),
+      Canal: getSelectValue(props['Canal']),
+      "Cash collected": getNumber(props['Cash collected']),
+      "Cash collected total": getNumberFromFormula(props['Cash collected total']),
+      "CC / Precio": getNumberFromFormula(props['CC / Precio']),
+      "Closer Actual": getPersonOrString(props['Closer Actual']),
+      "Creado por": getPerson(props['Creado por']),
+      Eliminar: getCheckbox(props['Eliminar']),
+      Facturacion: getNumberFromFormula(props['Facturacion']),
+      "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
+      "Fecha creada": getDate(props['Fecha creada']),
+      "Id Interaccion": getNumberFromFormula(props['Id Interaccion']),
+      "Link enviado": getURL(props['Link enviado']),
+      "Links enviados": getNumberFromFormula(props['Links enviados']),
+      "Llamadas agendadas": getNumberFromFormula(props['Llamadas agendadas']),
+      "Llamadas aplicables": getNumberFromFormula(props['Llamadas aplicables']),
+      "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
+      "Llamadas no efectuadas": getNumberFromFormula(props['Llamadas no efectuadas']),
+      "Llamadas vendidas": getNumberFromFormula(props['Llamadas vendidas']),
+      "Nombre cliente": (() => {
+        const relaciones = getRelation(props['Nombre cliente']);
+        return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : null;
+      })(),
+      "Ofertas ganadas": getNumberFromFormula(props['Ofertas ganadas']),
+      Origen: getSelectValue(props['Origen']),
+      Precio: getNumber(props['Precio']),
+      "Primer Origen": getTextFromFormula(props['Primer Origen']),
+      "Producto Adq": getTextFromFormula(props['Producto Adq']),
+      Responsable: getTextFromFormula(props['Responsable']),
+      "Responsable?": getCheckbox(props['Responsable?']),
+      Respuesta: getSelectValue(props['Respuesta']),
+      "Respuesta al primer contacto": getNumberFromFormula(props['Respuesta al primer contacto']),
+      "Respuestas al seguimiento": getNumberFromFormula(props['Respuestas al seguimiento']),
+      Rol: getTextFromFormula(props['Rol']),
+      "Saldo pendiente": getNumberFromFormula(props['Saldo pendiente']),
+      "Seña": getNumberFromFormula(props['Seña']),
+      Tc: getNumber(props['Tc']),
+      "Tipo contacto": getSelectValue(props['Tipo contacto']),
+      "Total Nuevas conversaciones": getNumberFromFormula(props['Total Nuevas conversaciones']),
+      "Ult. Origen": getTextFromFormula(props['Ult. Origen']),
+      "Venta Club": getNumberFromFormula(props['Venta Club']),
+      "Venta Meg": getNumberFromFormula(props['Venta Meg']),
+    };
+
+    console.log("Datos transformados:", JSON.stringify(transformedData, null, 2));
+
+    // Verificar si existe un documento con el mismo id en la base de datos
+    const existingDocument = await NotionData.findOne({ id: pageId });
+    const operationType = existingDocument ? 'actualizado' : 'creado';
+    console.log(`Documento ${existingDocument ? "encontrado" : "no encontrado"} para ID ${pageId}. Se procederá a ${operationType}.`);
+
+    // Crear o actualizar el documento en MongoDB
+    const updatedOrCreatedData = await NotionData.findOneAndUpdate(
+      { id: pageId },          // Criterio de búsqueda
+      transformedData,         // Datos a insertar/actualizar
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    console.log(`Documento ${operationType}:`, updatedOrCreatedData);
+
+    return res.status(200).json({
+      message: `Datos ${operationType} con éxito`,
+      operation: operationType,
+      data: updatedOrCreatedData
+    });
+  } catch (error) {
+    console.error("Error al procesar los datos:", error);
+    return res.status(500).json({ error: "Error al procesar los datos" });
+  }
 };
