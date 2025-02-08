@@ -1,5 +1,3 @@
-// controllers/webhookController.js
-
 const NotionData = require('../models/metricasdata');
 
 /* ======================
@@ -132,7 +130,7 @@ const getPersonOrString = (prop) => {
  */
 const formatNotionId = (id) => {
   if (!id) return id;
-  // Si ya contiene guiones, retornar tal cual
+  // Si ya contiene guiones, retornarlo tal cual
   if (id.includes('-')) return id;
   // Si tiene 32 caracteres sin guiones, insertarlos
   if (id.length === 32) {
@@ -149,7 +147,9 @@ const formatNotionId = (id) => {
    ====================== */
 exports.handleWebhook = async (req, res) => {
   try {
+    // Log inicial: método HTTP y payload recibido
     console.log("=====================================");
+    console.log(`HTTP Method: ${req.method}`);
     console.log("Webhook recibido:");
     console.log(JSON.stringify(req.body, null, 2));
     console.log("=====================================");
@@ -245,8 +245,21 @@ exports.handleWebhook = async (req, res) => {
 
     // Verificar si existe un documento con el mismo id en la base de datos
     const existingDocument = await NotionData.findOne({ id: normalizedPageId });
+    console.log("Documento existente:", existingDocument);
+
     const operationType = existingDocument ? 'actualizado' : 'creado';
     console.log(`Documento ${existingDocument ? "encontrado" : "no encontrado"} para ID ${normalizedPageId}. Se procederá a ${operationType}.`);
+
+    // (Opcional) Comparar si los datos existentes son iguales a los nuevos para detectar si realmente hay cambios
+    if (existingDocument) {
+      const existingData = JSON.stringify(existingDocument);
+      const newData = JSON.stringify(transformedData);
+      if (existingData === newData) {
+        console.log("No hay cambios en los datos; el documento ya contiene estos valores.");
+      } else {
+        console.log("Se detectaron cambios en los datos; se procederá a actualizar el documento.");
+      }
+    }
 
     // Crear o actualizar el documento en MongoDB
     const updatedOrCreatedData = await NotionData.findOneAndUpdate(
