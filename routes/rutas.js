@@ -8,6 +8,12 @@ const mongoDataController = require('../controllers/getmongo.js');
 
 const getclientmes = require('../controllers/getclientmes');
 
+
+const metricasController = require('../controllers/getmetricas');
+
+
+router.get('/metricas', metricasController.getAllData);
+
 // Ruta para obtener todos los documentos
 router.get('/data', mongoDataController.getAllData);
 
