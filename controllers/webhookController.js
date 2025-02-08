@@ -126,6 +126,24 @@ const getPersonOrString = (prop) => {
   return '';
 };
 
+/**
+ * Normaliza el formato del ID de Notion.
+ * Si el ID viene sin guiones (32 caracteres), lo formatea insertando guiones en el patrón 8-4-4-4-12.
+ */
+const formatNotionId = (id) => {
+  if (!id) return id;
+  // Si ya contiene guiones, retornar tal cual
+  if (id.includes('-')) return id;
+  // Si tiene 32 caracteres sin guiones, insertarlos
+  if (id.length === 32) {
+    return id.replace(
+      /([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})/,
+      '$1-$2-$3-$4-$5'
+    );
+  }
+  return id;
+};
+
 /* ======================
    Controlador para manejar el webhook de Notion
    ====================== */
@@ -144,14 +162,16 @@ exports.handleWebhook = async (req, res) => {
     }
     
     const pageId = data.id;
+    // Normalizamos el ID para que tenga guiones (ya que en Mongo se almacena con guiones)
+    const normalizedPageId = formatNotionId(pageId);
     const props = data.properties;
-    console.log(`Procesando página de Notion con ID: ${pageId}`);
+    console.log(`Procesando página de Notion con ID: ${normalizedPageId}`);
 
     // Si la propiedad "Eliminar" existe y está marcada en true, se procede a borrar el documento
     if (props.Eliminar && props.Eliminar.type === 'checkbox' && props.Eliminar.checkbox === true) {
-      console.log(`La propiedad "Eliminar" está en true. Se eliminará el documento con ID: ${pageId}`);
+      console.log(`La propiedad "Eliminar" está en true. Se eliminará el documento con ID: ${normalizedPageId}`);
       
-      const deletedDocument = await NotionData.findOneAndDelete({ id: pageId });
+      const deletedDocument = await NotionData.findOneAndDelete({ id: normalizedPageId });
       if (deletedDocument) {
         console.log("Documento eliminado correctamente:", deletedDocument);
         return res.status(200).json({
@@ -160,7 +180,7 @@ exports.handleWebhook = async (req, res) => {
           data: deletedDocument
         });
       } else {
-        console.warn(`No se encontró documento con ID: ${pageId} para eliminar.`);
+        console.warn(`No se encontró documento con ID: ${normalizedPageId} para eliminar.`);
         return res.status(404).json({
           error: 'Documento no encontrado para eliminar'
         });
@@ -168,9 +188,9 @@ exports.handleWebhook = async (req, res) => {
     }
 
     // Transformar todas las propiedades recibidas para que queden con la estructura esperada
-    console.log(`Transformando propiedades para el registro con ID: ${pageId}`);
+    console.log(`Transformando propiedades para el registro con ID: ${normalizedPageId}`);
     const transformedData = {
-      id: pageId,
+      id: normalizedPageId,
       Interaccion: getTextValue(props['Interaccion']),
       Agenda: getNumberFromFormula(props['Agenda']),
       "Aplica?": getSelectValue(props['Aplica?']),
@@ -224,14 +244,14 @@ exports.handleWebhook = async (req, res) => {
     console.log("Datos transformados:", JSON.stringify(transformedData, null, 2));
 
     // Verificar si existe un documento con el mismo id en la base de datos
-    const existingDocument = await NotionData.findOne({ id: pageId });
+    const existingDocument = await NotionData.findOne({ id: normalizedPageId });
     const operationType = existingDocument ? 'actualizado' : 'creado';
-    console.log(`Documento ${existingDocument ? "encontrado" : "no encontrado"} para ID ${pageId}. Se procederá a ${operationType}.`);
+    console.log(`Documento ${existingDocument ? "encontrado" : "no encontrado"} para ID ${normalizedPageId}. Se procederá a ${operationType}.`);
 
     // Crear o actualizar el documento en MongoDB
     const updatedOrCreatedData = await NotionData.findOneAndUpdate(
-      { id: pageId },          // Criterio de búsqueda
-      transformedData,         // Datos a insertar/actualizar
+      { id: normalizedPageId },
+      transformedData,
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     console.log(`Documento ${operationType}:`, updatedOrCreatedData);
