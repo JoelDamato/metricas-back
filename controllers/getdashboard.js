@@ -19,19 +19,6 @@ exports.getAllData = async (req, res) => {
           { "Facturación": { $gt: 0 } }
         ]
       },
-      {
-        "Fecha correspondiente": 1,
-        "Responsable": 1,
-        "Venta Meg": 1,
-        "Cash collected total": 1,
-        "Origen": 1,
-        "Agenda": 1,
-        "Precio": 1,
-        "Aplica?": 1,
-        "Llamadas efectuadas": 1,
-        "Nombre cliente": 1,
-        "Venta Club": 1
-      }
     )
     .lean()
     
