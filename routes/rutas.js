@@ -6,7 +6,8 @@ const getclientmes = require('../controllers/getllamadas');
 const metricasController = require('../controllers/getmetricas');
 const getdashboard = require ('../controllers/getdashboard')
 const { updateMonthlyGoal, getMonthlyGoals } = require("../controllers/postmetricas");
-
+const updateObjetivoCloser = require("../controllers/postObjetivoCloser");
+const  getObjetivosCloser  = require("../controllers/getObjetivoMensual");
 module.exports = router;
 /*---------------*/
 
@@ -16,6 +17,8 @@ router.get("/goals", getMonthlyGoals);
 router.get('/metricas', metricasController.getAllData);
 router.get('/llamadas', getclientmes.getAllData);
 router.get('/dashboard', getdashboard.getAllData);
+router.post('/update-objetivo-closer', updateObjetivoCloser.updateObjetivoCloser);
+router.get('/objetivos-closer', getObjetivosCloser.getObjetivosCloser);
 
 /*--------------*/
 

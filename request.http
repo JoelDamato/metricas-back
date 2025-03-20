@@ -1,0 +1,28 @@
+### Crear o actualizar un objetivo para un closer
+POST http://localhost:3000/update-objetivo-closer
+Content-Type: application/json
+
+{
+  "closer": "Carlos tu",
+  "metricas": {
+    "Total Sales": { "objetivo": 50, "base": 40 },
+    "Ofertas Ganadas": { "objetivo": 30, "base": 25 },
+    "Cash collected": { "objetivo": 20, "base": 15 },
+    "Agendas totales": { "objetivo": 10, "base": 8 },
+    "Cerradas": { "objetivo": 5, "base": 4 },
+    "Cierre/Asistencias": { "objetivo": 15, "base": 12 },
+    "Asistencia": { "objetivo": 25, "base": 20 },
+    "Recuperado": { "objetivo": 10, "base": 8 },
+    "No asiste": { "objetivo": 5, "base": 4 },
+    "No aplican": { "objetivo": 2, "base": 1 },
+    "Aplican": { "objetivo": 8, "base": 6 }
+  }
+}
+
+###get objetivos
+GET http://localhost:3000/objetivos-closer
+Content-Type: application/json
+
+{
+  "year": "2025"
+}
