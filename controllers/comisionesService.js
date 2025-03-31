@@ -19,7 +19,7 @@ function calculateCommissionRate(salesCount) {
 async function getMegTransactions(startDate, endDate) {
   try {
     const results = await MetricasDataSchema.find({
-      "Producto Adq": {
+      "Producto Adquirido": {
         $regex: /MEG/i,
         $not: /RENOV/i
       },
@@ -28,7 +28,7 @@ async function getMegTransactions(startDate, endDate) {
         $lte: new Date(endDate)
       }
     })
-      .select('Fecha correspondiente Responsable Closer Actual Origen Cash collected Cash collected total Producto Adq Nombre cliente Interaccion Precio')
+      .select('Fecha correspondiente Responsable Closer Actual Origen Cash collected Cash collected total Producto Adquirido Nombre cliente Interaccion Precio')
       .lean();
 
     console.log(`Transacciones MEG encontradas: ${results.length}`);
@@ -71,7 +71,7 @@ async function calculateCommissions(transactions) {
       };
     }
 
-    const isMeg = /MEG/i.test(transaction['Producto Adq']) && !/RENOV/i.test(transaction['Producto Adq']);
+    const isMeg = /MEG/i.test(transaction['Producto Adquirido']) && !/RENOV/i.test(transaction['Producto Adquirido']);
     const isAutoagenda = transaction.Origen?.toLowerCase().includes("autoagenda");
 
     if (isMeg) {
@@ -87,7 +87,7 @@ async function calculateCommissions(transactions) {
       id: transaction.id,
       date: transaction['Fecha correspondiente'],
       client: transaction['Nombre cliente'],
-      product: transaction['Producto Adq'],
+      product: transaction['Producto Adquirido'],
       amount: cash,
       isMeg,
       isAutoagenda
