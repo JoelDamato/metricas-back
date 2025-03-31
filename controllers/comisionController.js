@@ -26,7 +26,7 @@ function getCommissionRate(salesCount, isAutoagenda = false) {
 async function calcularComisiones(req, res) {
   try {
     const registros = await MetricasDataSchema.find({
-      'Producto Adq': { $ne: null },
+      'Producto Adquirido': { $ne: null },
       'Responsable': { $ne: null }
     }).lean();
 
@@ -34,7 +34,7 @@ async function calcularComisiones(req, res) {
     const pagos = [];
 
     registros.forEach(doc => {
-      const producto = doc['Producto Adq']?.trim() || '';
+      const producto = doc['Producto Adquirido']?.trim() || '';
       const fecha = new Date(doc['Fecha correspondiente']);
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
 
