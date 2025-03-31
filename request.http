@@ -26,3 +26,7 @@ Content-Type: application/json
 {
   "year": "2025"
 }
+
+###
+GET http://localhost:3000/comisiones-meg
+Content-Type: application/json
