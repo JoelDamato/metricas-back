@@ -1,11 +1,13 @@
 const MetricasDataSchema = require('../models/metricasdata');
 
 const COMMISSION_TIERS = [
-  { minSales: 9, rate: 0.10 },
-  { minSales: 4, rate: 0.09 },
+  { minSales: 10, rate: 0.10 },
+  { minSales: 5, rate: 0.09 },
   { minSales: 0, rate: 0.08 },
 ];
 
+const CLUB_RATE = 0.60;
+const CLUB_WHATSAPP_RATE = 0.40;
 const AUTOAGENDA_RATE = 0.10;
 
 function parseCash(value) {
@@ -18,15 +20,14 @@ function parseCash(value) {
   return 0;
 }
 
-function getCommissionRate(salesCount, isAutoagenda = false) {
-  if (isAutoagenda) return AUTOAGENDA_RATE;
-  return COMMISSION_TIERS.find(tier => salesCount >= tier.minSales)?.rate || 0.08;
+function getCommissionRate(megSalesCount) {
+  return COMMISSION_TIERS.find(tier => megSalesCount >= tier.minSales)?.rate || 0.08;
 }
 
 async function calcularComisiones(req, res) {
   try {
     const registros = await MetricasDataSchema.find({
-      'Producto Adquirido': { $ne: null },
+      'Producto Adq': { $ne: null },
       'Responsable': { $ne: null }
     }).lean();
 
@@ -34,7 +35,7 @@ async function calcularComisiones(req, res) {
     const pagos = [];
 
     registros.forEach(doc => {
-      const producto = doc['Producto Adquirido']?.trim() || '';
+      const producto = doc['Producto Adq']?.trim() || '';
       const fecha = new Date(doc['Fecha correspondiente']);
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
 
@@ -45,6 +46,9 @@ async function calcularComisiones(req, res) {
       const cashCollectedTotal = parseCash(doc['Cash collected total']);
       const precio = parseCash(doc['Precio']);
       const origen = doc['Origen'] || '';
+      
+      // Determinar si es un producto Club
+      const isClub = producto.toLowerCase().includes('club');
 
       const cash = cashCollectedTotal > 0 ? cashCollectedTotal : 
                    cashCollected > 0 ? cashCollected : 
@@ -59,6 +63,7 @@ async function calcularComisiones(req, res) {
         origen,
         cash,
         precio,
+        isClub,
         id: doc.id || doc._id
       };
 
@@ -79,38 +84,80 @@ async function calcularComisiones(req, res) {
       venta.totalCobrado = pagosDelCliente.reduce((sum, p) => sum + p.cash, 0) || venta.precio;
     });
 
-    
     const resumen = {};
+    
+    // Primer bucle: contar ventas MEG para calcular correctamente las tasas
     ventas.forEach(venta => {
       const key = `${venta.responsable}_${venta.mes}`;
-
+      
       if (!resumen[key]) {
         resumen[key] = {
           responsable: venta.responsable,
           mes: venta.mes,
           productos: {},
           totalVentas: 0,
+          totalVentasMEG: 0,  
+          totalVentasClub: 0,   
           totalCashCollected: 0,
-          ganancia: 0
+          totalCashCollectedMEG: 0,
+          totalCashCollectedClub: 0,
+          ganancia: 0,
+          ventasDetalle: []
         };
       }
-
-   
+      
       if (!resumen[key].productos[venta.producto]) {
         resumen[key].productos[venta.producto] = 0;
       }
       resumen[key].productos[venta.producto]++;
-
+      
       resumen[key].totalVentas++;
+      
+      if (venta.isClub) {
+        resumen[key].totalVentasClub++;
+        resumen[key].totalCashCollectedClub += venta.totalCobrado;
+      } else {
+        // Solo contamos MEG para el escalón de comisiones
+        resumen[key].totalVentasMEG++;
+        resumen[key].totalCashCollectedMEG += venta.totalCobrado;
+      }
+      
       resumen[key].totalCashCollected += venta.totalCobrado;
-
-      const isAutoagenda = venta.origen.toLowerCase().includes('autoagenda');
-      const rate = getCommissionRate(resumen[key].totalVentas, isAutoagenda);
-
-      resumen[key].ganancia += parseFloat((venta.totalCobrado * rate).toFixed(2));
+      
+      // Guardamos el detalle para calcular comisiones en el siguiente paso
+      resumen[key].ventasDetalle.push(venta);
+    });
+    
+    // Segundo bucle: calcular comisiones con la tasa correcta basada solo en ventas MEG
+    Object.values(resumen).forEach(item => {
+      const megCommissionRate = getCommissionRate(item.totalVentasMEG);
+      
+      let gananciaTotal = 0;
+      
+      item.ventasDetalle.forEach(venta => {
+        let rate;
+        const isAutoagenda = venta.origen.toLowerCase().includes('autoagenda');
+        const isWhatsapp = venta.origen.toLowerCase().includes('whatsapp');
+        
+        if (venta.isClub) {
+          // Si es Club con origen WhatsApp, usa tasa 40%, sino 60%
+          rate = isWhatsapp ? CLUB_WHATSAPP_RATE : CLUB_RATE;
+        } else if (isAutoagenda) {
+          // Si es Autoagenda, usa 10%
+          rate = AUTOAGENDA_RATE;
+        } else {
+          // Si es MEG normal, usa la tasa basada en la cantidad de ventas MEG
+          rate = megCommissionRate;
+        }
+        
+        const comision = parseFloat((venta.totalCobrado * rate).toFixed(2));
+        gananciaTotal += comision;
+      });
+      
+      item.ganancia = parseFloat(gananciaTotal.toFixed(2));
+      delete item.ventasDetalle; // Eliminamos los detalles antes de enviar la respuesta
     });
 
-   
     const resumenConsolidado = Object.values(resumen).map(item => ({
       ...item,
       productos: Object.entries(item.productos).map(([producto, cantidad]) => ({
@@ -120,10 +167,11 @@ async function calcularComisiones(req, res) {
     }));
 
     const ajustes = [
-      { ajuste: 'Cantidad de ventas', number: 4, porcentaje: '8%' },
-      { ajuste: 'Cantidad de ventas', number: 9, porcentaje: '9%' },
-      { ajuste: 'Cantidad de ventas', number: 15, porcentaje: '10%' },
-      { ajuste: 'Cantidad de ventas', number: 100, porcentaje: '15%' },
+      { ajuste: 'Cantidad de ventas MEG', number: '0-4', porcentaje: '8%' },
+      { ajuste: 'Cantidad de ventas MEG', number: '5-9', porcentaje: '9%' },
+      { ajuste: 'Cantidad de ventas MEG', number: '10+', porcentaje: '10%' },
+      { ajuste: 'Club', number: 'SIN OPCION', porcentaje: '60%' },
+      { ajuste: 'Club origen Whatsapp', number: 'SIN OPCION', porcentaje: '40%' },
       { ajuste: 'Autoagenda', number: 'SIN OPCION', porcentaje: '10%' }
     ];
 
@@ -132,7 +180,8 @@ async function calcularComisiones(req, res) {
       cliente: v.cliente,
       responsable: v.responsable,
       cash: v.totalCobrado,
-      producto: v.producto
+      producto: v.producto,
+      isClub: v.isClub
     }));
 
     res.json({
