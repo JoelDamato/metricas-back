@@ -61,7 +61,7 @@ async function calcularComisiones(req, res) {
         responsable,
         producto,
         origen,
-        cash,
+        cashCollected,
         precio,
         isClub,
         id: doc.id || doc._id

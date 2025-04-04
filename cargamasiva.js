@@ -36,9 +36,10 @@ const getTextValue = (prop) => {
  * Para campos de tipo Number (no fórmula)
  */
 const getNumber = (prop) => {
-  if (!prop) return null;
-  return prop.number || null;
+  if (!prop || typeof prop.number !== 'number') return null;
+  return prop.number;
 };
+
 
 /**
  * Para propiedades de tipo Select
@@ -141,6 +142,23 @@ const getPersonOrString = (prop) => {
   }
   return '';
 };
+const getNombreDeRelacion = async (pageId) => {
+  try {
+    const response = await axios.get(`https://api.notion.com/v1/pages/${pageId}`, {
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_TOKEN}`,
+        'Notion-Version': '2022-06-28',
+      },
+    });
+
+    const props = response.data.properties;
+    const tituloProp = Object.values(props).find(p => p.type === 'title');
+    return getTextValue(tituloProp);
+  } catch (error) {
+    console.error(`❌ Error al obtener nombre del producto (ID ${pageId}):`, error.message);
+    return '';
+  }
+};
 
 /* ======================
    Configuración de la API de Notion
@@ -206,7 +224,7 @@ const fetchNotionData = async () => {
           "Call Confirm Exitoso": getNumberFromFormula(props['Call Confirm Exitoso']),
           "Call Confirm No exitoso": getNumberFromFormula(props['Call Confirm No exitoso']),
           Canal: getSelectValue(props['Canal']),
-          "Cash collected": getNumber(props['Cash collected']),
+          "Cash collected": getNumber(props['Cash Collected']),
           "Cash collected total": getNumberFromFormula(props['Cash collected total']),
           "CC / Precio": getNumberFromFormula(props['CC / Precio']),
           "Closer Actual": getPersonOrString(props['Closer Actual']),
@@ -232,7 +250,14 @@ const fetchNotionData = async () => {
           Origen: getSelectValue(props['Origen']),
           Precio: getNumber(props['Precio']),
           "Primer Origen": getTextFromFormula(props['Primer Origen']),
-          "Producto Adq": getTextFromFormula(props['Producto Adq']),
+          "Producto Adq": await (async () => {
+            const relaciones = getRelation(props['Producto Adquirido']);
+            if (relaciones.length === 0) return '';
+            const nombres = await Promise.all(relaciones.map(getNombreDeRelacion));
+            return nombres.join(', ');
+          })(),
+          
+          
           // Aquí se transforma Responsable: se extrae la cadena usando getTextFromFormula
           Responsable: getTextFromFormula(props['Responsable']),
           "Responsable?": getCheckbox(props['Responsable?']),
@@ -248,6 +273,10 @@ const fetchNotionData = async () => {
           "Ult. Origen": getTextFromFormula(props['Ult. Origen']),
           "Venta Club": getNumberFromFormula(props['Venta Club']),
           "Venta Meg": getNumberFromFormula(props['Venta Meg']),
+          "Venta relacionada": (() => {
+            const relaciones = getRelation(props['Venta relacionada']);
+            return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
+          })(),
         };
 
         console.log(`Datos transformados para registro ${pageId}:`, transformedData);
