@@ -72,7 +72,8 @@ const MetricasDataSchema = new mongoose.Schema(
     "Total Nuevas conversaciones": { type: Number }, // Formula - Number
     "Ult. Origen": { type: String }, // Formula - String
     "Venta Club": { type: Number }, // Formula - Number
-    "Venta Meg": { type: Number }, // 🚀 Índice agregado aquí
+    "Venta Meg": { type: Number },
+    "Venta relacionada": { type: String }, // 🚀 Índice agregado aquí
   },
   { collection: "metricas" }
 );
