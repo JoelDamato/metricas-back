@@ -1,0 +1,107 @@
+const MetricasDataSchema = require('../models/metricasdata');
+
+async function calcularComisiones(req, res) {
+  try {
+    const registros = await MetricasDataSchema.find({
+      $or: [
+        { 'Cash collected': { $gt: 0 } },
+        { 'Cash collected total': { $gt: 0 } }
+      ],
+      'Eliminar': false
+    }).lean();
+
+    const agrupados = {};
+
+    registros.forEach(doc => {
+      const rawResponsable = doc['Responsable'] || '';
+      const rawCloser = doc['Closer Actual'] || '';
+
+      const responsable = rawResponsable.trim();
+      const closer = rawCloser.trim();
+      const quienCerro = responsable || closer || 'Sin asignar';
+
+      const fecha = new Date(doc['Fecha correspondiente']);
+      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+      const cashCollected = parseFloat(doc['Cash collected']) || 0;
+      const cashCollectedTotal = parseFloat(doc['Cash collected total']) || 0;
+      const cash = cashCollected > 0 ? cashCollected : cashCollectedTotal;
+
+      if (!quienCerro || cash <= 0) return;
+
+      const producto = (doc['Producto Adq'] || '').toLowerCase().trim();
+      const isClub = producto.includes('club');
+
+      const key = `${quienCerro}_${mes}`;
+
+      if (!agrupados[key]) {
+        agrupados[key] = {
+          responsable: quienCerro,
+          mes,
+          totalCashCollected: 0,
+          totalCashClub: 0,
+          totalCashMEG: 0,
+          transacciones: []
+        };
+      }
+
+      agrupados[key].totalCashCollected += cash;
+      if (isClub) {
+        agrupados[key].totalCashClub += cash;
+      } else {
+        agrupados[key].totalCashMEG += cash;
+      }
+
+      agrupados[key].transacciones.push({
+        id: doc.id || doc._id,
+        cliente: doc['Nombre cliente'] || '',
+        fecha,
+        cashCollected: cash,
+        producto: doc['Producto Adq'] || '',
+        responsableOriginal: rawResponsable.trim(),
+        closerOriginal: rawCloser.trim(),
+        inconsistente: rawResponsable.trim() !== rawCloser.trim()
+      });
+    });
+
+    const resultado = Object.values(agrupados);
+
+    // Lógica MEG - solo transacciones MEG válidas (excluyendo renovación)
+    const todasLasTransaccionesMEG = await MetricasDataSchema.find({
+      Eliminar: false,
+      'Producto Adq': { $exists: true, $ne: '' }
+    })
+      .select('Fecha correspondiente Responsable Origen Precio Cash collected Cash collected total Nombre cliente Producto Adq')
+      .lean();
+
+    const transaccionesMEGFiltradas = todasLasTransaccionesMEG.filter(doc => {
+      const producto = (doc['Producto Adq'] || '').toLowerCase();
+      return producto.includes('meg') && !producto.includes('renovacion');
+    }).map(doc => {
+      const fecha = new Date(doc['Fecha correspondiente']);
+      const cashCollected = parseFloat(doc['Cash collected']) || 0;
+      const cashCollectedTotal = parseFloat(doc['Cash collected total']) || 0;
+      const cash = cashCollected > 0 ? cashCollected : cashCollectedTotal;
+
+      return {
+        fecha,
+        responsable: doc['Responsable'] || '',
+        origen: doc['Origen'] || '',
+        cashCollected: cash,
+        precio: parseFloat(doc['Precio']) || 0,
+        cliente: doc['Nombre cliente'] || '',
+        producto: doc['Producto Adq'] || ''
+      };
+    });
+
+    res.json({
+      success: true,
+      resumen: resultado,
+      todas: transaccionesMEGFiltradas
+    });
+  } catch (error) {
+    console.error('Error al agrupar transacciones:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+}
+
+module.exports = { calcularComisiones };
