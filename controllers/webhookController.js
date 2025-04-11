@@ -116,6 +116,7 @@ exports.handleWebhook = async (req, res) => {
       "Cash collected total": getNumberFromFormula(props['Cash collected total']),
       "CC / Precio": getNumberFromFormula(props['CC / Precio']),
       "Closer Actual": getPersonOrString(props['Closer Actual']),
+      "Closer Sub": getPersonOrString(props['Closer Actual']),
       "Creado por": getPerson(props['Creado por']),
       ELIMINAR: getCheckbox(props['Eliminar']),
       Facturacion: getNumberFromFormula(props['Facturacion']),
@@ -156,6 +157,8 @@ exports.handleWebhook = async (req, res) => {
             const relaciones = getRelation(props['Venta relacionada']);
             return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
           })(),
+          "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
+
     };
 
     const existingDocument = await NotionData.findOne({ id: normalizedPageId });
