@@ -1,194 +1,356 @@
 const MetricasDataSchema = require('../models/metricasdata');
 
-const COMMISSION_TIERS = [
-  { minSales: 10, rate: 0.10 },
-  { minSales: 5, rate: 0.09 },
-  { minSales: 0, rate: 0.08 },
-];
-
-const CLUB_RATE = 0.60;
-const CLUB_WHATSAPP_RATE = 0.40;
-const AUTOAGENDA_RATE = 0.10;
-
-function parseCash(value) {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/[^0-9\.-]/g, '');
-    return parseFloat(cleaned) || 0;
-  }
-  return 0;
-}
-
-function getCommissionRate(megSalesCount) {
-  return COMMISSION_TIERS.find(tier => megSalesCount >= tier.minSales)?.rate || 0.08;
-}
-
 async function calcularComisiones(req, res) {
   try {
-    const registros = await MetricasDataSchema.find({
-      'Producto Adq': { $ne: null },
-      'Responsable': { $ne: null }
+    const transacciones = await MetricasDataSchema.find({
+      $or: [
+        { 'Producto Adq': { $exists: true, $ne: '' }, 'Precio': { $exists: true, $ne: null } },
+        { 'Cash collected': { $exists: true, $gt: 0 } }
+      ],
+      Eliminar: false
     }).lean();
 
-    const ventas = [];
-    const pagos = [];
+    const agrupados = {};
+    const ventasPrincipales = {};
 
-    registros.forEach(doc => {
-      const producto = doc['Producto Adq']?.trim() || '';
+    // Primero, identificamos todas las ventas principales (con producto y precio)
+    for (const doc of transacciones) {
+      const tieneProducto = doc['Producto Adq'] && doc['Producto Adq'].trim() !== '';
+      const tienePrecio = doc['Precio'] != null;
+      const esVentaPrincipal = tieneProducto && tienePrecio;
+
+      if (esVentaPrincipal) {
+        const id = doc.id
+        ventasPrincipales[id] = {
+          id,
+          cliente: doc['Nombre cliente'],
+          fecha: doc['Fecha correspondiente'],
+          producto: doc['Producto Adq'],
+          precio: doc['Precio'],
+          cashCollected: parseFloat(doc['Cash collected']) || 0,
+          responsable: (doc['Responsable'] || '').trim(),
+          closer: (doc['Closer Actual'] || '').trim(),
+          interaccion: doc['Interaccion'] || '',
+          cobranzas: [],
+          totalCobrado: 0
+        };
+      }
+    }
+
+    // Ahora procesamos todas las transacciones y las agrupamos
+    for (const doc of transacciones) {
+      const rawResponsable = doc['Responsable'] || '';
+      const rawCloser = doc['Closer Actual'] || '';
+      const responsable = rawResponsable.trim();
+      const closer = rawCloser.trim();
+      const quienCerro = responsable || closer || 'Sin asignar';
+
+      const fecha = new Date(doc['Fecha correspondiente']);
+      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+      const key = `${quienCerro}_${mes}`;
+
+      if (!agrupados[key]) {
+        agrupados[key] = {
+          responsable: quienCerro,
+          mes,
+          totalCashCollected: 0,
+          totalCashCollectedClub: 0,
+          totalCashCollectedOtros: 0,
+          ventas: [], // Solo incluirá ventas principales con sus cobranzas
+          comisionTotal: 0,
+          comisionClub: 0,
+          comisionMEG: 0,
+          detalleComisiones: {
+            MEG: {
+              ventasNivel1: 0, // 1-4 ventas (8%)
+              ventasNivel2: 0, // 5-9 ventas (9%)
+              ventasNivel3: 0, // 10+ ventas (10%)
+              comisionNivel1: 0,
+              comisionNivel2: 0,
+              comisionNivel3: 0
+            },
+            CLUB: {
+              ventas: 0,
+              comision: 0
+            }
+          }
+        };
+      }
+
+      const cashCollected = parseFloat(doc['Cash collected']) || 0;
+      const productoRaw = (doc['Producto Adq'] || '').toLowerCase().trim();
+      const esClub = productoRaw === 'club';
+      const tieneProducto = doc['Producto Adq'] && doc['Producto Adq'].trim() !== '';
+      const tienePrecio = doc['Precio'] != null;
+      const esVentaPrincipal = tieneProducto && tienePrecio;
+
+      // Actualizar totales
+      if (cashCollected > 0) {
+        agrupados[key].totalCashCollected += cashCollected;
+        if (esClub) {
+          agrupados[key].totalCashCollectedClub += cashCollected;
+        } else {
+          agrupados[key].totalCashCollectedOtros += cashCollected;
+        }
+      }
+
+      // La transacción actual
+      const transaccion = {
+        id: doc.id,
+        cliente: doc['Nombre cliente'],
+        fecha: doc['Fecha correspondiente'],
+        cashCollected,
+        producto: doc['Producto Adq'] || 'No tiene producto',
+        precio: doc['Precio'] != null ? doc['Precio'] : 'No tiene precio',
+        responsableOriginal: responsable,
+        closerOriginal: closer,
+        mes,
+        closer: quienCerro,
+        interaccion: doc['Interaccion'] || '',
+        esCobranza: cashCollected > 0 && !esVentaPrincipal
+      };
+
+      // Identificar a qué venta pertenece esta transacción
+      const ventaRelacionada = doc['Venta relacionada'] || (esVentaPrincipal ? doc.id : null);
+
+      // Si es una cobranza o una venta principal, la procesamos
+      if (ventaRelacionada) {
+        // Si es una venta principal, la añadimos a la lista de ventas del responsable
+        if (esVentaPrincipal) {
+          // Aseguramos que esta venta no esté ya en la lista
+          const existeVenta = agrupados[key].ventas.some(v => v.id === (doc.id));
+          if (!existeVenta) {
+            const nuevaVenta = {
+              ...transaccion,
+              cobranzas: [],
+              totalCobrado: cashCollected
+            };
+            agrupados[key].ventas.push(nuevaVenta);
+            ventasPrincipales[transaccion.id] = nuevaVenta;
+          }
+        }
+        // Si es una cobranza, la añadimos a su venta correspondiente
+        else if (cashCollected > 0) {
+          // Si tiene venta relacionada, intentamos asociar como cobranza
+          if (ventaRelacionada) {
+            let ventaEncontrada = ventasPrincipales[ventaRelacionada];
+
+            if (ventaEncontrada) {
+              // Añadir la cobranza a la venta correspondiente
+              ventaEncontrada.cobranzas.push(transaccion);
+              ventaEncontrada.totalCobrado += cashCollected;
+            } else {
+              // Si no encontramos la venta, creamos una entrada provisional
+              const ventaProvisional = {
+                id: ventaRelacionada,
+                cliente: doc['Nombre cliente'],
+                producto: 'Venta no encontrada',
+                precio: 'No disponible',
+                fecha: doc['Fecha correspondiente'],
+                cashCollected: 0,
+                cobranzas: [transaccion],
+                totalCobrado: cashCollected,
+                responsableOriginal: responsable,
+                closerOriginal: closer,
+                mes,
+                closer: quienCerro,
+                interaccion: 'Venta principal no encontrada'
+              };
+
+              agrupados[key].ventas.push(ventaProvisional);
+              ventasPrincipales[ventaRelacionada] = ventaProvisional;
+            }
+          } else {
+            // Caso extra: transacción con cash, pero sin venta relacionada ni es venta principal
+            const transaccionExtra = {
+              ...transaccion,
+              cobranzas: [],
+              totalCobrado: cashCollected,
+              producto: doc['Producto Adq'] || 'No tiene producto',
+              precio: doc['Precio'] || 'No tiene precio',
+              interaccion: doc['Interaccion'] || 'Transacción sin venta relacionada'
+            };
+
+            agrupados[key].ventas.push(transaccionExtra);
+          }
+        }
+
+      }
+    }
+
+    // Calcular comisiones para cada responsable
+    for (const key in agrupados) {
+      const datos = agrupados[key];
+
+      // Ordenar ventas por fecha (de más antigua a más nueva)
+      datos.ventas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      // Clasificar ventas en MEG/MEG 2.0 y CLUB
+      const ventasMEG = datos.ventas.filter(v => {
+        const producto = (v.producto || '').toUpperCase();
+        return producto.includes('MEG');
+      });
+
+      const ventasCLUB = datos.ventas.filter(v => {
+        const producto = (v.producto || '').toUpperCase();
+        return producto === 'CLUB';
+      });
+
+      // Calcular comisiones para MEG/MEG 2.0
+      ventasMEG.forEach((venta, index) => {
+        // Determinar el porcentaje de comisión según el número de venta
+        let porcentajeComision;
+        if (index < 4) {
+          // Ventas 1-4: 8%
+          porcentajeComision = 0.08;
+          datos.detalleComisiones.MEG.ventasNivel1++;
+          const comision = venta.totalCobrado * porcentajeComision;
+          datos.detalleComisiones.MEG.comisionNivel1 += comision;
+          venta.comision = comision;
+          venta.nivelComision = 1;
+          venta.porcentajeComision = '8%';
+        } else if (index < 9) {
+          // Ventas 5-9: 9%
+          porcentajeComision = 0.09;
+          datos.detalleComisiones.MEG.ventasNivel2++;
+          const comision = venta.totalCobrado * porcentajeComision;
+          datos.detalleComisiones.MEG.comisionNivel2 += comision;
+          venta.comision = comision;
+          venta.nivelComision = 2;
+          venta.porcentajeComision = '9%';
+        } else {
+          // Ventas 10+: 10%
+          porcentajeComision = 0.10;
+          datos.detalleComisiones.MEG.ventasNivel3++;
+          const comision = venta.totalCobrado * porcentajeComision;
+          datos.detalleComisiones.MEG.comisionNivel3 += comision;
+          venta.comision = comision;
+          venta.nivelComision = 3;
+          venta.porcentajeComision = '10%';
+        }
+      });
+
+      // Calcular comisiones para CLUB (60% sobre el cashCollected)
+      ventasCLUB.forEach(venta => {
+        const comision = venta.totalCobrado * 0.6; // 60%
+        datos.detalleComisiones.CLUB.ventas++;
+        datos.detalleComisiones.CLUB.comision += comision;
+        venta.comision = comision;
+        venta.porcentajeComision = '60%';
+      });
+
+      // Calcular comisiones totales
+      datos.comisionMEG =
+        datos.detalleComisiones.MEG.comisionNivel1 +
+        datos.detalleComisiones.MEG.comisionNivel2 +
+        datos.detalleComisiones.MEG.comisionNivel3;
+
+      datos.comisionClub = datos.detalleComisiones.CLUB.comision;
+      datos.comisionTotal = datos.comisionMEG + datos.comisionClub;
+    }
+
+    for (const doc of transacciones) {
+      const cashCollected = parseFloat(doc['Cash collected']) || 0;
+      const ventaRelacionadaId = doc['Venta relacionada'];
+      const esCobranza = cashCollected > 0 && !doc['Producto Adq'] && ventaRelacionadaId;
+
+      if (!esCobranza) continue;
+
+      const ventaOriginal = ventasPrincipales[ventaRelacionadaId];
+      if (!ventaOriginal) continue;
+
+      const fechaVenta = new Date(ventaOriginal.fecha);
+      const fechaCobranza = new Date(doc['Fecha correspondiente']);
+      const mesVenta = `${fechaVenta.getFullYear()}-${String(fechaVenta.getMonth() + 1).padStart(2, '0')}`;
+      const mesCobranza = `${fechaCobranza.getFullYear()}-${String(fechaCobranza.getMonth() + 1).padStart(2, '0')}`;
+
+      // Solo si la cobranza pertenece a un mes distinto
+      if (mesVenta === mesCobranza) continue;
+
+      const rawResponsable = doc['Responsable'] || '';
+      const rawCloser = doc['Closer Actual'] || '';
+      const responsable = rawResponsable.trim();
+      const closer = rawCloser.trim();
+      const quienCerro = responsable || closer || 'Sin asignar';
+
+      const key = `${quienCerro}_${mesCobranza}`;
+      const agrupacion = agrupados[key];
+
+      if (!agrupacion) continue; // No debería pasar, pero mejor prevenir
+
+      agrupacion.cobranzasDeVentasAnteriores ??= [];
+
+      // Obtener % de comisión real desde la venta original
+      const porcentajeStr = ventaOriginal.porcentajeComision;
+      let porcentaje = 0;
+      if (porcentajeStr === '8%') porcentaje = 0.08;
+      else if (porcentajeStr === '9%') porcentaje = 0.09;
+      else if (porcentajeStr === '10%') porcentaje = 0.10;
+      else if (porcentajeStr === '60%') porcentaje = 0.6;
+
+      const comision = cashCollected * porcentaje;
+
+      // Sumar comisiones solo en este mes (no modificar ventas originales)
+      agrupacion.comisionTotal += comision;
+      // Agregar también a comisionMEG si corresponde
+      if (ventaOriginal.producto.toUpperCase().includes('MEG')) {
+        agrupacion.comisionMEG += comision;
+
+        // También reflejar en el nivel correspondiente si lo tiene
+
+      }
+
+      agrupacion.cobranzasDeVentasAnteriores.push({
+        id: doc.id,
+        fechaCobranza: doc['Fecha correspondiente'],
+        cliente: doc['Nombre cliente'],
+        producto: ventaOriginal.producto,
+        porcentajeComision: porcentajeStr,
+        cashCollected,
+        comision,
+        ventaOriginalId: ventaOriginal.id,
+        fechaVenta: ventaOriginal.fecha
+      });
+    }
+
+
+    //todas las transacciones
+    // Agrupar y ordenar transacciones por mes para el front
+    const transaccionesPorMes = {};
+
+    for (const doc of transacciones) {
       const fecha = new Date(doc['Fecha correspondiente']);
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
 
-      const cliente = doc['Nombre cliente']?.trim().toLowerCase() || '';
-      const responsable = doc['Responsable'] || doc['Closer Actual'] || 'Sin asignar';
+      if (!transaccionesPorMes[mes]) {
+        transaccionesPorMes[mes] = [];
+      }
 
-      const cashCollected = parseCash(doc['Cash collected']);
-      const cashCollectedTotal = parseCash(doc['Cash collected total']);
-      const precio = parseCash(doc['Precio']);
-      const origen = doc['Origen'] || '';
-      
-      // Determinar si es un producto Club
-      const isClub = producto.toLowerCase().includes('club');
-
-      const cash = cashCollectedTotal > 0 ? cashCollectedTotal : 
-                   cashCollected > 0 ? cashCollected : 
-                   precio > 0 ? precio : 0;
-
-      const baseItem = {
+      transaccionesPorMes[mes].push({
+        id: doc.id,
+        cliente: doc['Nombre cliente'],
         fecha,
-        mes,
-        cliente,
-        responsable,
-        producto,
-        origen,
-        cashCollected,
-        precio,
-        isClub,
-        id: doc.id || doc._id
-      };
-
-      if (cash > 0) {
-        if (doc.Interaccion?.toLowerCase().includes('cash collected')) {
-          pagos.push(baseItem);
-        } else if (producto && precio > 0) {
-          ventas.push(baseItem);
-        }
-      }
-    });
-
-    ventas.forEach(venta => {
-      const pagosDelCliente = pagos.filter(p =>
-        p.cliente === venta.cliente && new Date(p.fecha) >= new Date(venta.fecha)
-      );
-
-      venta.totalCobrado = pagosDelCliente.reduce((sum, p) => sum + p.cash, 0) || venta.precio;
-    });
-
-    const resumen = {};
-    
-    // Primer bucle: contar ventas MEG para calcular correctamente las tasas
-    ventas.forEach(venta => {
-      const key = `${venta.responsable}_${venta.mes}`;
-      
-      if (!resumen[key]) {
-        resumen[key] = {
-          responsable: venta.responsable,
-          mes: venta.mes,
-          productos: {},
-          totalVentas: 0,
-          totalVentasMEG: 0,  
-          totalVentasClub: 0,   
-          totalCashCollected: 0,
-          totalCashCollectedMEG: 0,
-          totalCashCollectedClub: 0,
-          ganancia: 0,
-          ventasDetalle: []
-        };
-      }
-      
-      if (!resumen[key].productos[venta.producto]) {
-        resumen[key].productos[venta.producto] = 0;
-      }
-      resumen[key].productos[venta.producto]++;
-      
-      resumen[key].totalVentas++;
-      
-      if (venta.isClub) {
-        resumen[key].totalVentasClub++;
-        resumen[key].totalCashCollectedClub += venta.totalCobrado;
-      } else {
-        // Solo contamos MEG para el escalón de comisiones
-        resumen[key].totalVentasMEG++;
-        resumen[key].totalCashCollectedMEG += venta.totalCobrado;
-      }
-      
-      resumen[key].totalCashCollected += venta.totalCobrado;
-      
-      // Guardamos el detalle para calcular comisiones en el siguiente paso
-      resumen[key].ventasDetalle.push(venta);
-    });
-    
-    // Segundo bucle: calcular comisiones con la tasa correcta basada solo en ventas MEG
-    Object.values(resumen).forEach(item => {
-      const megCommissionRate = getCommissionRate(item.totalVentasMEG);
-      
-      let gananciaTotal = 0;
-      
-      item.ventasDetalle.forEach(venta => {
-        let rate;
-        const isAutoagenda = venta.origen.toLowerCase().includes('autoagenda');
-        const isWhatsapp = venta.origen.toLowerCase().includes('whatsapp');
-        
-        if (venta.isClub) {
-          // Si es Club con origen WhatsApp, usa tasa 40%, sino 60%
-          rate = isWhatsapp ? CLUB_WHATSAPP_RATE : CLUB_RATE;
-        } else if (isAutoagenda) {
-          // Si es Autoagenda, usa 10%
-          rate = AUTOAGENDA_RATE;
-        } else {
-          // Si es MEG normal, usa la tasa basada en la cantidad de ventas MEG
-          rate = megCommissionRate;
-        }
-        
-        const comision = parseFloat((venta.totalCobrado * rate).toFixed(2));
-        gananciaTotal += comision;
+        producto: doc['Producto Adq'] || 'No tiene producto',
+        precio: doc['Precio'] != null ? doc['Precio'] : 'No tiene precio',
+        cashCollected: parseFloat(doc['Cash collected']) || 0,
+        responsable: doc['Responsable'] || '',
+        closer: doc['Closer Actual'] || '',
+        interaccion: doc['Interaccion'] || '',
+        ventaRelacionada: doc['Venta relacionada'] || null
       });
-      
-      item.ganancia = parseFloat(gananciaTotal.toFixed(2));
-      delete item.ventasDetalle; // Eliminamos los detalles antes de enviar la respuesta
-    });
+    }
 
-    const resumenConsolidado = Object.values(resumen).map(item => ({
-      ...item,
-      productos: Object.entries(item.productos).map(([producto, cantidad]) => ({
-        producto,
-        cantidad
-      }))
-    }));
+    // Ordenar las transacciones de cada mes de más reciente a más antigua
+    for (const mes in transaccionesPorMes) {
+      transaccionesPorMes[mes].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
 
-    const ajustes = [
-      { ajuste: 'Cantidad de ventas MEG', number: '0-4', porcentaje: '8%' },
-      { ajuste: 'Cantidad de ventas MEG', number: '5-9', porcentaje: '9%' },
-      { ajuste: 'Cantidad de ventas MEG', number: '10+', porcentaje: '10%' },
-      { ajuste: 'Club', number: 'SIN OPCION', porcentaje: '60%' },
-      { ajuste: 'Club origen Whatsapp', number: 'SIN OPCION', porcentaje: '40%' },
-      { ajuste: 'Autoagenda', number: 'SIN OPCION', porcentaje: '10%' }
-    ];
 
-    const transacciones = ventas.map(v => ({
-      fecha: v.fecha,
-      cliente: v.cliente,
-      responsable: v.responsable,
-      cash: v.totalCobrado,
-      producto: v.producto,
-      isClub: v.isClub
-    }));
 
     res.json({
       success: true,
-      transacciones,
-      ajustes,
-      resumen: resumenConsolidado
+      resumen: Object.values(agrupados),
+      transaccionesPorMes
     });
 
   } catch (error) {
