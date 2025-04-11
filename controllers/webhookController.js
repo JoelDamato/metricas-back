@@ -1,3 +1,70 @@
+const axios = require('axios');
+const NotionData = require('../models/metricasdata');
+
+/* ======================
+   Helper functions
+   ====================== */
+
+const getTextValue = (prop) => {
+  if (!prop) return '';
+  if (prop.type === 'title') return prop.title.map((item) => item.plain_text).join(' ');
+  if (prop.type === 'rich_text') return prop.rich_text.map((item) => item.plain_text).join(' ');
+  return '';
+};
+
+const getNumber = (prop) => prop?.number ?? null;
+const getSelectValue = (prop) => prop?.select?.name ?? '';
+const getCheckbox = (prop) => prop?.checkbox ?? false;
+const getDate = (prop) => prop?.date?.start ?? null;
+const getURL = (prop) => prop?.url ?? '';
+const getPerson = (prop) => prop?.people?.[0]?.name ?? '';
+const getRelation = (prop) => prop?.relation?.map((rel) => rel.id) ?? [];
+const getNumberFromFormula = (prop) => prop?.formula?.type === 'number' ? prop.formula.number : null;
+const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.formula.string : '';
+const getDateFromFormula = (prop) => prop?.formula?.type === 'date' ? prop.formula.date?.start : null;
+const getPersonOrString = (prop) => {
+  if (!prop) return '';
+  if (prop.type === 'formula' && prop.formula.type === 'string') return prop.formula.string;
+  return '';
+};
+
+const formatNotionId = (id) => {
+  if (!id) return id;
+  if (id.includes('-')) return id;
+  if (id.length === 32) {
+    return id.replace(
+      /([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})/,
+      '$1-$2-$3-$4-$5'
+    );
+  }
+  return id;
+};
+
+/**
+ * 🔥 NUEVO: Obtiene el nombre (título) de una página relacionada por ID
+ */
+const getNombreDeRelacion = async (pageId) => {
+  try {
+    const response = await axios.get(`https://api.notion.com/v1/pages/${pageId}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.NOTION_API_TOKEN || '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'}`,
+        'Notion-Version': '2022-06-28',
+      },
+    });
+
+    const props = response.data.properties;
+    const tituloProp = Object.values(props).find(p => p.type === 'title');
+    return getTextValue(tituloProp);
+  } catch (error) {
+    console.error(`❌ Error al obtener nombre del producto (ID ${pageId}):`, error.message);
+    return '';
+  }
+};
+
+/* ======================
+   Webhook Controller
+   ====================== */
+
 exports.handleWebhook = async (req, res) => {
   try {
     console.log("=====================================");
@@ -14,16 +81,7 @@ exports.handleWebhook = async (req, res) => {
 
     const pageId = data.id;
     const normalizedPageId = formatNotionId(pageId);
-
-    // 🔁 Obtener props completos desde Notion (el webhook no siempre trae todos los datos)
-    const fullPageData = await axios.get(`https://api.notion.com/v1/pages/${normalizedPageId}`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.NOTION_API_TOKEN || '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'}`,
-        'Notion-Version': '2022-06-28',
-      },
-    });
-
-    const props = fullPageData.data.properties;
+    const props = data.properties;
 
     if (props.ELIMINAR?.type === 'checkbox' && props.ELIMINAR.checkbox === true) {
       const deletedDocument = await NotionData.findOneAndDelete({ id: normalizedPageId });
@@ -80,7 +138,7 @@ exports.handleWebhook = async (req, res) => {
       Origen: getSelectValue(props['Origen']),
       Precio: getNumber(props['Precio']),
       "Primer Origen": getTextFromFormula(props['Primer Origen']),
-      "Producto Adq": productoAdq,
+      "Producto Adq": productoAdq, // ✅ ACTUALIZADO
       Responsable: getTextFromFormula(props['Responsable']),
       "Responsable?": getCheckbox(props['Responsable?']),
       Respuesta: getSelectValue(props['Respuesta']),
@@ -95,11 +153,12 @@ exports.handleWebhook = async (req, res) => {
       "Ult. Origen": getTextFromFormula(props['Ult. Origen']),
       "Venta Club": getNumberFromFormula(props['Venta Club']),
       "Venta Meg": getNumberFromFormula(props['Venta Meg']),
-      "Venta relacionada": (() => {
-        const relaciones = getRelation(props['Venta relacionada']);
-        return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
-      })(),
-      "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
+          "Venta relacionada": (() => {
+            const relaciones = getRelation(props['Venta relacionada']);
+            return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
+          })(),
+          "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
+
     };
 
     const existingDocument = await NotionData.findOne({ id: normalizedPageId });
