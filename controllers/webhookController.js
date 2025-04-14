@@ -116,7 +116,7 @@ exports.handleWebhook = async (req, res) => {
       "Cash collected total": getNumberFromFormula(props['Cash collected total']),
       "CC / Precio": getNumberFromFormula(props['CC / Precio']),
       "Closer Actual": getPersonOrString(props['Closer Actual']),
-      "Closer Sub": getPersonOrString(props['Closer Actual']),
+      "Closer Sub": getPersonOrString(props['Closer Sub']),
       "Creado por": getPerson(props['Creado por']),
       ELIMINAR: getCheckbox(props['Eliminar']),
       Facturacion: getNumberFromFormula(props['Facturacion']),
