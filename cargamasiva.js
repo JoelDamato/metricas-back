@@ -258,7 +258,7 @@ const fetchNotionData = async () => {
             return nombres.join(', ');
           })(),
           
-          
+        
           // Aquí se transforma Responsable: se extrae la cadena usando getTextFromFormula
           Responsable: getTextFromFormula(props['Responsable']),
           "Responsable?": getCheckbox(props['Responsable?']),
