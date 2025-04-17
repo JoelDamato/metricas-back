@@ -24,9 +24,15 @@ const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.for
 const getDateFromFormula = (prop) => prop?.formula?.type === 'date' ? prop.formula.date?.start : null;
 const getPersonOrString = (prop) => {
   if (!prop) return '';
-  if (prop.type === 'formula' && prop.formula.type === 'string') return prop.formula.string;
+  if (prop.type === 'formula') {
+    if (prop.formula.type === 'string') return prop.formula.string;
+    if (prop.formula.type === 'text') return prop.formula.text;
+    if (prop.formula.type === 'rich_text') return prop.formula.rich_text?.[0]?.plain_text ?? '';
+    if (prop.formula.type === 'title') return prop.formula.title?.[0]?.plain_text ?? '';
+  }
   return '';
 };
+
 
 const formatNotionId = (id) => {
   if (!id) return id;
