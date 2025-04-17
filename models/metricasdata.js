@@ -22,7 +22,8 @@ const MetricasDataSchema = new mongoose.Schema(
     "CC / Precio": { type: Number }, // Formula - Number
 
     // Campos relacionados con personas
-    "Closer Actual": { type: String }, // Formula - Person o String
+    "Closer Actual": { type: String },
+    "Closer Sub": { type: String }, // Formula - Person o String
     "Creado por": { type: String }, // Person
 
     // Checkbox
@@ -73,7 +74,8 @@ const MetricasDataSchema = new mongoose.Schema(
     "Ult. Origen": { type: String }, // Formula - String
     "Venta Club": { type: Number }, // Formula - Number
     "Venta Meg": { type: Number },
-    "Venta relacionada": { type: String }, // 🚀 Índice agregado aquí
+    "Venta relacionada": { type: String },
+   "Cobranza relacionada": { type: [String] }, // 🚀 Índice agregado aquí
   },
   { collection: "metricas" }
 );
