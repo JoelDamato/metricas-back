@@ -24,9 +24,15 @@ const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.for
 const getDateFromFormula = (prop) => prop?.formula?.type === 'date' ? prop.formula.date?.start : null;
 const getPersonOrString = (prop) => {
   if (!prop) return '';
-  if (prop.type === 'formula' && prop.formula.type === 'string') return prop.formula.string;
+  if (prop.type === 'formula') {
+    if (prop.formula.type === 'string') return prop.formula.string;
+    if (prop.formula.type === 'text') return prop.formula.text;
+    if (prop.formula.type === 'rich_text') return prop.formula.rich_text?.[0]?.plain_text ?? '';
+    if (prop.formula.type === 'title') return prop.formula.title?.[0]?.plain_text ?? '';
+  }
   return '';
 };
+
 
 const formatNotionId = (id) => {
   if (!id) return id;
@@ -116,6 +122,7 @@ exports.handleWebhook = async (req, res) => {
       "Cash collected total": getNumberFromFormula(props['Cash collected total']),
       "CC / Precio": getNumberFromFormula(props['CC / Precio']),
       "Closer Actual": getPersonOrString(props['Closer Actual']),
+      "Closer Sub": getPersonOrString(props['Closer Sub']),
       "Creado por": getPerson(props['Creado por']),
       ELIMINAR: getCheckbox(props['Eliminar']),
       Facturacion: getNumberFromFormula(props['Facturacion']),
@@ -156,6 +163,8 @@ exports.handleWebhook = async (req, res) => {
             const relaciones = getRelation(props['Venta relacionada']);
             return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
           })(),
+          "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
+
     };
 
     const existingDocument = await NotionData.findOne({ id: normalizedPageId });

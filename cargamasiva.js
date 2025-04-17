@@ -228,6 +228,7 @@ const fetchNotionData = async () => {
           "Cash collected total": getNumberFromFormula(props['Cash collected total']),
           "CC / Precio": getNumberFromFormula(props['CC / Precio']),
           "Closer Actual": getPersonOrString(props['Closer Actual']),
+          "Closer Sub": getPersonOrString(props['Closer Sub']),
           "Creado por": getPerson(props['Creado por']),
           Eliminar: getCheckbox(props['Eliminar']),
           Facturacion: getNumberFromFormula(props['Facturacion']),
@@ -257,7 +258,7 @@ const fetchNotionData = async () => {
             return nombres.join(', ');
           })(),
           
-          
+        
           // Aquí se transforma Responsable: se extrae la cadena usando getTextFromFormula
           Responsable: getTextFromFormula(props['Responsable']),
           "Responsable?": getCheckbox(props['Responsable?']),
@@ -277,6 +278,7 @@ const fetchNotionData = async () => {
             const relaciones = getRelation(props['Venta relacionada']);
             return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
           })(),
+          "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
         };
 
         console.log(`Datos transformados para registro ${pageId}:`, transformedData);
