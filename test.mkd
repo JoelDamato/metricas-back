@@ -2,35 +2,50 @@ const MetricasDataSchema = require('../models/metricasdata');
 
 async function calcularComisiones(req, res) {
   try {
-    const registros = await MetricasDataSchema.find({
+    const transacciones = await MetricasDataSchema.find({
       $or: [
-        { 'Cash collected': { $gt: 0 } },
-        { 'Cash collected total': { $gt: 0 } }
+        { 'Producto Adq': { $exists: true, $ne: '' }, 'Precio': { $exists: true, $ne: null } },
+        { 'Cash collected': { $exists: true, $gt: 0 } }
       ],
-      'Eliminar': false
+      Eliminar: false
     }).lean();
 
     const agrupados = {};
+    const ventasPrincipales = {};
 
-    registros.forEach(doc => {
-      const rawResponsable = doc['Responsable'] || '';
-      const rawCloser = doc['Closer Actual'] || '';
+    // 1. Identificar ventas principales con producto y precio válidos
+    for (const doc of transacciones) {
+      const tieneProducto = doc['Producto Adq'] && doc['Producto Adq'].trim() !== '';
+      const tienePrecio = doc['Precio'] != null;
+      const esVentaPrincipal = tieneProducto && tienePrecio;
 
-      const responsable = rawResponsable.trim();
-      const closer = rawCloser.trim();
+      const id = doc.id;
+      if (!id || !esVentaPrincipal) continue;
+
+      ventasPrincipales[id] = {
+        id,
+        cliente: doc['Nombre cliente'],
+        fecha: doc['Fecha correspondiente'],
+        producto: doc['Producto Adq'],
+        precio: doc['Precio'],
+        cashCollected: parseFloat(doc['Cash collected']) || 0,
+        responsable: (doc['Responsable'] || '').trim(),
+        closer: (doc['Closer Actual'] || '').trim(),
+        interaccion: doc['Interaccion'] || '',
+        cobranzas: [],
+        totalCobrado: parseFloat(doc['Cash collected']) || 0
+      };
+    }
+
+
+
+
+    for (const doc of transacciones) {
+      const responsable = (doc['Responsable'] || '').trim();
+      const closer = (doc['Closer Actual'] || '').trim();
       const quienCerro = responsable || closer || 'Sin asignar';
-
       const fecha = new Date(doc['Fecha correspondiente']);
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-      const cashCollected = parseFloat(doc['Cash collected']) || 0;
-      const cashCollectedTotal = parseFloat(doc['Cash collected total']) || 0;
-      const cash = cashCollected > 0 ? cashCollected : cashCollectedTotal;
-
-      if (!quienCerro || cash <= 0) return;
-
-      const producto = (doc['Producto Adq'] || '').toLowerCase().trim();
-      const isClub = producto.includes('club');
-
       const key = `${quienCerro}_${mes}`;
 
       if (!agrupados[key]) {
@@ -38,68 +53,280 @@ async function calcularComisiones(req, res) {
           responsable: quienCerro,
           mes,
           totalCashCollected: 0,
-          totalCashClub: 0,
-          totalCashMEG: 0,
-          transacciones: []
+          totalCashCollectedClub: 0,
+          totalCashCollectedOtros: 0,
+          ventas: [],
+          comisionTotal: 0,
+          comisionClub: 0,
+          comisionMEG: 0,
+          detalleComisiones: {
+            MEG: {
+              ventasNivel1: 0,
+              ventasNivel2: 0,
+              ventasNivel3: 0,
+              comisionNivel1: 0,
+              comisionNivel2: 0,
+              comisionNivel3: 0
+            },
+            CLUB: {
+              ventas: 0,
+              comision: 0
+            }
+          },
+          cobranzasDeVentasAnteriores: [],
+          transaccionesSinVenta: []
         };
       }
 
-      agrupados[key].totalCashCollected += cash;
-      if (isClub) {
-        agrupados[key].totalCashClub += cash;
-      } else {
-        agrupados[key].totalCashMEG += cash;
+      const cashCollected = parseFloat(doc['Cash collected']) || 0;
+      const producto = (doc['Producto Adq'] || '').toUpperCase().trim();
+      const esClub = producto === 'CLUB';
+      const tieneProducto = doc['Producto Adq'] && doc['Producto Adq'].trim() !== '';
+      const tienePrecio = doc['Precio'] != null;
+      const esVentaPrincipal = tieneProducto && tienePrecio;
+      const ventaRelacionada = doc['Venta relacionada'] || (esVentaPrincipal ? (doc.id) : null);
+      const transaccion = {
+        id: doc.id,
+        cliente: doc['Nombre cliente'],
+        fecha: doc['Fecha correspondiente'],
+        cashCollected,
+        producto: doc['Producto Adq'] || 'No tiene producto',
+        precio: doc['Precio'] != null ? doc['Precio'] : 'No tiene precio',
+        responsableOriginal: responsable,
+        closerOriginal: closer,
+        mes,
+        closer: quienCerro,
+        interaccion: doc['Interaccion'] || '',
+        esCobranza: cashCollected > 0 && !esVentaPrincipal
+      };
+      // LOG para Jose Santiago S. en marzo
+      const nombreBuscado = 'Jose Santiago S.';
+      const fechaDoc = new Date(doc['Fecha correspondiente']);
+      const esMarzo = fechaDoc.getMonth() + 1 === 3 && fechaDoc.getFullYear() === 2025; // marzo 2025
+
+      if (quienCerro === nombreBuscado && esMarzo) {
+        const ventaRelacionadaId = doc['Venta relacionada'] || (esVentaPrincipal ? doc.id : null);
+        const ventaOriginal = ventasPrincipales[ventaRelacionadaId];
+
+        if (!esVentaPrincipal && cashCollected > 0) {
+          if (ventaOriginal) {
+            console.log(`[RELACIÓN OK] Se asoció cobranza de ${cashCollected} a venta ${ventaRelacionadaId}`);
+            ventaOriginal.cobranzas.push(transaccion);
+            ventaOriginal.totalCobrado += cashCollected;
+          } else {
+            console.warn(`[⚠️ RELACIÓN FALLIDA] No se encontró venta con ID ${ventaRelacionadaId} para asociar cobranza de ${cashCollected}`);
+          }
+        }
+
+        const relacionEncontrada = ventaRelacionadaId && ventasPrincipales[ventaRelacionadaId] ? '✅ Relación encontrada' : '❌ Relación NO encontrada';
+
+        console.log(`[${fechaDoc.toISOString().split('T')[0]}] Transacción de Jose Santiago S. | Producto: ${doc['Producto Adq'] || 'Sin producto'} | Cash: ${doc['Cash collected']} | ${relacionEncontrada}`);
       }
 
-      agrupados[key].transacciones.push({
-        id: doc.id || doc._id,
-        cliente: doc['Nombre cliente'] || '',
-        fecha,
-        cashCollected: cash,
-        producto: doc['Producto Adq'] || '',
-        responsableOriginal: rawResponsable.trim(),
-        closerOriginal: rawCloser.trim(),
-        inconsistente: rawResponsable.trim() !== rawCloser.trim()
+
+
+      // Acumular totales globales
+      if (cashCollected > 0) {
+        agrupados[key].totalCashCollected += cashCollected;
+        if (esClub) {
+          agrupados[key].totalCashCollectedClub += cashCollected;
+        } else {
+          agrupados[key].totalCashCollectedOtros += cashCollected;
+        }
+      }
+
+      if (ventaRelacionada) {
+        if (esVentaPrincipal && !agrupados[key].ventas.some(v => v.id === doc.id)) {
+          const id = doc.id;
+          const nuevaVenta = ventasPrincipales[id];
+          agrupados[key].ventas.push(nuevaVenta);
+        }
+        else if (!esVentaPrincipal && cashCollected > 0) {
+          const ventaOriginal = ventasPrincipales[ventaRelacionada];
+          if (ventaOriginal) {
+            const fechaCobranza = new Date(doc['Fecha correspondiente']);
+            const mesCobranza = `${fechaCobranza.getFullYear()}-${String(fechaCobranza.getMonth() + 1).padStart(2, '0')}`;
+            const mesVentaOriginal = `${new Date(ventaOriginal.fecha).getFullYear()}-${String(new Date(ventaOriginal.fecha).getMonth() + 1).padStart(2, '0')}`;
+
+            if (mesCobranza > mesVentaOriginal) {
+              console.log(`[⛔ OMITIDA EN VENTA] No se debe incluir cobranza de ${mesCobranza} en venta del ${mesVentaOriginal}`);
+              continue;
+            }
+
+            const yaExiste = ventaOriginal.cobranzas.some(c => c.id === transaccion.id);
+            if (!yaExiste) {
+              ventaOriginal.cobranzas.push(transaccion);
+              ventaOriginal.totalCobrado += cashCollected;
+
+              const agrupacionVenta = agrupados[key]?.ventas?.find(v => v.id === ventaRelacionada);
+              if (agrupacionVenta) {
+                agrupacionVenta.cobranzas.push(transaccion);
+                agrupacionVenta.totalCobrado += cashCollected;
+              }
+            }
+          }
+
+          else {
+            const ventaProvisional = {
+              id: ventaRelacionada,
+              cliente: doc['Nombre cliente'],
+              producto: 'Venta no encontrada',
+              precio: 'No disponible',
+              fecha: doc['Fecha correspondiente'],
+              cashCollected: 0,
+              cobranzas: [transaccion],
+              totalCobrado: cashCollected,
+              responsableOriginal: responsable,
+              closerOriginal: closer,
+              mes,
+              closer: quienCerro,
+              interaccion: 'Venta principal no encontrada'
+            };
+            agrupados[key].ventas.push(ventaProvisional);
+            ventasPrincipales[ventaRelacionada] = ventaProvisional;
+          }
+        }
+
+      } else if (cashCollected > 0 && !esVentaPrincipal && !esClub) {
+        const comision = cashCollected * 0.08;
+        agrupados[key].transaccionesSinVenta.push({
+          ...transaccion,
+          comision,
+          porcentajeComision: '8%'
+        });
+        agrupados[key].comisionMEG += comision;
+        agrupados[key].comisionTotal += comision;
+        agrupados[key].detalleComisiones.MEG.comisionNivel1 += comision;
+      }
+    }
+
+    // Cálculo de comisiones por closer y mes
+    for (const key in agrupados) {
+      const datos = agrupados[key];
+      datos.ventas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+      const ventasMEG = datos.ventas.filter(v => (v.producto || '').toUpperCase().includes('MEG' || 'MEG 2.0'));
+      const ventasCLUB = datos.ventas.filter(v => (v.producto || '').toUpperCase().includes('CLUB'));
+
+      ventasMEG.forEach((venta, index) => {
+        let porcentaje = 0.08;
+        let nivel = 1;
+        if (index >= 4 && index < 14) {
+          porcentaje = 0.09;
+          nivel = 2;
+        } else if (index >= 14) {
+          porcentaje = 0.10;
+          nivel = 3;
+        }
+        const comision = venta.totalCobrado * porcentaje;
+        venta.comision = comision;
+        venta.nivelComision = nivel;
+        venta.porcentajeComision = `${porcentaje * 100}%`;
+        datos.comisionMEG += comision;
+        datos.comisionTotal += comision;
+        datos.detalleComisiones.MEG[`ventasNivel${nivel}`]++;
+        datos.detalleComisiones.MEG[`comisionNivel${nivel}`] += comision;
       });
-    });
 
-    const resultado = Object.values(agrupados);
+      ventasCLUB.forEach(venta => {
+        const comision = venta.totalCobrado * 0.6;
+        venta.comision = comision;
+        venta.porcentajeComision = '60%';
+        datos.comisionClub += comision;
+        datos.comisionTotal += comision;
+        datos.detalleComisiones.CLUB.ventas++;
+        datos.detalleComisiones.CLUB.comision += comision;
+      });
+    }
 
-    // Lógica MEG - solo transacciones MEG válidas (excluyendo renovación)
-    const todasLasTransaccionesMEG = await MetricasDataSchema.find({
-      Eliminar: false,
-      'Producto Adq': { $exists: true, $ne: '' }
-    })
-      .select('Fecha correspondiente Responsable Origen Precio Cash collected Cash collected total Nombre cliente Producto Adq')
-      .lean();
-
-    const transaccionesMEGFiltradas = todasLasTransaccionesMEG.filter(doc => {
-      const producto = (doc['Producto Adq'] || '').toLowerCase();
-      return producto.includes('meg') && !producto.includes('renovacion');
-    }).map(doc => {
-      const fecha = new Date(doc['Fecha correspondiente']);
+    // Procesar cobranzas de ventas anteriores (ventas del mes anterior con cobros en este)
+    for (const doc of transacciones) {
       const cashCollected = parseFloat(doc['Cash collected']) || 0;
-      const cashCollectedTotal = parseFloat(doc['Cash collected total']) || 0;
-      const cash = cashCollected > 0 ? cashCollected : cashCollectedTotal;
+      const ventaRelacionadaId = doc['Venta relacionada'];
+      if (!ventaRelacionadaId || cashCollected <= 0 || doc['Producto Adq']) continue;
 
-      return {
+      const ventaOriginal = ventasPrincipales[ventaRelacionadaId];
+      if (!ventaOriginal) continue;
+
+      const fechaVenta = new Date(ventaOriginal.fecha);
+      const fechaCobranza = new Date(doc['Fecha correspondiente']);
+      const mesVenta = `${fechaVenta.getFullYear()}-${String(fechaVenta.getMonth() + 1).padStart(2, '0')}`;
+      const mesCobranza = `${fechaCobranza.getFullYear()}-${String(fechaCobranza.getMonth() + 1).padStart(2, '0')}`;
+
+      // ⛔ ignoramos cobranzas del mismo mes que la venta
+      if (mesVenta === mesCobranza) continue;
+
+      const responsable = (doc['Responsable'] || '').trim();
+      const closer = (doc['Closer Actual'] || '').trim();
+      const quienCerro = responsable || closer || 'Sin asignar';
+      const key = `${quienCerro}_${mesCobranza}`;
+      const agrupacion = agrupados[key];
+      if (!agrupacion) continue;
+
+      // ⛔ evitamos que una cobranza futura contamine un mes agrupado anterior
+      if (mesCobranza > agrupacion.mes) continue;
+
+      // ⛔ evitamos duplicados
+      const yaExiste = agrupacion.cobranzasDeVentasAnteriores.some(c => c.id === doc.id);
+      if (yaExiste) continue;
+
+      let porcentaje = 0;
+      const porcentajeStr = ventaOriginal.porcentajeComision;
+      if (porcentajeStr === '8%') porcentaje = 0.08;
+      else if (porcentajeStr === '9%') porcentaje = 0.09;
+      else if (porcentajeStr === '10%') porcentaje = 0.10;
+      else if (porcentajeStr === '60%') porcentaje = 0.6;
+
+      const comision = cashCollected * porcentaje;
+      agrupacion.comisionTotal += comision;
+
+      const productoVenta = (ventaOriginal.producto || '').toUpperCase().trim();
+      if (productoVenta.includes('MEG') || productoVenta.includes('MEG 2.0')) {
+        agrupacion.comisionMEG += comision;
+      }
+
+      agrupacion.cobranzasDeVentasAnteriores.push({
+        id: doc.id,
+        fechaCobranza: doc['Fecha correspondiente'],
+        cliente: doc['Nombre cliente'],
+        producto: ventaOriginal.producto,
+        porcentajeComision: porcentajeStr,
+        cashCollected,
+        comision,
+        ventaOriginalId: ventaOriginal.id,
+        fechaVenta: ventaOriginal.fecha
+      });
+    }
+
+
+    // Agrupar transacciones por mes para el front
+    const transaccionesPorMes = {};
+    for (const doc of transacciones) {
+      const fecha = new Date(doc['Fecha correspondiente']);
+      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+      if (!transaccionesPorMes[mes]) transaccionesPorMes[mes] = [];
+
+      transaccionesPorMes[mes].push({
+        id: doc.id,
+        cliente: doc['Nombre cliente'],
         fecha,
+        producto: doc['Producto Adq'] || 'No tiene producto',
+        precio: doc['Precio'] != null ? doc['Precio'] : 'No tiene precio',
+        cashCollected: parseFloat(doc['Cash collected']) || 0,
         responsable: doc['Responsable'] || '',
-        origen: doc['Origen'] || '',
-        cashCollected: cash,
-        precio: parseFloat(doc['Precio']) || 0,
-        cliente: doc['Nombre cliente'] || '',
-        producto: doc['Producto Adq'] || ''
-      };
-    });
+        closer: doc['Closer Actual'] || '',
+        interaccion: doc['Interaccion'] || '',
+        ventaRelacionada: doc['Venta relacionada'] || null
+      });
+    }
 
-    res.json({
-      success: true,
-      resumen: resultado,
-      todas: transaccionesMEGFiltradas
-    });
+    for (const mes in transaccionesPorMes) {
+      transaccionesPorMes[mes].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }
+
+    res.json({ success: true, resumen: Object.values(agrupados), transaccionesPorMes });
   } catch (error) {
-    console.error('Error al agrupar transacciones:', error);
+    console.error('Error al calcular comisiones:', error);
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 }
