@@ -5,9 +5,9 @@ exports.getAllData = async (req, res) => {
   try {
     console.log("Iniciando el controlador getAllData (solo campos específicos)...");
     console.time("TiempoTotalConsulta");
+
     const inicio = new Date();
     console.log("Inicio de la consulta:", inicio.toISOString());
-
 
     const metricas = await Metricas.find(
       {
@@ -17,7 +17,8 @@ exports.getAllData = async (req, res) => {
           { "Agenda": { $gt: 0 } },
           { "Cash collected total": { $gt: 0 } },
           { "Facturación": { $gt: 0 } },
-          { "Call Confirm Exitoso": { $gt: 0 } } 
+          { "Call Confirm Exitoso": { $gt: 0 } } ,
+          { "Id Interaccion": { $gt: 0 } } 
         ]
       },
       {
@@ -32,13 +33,10 @@ exports.getAllData = async (req, res) => {
         "Llamadas efectuadas": 1,
         "Nombre cliente": 1,
         "Venta Club": 1,
-        "Call Confirm Exitoso": 1
+        "Call Confirm Exitoso": 1,
+        "id": 1 // 👈 CAMPO NUEVO AGREGADO
       }
-    )
-    .lean()
-    
-    
-
+    ).lean();
 
     const fin = new Date();
     console.log("Consulta completada a:", fin.toISOString());
