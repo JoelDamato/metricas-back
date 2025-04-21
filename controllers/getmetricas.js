@@ -16,7 +16,8 @@ exports.getAllData = async (req, res) => {
           { "Llamadas efectuadas": { $gt: 0 } },
           { "Agenda": { $gt: 0 } },
           { "Cash collected total": { $gt: 0 } },
-          { "Facturación": { $gt: 0 } }
+          { "Facturación": { $gt: 0 } },
+          { "Call Confirm Exitoso": { $gt: 0 } } 
         ]
       },
       {
@@ -30,7 +31,8 @@ exports.getAllData = async (req, res) => {
         "Aplica?": 1,
         "Llamadas efectuadas": 1,
         "Nombre cliente": 1,
-        "Venta Club": 1
+        "Venta Club": 1,
+        "Call Confirm Exitoso": 1
       }
     )
     .lean()
