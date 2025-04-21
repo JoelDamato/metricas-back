@@ -141,7 +141,7 @@ exports.handleWebhook = async (req, res) => {
         return relaciones.length > 0 ? relaciones[0] : null;
       })(),
       "Ofertas ganadas": getNumberFromFormula(props['Ofertas ganadas']),
-      Origen: getSelectValue(props['Origen']),
+      Origen: getTextFromFormula(props['Ult. Origen']), // <-- fórmula tipo string
       Precio: getNumber(props['Precio']),
       "Primer Origen": getTextFromFormula(props['Primer Origen']),
       "Producto Adq": productoAdq, // ✅ ACTUALIZADO
