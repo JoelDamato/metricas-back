@@ -34,6 +34,7 @@ exports.getAllData = async (req, res) => {
         "Nombre cliente": 1,
         "Venta Club": 1,
         "Call Confirm Exitoso": 1,
+        "Fecha de agendamiento":1,
         "id": 1 // 👈 CAMPO NUEVO AGREGADO
       }
     ).lean();

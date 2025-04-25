@@ -122,11 +122,22 @@ const getTextFromFormula = (prop) => {
  */
 const getDateFromFormula = (prop) => {
   if (!prop) return null;
-  if (prop.type === 'formula' && prop.formula.type === 'date') {
+
+  // Caso típico de formula.date
+  if (prop.type === 'formula' && prop.formula.type === 'date' && prop.formula.date) {
     return prop.formula.date.start;
   }
+
+  // Caso de formula.string con formato fecha
+  if (prop.type === 'formula' && prop.formula.type === 'string') {
+    const dateString = prop.formula.string;
+    const parsedDate = new Date(dateString);
+    return isNaN(parsedDate) ? null : parsedDate.toISOString(); // Convertimos a formato ISO para guardar en Mongo
+  }
+
   return null;
 };
+
 
 /**
  * Para propiedades que pueden ser Persona o String en fórmula.
@@ -211,7 +222,7 @@ const fetchNotionData = async () => {
         const pageId = page.id;
         console.log(`Procesando registro con id: ${pageId}`);
         const props = page.properties;
-
+        console.log("Fecha de agendamiento RAW:", JSON.stringify(props['Fecha de agendamiento'], null, 2));
         // Transformamos las propiedades según el tipo esperado.
         // En particular, para "Responsable" usamos getTextFromFormula para extraer la cadena.
         const transformedData = {
@@ -233,6 +244,8 @@ const fetchNotionData = async () => {
           Eliminar: getCheckbox(props['Eliminar']),
           Facturacion: getNumberFromFormula(props['Facturacion']),
           "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
+          "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento']),
+
           "Fecha creada": getDate(props['Fecha creada']),
           "Id Interaccion": getNumberFromFormula(props['Id Interaccion']),
           "Link enviado": getURL(props['Link enviado']),
