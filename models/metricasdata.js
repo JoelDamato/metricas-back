@@ -33,6 +33,7 @@ const MetricasDataSchema = new mongoose.Schema(
     Facturacion: { type: Number }, // Formula - Number
     "Fecha correspondiente": { type: Date }, // Formula - Date
     "Fecha creada": { type: Date },
+    "Fecha de agendamiento": { type: Date },
 
     // Identificadores y enlaces
     "Id Interaccion": { type: Number }, // Formula - Number

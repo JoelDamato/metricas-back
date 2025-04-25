@@ -127,6 +127,8 @@ exports.handleWebhook = async (req, res) => {
       ELIMINAR: getCheckbox(props['Eliminar']),
       Facturacion: getNumberFromFormula(props['Facturacion']),
       "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
+      "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento']),
+
       "Fecha creada": getDate(props['Fecha creada']),
       "Id Interaccion": getNumberFromFormula(props['Id Interaccion']),
       "Link enviado": getURL(props['Link enviado']),
