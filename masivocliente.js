@@ -55,6 +55,7 @@ const fetchNotionData = async () => {
         Closer: getPerson(props['Closer']),
         Agendo: getNumberFromFormula(props['Agendo']),
         "Aplica Con CC": getTextFromFormula(props['Aplica Con CC']),
+        "Aplica N": getNumberFromFormula(props['Aplica N']),
         "Call confirm exitoso": getNumberFromFormula(props['Call confirm exitoso']),
         "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']),
         "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
