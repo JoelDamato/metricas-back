@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();// Cambié la referencia de "estatico" a "notionController"
 const webhookController = require('../controllers/webhookController');
+const webhookController2 = require('../controllers/webhookcliente');
 const getclientmes = require('../controllers/getllamadas');
 const metricasController = require('../controllers/getmetricas');
 const getdashboard = require ('../controllers/getdashboard')
@@ -24,7 +25,7 @@ router.get('/comisiones-meg', calcularComisiones);
 /*--------------*/
 
 router.post('/webhook', webhookController.handleWebhook);
-
+router.post('/webhook2', webhookController2.handleWebhook);
 
 
 module.exports = router;

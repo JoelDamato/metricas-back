@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const MetricasDataSchema = new mongoose.Schema(
+const MetricasCliente = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true },
 
@@ -24,13 +24,13 @@ const MetricasDataSchema = new mongoose.Schema(
 );
 
 
-MetricasDataSchema.index({ "Venta Meg": 1 });
-MetricasDataSchema.index({ "Llamadas efectuadas": 1 });
-MetricasDataSchema.index({ "Agenda": 1 });
+MetricasCliente.index({ "Venta Meg": 1 });
+MetricasCliente.index({ "Llamadas efectuadas": 1 });
+MetricasCliente.index({ "Agenda": 1 });
 
 
 
-module.exports = mongoose.model("metricascliente", MetricasDataSchema);
+module.exports = mongoose.model("metricascliente", MetricasCliente);
 
 
 

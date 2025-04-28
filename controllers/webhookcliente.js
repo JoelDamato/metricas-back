@@ -1,5 +1,5 @@
 const axios = require('axios');
-const MetricasCliente = require('../models/metricasdata'); // Asegurate que la ruta sea correcta
+const MetricasCliente = require('../models/metricascliente.js'); // Asegurate que la ruta sea correcta
 
 /* ======================
    Helper functions
