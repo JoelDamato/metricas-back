@@ -12,12 +12,15 @@ const  getObjetivosCloser  = require("../controllers/getObjetivoMensual");
 const { calcularComisiones } = require('../controllers/comisionController');
 module.exports = router;
 /*---------------*/
+const { getMetricasCliente } = require('../controllers/getclientes.js'); // Ajustá ruta
+
 
 
 router.post("/update-goal", updateMonthlyGoal);
 router.get("/goals", getMonthlyGoals);
 router.get('/metricas', metricasController.getAllData);
 router.get('/llamadas', getclientmes.getAllData);
+router.get('/metricascliente', getMetricasCliente);
 router.get('/dashboard', getdashboard.getAllData);
 router.post('/update-objetivo-closer', updateObjetivoCloser.updateObjetivoCloser);
 router.get('/objetivos-closer', getObjetivosCloser.getObjetivosCloser);
