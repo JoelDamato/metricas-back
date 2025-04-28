@@ -1,4 +1,4 @@
-const MetricasCliente = require('../models/metricascliente.js'); // Asegurate de que la ruta sea correcta
+const MetricasCliente = require('../models/metricascliente.js');
 
 const getTextValue = (prop) => {
   if (!prop) return '';
@@ -8,6 +8,7 @@ const getTextValue = (prop) => {
 const getNumberFromFormula = (prop) => prop?.formula?.type === 'number' ? prop.formula.number : null;
 const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.formula.string : '';
 const getDateFromFormula = (prop) => prop?.formula?.type === 'date' ? prop.formula.date?.start : null;
+const getPerson = (prop) => prop?.people?.[0]?.name ?? ''; // 🔥 CATCH Closer
 
 const formatNotionId = (id) => {
   if (!id) return id;
@@ -28,10 +29,11 @@ exports.handleWebhook = async (req, res) => {
     const transformedData = {
       id: pageId,
       Nombre: getTextValue(props['Nombre']),
+      Closer: getPerson(props['Closer']), // 🔥 NUEVO
       Agendo: getNumberFromFormula(props['Agendo']),
       "Aplica Con CC": getTextFromFormula(props['Aplica Con CC']),
       "Call confirm exitoso": getNumberFromFormula(props['Call confirm exitoso']),
-      "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']), // Cuidado con el espacio al final
+      "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']),
       "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
       "Ultimo origen": getTextFromFormula(props['Ultimo origen'])
     };
