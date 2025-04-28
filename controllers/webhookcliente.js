@@ -48,18 +48,18 @@ exports.handleWebhook = async (req, res) => {
     // Transformar los datos alineados al esquema metricascliente
     const transformedData = {
       id: normalizedPageId,
-      Agendo: getNumberFromFormula(props['Agenda']),
-      "Aplica con CCA": getSelectValue(props['Aplica?']),
-      "No efectuada con CC": getNumberFromFormula(props['Llamadas no efectuadas']),
-      "Call Confirm No exitoso": getNumberFromFormula(props['Call Confirm No exitoso']),
-      Origen: getTextFromFormula(props['Ult. Origen']),
-      Closer: getTextFromFormula(props['Responsable']),
-      Facturacion: getNumberFromFormula(props['Facturacion']),
-      "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
-      "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento']),
+      Agendo: getNumberFromFormula(props['Agendo']),
+      "Aplica con CCA": getSelectValue(props['Aplica Con CC']), // 🛠️ Corrige el nombre
+      "No efectuada con CC": getNumberFromFormula(props['Llamadas no efectuadas']), // Esto no llega, podrías poner null o revisar
+      "Call Confirm No exitoso": getNumberFromFormula(props['Call confirm exitoso']), // 🛠️ Este nombre es diferente
+      Origen: getTextFromFormula(props['Ultimo origen']), // 🛠️ Corrige el nombre
+      Closer: getTextFromFormula(props['Responsable']), // Este campo no lo vi en el webhook, ¿está?
+      Facturacion: getNumberFromFormula(props['Facturacion']), // Este tampoco llegó, si no viene dejalo null
+      "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']), // Tampoco llegó
+      "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']), // 🛠️ Espacio al final
       "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas'])
     };
-
+    
     // Actualizar o crear el documento
     const existingDocument = await MetricasCliente.findOne({ id: normalizedPageId });
     const operationType = existingDocument ? 'actualizado' : 'creado';
