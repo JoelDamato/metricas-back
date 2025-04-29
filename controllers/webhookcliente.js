@@ -6,8 +6,22 @@ const getTextValue = (prop) => {
   return '';
 };
 const getNumberFromFormula = (prop) => prop?.formula?.type === 'number' ? prop.formula.number : null;
-const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.formula.string : '';
-const getDateFromFormula = (prop) => prop?.formula?.type === 'date' ? prop.formula.date?.start : null;
+const getDateFromFormula = (prop) => {
+  if (!prop || prop.type !== 'formula') return null;
+  
+  if (prop.formula.type === 'date') {
+    return prop.formula.date?.start ? new Date(prop.formula.date.start) : null;
+  }
+
+  if (prop.formula.type === 'string' && prop.formula.string) {
+    const fechaString = prop.formula.string.replace('@', '').trim(); // saco el @
+    const fecha = new Date(fechaString);
+    return isNaN(fecha) ? null : fecha;
+  }
+
+  return null;
+};
+
 const getPerson = (prop) => prop?.people?.[0]?.name ?? ''; // 🔥 CATCH Closer
 
 const formatNotionId = (id) => {

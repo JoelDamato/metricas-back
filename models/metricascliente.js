@@ -8,7 +8,7 @@ const MetricasClienteSchema = new mongoose.Schema(
     "Aplica Con CC": { type: String }, 
     "Aplica N": { type: String }, // Formula - String// Formula - String
     "Call confirm exitoso": { type: Number }, // Formula - Number
-    "Fecha de agendamiento": { type: Date }, // Formula - Date
+"Fecha de agendamiento": { type: Date, required: true },
     "Llamadas efectuadas": { type: Number }, // Formula - Number
     Closer: { type: String }, // People - Name del closer
     "Ultimo origen": { type: String } // Formula - String
