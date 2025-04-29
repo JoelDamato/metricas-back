@@ -13,24 +13,36 @@ mongoose.connect(
 const getTextValue = (prop) => prop?.title?.map((item) => item.plain_text).join(' ') || '';
 const getNumberFromFormula = (prop) => prop?.formula?.type === 'number' ? prop.formula.number : null;
 const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.formula.string : '';
-const getDateFromFormula = (prop) => {
-    if (!prop || prop.type !== 'formula') return null;
-    
-    if (prop.formula.type === 'date') {
-      return prop.formula.date?.start ? new Date(prop.formula.date.start) : null;
-    }
-  
-    if (prop.formula.type === 'string' && prop.formula.string) {
-      const fechaString = prop.formula.string.replace('@', '').trim(); // saco el @
-      const fecha = new Date(fechaString);
-      return isNaN(fecha) ? null : fecha;
-    }
-  
-    return null;
-  };
-  
-const getPerson = (prop) => prop?.people?.[0]?.name || '';
 
+const getDateFromFormula = (prop) => {
+  if (!prop || prop.type !== 'formula') return null;
+
+  let fechaString = null;
+
+  if (prop.formula.type === 'date' && prop.formula.date?.start) {
+    fechaString = prop.formula.date.start;
+  } else if (prop.formula.type === 'string' && prop.formula.string) {
+    fechaString = prop.formula.string.replace('@', '').trim();
+  }
+
+  if (!fechaString) return null;
+
+  const fechaOriginal = new Date(fechaString);
+  if (isNaN(fechaOriginal)) return null;
+
+  // Detectar si tiene hora distinta de 00:00
+  const tieneHora = fechaOriginal.getUTCHours() !== 0 || fechaOriginal.getUTCMinutes() !== 0 || fechaOriginal.getUTCSeconds() !== 0;
+
+  if (tieneHora) {
+    // Si tiene hora, restar 3 horas
+    return new Date(fechaOriginal.getTime() - 3 * 60 * 60 * 1000);
+  } else {
+    // Si no tiene hora, dejar igual
+    return fechaOriginal;
+  }
+};
+
+const getPerson = (prop) => prop?.people?.[0]?.name || '';
 const formatNotionId = (id) => id.includes('-') ? id : id.replace(/([0-9a-fA-F]{8})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{4})([0-9a-fA-F]{12})/, '$1-$2-$3-$4-$5');
 
 /* === Configuración Notion === */
