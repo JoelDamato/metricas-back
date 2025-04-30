@@ -1,79 +1,134 @@
-const axios = require('axios');
-const mongoose = require('mongoose');
-const NotionData = require('./models/metricasdata.js');
+const mongoose = require("mongoose");
 
-// Conexión a MongoDB
-mongoose.connect(
-  'mongodb+srv://Scalo:4NAcuxyWdpCk3c1D@scalo.fgada.mongodb.net/nombreBaseDeDatos?retryWrites=true&w=majority',
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
-)
-  .then(() => console.log('✅ Conectado a MongoDB'))
-  .catch((error) => console.error('❌ Error al conectar a MongoDB:', error));
+// Conexión segura sin parámetros obsoletos
+const MONGO_URI =  "mongodb+srv://Scalo:4NAcuxyWdpCk3c1D@scalo.fgada.mongodb.net/nombreBaseDeDatos?retryWrites=true&w=majority" // Cambialo si usás otro nombre o Atlas
+mongoose.connect(MONGO_URI);
 
-const NOTION_API_TOKEN = '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';
-const PAGE_ID = '1ba48251-7a95-80b2-a592-d642cf05ec5d';
+mongoose.connection.on("connected", () => {
+  console.log("✅ Conectado a MongoDB");
+});
 
-/* === Helpers === */
+mongoose.connection.on("error", (err) => {
+  console.error("❌ Error de conexión a MongoDB:", err);
+});
 
-const getNumber = (prop) => {
-  if (!prop || typeof prop.number !== 'number') return null;
-  return prop.number;
-};
+// Importá tus modelos reales
+const Metricas = require("./models/metricasdata");
+const Cliente = require("./models/metricascliente");
 
-const getTextValue = (prop) => {
-  if (!prop) return '';
-  if (prop.type === 'title') {
-    return prop.title.map((item) => item.plain_text).join(' ');
-  }
-  if (prop.type === 'rich_text') {
-    return prop.rich_text.map((item) => item.plain_text).join(' ');
-  }
-  return '';
-};
+function crearEstructuraMes() {
+  return {
+    Agenda: 0,
+    "Aplica?": 0,
+    "Llamadas efectuadas": 0,
+    "Venta Meg": 0,
+    Monto: 0,
+    "Cash collected": 0,
+    "Call Confirm Exitoso": 0,
+  };
+}
 
-/* === Función principal para consultar ese registro === */
+const cashAbrilEsperado = new Set([
+  "1e3482517a9580a0bf08d8f00090230c",
+  "1e3482517a9580b5ac19d5e3a033aaf6",
+  "1e0482517a9580968b38e93423367087",
+  "1df482517a958086a3f6c97cc5fe52c3",
+  "1de482517a958086ae56c6b101abc3ee",
+  "1de482517a958088a876d97f30fb4f89",
+  "1dd482517a9580abaf62c3d50a9f12a6",
+  "1dd482517a958093b77fdfb530600866",
+  "1d9482517a958063a4fdcddab21c492f",
+  "1d9482517a9580a6aa7dfc203e0610b8",
+  "1d8482517a958006ad9ffd19483a2ca3",
+  "1d6482517a95800099b5c0876923e949",
+  "1d0482517a9580168cbfde6d7c541997",
+  "1ce482517a9580cba337fde53d024e26",
+]);
 
-const checkPage = async () => {
+async function main() {
   try {
-    const response = await axios.get(`https://api.notion.com/v1/pages/${PAGE_ID}`, {
-      headers: {
-        'Authorization': `Bearer ${NOTION_API_TOKEN}`,
-        'Notion-Version': '2022-06-28',
-      },
+    const [ventas, llamadas] = await Promise.all([
+      Metricas.find({}),
+      Cliente.find({})
+    ]);
+
+    const acc = {};
+    const idsYaSumados = new Set();
+    let totalCashAbril = 0;
+    let totalPrecioAbril = 0;
+
+    llamadas.forEach(item => {
+      const fecha = new Date(item["Fecha de agendamiento"]);
+      if (!isNaN(fecha) && item.Agendo === 1) {
+        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+        if (!acc[key]) acc[key] = crearEstructuraMes();
+
+        acc[key].Agenda += 1;
+
+        if (item["Aplica N"] === "1") {
+          acc[key]["Aplica?"] += 1;
+          acc[key]["Call Confirm Exitoso"] += Number(item["Call confirm exitoso"] || 0);
+        }
+
+        acc[key]["Llamadas efectuadas"] += Number(item["Llamadas efectuadas"] || 0);
+      }
     });
 
-    const props = response.data.properties;
-    const cashCollectedRaw = props['Cash Collected'];
+    ventas.forEach(item => {
+      const fecha = new Date(item["Fecha de agendamiento"]);
+      const esClub = Number(item["Venta Club"] || 0) === 1;
+      if (!isNaN(fecha) && !esClub) {
+        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+        if (!acc[key]) acc[key] = crearEstructuraMes();
 
-    console.log('\n🧾 === DETALLE DEL REGISTRO ===');
-    console.log('➡️ ID:', PAGE_ID);
-    console.log('➡️ Propiedad "Cash Collected" cruda desde Notion:\n', cashCollectedRaw);
-    console.log('➡️ Valor leído con getNumber:', getNumber(cashCollectedRaw));
+        const rawId = item.id || item.ID || item.Id || "";
+        const id = rawId.replace(/-/g, "");
+        const cash = Number(item["Cash collected total"] || 0);
+        const precio = Number(item["Precio"] || 0);
 
-    const transformedData = {
-      id: PAGE_ID,
-      Interaccion: getTextValue(props['Interaccion']),
-      "Cash collected": getNumber(cashCollectedRaw),
-    };
+        acc[key]["Venta Meg"] += Number(item["Venta Meg"] || 0);
+        acc[key]["Monto"] += precio;
+        acc[key]["Cash collected"] += cash;
 
-    console.log('\n📦 Documento que se guardaría en MongoDB:\n', transformedData);
+        if (key === "2025-04" && cash > 0) {
+          const incluido = cashAbrilEsperado.has(id);
+          if (incluido) {
+            totalCashAbril += cash;
+            totalPrecioAbril += precio;
+            idsYaSumados.add(id);
+          }
 
-    await NotionData.findOneAndUpdate(
-      { id: PAGE_ID },
-      transformedData,
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+          console.log("[CASH ABRIL]", {
+            idOriginal: rawId,
+            idSinGuiones: id,
+            cash,
+            precio,
+            incluido
+          });
+        }
+      }
+    });
 
-    console.log('\n✅ Documento guardado/actualizado en MongoDB.');
+    console.log("\n💰 TOTAL CASH ABRIL:", totalCashAbril.toFixed(2));
+    console.log("💵 TOTAL PRECIO ABRIL:", totalPrecioAbril.toFixed(2));
+    console.log("📈 % REAL COBRADO:", totalPrecioAbril > 0 ? ((totalCashAbril / totalPrecioAbril) * 100).toFixed(2) + "%" : "N/A");
+
+    const idsFaltantes = [...cashAbrilEsperado].filter(id => !idsYaSumados.has(id));
+    if (idsFaltantes.length > 0) {
+      console.warn("\n⚠️ IDs NO ENCONTRADOS:");
+      console.table(idsFaltantes);
+    } else {
+      console.log("\n✅ Todos los IDs esperados fueron incluidos.");
+    }
+
+    console.log("\n📦 Resultado agrupado por mes:");
+    console.dir(acc, { depth: null });
 
   } catch (error) {
-    console.error('\n❌ Error al obtener o procesar el registro:', error.response?.data || error.message);
+    console.error("❌ Error:", error);
   } finally {
     mongoose.disconnect();
   }
-};
+}
 
-checkPage();
+main();
