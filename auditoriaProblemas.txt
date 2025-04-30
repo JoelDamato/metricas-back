@@ -1,0 +1,443 @@
+ID: 15048251-7a95-8112-95bc-c7757ddc6bc5
+ - ⚠️ Closer vacío
+
+ID: 1a848251-7a95-8179-aebf-d0f4dc5e3977
+ - ⚠️ Closer vacío
+
+ID: 1a848251-7a95-81af-8f71-e0d64d3649a3
+ - ⚠️ Closer vacío
+
+ID: 1a948251-7a95-811d-8b29-d1f4d13c391e
+ - ⚠️ Closer vacío
+
+ID: 1a948251-7a95-81ab-b475-f4494468abb6
+ - ⚠️ Closer vacío
+
+ID: 1aa48251-7a95-8140-8a8c-d5f4048d4c44
+ - ⚠️ Closer vacío
+
+ID: 1aa48251-7a95-81e6-a93d-fe3766cd5d03
+ - ⚠️ Closer vacío
+
+ID: 1aa48251-7a95-81f3-9600-f610b391eb52
+ - ⚠️ Closer vacío
+
+ID: 1ab48251-7a95-812d-9a84-d5738f286aa1
+ - ⚠️ Closer vacío
+
+ID: 1ab48251-7a95-81ae-ae32-f49299f10252
+ - ⚠️ Closer vacío
+
+ID: 1ab48251-7a95-81d5-9870-ce3b033c97ac
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-810a-be5c-caaedf13dc1f
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-813e-a085-c05866d90d6c
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-8163-9938-e48eb8ee352d
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-818c-bd87-d4e71e5826d4
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-818d-9e52-dae009f60b2f
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-8197-b0db-cb199e7cc99b
+ - ⚠️ Closer vacío
+
+ID: 1ac48251-7a95-81b2-9f27-e0b91d283ce2
+ - ⚠️ Closer vacío
+
+ID: 1ad48251-7a95-8165-a4cf-d0a932e5faad
+ - ⚠️ Closer vacío
+
+ID: 1ad48251-7a95-817f-96ba-f7eba9b9e4d5
+ - ⚠️ Closer vacío
+
+ID: 1ad48251-7a95-81f9-af19-f8509e276fba
+ - ⚠️ Closer vacío
+
+ID: 1ad48251-7a95-81fb-b2ee-f82eb6dee049
+ - ⚠️ Closer vacío
+
+ID: 1ae48251-7a95-8143-8dab-f58b41442502
+ - ⚠️ Closer vacío
+
+ID: 1ae48251-7a95-819b-b921-efc4cbf97d66
+ - ⚠️ Closer vacío
+
+ID: 1af48251-7a95-8153-bc06-df5ee0e1f60a
+ - ⚠️ Closer vacío
+
+ID: 1af48251-7a95-8155-86aa-c95ba76f3634
+ - ⚠️ Closer vacío
+
+ID: 1af48251-7a95-8178-ac16-f8fe1c872912
+ - ⚠️ Closer vacío
+
+ID: 1b048251-7a95-814f-9f74-d95f5770dc65
+ - ⚠️ Closer vacío
+
+ID: 1b048251-7a95-815f-8649-e28b834d894c
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-8151-b32a-f4ff5e3eae38
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-819c-aaeb-db436bea1e23
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-81a3-9c14-fcfbd8b03873
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-81a8-b832-eb195e4a0fb9
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-81bf-beef-d4f7343ed6d6
+ - ⚠️ Closer vacío
+
+ID: 1b148251-7a95-81d6-8c5a-d3a16c60dc48
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-8136-9511-ca652fbc972a
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-814b-8129-dfc909335b81
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-817a-aae8-d833fb16b4d7
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-8180-ace8-efa5e7c3a837
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-8181-98b6-d97c0b3846ea
+ - ⚠️ Closer vacío
+
+ID: 1b248251-7a95-81ae-a7f7-f9fb50cb8fe3
+ - ⚠️ Closer vacío
+
+ID: 1b348251-7a95-813b-920e-e4bc2cdaf135
+ - ⚠️ Closer vacío
+
+ID: 1b348251-7a95-8147-a36b-d64bb8d136f3
+ - ⚠️ Closer vacío
+
+ID: 1b348251-7a95-8151-94b2-cb3500970ac6
+ - ⚠️ Closer vacío
+
+ID: 1b348251-7a95-815f-9cb9-cf8d6d968339
+ - ⚠️ Closer vacío
+
+ID: 1b348251-7a95-81ac-a441-ca2ce49dc34c
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-8125-8ae7-c52fdeb0e048
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-815e-be2b-cae8eaa76e5c
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-8160-baff-f652ab8d78bd
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-8181-b378-d9ef1db6034a
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-819f-9fe5-c562e2262ed1
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-81c7-b168-fcce39d95a8b
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-81cc-a15a-f9d70f2607d3
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-81d9-ac10-c607c365dedc
+ - ⚠️ Closer vacío
+
+ID: 1b448251-7a95-81fe-a67b-cfee0e71006b
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-810e-8659-eedb2615bf9f
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-8135-9f82-c09980e6818b
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-8139-a32f-d5d9396afb44
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-8144-8a54-c0665d169d43
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-814b-9bf6-edbe883e2674
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-817f-8d52-ce0500f0ceec
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-819e-b580-e9b0dd2b4533
+ - ⚠️ Closer vacío
+
+ID: 1b548251-7a95-81c2-be53-c633d65bc466
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-815b-9193-ee03cb48480f
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-8165-93c9-df528b3e39ca
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-816f-8f7f-f92472da1ffd
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-8181-806f-d3c79f3d9fac
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-8184-aece-f9b491cf2be3
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81b7-bcf4-ef2b2600797b
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81c6-8035-c4c760e7152c
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81cf-a04f-c2c1434d3e99
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81cf-afd6-f83e9c4fad16
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81d9-95d0-f602ea5c6bdd
+ - ⚠️ Closer vacío
+
+ID: 1b648251-7a95-81db-883a-e42315673925
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-8100-8a3f-f188fec60eb5
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-8108-83ce-f7be601cabc6
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-810f-a7ec-d0d3e30e86d7
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-8123-9732-cf8e858b0e65
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-814e-914c-fdde76dd6e10
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-815a-bf52-dc9b3621a522
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-816b-93ed-fee3a90d912b
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-8199-a6f7-fc13fadce5a5
+ - ⚠️ Closer vacío
+
+ID: 1b748251-7a95-81e8-88bc-c1eac8c1d438
+ - ⚠️ Closer vacío
+
+ID: 1b848251-7a95-8151-9346-c546c1696e57
+ - ⚠️ Closer vacío
+
+ID: 1b848251-7a95-8154-a968-ec8d1140026a
+ - ⚠️ Closer vacío
+
+ID: 1b848251-7a95-81f7-8635-f9310905739d
+ - ⚠️ Closer vacío
+
+ID: 1b948251-7a95-812b-bcc6-cbfa5440d05f
+ - ⚠️ Closer vacío
+
+ID: 1b948251-7a95-818e-9f5e-c8fe761179d1
+ - ⚠️ Closer vacío
+
+ID: 1b948251-7a95-8197-8aca-eb15dc1d625d
+ - ⚠️ Closer vacío
+
+ID: 1ba48251-7a95-811b-aa6f-c57db1e80348
+ - ⚠️ Closer vacío
+
+ID: 1ba48251-7a95-8162-afa1-c8a192f373be
+ - ⚠️ Closer vacío
+
+ID: 1ba48251-7a95-81cf-92e6-f8fe10af3cd8
+ - ⚠️ Closer vacío
+
+ID: 1ba48251-7a95-81fa-ae30-c320e144fb20
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-8106-aaf1-c804220fc36e
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-8108-b3c3-dc0ef231ff16
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-8138-bf06-f230610afb48
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-8144-8180-ded70ef73684
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-8156-9eb6-d5cee94be98b
+ - ⚠️ Closer vacío
+
+ID: 1bc48251-7a95-815a-9bb4-e8972a0577ac
+ - ⚠️ Closer vacío
+
+ID: 1bd48251-7a95-8178-8c3c-fb4b5f4a4209
+ - ⚠️ Closer vacío
+
+ID: 1bd48251-7a95-819a-8c86-de486d93f63b
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-8116-84b5-d6de909d558f
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-811b-8517-c981e28896ab
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-8124-ab2f-f05abb745793
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-8151-9ce5-fcdf0d96ab94
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-8163-923a-eeca013e05d8
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-8186-91b9-c2f06e650d9d
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-81ab-ab34-e29022db9598
+ - ⚠️ Closer vacío
+
+ID: 1be48251-7a95-81ec-9a1c-f8d60dd75836
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-8125-89df-efe78dc39d4a
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-8141-85e5-f27921c9ab31
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-818b-9553-d27db16b9cc0
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-8192-9df7-e36d809c2fff
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-8197-94dc-d79ee3417289
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-8199-8265-ec32b2ed1f27
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-81cb-bea7-d0de79835db0
+ - ⚠️ Closer vacío
+
+ID: 1bf48251-7a95-81f6-ba7a-c2f491c92552
+ - ⚠️ Closer vacío
+
+ID: 1c048251-7a95-8122-bbba-d500853ba2be
+ - ⚠️ Closer vacío
+
+ID: 1c048251-7a95-817b-b67d-c2c781f9f5ac
+ - ⚠️ Closer vacío
+
+ID: 1c148251-7a95-8178-8b15-e015b85705e7
+ - ⚠️ Closer vacío
+
+ID: 1c148251-7a95-81b3-b2fa-d9aada4ef475
+ - ⚠️ Closer vacío
+
+ID: 1c148251-7a95-81b8-8b1c-fcdaed5b99dd
+ - ⚠️ Closer vacío
+
+ID: 1c248251-7a95-813b-b714-fac2b3e3bd7a
+ - ⚠️ Closer vacío
+
+ID: 1c248251-7a95-8166-a0a8-d99e4ce29aa8
+ - ⚠️ Closer vacío
+
+ID: 1c248251-7a95-81d4-b9e5-caed6a8ec377
+ - ⚠️ Closer vacío
+
+ID: 1c348251-7a95-8130-a085-ffb016d3ae34
+ - ⚠️ Closer vacío
+
+ID: 1c348251-7a95-8174-9543-fb3e25e92c39
+ - ⚠️ Closer vacío
+
+ID: 1c348251-7a95-819e-a984-e78b59d7a4bc
+ - ⚠️ Closer vacío
+
+ID: 1c348251-7a95-81aa-81c4-f8df2c950f5b
+ - ⚠️ Closer vacío
+
+ID: 1c348251-7a95-81b2-b159-d8f8c5665560
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-8117-925e-e8b746734181
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-812c-a31f-d5ff37fa4883
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-8146-b575-d28833f50611
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-8157-8d4f-f8785b326154
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-815b-a806-e980b002736f
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-81bd-a386-c4edf3ccbcba
+ - ⚠️ Closer vacío
+
+ID: 1c448251-7a95-81d6-a708-d069ee2ab62f
+ - ⚠️ Closer vacío
+
+ID: 1c548251-7a95-8160-a7e7-da42551d4702
+ - ⚠️ Closer vacío
+
+ID: 1c548251-7a95-819e-b96a-f348f4615b94
+ - ⚠️ Closer vacío
+
+ID: 1c548251-7a95-81bd-8846-c8238bfa50d3
+ - ⚠️ Closer vacío
+
+ID: 1c648251-7a95-8151-9d8b-f696e96e315f
+ - ⚠️ Closer vacío
+
+ID: 1c648251-7a95-8185-923f-e4a68c7e58f7
+ - ⚠️ Closer vacío
+
+ID: 1c648251-7a95-81c3-ad60-c481c6111d59
+ - ⚠️ Closer vacío
+
+ID: 1c748251-7a95-81a0-b7c2-d3aba8dfd228
+ - ⚠️ Closer vacío
+
+ID: 1c748251-7a95-81ac-94f0-ec830a239f6e
+ - ⚠️ Closer vacío
+
+ID: 1c748251-7a95-81c2-8620-ce07cd607a44
+ - ⚠️ Closer vacío
+
+ID: 1c748251-7a95-81e6-83da-f9e90b202535
+ - ⚠️ Closer vacío
+
+ID: 1c848251-7a95-8196-afed-dc5d29259853
+ - ⚠️ Closer vacío

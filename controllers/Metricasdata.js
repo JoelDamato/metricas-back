@@ -2,21 +2,17 @@ const axios = require('axios');
 const mongoose = require('mongoose');
 const NotionData = require('./models/metricasdata.js');
 
-// ==================== CONEXIÓN ====================
 mongoose.connect(
   'mongodb+srv://Scalo:4NAcuxyWdpCk3c1D@scalo.fgada.mongodb.net/nombreBaseDeDatos?retryWrites=true&w=majority',
   { useNewUrlParser: true, useUnifiedTopology: true }
-)
-  .then(() => console.log('✅ Conectado a MongoDB'))
-  .catch((error) => console.error('❌ Error al conectar a MongoDB:', error));
+).then(() => console.log('✅ Conectado a MongoDB'))
+ .catch((error) => console.error('❌ Error al conectar a MongoDB:', error));
 
-// ==================== HELPERS ====================
-const getTextValue = (prop) => {
-  if (!prop) return '';
-  if (prop.type === 'title') return prop.title.map((item) => item.plain_text).join(' ');
-  if (prop.type === 'rich_text') return prop.rich_text.map((item) => item.plain_text).join(' ');
-  return '';
-};
+const NOTION_DATABASE_ID = '14e482517a9581cbbfa7e9fc3dd61bae';
+const NOTION_API_TOKEN = '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';
+const NOTION_API_URL = `https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`;
+
+const getTextValue = (prop) => prop?.title?.map((item) => item.plain_text).join(' ') || '';
 const getNumber = (prop) => (prop?.number ?? null);
 const getSelectValue = (prop) => prop?.select?.name ?? '';
 const getCheckbox = (prop) => prop?.checkbox ?? false;
@@ -36,6 +32,7 @@ const getDateFromFormula = (prop) => {
 };
 const getPersonOrString = (prop) =>
   prop?.type === 'formula' && prop.formula?.type === 'string' ? prop.formula.string : '';
+
 const getNombreDeRelacion = async (pageId) => {
   try {
     const response = await axios.get(`https://api.notion.com/v1/pages/${pageId}`, {
@@ -53,27 +50,19 @@ const getNombreDeRelacion = async (pageId) => {
   }
 };
 
-// ==================== CONFIG ====================
-const NOTION_DATABASE_ID = '14e482517a9581cbbfa7e9fc3dd61bae';
-const NOTION_API_TOKEN = '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';
-const NOTION_API_URL = `https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`;
-
-// ==================== FUNCION PRINCIPAL ====================
 const fetchNotionData = async () => {
   let hasMore = true;
   let nextCursor = null;
   let totalProcessed = 0;
 
   try {
-    while (hasMore) {
-      console.log(`📥 Llamada a Notion API con cursor: ${nextCursor || 'inicio'}`);
-
+    while (hasMore && totalProcessed < 2000) {
       const response = await axios.post(
         NOTION_API_URL,
         {
           page_size: 100,
           start_cursor: nextCursor || undefined,
-          sorts: [{ property: "Fecha correspondiente", direction: "descending" }]
+          sorts: [{ timestamp: "created_time", direction: "descending" }]
         },
         {
           headers: {
@@ -89,6 +78,8 @@ const fetchNotionData = async () => {
       nextCursor = next_cursor;
 
       for (const page of results) {
+        if (totalProcessed >= 1000) break;
+
         const pageId = page.id;
         const props = page.properties;
 
@@ -156,7 +147,6 @@ const fetchNotionData = async () => {
           "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
         };
 
-        // ✅ Flag para búsquedas rápidas
         transformedData.Flagllamadas =
           (transformedData["Venta Meg"] > 0) ||
           (transformedData["Llamadas efectuadas"] > 0) ||
@@ -170,25 +160,20 @@ const fetchNotionData = async () => {
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );
 
-        console.log(`✅ Registro ${pageId} actualizado.`);
+        totalProcessed++;
       }
 
-      totalProcessed += results.length;
-      console.log(`📊 Total procesados hasta ahora: ${totalProcessed}\n`);
+      console.log(`📊 Total acumulado: ${totalProcessed}`);
     }
 
-    console.log('🎉 Todos los registros fueron importados.');
+    console.log('✅ Finalizado. Total registros importados:', totalProcessed);
   } catch (error) {
     console.error('❌ Error en la importación:', error.response?.data || error.message);
   }
 };
 
-// ==================== EJECUCIÓN ====================
 fetchNotionData()
-  .then(() => {
-    console.log('🟢 Proceso completado.');
-    mongoose.disconnect();
-  })
+  .then(() => mongoose.disconnect())
   .catch((err) => {
     console.error('❌ Error fatal:', err);
     mongoose.disconnect();

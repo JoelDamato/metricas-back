@@ -76,17 +76,21 @@ const MetricasDataSchema = new mongoose.Schema(
     "Venta Club": { type: Number }, // Formula - Number
     "Venta Meg": { type: Number },
     "Venta relacionada": { type: String },
-   "Cobranza relacionada": { type: [String] }, // 🚀 Índice agregado aquí
+    "Flagllamadas": { type: Boolean, default: false }, // 🚀 Flag para acelerar búsquedas
+   "Cobranza relacionada": { type: [String] },
+    // 🚀 Índice agregado aquí
   },
   { collection: "metricas" }
 );
 
 
 MetricasDataSchema.index({ "Venta Meg": 1 });
+MetricasDataSchema.index({ "Venta Club": 1 });
 MetricasDataSchema.index({ "Llamadas efectuadas": 1 });
 MetricasDataSchema.index({ "Agenda": 1 });
 MetricasDataSchema.index({ "Cash collected total": 1 });
 MetricasDataSchema.index({ "Facturación": 1 });
+MetricasDataSchema.index({ "Flagllamadas": 1 });
 
 
 module.exports = mongoose.model("metricas", MetricasDataSchema);

@@ -37,14 +37,11 @@ const getDateFromFormula = (prop) => {
   const fechaOriginal = new Date(fechaString);
   if (isNaN(fechaOriginal)) return null;
 
-  // Detectar si tiene hora distinta de 00:00
   const tieneHora = fechaOriginal.getUTCHours() !== 0 || fechaOriginal.getUTCMinutes() !== 0 || fechaOriginal.getUTCSeconds() !== 0;
 
   if (tieneHora) {
-    // Si tiene hora, restar 3 horas
     return new Date(fechaOriginal.getTime() - 3 * 60 * 60 * 1000);
   } else {
-    // Si no tiene hora, dejar igual
     return fechaOriginal;
   }
 };
@@ -60,7 +57,6 @@ const getPersonOrString = (prop) => {
   return '';
 };
 
-
 const formatNotionId = (id) => {
   if (!id) return id;
   if (id.includes('-')) return id;
@@ -73,9 +69,6 @@ const formatNotionId = (id) => {
   return id;
 };
 
-/**
- * 🔥 NUEVO: Obtiene el nombre (título) de una página relacionada por ID
- */
 const getNombreDeRelacion = async (pageId) => {
   try {
     const response = await axios.get(`https://api.notion.com/v1/pages/${pageId}`, {
@@ -129,16 +122,21 @@ exports.handleWebhook = async (req, res) => {
       }
     }
 
-    // 🔁 Obtener nombre del producto adquirido
     const relacionesProducto = getRelation(props['Producto Adquirido']);
     const productoAdq = relacionesProducto.length > 0
       ? (await Promise.all(relacionesProducto.map(getNombreDeRelacion))).join(', ')
       : '';
 
+    const ventaMeg = getNumberFromFormula(props['Venta Meg']);
+    const llamadasEfectuadas = getNumberFromFormula(props['Llamadas efectuadas']);
+    const agenda = getNumberFromFormula(props['Agenda']);
+    const cashTotal = getNumberFromFormula(props['Cash collected total']);
+    const facturacion = getNumberFromFormula(props['Facturacion']);
+
     const transformedData = {
       id: normalizedPageId,
       Interaccion: getTextValue(props['Interaccion']),
-      Agenda: getNumberFromFormula(props['Agenda']),
+      Agenda: agenda,
       "Aplica?": getSelectValue(props['Aplica?']),
       Aplicacion: getNumberFromFormula(props['Aplicacion']),
       "Asistio?": getSelectValue(props['Asistio?']),
@@ -146,23 +144,22 @@ exports.handleWebhook = async (req, res) => {
       "Call Confirm No exitoso": getNumberFromFormula(props['Call Confirm No exitoso']),
       Canal: getSelectValue(props['Canal']),
       "Cash collected": getNumber(props['Cash Collected']),
-      "Cash collected total": getNumberFromFormula(props['Cash collected total']),
+      "Cash collected total": cashTotal,
       "CC / Precio": getNumberFromFormula(props['CC / Precio']),
       "Closer Actual": getPersonOrString(props['Closer Actual']),
       "Closer Sub": getPersonOrString(props['Closer Sub']),
       "Creado por": getPerson(props['Creado por']),
       ELIMINAR: getCheckbox(props['Eliminar']),
-      Facturacion: getNumberFromFormula(props['Facturacion']),
+      Facturacion: facturacion,
       "Fecha correspondiente": getDateFromFormula(props['Fecha correspondiente']),
       "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento']),
-
       "Fecha creada": getDate(props['Fecha creada']),
       "Id Interaccion": getNumberFromFormula(props['Id Interaccion']),
       "Link enviado": getURL(props['Link enviado']),
       "Links enviados": getNumberFromFormula(props['Links enviados']),
       "Llamadas agendadas": getNumberFromFormula(props['Llamadas agendadas']),
       "Llamadas aplicables": getNumberFromFormula(props['Llamadas aplicables']),
-      "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
+      "Llamadas efectuadas": llamadasEfectuadas,
       "Llamadas no efectuadas": getNumberFromFormula(props['Llamadas no efectuadas']),
       "Llamadas vendidas": getNumberFromFormula(props['Llamadas vendidas']),
       "Nombre cliente": (() => {
@@ -170,10 +167,10 @@ exports.handleWebhook = async (req, res) => {
         return relaciones.length > 0 ? relaciones[0] : null;
       })(),
       "Ofertas ganadas": getNumberFromFormula(props['Ofertas ganadas']),
-      Origen: getTextFromFormula(props['Ult. Origen']), // <-- fórmula tipo string
+      Origen: getTextFromFormula(props['Ult. Origen']),
       Precio: getNumber(props['Precio']),
       "Primer Origen": getTextFromFormula(props['Primer Origen']),
-      "Producto Adq": productoAdq, // ✅ ACTUALIZADO
+      "Producto Adq": productoAdq,
       Responsable: getTextFromFormula(props['Responsable']),
       "Responsable?": getCheckbox(props['Responsable?']),
       Respuesta: getSelectValue(props['Respuesta']),
@@ -187,13 +184,20 @@ exports.handleWebhook = async (req, res) => {
       "Total Nuevas conversaciones": getNumberFromFormula(props['Total Nuevas conversaciones']),
       "Ult. Origen": getTextFromFormula(props['Ult. Origen']),
       "Venta Club": getNumberFromFormula(props['Venta Club']),
-      "Venta Meg": getNumberFromFormula(props['Venta Meg']),
-          "Venta relacionada": (() => {
-            const relaciones = getRelation(props['Venta relacionada']);
-            return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
-          })(),
-          "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
+      "Venta Meg": ventaMeg,
+      "Venta relacionada": (() => {
+        const relaciones = getRelation(props['Venta relacionada']);
+        return Array.isArray(relaciones) && relaciones.length > 0 ? relaciones[0] : '';
+      })(),
+      "Cobranza relacionada": getRelation(props['Cobranza relacionada']),
 
+      // 🚀 Flag optimizada para búsquedas rápidas
+      Flagllamadas:
+        (ventaMeg > 0) ||
+        (llamadasEfectuadas > 0) ||
+        (agenda > 0) ||
+        (cashTotal > 0) ||
+        (facturacion > 0)
     };
 
     const existingDocument = await NotionData.findOne({ id: normalizedPageId });
