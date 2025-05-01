@@ -9,19 +9,28 @@ const getdashboard = require ('../controllers/getdashboard')
 const { updateMonthlyGoal, getMonthlyGoals } = require("../controllers/postmetricas");
 const updateObjetivoCloser = require("../controllers/postObjetivoCloser");
 const  getObjetivosCloser  = require("../controllers/getObjetivoMensual");
-const { calcularComisiones } = require('../controllers/comisionController');
-module.exports = router;
-/*---------------*/
 const { getMetricasCliente } = require('../controllers/getclientes.js'); // Ajustá ruta
 const { getVentasPorMesDeAgendamiento } = require('../controllers/getventas');
 const { getVentasAgrupadas } = require('../controllers/getresumenventas');
 const getclientmesclub = require('../controllers/getclub');
-
 const { importarMetricasCliente } = require('../controllers/importarMetricasCliente');
+const { importarMetricasdata } = require('../controllers/importarMetricasdata');
+
+module.exports = router;
+/*---------------*/
 
 router.get('/importar-metricascliente', async (req, res) => {
   try {
     const resultado = await importarMetricasCliente();
+    res.status(200).json({ message: "Importación completada", ...resultado });
+  } catch (error) {
+    console.error("❌ Error en importación:", error);
+    res.status(500).json({ error: "Error durante la importación", details: error.message });
+  }
+});
+router.get('/importar-metricasdata', async (req, res) => {
+  try {
+    const resultado = await importarMetricasdata();
     res.status(200).json({ message: "Importación completada", ...resultado });
   } catch (error) {
     console.error("❌ Error en importación:", error);
@@ -41,7 +50,7 @@ router.get('/metricascliente', getMetricasCliente);
 router.get('/dashboard', getdashboard.getAllData);
 router.post('/update-objetivo-closer', updateObjetivoCloser.updateObjetivoCloser);
 router.get('/objetivos-closer', getObjetivosCloser.getObjetivosCloser);
-router.get('/comisiones-meg', calcularComisiones);
+
 
 
 /*--------------*/

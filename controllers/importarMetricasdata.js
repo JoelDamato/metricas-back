@@ -1,12 +1,5 @@
 const axios = require('axios');
-const mongoose = require('mongoose');
-const NotionData = require('./models/metricasdata.js');
-
-mongoose.connect(
-  'mongodb+srv://Scalo:4NAcuxyWdpCk3c1D@scalo.fgada.mongodb.net/nombreBaseDeDatos?retryWrites=true&w=majority',
-  { useNewUrlParser: true, useUnifiedTopology: true }
-).then(() => console.log('✅ Conectado a MongoDB'))
- .catch((error) => console.error('❌ Error al conectar a MongoDB:', error));
+const NotionData = require('../models/metricasdata.js');
 
 const NOTION_DATABASE_ID = '14e482517a9581cbbfa7e9fc3dd61bae';
 const NOTION_API_TOKEN = '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';
@@ -20,18 +13,15 @@ const getDate = (prop) => prop?.date?.start ?? null;
 const getURL = (prop) => prop?.url ?? '';
 const getPerson = (prop) => prop?.people?.[0]?.name ?? '';
 const getRelation = (prop) => prop?.relation?.map((rel) => rel.id) ?? [];
-const getNumberFromFormula = (prop) =>
-  prop?.type === 'formula' && prop.formula?.type === 'number' ? prop.formula.number : null;
-const getTextFromFormula = (prop) =>
-  prop?.type === 'formula' && prop.formula?.type === 'string' ? prop.formula.string : '';
+const getNumberFromFormula = (prop) => prop?.type === 'formula' && prop.formula?.type === 'number' ? prop.formula.number : null;
+const getTextFromFormula = (prop) => prop?.type === 'formula' && prop.formula?.type === 'string' ? prop.formula.string : '';
 const getDateFromFormula = (prop) => {
   if (!prop || prop.type !== 'formula') return null;
   const date = prop.formula.date?.start || prop.formula.string;
   const parsed = new Date(date);
   return isNaN(parsed) ? null : parsed.toISOString();
 };
-const getPersonOrString = (prop) =>
-  prop?.type === 'formula' && prop.formula?.type === 'string' ? prop.formula.string : '';
+const getPersonOrString = (prop) => prop?.type === 'formula' && prop.formula?.type === 'string' ? prop.formula.string : '';
 
 const getNombreDeRelacion = async (pageId) => {
   try {
@@ -50,13 +40,13 @@ const getNombreDeRelacion = async (pageId) => {
   }
 };
 
-const fetchNotionData = async () => {
+exports.importarMetricasdata = async () => {
   let hasMore = true;
   let nextCursor = null;
   let totalProcessed = 0;
 
   try {
-    while (hasMore && totalProcessed < 2000) {
+    while (hasMore && totalProcessed < 1000) {
       const response = await axios.post(
         NOTION_API_URL,
         {
@@ -167,14 +157,9 @@ const fetchNotionData = async () => {
     }
 
     console.log('✅ Finalizado. Total registros importados:', totalProcessed);
+    return { total: totalProcessed };
   } catch (error) {
     console.error('❌ Error en la importación:', error.response?.data || error.message);
+    throw error;
   }
 };
-
-fetchNotionData()
-  .then(() => mongoose.disconnect())
-  .catch((err) => {
-    console.error('❌ Error fatal:', err);
-    mongoose.disconnect();
-  });

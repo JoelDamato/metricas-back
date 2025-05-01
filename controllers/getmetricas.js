@@ -3,6 +3,7 @@ const { performance } = require('perf_hooks');
 
 exports.getAllData = async (req, res) => {
   try {
+
     console.log("🚀 Iniciando consulta por Flagllamadas...");
     const inicio = performance.now();
 
