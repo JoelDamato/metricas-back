@@ -4,11 +4,13 @@ exports.updateObjetivoCloser = async (req, res) => {
   try {
     const { closer, metricas, monthFilter } = req.body;
 
+
     if (!closer || !metricas || !monthFilter) {
       console.log("Datos incompletos en la solicitud");
       return res.status(400).json({ message: "Faltan datos en la solicitud" });
     }
 
+    
     for (const [metrica, valores] of Object.entries(metricas)) {
       const { objetivo, base } = valores;
 
@@ -19,35 +21,30 @@ exports.updateObjetivoCloser = async (req, res) => {
         });
       }
 
-      // Permitir cualquier valor positivo para Precio, validar 0-100 para el resto
-      if (metrica !== "Precio" && base !== undefined && (base < 0 || base > 100)) {
+      if (base !== undefined && (base < 0 || base > 100)) {
         console.log(`Valor de base fuera del rango permitido para la métrica: ${metrica}`);
         return res.status(400).json({
           message: `El valor de base para ${metrica} debe estar entre 0 y 100`,
         });
       }
-
-      // Validación general mínima para todos los valores base
-      if (base !== undefined && base < 0) {
-        console.log(`Valor de base negativo para la métrica: ${metrica}`);
-        return res.status(400).json({
-          message: `El valor de base para ${metrica} no puede ser negativo`,
-        });
-      }
     }
 
+   
     let objetivoCloser = await ObjetivoCloser.findOne({ closer, monthFilter });
 
     if (!objetivoCloser) {
+      
       objetivoCloser = new ObjetivoCloser({
         closer,
-        monthFilter,
+        monthFilter, 
         metricas,
       });
-      console.log("🆕 Nuevo registro creado para el closer:", closer);
+      console.log(" Nuevo registro creado para el closer:", closer);
     } else {
+      
       for (const [metrica, valores] of Object.entries(metricas)) {
         if (objetivoCloser.metricas[metrica]) {
+        
           if (valores.objetivo !== undefined) {
             objetivoCloser.metricas[metrica].objetivo = valores.objetivo;
           }
@@ -55,21 +52,25 @@ exports.updateObjetivoCloser = async (req, res) => {
             objetivoCloser.metricas[metrica].base = valores.base;
           }
         } else {
+          
           objetivoCloser.metricas[metrica] = {
             objetivo: valores.objetivo !== undefined ? valores.objetivo : 0,
             base: valores.base !== undefined ? valores.base : 0,
           };
         }
       }
-      objetivoCloser.fecha = Date.now();
-      console.log("✅ Registro actualizado para el closer:", closer);
+      objetivoCloser.fecha = Date.now(); 
+      console.log(" Registro actualizado para el closer:", closer);
     }
 
+
     await objetivoCloser.save();
+ 
+
 
     res.status(200).json({ message: "Objetivo actualizado correctamente", objetivoCloser });
   } catch (error) {
-    console.error("❌ Error al actualizar el objetivo:", error);
+    console.error("Error al actualizar el objetivo:", error);
 
     if (error.name === "ValidationError") {
       return res.status(400).json({ message: error.message });
