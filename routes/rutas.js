@@ -15,6 +15,7 @@ const { getVentasAgrupadas } = require('../controllers/getresumenventas');
 const getclientmesclub = require('../controllers/getclub');
 const { importarMetricasCliente } = require('../controllers/importarMetricasCliente');
 const { importarMetricasdata } = require('../controllers/importarMetricasdata');
+const { updatePrecioClub } = require("../controllers/postclub");
 
 module.exports = router;
 /*---------------*/
@@ -42,6 +43,7 @@ router.get('/importar-metricasdata', async (req, res) => {
 router.get('/resumen/ventas-agendadas-agrupadas', getVentasAgrupadas);
 router.get('/resumen/ventas-agendadas', getVentasPorMesDeAgendamiento);
 router.post("/update-goal", updateMonthlyGoal);
+router.post("/update-precio-club", updatePrecioClub);
 router.get("/goals", getMonthlyGoals);
 router.get('/metricas', metricasController.getAllData);
 router.get('/llamadas', getclientmes.getAllData);

@@ -45,6 +45,9 @@ const ObjetivoCloserSchema = new mongoose.Schema({
         objetivo: { type: Number, default: 0, min: 0, max: 100 },
         base: { type: Number, default: 0, min: 0, max: 100 },
       },
+      "Precio": {
+  base: { type: Number, default: 0, min: 0 } // sin max
+},
       "Aplican": {
         objetivo: { type: Number, default: 0, min: 0, max: 100 },
         base: { type: Number, default: 0, min: 0, max: 100 },
