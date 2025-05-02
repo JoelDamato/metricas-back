@@ -21,7 +21,7 @@ exports.updateObjetivoCloser = async (req, res) => {
         });
       }
 
-      if (base !== undefined && (base < 0 || base > 100)) {
+      if (base !== undefined && (base < 0 )) {
         console.log(`Valor de base fuera del rango permitido para la métrica: ${metrica}`);
         return res.status(400).json({
           message: `El valor de base para ${metrica} debe estar entre 0 y 100`,
