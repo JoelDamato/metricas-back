@@ -1,35 +1,31 @@
-const objetivoCloser = require("../models/objetivoCloser.js");
-
 exports.getObjetivosCloser = async (req, res) => {
   try {
     const { monthFilter, closer } = req.query;
 
-    if (!monthFilter || !closer) {
+    if (!closer) {
       return res.status(400).json({
-        message: 'Los campos "monthFilter" y "closer" son requeridos en la solicitud'
+        message: 'El campo "closer" es requerido en la solicitud'
       });
     }
 
-
-
-
-    const objetivoCloserRegistro = await objetivoCloser.findOne({
-      closer: closer,
-      monthFilter: monthFilter, 
-    });
-
-    if (!objetivoCloserRegistro) {
-      return res.status(404).json({ message: "No se encontró ningún registro para el mes y closer seleccionados" });
+    const filtro = { closer };
+    if (monthFilter) {
+      filtro.monthFilter = monthFilter;
     }
 
-    const metricasLimpias = JSON.parse(JSON.stringify(objetivoCloserRegistro.metricas));
+    const objetivos = await objetivoCloser.find(filtro);
 
-    console.log("Registros encontrados:", metricasLimpias);
-    res.status(200).json({
-      closer: objetivoCloserRegistro.closer,
-      monthFilter,
-      metricas: metricasLimpias
-    });
+    if (!objetivos.length) {
+      return res.status(404).json({ message: "No se encontraron registros" });
+    }
+
+    const resultados = objetivos.map(obj => ({
+      closer: obj.closer,
+      monthFilter: obj.monthFilter,
+      metricas: obj.metricas
+    }));
+
+    res.status(200).json(resultados);
 
   } catch (error) {
     console.error("Error al obtener los objetivos:", error);
