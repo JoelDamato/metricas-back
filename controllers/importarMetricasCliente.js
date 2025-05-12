@@ -35,7 +35,7 @@ exports.importarMetricasCliente = async (req, res) => {
     let nextCursor = null;
     let total = 0;
 
-    while (hasMore && total < 1000) {
+    while (hasMore) {
       const response = await axios.post(
         NOTION_API_URL,
         {
@@ -62,37 +62,40 @@ exports.importarMetricasCliente = async (req, res) => {
       nextCursor = next_cursor;
 
       for (const page of results) {
-        if (total >= 1000) break;
+        try {
+          const props = page.properties;
+          const pageId = formatNotionId(page.id);
 
-        const props = page.properties;
-        const pageId = formatNotionId(page.id);
+          const transformedData = {
+            id: pageId,
+            Nombre: getTextValue(props['Nombre']),
+            Closer: getPerson(props['Closer']),
+            Agendo: getNumberFromFormula(props['Agendo']),
+            "Aplica Con CC": getTextFromFormula(props['Aplica Con CC']),
+            "Aplica N": getNumberFromFormula(props['Aplica N']),
+            "Call confirm exitoso": getNumberFromFormula(props['Call confirm exitoso']),
+            "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']),
+            "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
+            "Ultimo origen": getTextFromFormula(props['Ultimo origen']),
+          };
 
-        const transformedData = {
-          id: pageId,
-          Nombre: getTextValue(props['Nombre']),
-          Closer: getPerson(props['Closer']),
-          Agendo: getNumberFromFormula(props['Agendo']),
-          "Aplica Con CC": getTextFromFormula(props['Aplica Con CC']),
-          "Aplica N": getNumberFromFormula(props['Aplica N']),
-          "Call confirm exitoso": getNumberFromFormula(props['Call confirm exitoso']),
-          "Fecha de agendamiento": getDateFromFormula(props['Fecha de agendamiento ']),
-          "Llamadas efectuadas": getNumberFromFormula(props['Llamadas efectuadas']),
-          "Ultimo origen": getTextFromFormula(props['Ultimo origen']),
-        };
+          await MetricasCliente.findOneAndUpdate(
+            { id: pageId },
+            transformedData,
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
 
-        await MetricasCliente.findOneAndUpdate(
-          { id: pageId },
-          transformedData,
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-
-        total++;
+          total++;
+        } catch (errInterno) {
+          console.error(`❌ Error al procesar registro individual: ${errInterno.message}`);
+          // Continúa con los demás
+        }
       }
     }
 
     res.status(200).json({ message: `✅ Importación completada. Total registros: ${total}` });
   } catch (error) {
-    console.error("❌ Error al importar datos desde Notion:", error.response?.data || error.message);
+    console.error("❌ Error global al importar:", error.response?.data || error.message);
     res.status(500).json({
       error: "Fallo al importar datos.",
       details: error.response?.data || error.message
