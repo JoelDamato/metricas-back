@@ -5,6 +5,8 @@ const getTextValue = (prop) => {
   if (prop.type === 'title') return prop.title.map((item) => item.plain_text).join(' ');
   return '';
 };
+const getTextFromFormula = (prop) => prop?.formula?.type === 'string' ? prop.formula.string : '';
+
 const getNumberFromFormula = (prop) => prop?.formula?.type === 'number' ? prop.formula.number : null;
 const getDateFromFormula = (prop) => {
   if (!prop || prop.type !== 'formula') return null;
