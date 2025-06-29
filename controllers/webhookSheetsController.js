@@ -6,8 +6,9 @@ const SHEET_NAME = 'MR / BDD'; // Nombre de la hoja actualizado
 
 // Autenticación con Google
 async function getAuth() {
+  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
   const auth = new google.auth.GoogleAuth({
-    keyFile: 'credenciales.json', // Debes tener este archivo
+    credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
   return await auth.getClient();
