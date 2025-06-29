@@ -4,6 +4,7 @@ const { google } = require('googleapis');
 const SHEET_ID = '13pYaCyJVFz67tH_YDjl_KQ2Z2HoFl8TCddF8pe5_NAc'; // ID actualizado
 const SHEET_NAME = 'MR / BDD'; // Nombre de la hoja actualizado
 
+
 // Autenticación con Google
 async function getAuth() {
   const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
