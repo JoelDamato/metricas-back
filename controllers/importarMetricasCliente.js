@@ -2,7 +2,7 @@ const axios = require('axios');
 const MetricasCliente = require('../models/metricascliente');
 
 const NOTION_DATABASE_ID = '14e482517a9581458d4bfefbcde4ea03';
-const NOTION_API_TOKEN = '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';
+const NOTION_API_TOKEN = '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';
 const NOTION_API_URL = `https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`;
 
 const getTextValue = (prop) => prop?.title?.map((item) => item.plain_text).join(' ') || '';

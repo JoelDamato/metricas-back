@@ -16,8 +16,6 @@ const getclientmesclub = require('../controllers/getclub');
 const { importarMetricasCliente } = require('../controllers/importarMetricasCliente');
 const { importarMetricasdata } = require('../controllers/importarMetricasdata');
 const { handlePrecioClub } = require("../controllers/getprice");
-const webhookSheetsController = require('../controllers/webhookSheetsController'); // Nuevo controlador
-
 
 
 module.exports = router;
@@ -62,6 +60,5 @@ router.get('/objetivos-closer', getObjetivosCloser.getObjetivosCloser);
 
 router.post('/webhook', webhookController.handleWebhook);
 router.post('/webhook2', webhookController2.handleWebhook);
-router.post('/webhook-sheets', webhookSheetsController.handleWebhookSheets); // Nueva ruta
 
 module.exports = router;
