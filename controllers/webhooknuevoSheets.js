@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // URL de tu App Script desplegado como endpoint web
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbyEYE1uzb-QVUVb9SVTwllWbtKfnpBiCCEwmztsb2sCPjFWgB1_SKtmJ3NZi60APKn_hQ/exec";
+const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxz4bMKPsr8z9zSZzPCW_beyWjdt1hI0d4BAIlcYhoKrSahaJkvo_rfGg2rLpGFgtigMw/exec";
 
 // Cola en memoria para los envíos
 const queue = [];
