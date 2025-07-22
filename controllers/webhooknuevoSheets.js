@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // URL de tu App Script desplegado como endpoint web
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxB1MLI3SwgmfCW9pDAmAe1dI2HUbnGak-NGUGyVpbNxqqDcNjym4LVcJgzjOJ5kLVNcA/exec";
+const googleScriptUrl = "https://script.google.com/macros/s/AKfycbyEYE1uzb-QVUVb9SVTwllWbtKfnpBiCCEwmztsb2sCPjFWgB1_SKtmJ3NZi60APKn_hQ/exec";
 
 // Cola en memoria para los envíos
 const queue = [];
@@ -35,7 +35,7 @@ async function processQueue() {
 exports.handleWebhook = async (req, res) => {
   const payload = req.body;
 
-  console.log("📥 Webhook recibido:", payload);
+  console.log("📥 Webhook recibido de notion:", payload);
 
   // Responder rápido al cliente (Notion u otro)
   res.status(200).json({ message: "Webhook recibido y encolado para envío a Google Sheets." });
