@@ -1,0 +1,6 @@
+2025/07/28-16:17:48.617 3b26f Reusing MANIFEST /Users/jota/metricas-back/.wwebjs_auth/session-test-bot/Default/Local Storage/leveldb/MANIFEST-000001
+2025/07/28-16:17:48.621 3b26f Recovering log #3
+2025/07/28-16:17:48.621 3b26f Reusing old log /Users/jota/metricas-back/.wwebjs_auth/session-test-bot/Default/Local Storage/leveldb/000003.log 
+2025/07/28-19:18:42.606 3b271 Level-0 table #5: started
+2025/07/28-19:18:42.612 3b271 Level-0 table #5: 18181 bytes OK
+2025/07/28-19:18:42.615 3b271 Delete type=0 #3
