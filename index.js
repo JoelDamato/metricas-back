@@ -1,4 +1,4 @@
-// index.js (Versión final corregida para Local y Render)
+// index.js - Versión de emergencia SIN WhatsApp para que funcione YA
 
 // --- 1. IMPORTACIONES ---
 const express = require('express');
@@ -12,180 +12,48 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
-// --- 3. VARIABLES GLOBALES ---
-let client = null;
-let isReady = false;
+console.log('🚀 Iniciando servidor sin WhatsApp...');
 
-// --- 4. LÓGICA DEL BOT DE WHATSAPP (CONDICIONAL) ---
-if (process.env.ENABLE_WHATSAPP !== 'false') {
-    console.log('Iniciando configuración del bot de WhatsApp...');
-    
-    const { Client, LocalAuth } = require('whatsapp-web.js');
-    const qrcode = require('qrcode-terminal');
-    const puppeteer = require('puppeteer');
-
-    // --- Configuración dinámica de Puppeteer ---
-    const puppeteerOptions = {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-        ]
-    };
-
-    // --- Configuración dinámica de la ruta de la sesión ---
-    let dataPath;
-
-    if (process.env.NODE_ENV === 'production') {
-        // Configuración para Render (Producción)
-        console.log('Usando configuración para Render...');
-        // No especificar executablePath para que use el Chrome bundled de puppeteer
-        dataPath = '/tmp/wa-session';
-    } else {
-        // Configuración para Local (tu Mac)
-        console.log('Usando configuración para Mac local...');
-        puppeteerOptions.executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-        dataPath = 'wa-session';
-    }
-
-    // --- Creación del cliente de WhatsApp ---
-    client = new Client({
-        authStrategy: new LocalAuth({ dataPath: dataPath }),
-        puppeteer: puppeteerOptions
-    });
-
-    client.on('qr', (qr) => {
-        console.log('📱 Escaneá este QR con tu celular.');
-        qrcode.generate(qr, { small: true });
-    });
-
-    client.on('ready', () => {
-        isReady = true;
-        console.log('✅ Bot listo y conectado a WhatsApp.');
-    });
-
-    client.on('disconnected', (reason) => {
-        console.log('🔌 Cliente de WhatsApp desconectado:', reason);
-        isReady = false;
-        // Reintentar conexión después de 5 segundos
-        setTimeout(() => {
-            client.initialize();
-        }, 5000);
-    });
-
-    client.on('auth_failure', (msg) => {
-        console.error('❌ Fallo de autenticación:', msg);
-        isReady = false;
-    });
-
-    // Inicializar el cliente con manejo de errores
-    try {
-        client.initialize();
-    } catch (error) {
-        console.error('❌ Error al inicializar WhatsApp:', error);
-    }
-} else {
-    console.log('⚠️ WhatsApp desactivado por variable de entorno ENABLE_WHATSAPP=false');
-}
-
-// --- 5. RUTAS DE LA API ---
+// --- 3. RUTAS DE LA API ---
 
 // Tus rutas existentes
 const otrasRutas = require('./routes/rutas');
 app.use('/', otrasRutas);
 
-// Ruta para verificar el estado del bot
-app.get('/whatsapp-status', (req, res) => {
-    if (process.env.ENABLE_WHATSAPP === 'false') {
-        return res.json({ 
-            enabled: false, 
-            ready: false, 
-            message: 'WhatsApp está desactivado por configuración' 
-        });
-    }
-    
-    res.json({ 
-        enabled: true, 
-        ready: isReady, 
-        message: isReady ? 'Bot conectado y listo' : 'Bot no está listo aún' 
-    });
-});
-
-// Ruta para enviar mensajes con el bot
-app.post('/send-message', async (req, res) => {
-    const { number, message } = req.body;
-    console.log(`Petición de WhatsApp recibida para enviar a: ${number}`);
-    
-    // Verificar si WhatsApp está habilitado
-    if (process.env.ENABLE_WHATSAPP === 'false') {
-        return res.status(503).json({ 
-            success: false, 
-            error: 'WhatsApp está desactivado en este entorno' 
-        });
-    }
-    
-    // Verificar si el cliente está listo
-    if (!client || !isReady) {
-        return res.status(503).json({ 
-            success: false, 
-            error: 'El bot no está listo todavía. Intenta más tarde.' 
-        });
-    }
-    
-    // Validar parámetros
-    if (!number || !message) {
-        return res.status(400).json({ 
-            success: false, 
-            error: 'Faltan los parámetros "number" o "message".' 
-        });
-    }
-    
-    try {
-        const chatId = `549${number}@c.us`;
-        await client.sendMessage(chatId, message);
-        console.log(`📤 Mensaje de WhatsApp enviado exitosamente a ${number}`);
-        res.status(200).json({ 
-            success: true, 
-            message: `Mensaje enviado a ${number}` 
-        });
-    } catch (error) {
-        console.error(`❌ Error al enviar mensaje de WhatsApp a ${number}:`, error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Error interno al procesar el envío.' 
-        });
-    }
-});
-
-// Ruta de salud general
+// Ruta de salud
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
-        whatsapp_enabled: process.env.ENABLE_WHATSAPP !== 'false',
-        whatsapp_ready: isReady
+        whatsapp_enabled: false,
+        message: 'Servidor funcionando sin WhatsApp'
     });
 });
 
-// --- 6. MANEJO DE ERRORES GLOBALES ---
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+// Mock de WhatsApp para no romper el frontend
+app.post('/send-message', async (req, res) => {
+    const { number, message } = req.body;
+    console.log(`📱 Simulando envío de WhatsApp a ${number}: ${message}`);
+    
+    res.status(200).json({ 
+        success: true, 
+        message: `Mensaje simulado enviado a ${number}`,
+        note: 'WhatsApp desactivado temporalmente'
+    });
 });
 
-process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
+app.get('/whatsapp-status', (req, res) => {
+    res.json({ 
+        enabled: false, 
+        ready: false, 
+        message: 'WhatsApp desactivado temporalmente' 
+    });
 });
 
-// --- 7. INICIAR SERVIDOR ---
+// --- 4. INICIAR SERVIDOR ---
 const PORT = process.env.PORT || 30003;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor API unificado escuchando en el puerto ${PORT}`);
+    console.log(`🚀 Servidor API funcionando en puerto ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📱 WhatsApp: ${process.env.ENABLE_WHATSAPP !== 'false' ? 'Habilitado' : 'Deshabilitado'}`);
+    console.log(`⚠️  WhatsApp temporalmente desactivado`);
 });
