@@ -187,7 +187,7 @@ const handleWebhook = async (req, res) => {
       });
 
       if (interactionSearchResponse.data.results && interactionSearchResponse.data.results.length === 0) {
-        await axios({
+        const response = await axios({
           method: "post",
           url: `https://api.notion.com/v1/pages`,
           headers: {
@@ -311,14 +311,28 @@ const handleWebhook = async (req, res) => {
               },
             },
           },
+        }).catch(err => {
+          console.error('Error creating interaction:', err.response?.data || err.message);
+          throw new Error(`Error creating interaction: ${err.message}`);
         });
       }
-      return res.status(200).json({ message: "Cliente procesado correctamente." });
+      return res.status(200).json({ 
+        message: "Cliente procesado correctamente.",
+        clientId: client_id
+      });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      console.error('Error in interaction creation:', error);
+      return res.status(500).json({ 
+        error: error.message || "Error al procesar la interacción",
+        details: error.response?.data || {}
+      });
     }
   } catch (error) {
-    return res.status(500).json({ error: "Error interno del servidor." });
+    console.error('Error in webhook handler:', error);
+    return res.status(500).json({ 
+      error: "Error interno del servidor.",
+      details: error.message
+    });
   }
 };
 
