@@ -13,6 +13,8 @@ const closers = {
 
 const handleWebhook = async (req, res) => {
   try {
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
     await delay(5000);
 
     const body = req.body;
@@ -57,7 +59,10 @@ const handleWebhook = async (req, res) => {
 
     const searchForClient = async () => {
       const normalizedPhone = normalizePhoneNumber(phone);
-      if (!normalizedPhone) return null;
+      if (!normalizedPhone) {
+        console.log('No phone number provided or invalid format');
+        return null;
+      }
       try {
         const searchResponse = await axios({
           method: "post",
@@ -80,6 +85,7 @@ const handleWebhook = async (req, res) => {
         }
         return null;
       } catch (error) {
+        console.error('Error searching for client:', error.response?.data || error.message);
         return null;
       }
     };
@@ -168,6 +174,7 @@ const handleWebhook = async (req, res) => {
 
     // Crear interacción de agendamiento
     try {
+      console.log('Creating interaction for client_id:', client_id);
       const interactionSearchResponse = await axios({
         method: "post",
         url: `https://api.notion.com/v1/databases/${interacciones_database_id}/query`,
@@ -184,154 +191,170 @@ const handleWebhook = async (req, res) => {
             ],
           },
         },
+      }).catch(err => {
+        console.error('Error searching for interactions:', err.response?.data || err.message);
+        throw err;
       });
 
       if (interactionSearchResponse.data.results && interactionSearchResponse.data.results.length === 0) {
-        const response = await axios({
-          method: "post",
-          url: `https://api.notion.com/v1/pages`,
-          headers: {
-            Authorization: `Bearer ${NOTION_TOKEN}`,
-            "Notion-Version": `2022-06-28`,
-            "Content-Type": "application/json",
-          },
-          data: {
-            parent: { database_id: interacciones_database_id },
-            properties: {
-              "Interaccion": {
-                title: [{ text: { content: `Agendamiento de ${full_name || "Sin nombre"}` } }],
+        console.log('No existing interaction found, creating new one');
+        const interactionData = {
+          parent: { database_id: interacciones_database_id },
+          properties: {
+            "Interaccion": {
+              title: [{ text: { content: `Agendamiento de ${full_name || "Sin nombre"}` } }],
+            },
+            "Canal": { select: { name: "GHL" } },
+            "Tipo contacto": { select: { name: "Generado por usuario" } },
+            "Estado interaccion": { select: { name: "Finalizada" } },
+            "Nombre cliente": { relation: [{ id: client_id }] },
+            "Closer Actual": { people: [{ id: closer.id }] },
+            "Setter": { people: [] },
+            "Agendamiento": { checkbox: true },
+            ...(updatedDate && {
+              "Proximo contacto Closer / Setter": {
+                date: { start: updatedDate.toISOString() },
               },
-              "Canal": { select: { name: "GHL" } },
-              "Tipo contacto": { select: { name: "Generado por usuario" } },
-              "Estado interaccion": { select: { name: "Finalizada" } },
-              "Nombre cliente": { relation: [{ id: client_id }] },
-              "Closer Actual": { people: [{ id: closer.id }] },
-              "Setter": { people: [] },
-              "Agendamiento": { checkbox: true },
-              ...(updatedDate && {
-                "Proximo contacto Closer / Setter": {
-                  date: { start: updatedDate.toISOString() },
+            }),
+            ...(body?.contact_source
+              ? {
+                  "Origen": {
+                    select: {
+                      name: body.contact_source,
+                    },
+                  },
+                }
+              : body?.calendar?.calendarName
+              ? {
+                  "Origen": {
+                    select: {
+                      name: body.calendar.calendarName,
+                    },
+                  },
+                }
+              : {}),
+            "Respuesta": {
+              select: {
+                name: "Respondio",
+              },
+            },
+            "Call?": {
+              rich_text: [
+                {
+                  text: {
+                    content: body["(5) Un miembro de nuestro equipo se pondrá en contacto con vos por WhatsApp, te comprometés a responder los mensajes? (Si no respondés los mensajes, la llamada se cancelará automaticamente)"] || "Sin información",
+                  },
                 },
-              }),
-              ...(body?.contact_source
-                ? {
-                    "Origen": {
-                      select: {
-                        name: body.contact_source,
-                      },
-                    },
-                  }
-                : body?.calendar?.calendarName
-                ? {
-                    "Origen": {
-                      select: {
-                        name: body.calendar.calendarName,
-                      },
-                    },
-                  }
-                : {}),
-              "Respuesta": {
-                select: {
-                  name: "Respondio",
+              ],
+            },
+            "Producto de interes": {
+              multi_select: [
+                {
+                  name: body?.["Producto de interés"] || "MEG",
                 },
-              },
-              "Call?": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body["(5) Un miembro de nuestro equipo se pondrá en contacto con vos por WhatsApp, te comprometés a responder los mensajes? (Si no respondés los mensajes, la llamada se cancelará automaticamente)"] || "Sin información",
-                    },
+              ],
+            },
+            "Sistema Facturacion": {
+              rich_text: [
+                {
+                  text: {
+                    content: body["¿Contás con un sistema de gestión en tu empresa?"] || "Sin información",
                   },
-                ],
-              },
-              "Producto de interes": {
-                multi_select: [
-                  {
-                    name: body?.["Producto de interés"] || "MEG",
-                  },
-                ],
-              },
-              "Sistema Facturacion": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body["¿Contás con un sistema de gestión en tu empresa?"] || "Sin información",
-                    },
-                  },
-                ],
-              },
-              "Modelo de negocio": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body["¿Cuál es tu modelo de negocio?"] || "Sin información",
-                    },
-                  },
-                ],
-              },
-              "Observaciones": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body["Contame más sobre tu negocio: ¿Que crees que deberías mejorar en tus finanzas para que tu empresa sea más rentable? "] || "Sin observaciones",
-                    },
-                  },
-                ],
-              },
-              "Aplica?": {
-                select: {
-                  name: "Aplica",
                 },
-              },
-              "Facturacion promedio": {
-                select: {
-                  name: body["¿Cuál es el nivel de facturación promedio mensual en dólares de la empresa?"] || body["¿Cuál es tu nivel de facturación promedio mensual en dólares?"] || "No especificado",
+              ],
+            },
+            "Modelo de negocio": {
+              rich_text: [
+                {
+                  text: {
+                    content: body["¿Cuál es tu modelo de negocio?"] || "Sin información",
+                  },
                 },
-              },
-              "Score": {
-                number: Number(body["Score "]) || 0
-              },
-              "Inversion?": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body["En caso de que podamos ayudarte ¿Estas dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad? "] || body["El Método Acelerador de Ganancias ofrece distintos niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?"] || "Sin respuesta",
-                    },
+              ],
+            },
+            "Observaciones": {
+              rich_text: [
+                {
+                  text: {
+                    content: body["Contame más sobre tu negocio: ¿Que crees que deberías mejorar en tus finanzas para que tu empresa sea más rentable? "] || "Sin observaciones",
                   },
-                ],
+                },
+              ],
+            },
+            "Aplica?": {
+              select: {
+                name: "Aplica",
               },
-              "Adname": {
-                rich_text: [
-                  {
-                    text: {
-                      content: body.adname || body["El Método Acelerador de Ganancias ofrece distintos niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?"] || "NO ES VSL",
-                    },
+            },
+            "Facturacion promedio": {
+              select: {
+                name: body["¿Cuál es el nivel de facturación promedio mensual en dólares de la empresa?"] || body["¿Cuál es tu nivel de facturación promedio mensual en dólares?"] || "No especificado",
+              },
+            },
+            "Score": {
+              number: Number(body["Score "]) || 0
+            },
+            "Inversion?": {
+              rich_text: [
+                {
+                  text: {
+                    content: body["En caso de que podamos ayudarte ¿Estas dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad? "] || body["El Método Acelerador de Ganancias ofrece distintos niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?"] || "Sin respuesta",
                   },
-                ],
-              },
+                },
+              ],
+            },
+            "Adname": {
+              rich_text: [
+                {
+                  text: {
+                    content: body.adname || body["El Método Acelerador de Ganancias ofrece distintos niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?"] || "NO ES VSL",
+                  },
+                },
+              ],
             },
           },
         }).catch(err => {
-          console.error('Error creating interaction:', err.response?.data || err.message);
+          console.error('Error creating interaction:', {
+            status: err.response?.status,
+            data: err.response?.data,
+            message: err.message
+          });
           throw new Error(`Error creating interaction: ${err.message}`);
         });
+        
+        if (!response?.data) {
+          throw new Error('No response data from Notion API');
+        }
       }
-      return res.status(200).json({ 
-        message: "Cliente procesado correctamente.",
-        clientId: client_id
+
+      return res.status(200).json({
+        success: true,
+        message: "Cliente procesado correctamente",
+        clientId: client_id,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Error in interaction creation:', error);
-      return res.status(500).json({ 
-        error: error.message || "Error al procesar la interacción",
-        details: error.response?.data || {}
+      console.error('Error in interaction creation:', {
+        error: error.message,
+        details: error.response?.data,
+        stack: error.stack
+      });
+      return res.status(500).json({
+        error: "Error al procesar la interacción",
+        details: error.response?.data || error.message,
+        timestamp: new Date().toISOString()
       });
     }
   } catch (error) {
-    console.error('Error in webhook handler:', error);
-    return res.status(500).json({ 
-      error: "Error interno del servidor.",
-      details: error.message
+    console.error('Error in webhook handler:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body
+    });
+    return res.status(500).json({
+      error: "Error interno del servidor",
+      details: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 };
