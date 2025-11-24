@@ -14,7 +14,6 @@ router.post('/webhookv2', webhookController4.handleWebhook);
 router.post('/csm', webhookController5.handleWebhook);
 router.post('/comprobantes', webhookController6.handleWebhook);
 router.post('/distribuidor', webhookDistribuidor.handleWebhook);
-
-
+router.get('/distribuidor/last-verification', webhookDistribuidor.getLastVerification);
 
 module.exports = router;
