@@ -20,7 +20,7 @@ async function processQueue() {
                     timeout: 30000
                 });
                 console.log(`✅ Enviado a ${endpoint}:`, response.data);
-                return { endpoint, success: true };
+                return { endpoint, success: true, data: response.data };
             } catch (error) {
                 console.error(`❌ Error en ${endpoint}:`, error.message);
                 return { endpoint, success: false, error: error.message };
@@ -42,7 +42,7 @@ async function processQueue() {
 
 exports.handleWebhook = async (req, res) => {
     const payload = req.body;
-    console.log("📥 Recibido:", payload);
+    console.log("📥 Recibido:", JSON.stringify(payload, null, 2));
 
     // Manejo de verificación
     if (payload && payload.challenge) {
@@ -57,21 +57,9 @@ exports.handleWebhook = async (req, res) => {
         return res.status(200).json({ message: 'Código de verificación recibido', code: payload.code });
     }
 
-    // 🆕 Detectar y transformar borrados de Notion
-    let transformedPayload = payload;
-    
-    if (payload.block?.archived || payload.page?.archived) {
-        const itemId = payload.block?.id || payload.page?.id;
-        console.log(`🗑️ Detectado borrado de Notion. ID: ${itemId}`);
-        
-        // Transformar al formato que espera tu Apps Script
-        transformedPayload = {
-            type: 'page.deleted',
-            entity: {
-                id: itemId
-            },
-            originalPayload: payload // Por si necesitas debug
-        };
+    // Log del tipo de evento
+    if (payload.type === 'page.deleted') {
+        console.log(`🗑️ Evento de borrado detectado. ID: ${payload.entity?.id}`);
     }
 
     res.status(200).json({ 
@@ -79,7 +67,7 @@ exports.handleWebhook = async (req, res) => {
         timestamp: new Date().toISOString()
     });
     
-    queue.push({ payload: transformedPayload });
+    queue.push({ payload });
     processQueue();
 };
 
