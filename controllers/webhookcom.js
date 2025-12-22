@@ -44,7 +44,7 @@ async function processQueue() {
   } finally {
     isProcessing = false;
     console.log("🔄 Procesamiento finalizado, siguiente en cola...");
-    setImmediate(processQueue); // Procesar el siguiente en la cola
+    setImmediate(processQueue);
   }
 }
 
@@ -62,9 +62,17 @@ exports.handleWebhook = async (req, res) => {
   console.log("📊 Data object:", payload.data?.object || 'NO DISPONIBLE');
   console.log("========================================\n");
 
-  // Validar que el payload tenga contenido
-  if (!payload || Object.keys(payload).length === 0) {
-    console.warn("⚠️ Payload vacío recibido");
+  // 🆕 VALIDACIÓN CRÍTICA: Verificar que sea un payload válido
+  const isValidPayload = 
+    (payload.data && payload.data.object === 'page') || // Crear/Actualizar
+    (payload.type === 'page.deleted' && payload.entity); // Borrar
+
+  if (!isValidPayload) {
+    console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
+    return res.status(400).json({ 
+      error: "Payload inválido",
+      received: payload.type || 'unknown'
+    });
   }
 
   // Detectar tipo de operación
@@ -72,16 +80,14 @@ exports.handleWebhook = async (req, res) => {
     console.log("🗑️ Operación detectada: BORRAR página");
   } else if (payload.data && payload.data.object === 'page') {
     console.log("📝 Operación detectada: CREAR/ACTUALIZAR página");
-  } else {
-    console.log("❓ Operación NO RECONOCIDA");
   }
 
-  // Responder rápido al cliente (Notion u otro)
+  // 🆕 RESPONDER SIEMPRE 200 PARA EVENTOS VÁLIDOS
   res.status(200).json({ 
     message: "Webhook recibido y encolado para envío a Google Sheets.",
     receivedAt: new Date().toISOString(),
-    eventType: payload.type || 'unknown',
-    entityId: payload.entity?.id || 'unknown'
+    eventType: payload.type || (payload.data?.object ? 'page.update' : 'unknown'),
+    entityId: payload.entity?.id || payload.data?.id || 'unknown'
   });
 
   console.log("✅ Respuesta 200 enviada al cliente");
