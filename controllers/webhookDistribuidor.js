@@ -3,7 +3,7 @@ const axios = require('axios');
 const webhookUrls = ['/webhook3', '/webhookv2', '/csm', '/comprobantes'];
 const queue = [];
 let isProcessing = false;
-let lastVerification = null; // guardará { type: 'challenge'|'code', value, receivedAt }
+let lastVerification = null;
 
 async function processQueue() {
     if (isProcessing || queue.length === 0) return;
@@ -44,11 +44,10 @@ exports.handleWebhook = async (req, res) => {
     const payload = req.body;
     console.log("📥 Recibido:", payload);
 
-    // Manejo de verificación de Notion u otros servicios
+    // Manejo de verificación
     if (payload && payload.challenge) {
         console.log('🔐 Challenge de verificación recibido:', payload.challenge);
         lastVerification = { type: 'challenge', value: payload.challenge, receivedAt: new Date().toISOString() };
-        // Responder con el challenge tal cual (Notion/GHL style)
         return res.status(200).send(payload.challenge);
     }
 
@@ -58,16 +57,32 @@ exports.handleWebhook = async (req, res) => {
         return res.status(200).json({ message: 'Código de verificación recibido', code: payload.code });
     }
 
-    // Encolar y procesar normalmente
+    // 🆕 Detectar y transformar borrados de Notion
+    let transformedPayload = payload;
+    
+    if (payload.block?.archived || payload.page?.archived) {
+        const itemId = payload.block?.id || payload.page?.id;
+        console.log(`🗑️ Detectado borrado de Notion. ID: ${itemId}`);
+        
+        // Transformar al formato que espera tu Apps Script
+        transformedPayload = {
+            type: 'page.deleted',
+            entity: {
+                id: itemId
+            },
+            originalPayload: payload // Por si necesitas debug
+        };
+    }
+
     res.status(200).json({ 
         message: "Webhook recibido y encolado",
         timestamp: new Date().toISOString()
     });
-    queue.push({ payload });
+    
+    queue.push({ payload: transformedPayload });
     processQueue();
 };
 
-// Getter para leer la última verificación recibida
 exports.getLastVerification = (req, res) => {
     if (!lastVerification) return res.status(404).json({ message: 'No hay verificaciones registradas aún.' });
     return res.status(200).json(lastVerification);
