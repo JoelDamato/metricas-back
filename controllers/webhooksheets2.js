@@ -53,12 +53,11 @@ function mapToSupabase(payload) {
     setter: p['Setter']?.select?.name ?? null,
     closer: p['Closer']?.select?.name ?? null,
 
-    // Checkboxes / Booleanos
-    aplica: p['Aplica']?.checkbox ?? null,
-    lista_negra: p['Lista negra']?.checkbox ?? null,
-    recuperado: p['Recuperado']?.checkbox ?? null,
-    cliente_viejo: p['Cliente viejo']?.checkbox ?? null,
-    agendo: p['Agendo']?.checkbox ?? null,
+    aplica: getText(p['Aplica']),
+    lista_negra: getText(p['Lista negra']),
+    recuperado: getText(p['Recuperado']),
+    cliente_viejo: getText(p['Cliente viejo']),
+    agendo: getText(p['Agendo']),
 
     // Números
     facturacion: p['Facturacion']?.number ?? null,
@@ -78,11 +77,30 @@ function mapToSupabase(payload) {
 }
 
 async function sendToSupabase(payload) {
+  const data = payload.data || payload;
+  const p = data.properties || {};
+  
+  // Log de cómo llegan las propiedades desde Notion
+  console.log("\n🔍 === ESTRUCTURA ORIGINAL DE NOTION ===");
+  console.log("📋 Propiedad 'Aplica' completa:", JSON.stringify(p['Aplica'], null, 2));
+  console.log("📋 Propiedad 'Lista negra' completa:", JSON.stringify(p['Lista negra'], null, 2));
+  console.log("📋 Tipo de propiedad 'Aplica':", p['Aplica']?.type);
+  console.log("📋 Tipo de propiedad 'Lista negra':", p['Lista negra']?.type);
+  
   const row = mapToSupabase(payload);
-  console.log(`🚀 Enviando Lead: ${row.nombre || 'Sin nombre'} (${row.id})`);
+  
+  console.log("\n🔄 === OBJETO MAPEADO (antes de enviar) ===");
+  console.log("📤 Campos mapeados:");
+  console.log("  - aplica:", row.aplica, "tipo:", typeof row.aplica);
+  console.log("  - lista_negra:", row.lista_negra, "tipo:", typeof row.lista_negra);
+  console.log("  - recuperado:", row.recuperado, "tipo:", typeof row.recuperado);
+  console.log("  - cliente_viejo:", row.cliente_viejo, "tipo:", typeof row.cliente_viejo);
+  console.log("  - agendo:", row.agendo, "tipo:", typeof row.agendo);
+  console.log(`\n🚀 Enviando Lead: ${row.nombre || 'Sin nombre'} (${row.id})`);
+  console.log("📦 Objeto completo a enviar a Supabase:", JSON.stringify(row, null, 2));
 
   try {
-    await axios.post(`${SUPABASE_URL}/rest/v1/leads_raw`, row, {
+    const response = await axios.post(`${SUPABASE_URL}/rest/v1/leads_raw`, row, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -91,9 +109,11 @@ async function sendToSupabase(payload) {
       },
       params: { on_conflict: 'id' }
     });
-    console.log('✅ Supabase actualizado');
+    console.log('\n✅ Supabase actualizado exitosamente');
+    console.log("📥 Respuesta de Supabase:", JSON.stringify(response.data, null, 2));
   } catch (err) {
-    console.error('❌ Error Supabase Detail:', err.response?.data || err.message);
+    console.error('\n❌ Error Supabase Detail:', err.response?.data || err.message);
+    console.error("📤 Lo que intentamos enviar:", JSON.stringify(row, null, 2));
   }
 }
 
@@ -118,6 +138,7 @@ async function processQueue() {
 
 exports.handleWebhook = async (req, res) => {
   console.log("📥 Webhook recibido");
+  console.log("📦 Payload original completo:", JSON.stringify(req.body, null, 2));
   res.status(200).json({ status: "ok" });
   queue.push({ payload: req.body });
   processQueue();
