@@ -57,7 +57,7 @@ function mapToSupabase(payload) {
     lista_negra: getText(p['Lista negra']),
     recuperado: getText(p['Recuperado']),
     cliente_viejo: getText(p['Cliente viejo']),
-    agendo: getText(p['Agendo']),
+    agendo: p['Agendo']?.select?.name ?? null,
 
     // Números
     facturacion: p['Facturacion']?.number ?? null,
@@ -84,8 +84,10 @@ async function sendToSupabase(payload) {
   console.log("\n🔍 === ESTRUCTURA ORIGINAL DE NOTION ===");
   console.log("📋 Propiedad 'Aplica' completa:", JSON.stringify(p['Aplica'], null, 2));
   console.log("📋 Propiedad 'Lista negra' completa:", JSON.stringify(p['Lista negra'], null, 2));
+  console.log("📋 Propiedad 'Agendo' completa:", JSON.stringify(p['Agendo'], null, 2));
   console.log("📋 Tipo de propiedad 'Aplica':", p['Aplica']?.type);
   console.log("📋 Tipo de propiedad 'Lista negra':", p['Lista negra']?.type);
+  console.log("📋 Tipo de propiedad 'Agendo':", p['Agendo']?.type);
   
   const row = mapToSupabase(payload);
   
