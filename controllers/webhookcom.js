@@ -82,7 +82,6 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId,
-    identificador: getValue(p['Identificador']),
     adname: getValue(p['Adname']),
     adset: getValue(p['Adset']),
     agenda_format: getValue(p['Agenda Format']),
