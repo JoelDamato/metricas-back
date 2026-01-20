@@ -100,48 +100,74 @@ async function sendToSupabase(payload) {
   // Helper para extraer texto de Notion (Rich Text o Title)
   const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
   
-  // Log de cómo llegan las propiedades desde Notion
-  console.log("\n🔍 === ESTRUCTURA ORIGINAL DE NOTION ===");
-  console.log("📋 Todas las claves de propiedades:", Object.keys(p));
-  console.log("📋 Propiedad 'Aplica' completa:", JSON.stringify(p['Aplica'], null, 2));
-  console.log("📋 Propiedad 'Lista negra' completa:", JSON.stringify(p['Lista negra'], null, 2));
-  console.log("📋 Propiedad 'Agendo' completa:", JSON.stringify(p['Agendo'], null, 2));
-  console.log("📋 Tipo de propiedad 'Aplica':", p['Aplica']?.type);
-  console.log("📋 Tipo de propiedad 'Lista negra':", p['Lista negra']?.type);
-  console.log("📋 Tipo de propiedad 'Agendo':", p['Agendo']?.type);
-  console.log("📋 Valor select 'Aplica':", p['Aplica']?.select);
-  console.log("📋 Valor select.name 'Aplica':", p['Aplica']?.select?.name);
-  console.log("📋 Valor select 'Agendo':", p['Agendo']?.select);
-  console.log("📋 Valor select.name 'Agendo':", p['Agendo']?.select?.name);
-  console.log("📋 Propiedad 'GHL ID' completa:", JSON.stringify(p['GHL ID'], null, 2));
-  const ghlIdValue = getText(p['GHL ID']);
-  console.log("📋 Valor 'GHL ID':", ghlIdValue);
-  console.log("📋 ID de Notion (fallback):", data.id);
+  // Helper para mostrar datos de forma legible
+  const logSection = (title, data) => {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`📌 ${title}`);
+    console.log('='.repeat(60));
+    if (typeof data === 'object' && data !== null) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      console.log(data);
+    }
+  };
+  
+  // ========== DATOS QUE LLEGAN DE NOTION ==========
+  logSection('DATOS QUE LLEGAN DE NOTION', {
+    'ID de Notion': data.id,
+    'Nombre del Lead': getText(p['Nombre']),
+    'GHL ID (raw)': p['GHL ID'],
+    'GHL ID (extraído)': getText(p['GHL ID']),
+    'Todas las propiedades disponibles': Object.keys(p).sort(),
+  });
+  
+  // Mostrar propiedades importantes de forma individual
+  console.log('\n📋 PROPIEDADES IMPORTANTES DE NOTION:');
+  const importantProps = ['GHL ID', 'Aplica', 'Agendo', 'Respondio apertura', 'Confirmo mensaje', 'Llamada Meg'];
+  importantProps.forEach(propName => {
+    const prop = p[propName];
+    if (prop) {
+      console.log(`\n  🔹 ${propName}:`);
+      console.log(`     Tipo: ${prop.type || 'N/A'}`);
+      if (prop.type === 'select') {
+        console.log(`     Valor: ${prop.select?.name || 'null'}`);
+      } else if (prop.type === 'rich_text' || prop.type === 'title') {
+        console.log(`     Valor: ${getText(prop) || 'null'}`);
+      } else {
+        console.log(`     Valor completo:`, JSON.stringify(prop, null, 4));
+      }
+    } else {
+      console.log(`\n  🔹 ${propName}: NO EXISTE en las propiedades`);
+    }
+  });
   
   const row = mapToSupabase(payload);
   
-  console.log("\n🔄 === OBJETO MAPEADO (antes de enviar) ===");
-  console.log("📤 Campos mapeados:");
-  console.log("  - id (final):", row.id, "tipo:", typeof row.id, "¿es válido?:", row.id && row.id !== '');
-  console.log("  - aplica:", row.aplica, "tipo:", typeof row.aplica);
-  console.log("  - lista_negra:", row.lista_negra, "tipo:", typeof row.lista_negra);
-  console.log("  - recuperado:", row.recuperado, "tipo:", typeof row.recuperado);
-  console.log("  - cliente_viejo:", row.cliente_viejo, "tipo:", typeof row.cliente_viejo);
-  console.log("  - agendo:", row.agendo, "tipo:", typeof row.agendo, "¿es null?:", row.agendo === null);
-  console.log("  - agendo (raw check):", JSON.stringify({ agendo: row.agendo }));
+  // ========== DATOS MAPEADOS PARA SUPABASE ==========
+  logSection('DATOS MAPEADOS PARA SUPABASE', row);
   
   // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
-    console.error('❌ ERROR: El ID es inválido (null, undefined o vacío). No se puede enviar a Supabase.');
-    console.error("📋 GHL ID recibido:", ghlIdValue);
-    console.error("📋 ID de Notion:", data.id);
+    logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
+      'GHL ID recibido': getText(p['GHL ID']),
+      'ID de Notion': data.id,
+      'ID final calculado': row.id,
+      'Motivo': 'El ID es null, undefined o cadena vacía'
+    });
     return;
   }
   
-  console.log(`\n🚀 Enviando Lead: ${row.nombre || 'Sin nombre'} (ID: ${row.id})`);
-  console.log("📦 Objeto completo a enviar a Supabase:", JSON.stringify(row, null, 2));
+  // ========== INTENTANDO GUARDAR EN SUPABASE ==========
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`🚀 INTENTANDO GUARDAR EN SUPABASE`);
+  console.log('='.repeat(60));
+  console.log(`📤 URL: ${SUPABASE_URL}/rest/v1/leads_raw`);
+  console.log(`📤 ID del registro: ${row.id}`);
+  console.log(`📤 Nombre: ${row.nombre || 'Sin nombre'}`);
+  console.log(`📤 Total de campos: ${Object.keys(row).length}`);
 
   try {
+    const startTime = Date.now();
     const response = await axios.post(`${SUPABASE_URL}/rest/v1/leads_raw`, row, {
       headers: {
         apikey: SUPABASE_KEY,
@@ -151,11 +177,42 @@ async function sendToSupabase(payload) {
       },
       params: { on_conflict: 'id' }
     });
-    console.log('\n✅ Supabase actualizado exitosamente');
-    console.log("📥 Respuesta de Supabase:", JSON.stringify(response.data, null, 2));
+    const duration = Date.now() - startTime;
+    
+    // ========== ÉXITO EN SUPABASE ==========
+    logSection('✅ ÉXITO: REGISTRO GUARDADO EN SUPABASE', {
+      'Status HTTP': response.status,
+      'Tiempo de respuesta': `${duration}ms`,
+      'ID guardado': row.id,
+      'Respuesta de Supabase': response.data,
+      'Headers de respuesta': response.headers
+    });
+    
   } catch (err) {
-    console.error('\n❌ Error Supabase Detail:', err.response?.data || err.message);
-    console.error("📤 Lo que intentamos enviar:", JSON.stringify(row, null, 2));
+    // ========== ERROR AL GUARDAR EN SUPABASE ==========
+    logSection('❌ ERROR AL GUARDAR EN SUPABASE', {
+      'Mensaje de error': err.message,
+      'Código de estado HTTP': err.response?.status,
+      'Datos del error': err.response?.data,
+      'URL intentada': `${SUPABASE_URL}/rest/v1/leads_raw`,
+      'ID que intentamos guardar': row.id,
+      'Datos que intentamos enviar': row
+    });
+    
+    if (err.response?.data) {
+      console.log('\n📋 DETALLES DEL ERROR DE SUPABASE:');
+      console.log(JSON.stringify(err.response.data, null, 2));
+    }
+    
+    if (err.response?.status === 400) {
+      console.log('\n⚠️  Posible causa: Datos inválidos o formato incorrecto');
+    } else if (err.response?.status === 401 || err.response?.status === 403) {
+      console.log('\n⚠️  Posible causa: Problema de autenticación con Supabase');
+    } else if (err.response?.status === 409) {
+      console.log('\n⚠️  Posible causa: Conflicto con registro existente');
+    } else if (err.response?.status === 500) {
+      console.log('\n⚠️  Posible causa: Error del servidor de Supabase');
+    }
   }
 }
 
@@ -179,8 +236,20 @@ async function processQueue() {
 }
 
 exports.handleWebhook = async (req, res) => {
-  console.log("📥 Webhook recibido");
-  console.log("📦 Payload original completo:", JSON.stringify(req.body, null, 2));
+  console.log("\n" + "=".repeat(60));
+  console.log("📥 WEBHOOK RECIBIDO");
+  console.log("=".repeat(60));
+  console.log("⏰ Timestamp:", new Date().toISOString());
+  console.log("📦 Tamaño del payload:", JSON.stringify(req.body).length, "caracteres");
+  
+  const data = req.body?.data || req.body;
+  console.log("🆔 ID de Notion:", data?.id || 'No disponible');
+  console.log("📝 Nombre del lead:", data?.properties?.['Nombre']?.title?.[0]?.plain_text || 
+              data?.properties?.['Nombre']?.rich_text?.[0]?.plain_text || 'No disponible');
+  
+  console.log("\n📋 Payload completo (JSON):");
+  console.log(JSON.stringify(req.body, null, 2));
+  
   res.status(200).json({ status: "ok" });
   queue.push({ payload: req.body });
   processQueue();
