@@ -68,6 +68,9 @@ function mapToSupabase(payload) {
     recuperado: getText(p['Recuperado']),
     cliente_viejo: getText(p['Cliente viejo']),
     agendo: p['Agendo']?.select?.name ?? null,
+    respondio_apertura: p['Respondio apertura']?.select?.name ?? null,
+    confirmo_mensaje: p['Confirmo mensaje']?.select?.name ?? null,
+    llamada_meg: p['Llamada Meg']?.select?.name ?? null,
 
     // Números
     facturacion: p['Facturacion']?.number ?? null,
