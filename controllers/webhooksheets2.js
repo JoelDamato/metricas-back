@@ -13,6 +13,16 @@ function mapToSupabase(payload) {
 
   // Helper para extraer texto de Notion (Rich Text o Title)
   const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
+  
+  // Helper para buscar propiedad con variaciones de nombre (case-insensitive, espacios)
+  const findProperty = (name) => {
+    const keys = Object.keys(p);
+    const exact = keys.find(k => k === name);
+    if (exact) return p[exact];
+    const lower = keys.find(k => k.toLowerCase() === name.toLowerCase());
+    if (lower) return p[lower];
+    return null;
+  };
 
   return {
     id: data.id,
@@ -53,7 +63,7 @@ function mapToSupabase(payload) {
     setter: p['Setter']?.select?.name ?? null,
     closer: p['Closer']?.select?.name ?? null,
 
-    aplica: getText(p['Aplica']),
+    aplica: p['Aplica']?.select?.name ?? null,
     lista_negra: getText(p['Lista negra']),
     recuperado: getText(p['Recuperado']),
     cliente_viejo: getText(p['Cliente viejo']),
@@ -82,12 +92,17 @@ async function sendToSupabase(payload) {
   
   // Log de cómo llegan las propiedades desde Notion
   console.log("\n🔍 === ESTRUCTURA ORIGINAL DE NOTION ===");
+  console.log("📋 Todas las claves de propiedades:", Object.keys(p));
   console.log("📋 Propiedad 'Aplica' completa:", JSON.stringify(p['Aplica'], null, 2));
   console.log("📋 Propiedad 'Lista negra' completa:", JSON.stringify(p['Lista negra'], null, 2));
   console.log("📋 Propiedad 'Agendo' completa:", JSON.stringify(p['Agendo'], null, 2));
   console.log("📋 Tipo de propiedad 'Aplica':", p['Aplica']?.type);
   console.log("📋 Tipo de propiedad 'Lista negra':", p['Lista negra']?.type);
   console.log("📋 Tipo de propiedad 'Agendo':", p['Agendo']?.type);
+  console.log("📋 Valor select 'Aplica':", p['Aplica']?.select);
+  console.log("📋 Valor select.name 'Aplica':", p['Aplica']?.select?.name);
+  console.log("📋 Valor select 'Agendo':", p['Agendo']?.select);
+  console.log("📋 Valor select.name 'Agendo':", p['Agendo']?.select?.name);
   
   const row = mapToSupabase(payload);
   
@@ -97,7 +112,8 @@ async function sendToSupabase(payload) {
   console.log("  - lista_negra:", row.lista_negra, "tipo:", typeof row.lista_negra);
   console.log("  - recuperado:", row.recuperado, "tipo:", typeof row.recuperado);
   console.log("  - cliente_viejo:", row.cliente_viejo, "tipo:", typeof row.cliente_viejo);
-  console.log("  - agendo:", row.agendo, "tipo:", typeof row.agendo);
+  console.log("  - agendo:", row.agendo, "tipo:", typeof row.agendo, "¿es null?:", row.agendo === null);
+  console.log("  - agendo (raw check):", JSON.stringify({ agendo: row.agendo }));
   console.log(`\n🚀 Enviando Lead: ${row.nombre || 'Sin nombre'} (${row.id})`);
   console.log("📦 Objeto completo a enviar a Supabase:", JSON.stringify(row, null, 2));
 
