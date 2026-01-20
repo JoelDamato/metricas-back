@@ -35,7 +35,7 @@ function mapToSupabase(payload) {
   };
 
   // Obtener GHL ID de la fórmula, si está vacío usar el ID de Notion
-  const ghlId = getFormula(p['GHL ID']) || getText(p['GHL ID']);
+  const ghlId = getFormula(p['GHL ID']) 
   const finalId = (ghlId && ghlId.trim() !== '') ? ghlId : data.id;
 
   return {
