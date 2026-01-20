@@ -74,7 +74,7 @@ function mapToSupabase(payload) {
     agendo: p['Agendo']?.select?.name ?? null,
     respondio_apertura: p['Respondio apertura']?.select?.name ?? null,
     confirmo_mensaje: p['Confirmo mensaje']?.select?.name ?? null,
-    llamada_meg: p['Llamada Meg']?.select?.name ?? null,
+    llamada_meg: p['Llamada MEG']?.select?.name ?? null,
 
     // Números
     facturacion: p['Facturacion']?.number ?? null,
