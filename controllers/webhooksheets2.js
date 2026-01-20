@@ -24,8 +24,12 @@ function mapToSupabase(payload) {
     return null;
   };
 
+  // Obtener GHL ID, si está vacío o null usar el ID de Notion
+  const ghlId = getText(p['GHL ID']);
+  const finalId = (ghlId && ghlId.trim() !== '') ? ghlId : data.id;
+
   return {
-    id: getText(p['GHL ID']) || data.id,
+    id: finalId,
     created_time: data.created_time,
     last_edited_time: data.last_edited_time,
     archived: data.archived ?? false,
@@ -110,19 +114,30 @@ async function sendToSupabase(payload) {
   console.log("📋 Valor select 'Agendo':", p['Agendo']?.select);
   console.log("📋 Valor select.name 'Agendo':", p['Agendo']?.select?.name);
   console.log("📋 Propiedad 'GHL ID' completa:", JSON.stringify(p['GHL ID'], null, 2));
-  console.log("📋 Valor 'GHL ID':", getText(p['GHL ID']));
+  const ghlIdValue = getText(p['GHL ID']);
+  console.log("📋 Valor 'GHL ID':", ghlIdValue);
+  console.log("📋 ID de Notion (fallback):", data.id);
   
   const row = mapToSupabase(payload);
   
   console.log("\n🔄 === OBJETO MAPEADO (antes de enviar) ===");
   console.log("📤 Campos mapeados:");
-  console.log("  - id (GHL ID):", row.id, "tipo:", typeof row.id);
+  console.log("  - id (final):", row.id, "tipo:", typeof row.id, "¿es válido?:", row.id && row.id !== '');
   console.log("  - aplica:", row.aplica, "tipo:", typeof row.aplica);
   console.log("  - lista_negra:", row.lista_negra, "tipo:", typeof row.lista_negra);
   console.log("  - recuperado:", row.recuperado, "tipo:", typeof row.recuperado);
   console.log("  - cliente_viejo:", row.cliente_viejo, "tipo:", typeof row.cliente_viejo);
   console.log("  - agendo:", row.agendo, "tipo:", typeof row.agendo, "¿es null?:", row.agendo === null);
   console.log("  - agendo (raw check):", JSON.stringify({ agendo: row.agendo }));
+  
+  // Validar que el ID sea válido antes de enviar
+  if (!row.id || row.id === '') {
+    console.error('❌ ERROR: El ID es inválido (null, undefined o vacío). No se puede enviar a Supabase.');
+    console.error("📋 GHL ID recibido:", ghlIdValue);
+    console.error("📋 ID de Notion:", data.id);
+    return;
+  }
+  
   console.log(`\n🚀 Enviando Lead: ${row.nombre || 'Sin nombre'} (ID: ${row.id})`);
   console.log("📦 Objeto completo a enviar a Supabase:", JSON.stringify(row, null, 2));
 
