@@ -40,9 +40,6 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId, // GHL ID que relaciona con leads_raw
-    
-    // Columnas principales
-    identificador: getText(p['Identificador']),
     adname: getText(p['Adname']),
     adset: getText(p['Adset']),
     agenda_format: getText(p['Agenda Format']),
