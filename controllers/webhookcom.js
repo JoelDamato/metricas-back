@@ -11,112 +11,155 @@ function mapToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
 
-  // Helper para extraer texto de Notion (Rich Text o Title)
-  const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
-  
-  // Helper para extraer número
-  const getNumber = (prop) => prop?.number ?? null;
-  
-  // Helper para extraer fecha
-  const getDate = (prop) => prop?.date?.start ?? null;
-  
-  // Helper para extraer select
-  const getSelect = (prop) => prop?.select?.name ?? null;
-  
-  // Helper para extraer checkbox
-  const getCheckbox = (prop) => prop?.checkbox ?? null;
-  
-  // Helper para extraer fórmula (puede ser string o number)
-  const getFormula = (prop) => {
-    if (!prop?.formula) return null;
-    if (prop.formula.type === 'string') return prop.formula.string;
-    if (prop.formula.type === 'number') return prop.formula.number?.toString();
-    return null;
+  // Helper universal que detecta el tipo de propiedad automáticamente
+  const getValue = (prop) => {
+    if (!prop) return null;
+    
+    switch (prop.type) {
+      case 'title':
+      case 'rich_text':
+        return prop[prop.type]?.[0]?.plain_text || null;
+      
+      case 'number':
+        return prop.number ?? null;
+      
+      case 'select':
+        return prop.select?.name ?? null;
+      
+      case 'multi_select':
+        return prop.multi_select?.map(s => s.name).join(', ') || null;
+      
+      case 'date':
+        return prop.date?.start ?? null;
+      
+      case 'checkbox':
+        return prop.checkbox ?? null;
+      
+      case 'url':
+        return prop.url ?? null;
+      
+      case 'email':
+        return prop.email ?? null;
+      
+      case 'phone_number':
+        return prop.phone_number ?? null;
+      
+      case 'formula':
+        if (prop.formula.type === 'string') return prop.formula.string;
+        if (prop.formula.type === 'number') return prop.formula.number;
+        if (prop.formula.type === 'boolean') return prop.formula.boolean;
+        if (prop.formula.type === 'date') return prop.formula.date?.start ?? null;
+        return null;
+      
+      case 'rollup':
+        if (prop.rollup.type === 'number') return prop.rollup.number;
+        if (prop.rollup.type === 'date') return prop.rollup.date?.start;
+        if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
+        return null;
+      
+      case 'people':
+        return prop.people?.[0]?.name ?? null;
+      
+      case 'files':
+        return prop.files?.[0]?.name ?? null;
+      
+      case 'created_time':
+      case 'last_edited_time':
+        return prop[prop.type] ?? null;
+      
+      case 'created_by':
+      case 'last_edited_by':
+        return prop[prop.type]?.name ?? null;
+      
+      default:
+        return null;
+    }
   };
 
-  // Obtener GHL ID de la fórmula, si está vacío usar el ID de Notion
-  const ghlId = getFormula(p['GHL ID']) 
-  const finalId = (ghlId && ghlId.trim() !== '') ? ghlId : data.id;
+  // Obtener GHL ID (puede ser fórmula o texto)
+  const ghlId = getValue(p['GHL ID']);
+  const finalId = (ghlId && ghlId.toString().trim() !== '') ? ghlId.toString() : data.id;
 
   return {
-    id: finalId, // GHL ID que relaciona con leads_raw
-    adname: getText(p['Adname']),
-    adset: getText(p['Adset']),
-    agenda_format: getText(p['Agenda Format']),
-    csm_2_0: getText(p['CSM 2.0']),
-    calidad: getSelect(p['Calidad']),
-    campaign: getText(p['Campaign']),
-    cantidad_de_pagos: getNumber(p['Cantidad de pagos']),
-    cash_collected: getNumber(p['Cash collected']),
-    cash_collected_ars: getNumber(p['Cash collected ARS']),
-    cash_collected_total: getNumber(p['Cash collected Total']),
-    cliente: getText(p['Cliente']),
-    cobranza_relacionada: getText(p['Cobranza relacionada']),
-    comprobante: getText(p['Comprobante']),
-    conciliacion_financiera: getText(p['Conciliacion Financiera']),
-    conciliacion_financiera_2: getText(p['Conciliacion financiera']),
-    conciliar: getText(p['Conciliar']),
-    correspondiente_format: getText(p['Correspondiente format']),
-    creado_por: p['Creado por']?.people?.[0]?.name ?? null,
-    dni_cuit: getText(p['Dni Cuit']),
-    estado: getSelect(p['Estado']),
-    facturacion: getNumber(p['Facturacion']),
-    facturacion_ars: getNumber(p['Facturacion ARS']),
-    facturacion_arca: getNumber(p['Facturacion Arca']),
-    facturar: getText(p['Facturar']),
-    fecha_correspondiente: getDate(p['Fecha correspondiente']),
-    fecha_creado: getDate(p['Fecha creado']),
-    fecha_de_agendamiento: getDate(p['Fecha de agendamiento']),
-    fecha_facturado: getDate(p['Fecha facturado']),
-    fecha_respaldo: getDate(p['Fecha respaldo']),
-    finalizar: getText(p['Finalizar']),
-    info_comprobantes: getText(p['Info Comprobantes']),
-    mail: p['Mail']?.email ?? null,
-    medios_de_pago: getText(p['Medios de pago']),
-    modelo_de_negocio: getSelect(p['Modelo de negocio']),
-    monto_pesos: getNumber(p['Monto Pesos']),
-    origen: getSelect(p['Origen']),
-    producto_format: getText(p['Producto Format']),
-    productos: getText(p['Productos']),
-    rebotar_pago: getText(p['Rebotar pago']),
-    rectificar_pago: getText(p['Rectificar pago']),
-    responsable_actual: p['Responsable Actual']?.people?.[0]?.name ?? null,
-    score: getNumber(p['Score']),
-    tc: getText(p['TC']),
-    telefono: p['Telefono']?.phone_number ?? null,
-    tipo: getSelect(p['Tipo']),
-    tipo_banco: getText(p['Tipo Banco']),
-    venta_relacionada: getText(p['Venta relacionada']),
-    verificacion: getText(p['Verificacion']),
-    verificacion_comisiones: getText(p['Verificacion comisiones']),
-    crear_registro_csm: getText(p['🟢 Crear registro CSM']),
-    agenda_periodo_a: getText(p['Agenda periodo A']),
-    agenda_periodo_m: getText(p['Agenda periodo M']),
-    correspondiente_periodo_m: getText(p['Correspondiente periodo M']),
-    correspondiente_periodo_a: getText(p['Correspondiente periodo A']),
-    estado_cc: getText(p['Estado CC']),
-    fecha_de_venta_format: getDate(p['Fecha de venta format']),
-    llamada_meg: getSelect(p['Llamada Meg']),
-    cheque: getCheckbox(p['Cheque?']),
-    fecha_de_acreditacion: getDate(p['Fecha de acreditacion']),
-    fecha_de_llamada: getDate(p['Fecha de llamada']),
-    calendario_agendado: getDate(p['Calendario agendado']),
-    venta_periodo_m: getText(p['Venta periodo M']),
-    venta_periodo_a: getText(p['Venta periodo A']),
-    neto_club: getNumber(p['Neto Club']),
-    medios_de_pago_format: getText(p['Medios de pago Format']),
-    setter: getSelect(p['Setter']),
-    f_acreditacion: getDate(p['F.acreditacion']),
-    f_acreditacion_format: getDate(p['F.acreditacion format']),
-    cliente_format: getText(p['Cliente Format']),
-    porcentaje_venta_vieja_format: getNumber(p['% venta vieja format']),
-    acreditado_periodo_m: getText(p['Acreditado periodo M']),
-    acreditado_periodo_y: getText(p['Acreditado periodo Y']),
-    porcentaje_venta_vieja: getNumber(p['% venta vieja']),
-    f_venta: getDate(p['F.venta']),
-    f_transaccion_string: getText(p['F.transaccion string']),
-    f_renovacion: getDate(p['F. renovacion']),
-    f_renovacion_string: getText(p['F. Renovacion string'])
+    id: finalId,
+    identificador: getValue(p['Identificador']),
+    adname: getValue(p['Adname']),
+    adset: getValue(p['Adset']),
+    agenda_format: getValue(p['Agenda Format']),
+    csm_2_0: getValue(p['CSM 2.0']),
+    calidad: getValue(p['Calidad']),
+    campaign: getValue(p['Campaign']),
+    cantidad_de_pagos: getValue(p['Cantidad de pagos']),
+    cash_collected: getValue(p['Cash collected']),
+    cash_collected_ars: getValue(p['Cash collected ARS']),
+    cash_collected_total: getValue(p['Cash collected Total']),
+    cliente: getValue(p['Cliente']),
+    cobranza_relacionada: getValue(p['Cobranza relacionada']),
+    comprobante: getValue(p['Comprobante']),
+    conciliacion_financiera: getValue(p['Conciliacion Financiera']),
+    conciliacion_financiera_2: getValue(p['Conciliacion financiera']),
+    conciliar: getValue(p['Conciliar']),
+    correspondiente_format: getValue(p['Correspondiente format']),
+    creado_por: getValue(p['Creado por']),
+    dni_cuit: getValue(p['Dni Cuit']),
+    estado: getValue(p['Estado']),
+    facturacion: getValue(p['Facturacion']),
+    facturacion_ars: getValue(p['Facturacion ARS']),
+    facturacion_arca: getValue(p['Facturacion Arca']),
+    facturar: getValue(p['Facturar']),
+    fecha_correspondiente: getValue(p['Fecha correspondiente']),
+    fecha_creado: getValue(p['Fecha creado']),
+    fecha_de_agendamiento: getValue(p['Fecha de agendamiento']),
+    fecha_facturado: getValue(p['Fecha facturado']),
+    fecha_respaldo: getValue(p['Fecha respaldo']),
+    finalizar: getValue(p['Finalizar']),
+    info_comprobantes: getValue(p['Info Comprobantes']),
+    mail: getValue(p['Mail']),
+    medios_de_pago: getValue(p['Medios de pago']),
+    modelo_de_negocio: getValue(p['Modelo de negocio']),
+    monto_pesos: getValue(p['Monto Pesos']),
+    origen: getValue(p['Origen']),
+    producto_format: getValue(p['Producto Format']),
+    productos: getValue(p['Productos']),
+    rebotar_pago: getValue(p['Rebotar pago']),
+    rectificar_pago: getValue(p['Rectificar pago']),
+    responsable_actual: getValue(p['Responsable Actual']),
+    score: getValue(p['Score']),
+    tc: getValue(p['TC']),
+    telefono: getValue(p['Telefono']),
+    tipo: getValue(p['Tipo']),
+    tipo_banco: getValue(p['Tipo Banco']),
+    venta_relacionada: getValue(p['Venta relacionada']),
+    verificacion: getValue(p['Verificacion']),
+    verificacion_comisiones: getValue(p['Verificacion comisiones']),
+    crear_registro_csm: getValue(p['🟢 Crear registro CSM']),
+    agenda_periodo_a: getValue(p['Agenda periodo A']),
+    agenda_periodo_m: getValue(p['Agenda periodo M']),
+    correspondiente_periodo_m: getValue(p['Correspondiente periodo M']),
+    correspondiente_periodo_a: getValue(p['Correspondiente periodo A']),
+    estado_cc: getValue(p['Estado CC']),
+    fecha_de_venta_format: getValue(p['Fecha de venta format']),
+    llamada_meg: getValue(p['Llamada Meg']),
+    cheque: getValue(p['Cheque?']),
+    fecha_de_acreditacion: getValue(p['Fecha de acreditacion']),
+    fecha_de_llamada: getValue(p['Fecha de llamada']),
+    calendario_agendado: getValue(p['Calendario agendado']),
+    venta_periodo_m: getValue(p['Venta periodo M']),
+    venta_periodo_a: getValue(p['Venta periodo A']),
+    neto_club: getValue(p['Neto Club']),
+    medios_de_pago_format: getValue(p['Medios de pago Format']),
+    setter: getValue(p['Setter']),
+    f_acreditacion: getValue(p['F.acreditacion']),
+    f_acreditacion_format: getValue(p['F.acreditacion format']),
+    cliente_format: getValue(p['Cliente Format']),
+    porcentaje_venta_vieja_format: getValue(p['% venta vieja format']),
+    acreditado_periodo_m: getValue(p['Acreditado periodo M']),
+    acreditado_periodo_y: getValue(p['Acreditado periodo Y']),
+    porcentaje_venta_vieja: getValue(p['% venta vieja']),
+    f_venta: getValue(p['F.venta']),
+    f_transaccion_string: getValue(p['F.transaccion string']),
+    f_renovacion: getValue(p['F. renovacion']),
+    f_renovacion_string: getValue(p['F. Renovacion string'])
   };
 }
 
@@ -124,15 +167,69 @@ async function sendToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
   
-  // Helper para extraer texto de Notion (Rich Text o Title)
-  const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
-  
-  // Helper para extraer fórmula
-  const getFormula = (prop) => {
-    if (!prop?.formula) return null;
-    if (prop.formula.type === 'string') return prop.formula.string;
-    if (prop.formula.type === 'number') return prop.formula.number?.toString();
-    return null;
+  // Helper universal que detecta el tipo de propiedad automáticamente
+  const getValue = (prop) => {
+    if (!prop) return null;
+    
+    switch (prop.type) {
+      case 'title':
+      case 'rich_text':
+        return prop[prop.type]?.[0]?.plain_text || null;
+      
+      case 'number':
+        return prop.number ?? null;
+      
+      case 'select':
+        return prop.select?.name ?? null;
+      
+      case 'multi_select':
+        return prop.multi_select?.map(s => s.name).join(', ') || null;
+      
+      case 'date':
+        return prop.date?.start ?? null;
+      
+      case 'checkbox':
+        return prop.checkbox ?? null;
+      
+      case 'url':
+        return prop.url ?? null;
+      
+      case 'email':
+        return prop.email ?? null;
+      
+      case 'phone_number':
+        return prop.phone_number ?? null;
+      
+      case 'formula':
+        if (prop.formula.type === 'string') return prop.formula.string;
+        if (prop.formula.type === 'number') return prop.formula.number;
+        if (prop.formula.type === 'boolean') return prop.formula.boolean;
+        if (prop.formula.type === 'date') return prop.formula.date?.start ?? null;
+        return null;
+      
+      case 'rollup':
+        if (prop.rollup.type === 'number') return prop.rollup.number;
+        if (prop.rollup.type === 'date') return prop.rollup.date?.start;
+        if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
+        return null;
+      
+      case 'people':
+        return prop.people?.[0]?.name ?? null;
+      
+      case 'files':
+        return prop.files?.[0]?.name ?? null;
+      
+      case 'created_time':
+      case 'last_edited_time':
+        return prop[prop.type] ?? null;
+      
+      case 'created_by':
+      case 'last_edited_by':
+        return prop[prop.type]?.name ?? null;
+      
+      default:
+        return null;
+    }
   };
   
   // Helper para mostrar datos de forma legible
@@ -150,11 +247,10 @@ async function sendToSupabase(payload) {
   // ========== DATOS QUE LLEGAN DE NOTION ==========
   logSection('DATOS QUE LLEGAN DE NOTION (COMPROBANTES)', {
     'ID de Notion': data.id,
-    'GHL ID (fórmula raw)': p['GHL ID'],
-    'GHL ID (extraído)': getFormula(p['GHL ID']) || getText(p['GHL ID']),
-    'Identificador': getText(p['Identificador']),
-    'Cliente': getText(p['Cliente']),
-    'Comprobante': getText(p['Comprobante']),
+    'GHL ID (raw)': p['GHL ID'],
+    'GHL ID (extraído)': getValue(p['GHL ID']),
+    'Cliente': getValue(p['Cliente']),
+    'Comprobante': getValue(p['Comprobante']),
     'Todas las propiedades disponibles': Object.keys(p).sort(),
   });
   
@@ -166,18 +262,8 @@ async function sendToSupabase(payload) {
     if (prop) {
       console.log(`\n  🔹 ${propName}:`);
       console.log(`     Tipo: ${prop.type || 'N/A'}`);
-      if (prop.type === 'formula') {
-        console.log(`     Tipo de fórmula: ${prop.formula?.type || 'N/A'}`);
-        console.log(`     Valor: ${getFormula(prop) || 'null'}`);
-      } else if (prop.type === 'select') {
-        console.log(`     Valor: ${prop.select?.name || 'null'}`);
-      } else if (prop.type === 'rich_text' || prop.type === 'title') {
-        console.log(`     Valor: ${getText(prop) || 'null'}`);
-      } else if (prop.type === 'number') {
-        console.log(`     Valor: ${prop.number ?? 'null'}`);
-      } else {
-        console.log(`     Valor completo:`, JSON.stringify(prop, null, 4));
-      }
+      console.log(`     Valor extraído: ${getValue(prop) ?? 'null'}`);
+      console.log(`     Valor completo:`, JSON.stringify(prop, null, 4));
     } else {
       console.log(`\n  🔹 ${propName}: NO EXISTE en las propiedades`);
     }
@@ -191,7 +277,7 @@ async function sendToSupabase(payload) {
   // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
     logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
-      'GHL ID recibido (fórmula)': getFormula(p['GHL ID']) || getText(p['GHL ID']),
+      'GHL ID recibido': getValue(p['GHL ID']),
       'ID de Notion': data.id,
       'ID final calculado': row.id,
       'Motivo': 'El ID es null, undefined o cadena vacía'
