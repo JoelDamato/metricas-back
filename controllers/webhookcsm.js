@@ -7,6 +7,22 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxnx8V4TnlotjWA
 const queue = [];
 let isProcessing = false;
 
+// Función para guardar logs en Supabase
+async function saveLog(logData) {
+  try {
+    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, logData, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('📝 Log guardado en Supabase');
+  } catch (err) {
+    console.error('❌ Error al guardar log:', err.message);
+  }
+}
+
 function mapToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
@@ -267,6 +283,18 @@ async function sendToSupabase(payload) {
   
   // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
+    const errorLog = {
+      webhook_type: 'csm',
+      error_type: 'invalid_id',
+      error_message: 'El ID es null, undefined o cadena vacía',
+      notion_id: data.id,
+      ghl_id: getValue(p['GHL ID']),
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
+    
     logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
       'GHL ID recibido': getValue(p['GHL ID']),
       'ID de Notion': data.id,
@@ -309,6 +337,21 @@ async function sendToSupabase(payload) {
     
   } catch (err) {
     // ========== ERROR AL GUARDAR EN SUPABASE ==========
+    const errorLog = {
+      webhook_type: 'csm',
+      error_type: 'supabase_error',
+      error_message: err.message,
+      http_status: err.response?.status,
+      supabase_error: err.response?.data,
+      notion_id: data.id,
+      ghl_id: row.id,
+      attempted_data: row,
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
+    
     logSection('❌ ERROR AL GUARDAR CSM EN SUPABASE', {
       'Mensaje de error': err.message,
       'Código de estado HTTP': err.response?.status,
@@ -351,6 +394,17 @@ async function processQueue() {
     await sendToSupabase(payload);
   } catch (error) {
     console.error("❌ Error en flujo de CSM:", error.message);
+    
+    // Log de error general en el flujo
+    const errorLog = {
+      webhook_type: 'csm',
+      error_type: 'process_queue_error',
+      error_message: error.message,
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
   } finally {
     isProcessing = false;
     if (queue.length > 0) setImmediate(processQueue);
@@ -380,6 +434,18 @@ exports.handleWebhook = async (req, res) => {
 
   if (!isValidPayload) {
     console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
+    
+    // Log de payload inválido
+    const errorLog = {
+      webhook_type: 'csm',
+      error_type: 'invalid_payload',
+      error_message: 'Payload no válido - no es un evento reconocido',
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
+    
     return res.status(400).json({ 
       error: "Payload inválido",
       received: payload.type || 'unknown'
