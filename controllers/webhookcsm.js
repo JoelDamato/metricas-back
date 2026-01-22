@@ -285,8 +285,8 @@ async function sendToSupabase(payload) {
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'csm',
-      error_type: 'invalid_id',
-      error_message: 'El ID es null, undefined o cadena vacía',
+      type: 'invalid_id',
+      message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getValue(p['GHL ID']),
       payload: payload,
@@ -339,8 +339,8 @@ async function sendToSupabase(payload) {
     // ========== ERROR AL GUARDAR EN SUPABASE ==========
     const errorLog = {
       webhook_type: 'csm',
-      error_type: 'supabase_error',
-      error_message: err.message,
+      type: 'supabase_error',
+      message: err.message,
       http_status: err.response?.status,
       supabase_error: err.response?.data,
       notion_id: data.id,
@@ -398,8 +398,8 @@ async function processQueue() {
     // Log de error general en el flujo
     const errorLog = {
       webhook_type: 'csm',
-      error_type: 'process_queue_error',
-      error_message: error.message,
+      type: 'process_queue_error',
+      message: error.message,
       payload: payload,
       created_at: new Date().toISOString()
     };
@@ -438,8 +438,8 @@ exports.handleWebhook = async (req, res) => {
     // Log de payload inválido
     const errorLog = {
       webhook_type: 'csm',
-      error_type: 'invalid_payload',
-      error_message: 'Payload no válido - no es un evento reconocido',
+      type: 'invalid_payload',
+      message: 'Payload no válido - no es un evento reconocido',
       payload: payload,
       created_at: new Date().toISOString()
     };

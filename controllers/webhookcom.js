@@ -7,6 +7,22 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-a
 const queue = [];
 let isProcessing = false;
 
+// Función para guardar logs en Supabase
+async function saveLog(logData) {
+  try {
+    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, logData, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    console.log('📝 Log guardado en Supabase');
+  } catch (err) {
+    console.error('❌ Error al guardar log:', err.message);
+  }
+}
+
 function mapToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
@@ -275,6 +291,18 @@ async function sendToSupabase(payload) {
   
   // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
+    const errorLog = {
+      webhook_type: 'com',
+      type: 'invalid_id',
+      message: 'El ID es null, undefined o cadena vacía',
+      notion_id: data.id,
+      ghl_id: getValue(p['GHL ID']),
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
+    
     logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
       'GHL ID recibido': getValue(p['GHL ID']),
       'ID de Notion': data.id,
@@ -307,6 +335,21 @@ async function sendToSupabase(payload) {
     const duration = Date.now() - startTime;
     
     // ========== ÉXITO EN SUPABASE ==========
+    const successLog = {
+      webhook_type: 'com',
+      type: 'success',
+      message: null,
+      http_status: response.status,
+      supabase_error: null,
+      notion_id: data.id,
+      ghl_id: row.id,
+      attempted_data: row,
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(successLog);
+    
     logSection('✅ ÉXITO: COMPROBANTE GUARDADO EN SUPABASE', {
       'Status HTTP': response.status,
       'Tiempo de respuesta': `${duration}ms`,
@@ -317,6 +360,21 @@ async function sendToSupabase(payload) {
     
   } catch (err) {
     // ========== ERROR AL GUARDAR EN SUPABASE ==========
+    const errorLog = {
+      webhook_type: 'com',
+      type: 'supabase_error',
+      message: err.message,
+      http_status: err.response?.status,
+      supabase_error: err.response?.data,
+      notion_id: data.id,
+      ghl_id: row.id,
+      attempted_data: row,
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
+    
     logSection('❌ ERROR AL GUARDAR COMPROBANTE EN SUPABASE', {
       'Mensaje de error': err.message,
       'Código de estado HTTP': err.response?.status,
@@ -359,6 +417,17 @@ async function processQueue() {
     await sendToSupabase(payload);
   } catch (error) {
     console.error("❌ Error en flujo de comprobantes:", error.message);
+    
+    // Log de error general en el flujo
+    const errorLog = {
+      webhook_type: 'com',
+      type: 'process_queue_error',
+      message: error.message,
+      payload: payload,
+      created_at: new Date().toISOString()
+    };
+    
+    await saveLog(errorLog);
   } finally {
     isProcessing = false;
     if (queue.length > 0) setImmediate(processQueue);
