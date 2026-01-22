@@ -10,19 +10,8 @@ let isProcessing = false;
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
-    // Convertir objetos grandes a JSON strings para evitar errores
-    const processedData = { ...logData };
-    if (processedData.payload && typeof processedData.payload === 'object') {
-      processedData.payload = JSON.stringify(processedData.payload);
-    }
-    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
-      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
-    }
-    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
-      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
-    }
-    
-    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
+    // NO convertir a strings - dejar como objetos para jsonb
+    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, logData, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -34,7 +23,6 @@ async function saveLog(logData) {
     console.error('❌ Error al guardar log:', err.message);
     console.error('📋 Status:', err.response?.status);
     console.error('📋 Error details:', JSON.stringify(err.response?.data, null, 2));
-    console.error('📋 Datos que intentamos enviar:', JSON.stringify(logData, null, 2));
   }
 }
 
@@ -300,12 +288,11 @@ async function sendToSupabase(payload) {
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'csm',
-      type: 'invalid_id',
-      message: 'El ID es null, undefined o cadena vacía',
+      error_type: 'invalid_id',
+      error_message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getValue(p['GHL ID']),
-      payload: payload,
-      created_at: new Date().toISOString()
+      payload: payload  // objeto, no string
     };
     
     await saveLog(errorLog);
@@ -342,6 +329,18 @@ async function sendToSupabase(payload) {
     const duration = Date.now() - startTime;
     
     // ========== ÉXITO EN SUPABASE ==========
+    const successLog = {
+      webhook_type: 'csm',
+      type: 'success',
+      message: 'Registro guardado exitosamente',
+      notion_id: data.id,
+      ghl_id: row.id,
+      http_status: response.status,
+      supabase_error: { duration_ms: duration }
+    };
+    
+    await saveLog(successLog);
+    
     logSection('✅ ÉXITO: REGISTRO CSM GUARDADO EN SUPABASE', {
       'Status HTTP': response.status,
       'Tiempo de respuesta': `${duration}ms`,
@@ -357,12 +356,11 @@ async function sendToSupabase(payload) {
       type: 'supabase_error',
       message: err.message,
       http_status: err.response?.status,
-      supabase_error: err.response?.data,
+      supabase_error: err.response?.data || {},  // objeto, no string
       notion_id: data.id,
       ghl_id: row.id,
-      attempted_data: row,
-      payload: payload,
-      created_at: new Date().toISOString()
+      attempted_data: row,  // objeto, no string
+      payload: payload  // objeto, no string
     };
     
     await saveLog(errorLog);
@@ -415,8 +413,7 @@ async function processQueue() {
       webhook_type: 'csm',
       type: 'process_queue_error',
       message: error.message,
-      payload: payload,
-      created_at: new Date().toISOString()
+      payload: payload  // objeto, no string
     };
     
     await saveLog(errorLog);
@@ -455,8 +452,7 @@ exports.handleWebhook = async (req, res) => {
       webhook_type: 'csm',
       type: 'invalid_payload',
       message: 'Payload no válido - no es un evento reconocido',
-      payload: payload,
-      created_at: new Date().toISOString()
+      payload: payload  // objeto, no string
     };
     
     await saveLog(errorLog);
