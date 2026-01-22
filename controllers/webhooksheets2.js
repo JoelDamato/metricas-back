@@ -10,7 +10,19 @@ let isProcessing = false;
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
-    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, logData, {
+    // Convertir objetos grandes a JSON strings para evitar errores
+    const processedData = { ...logData };
+    if (processedData.payload && typeof processedData.payload === 'object') {
+      processedData.payload = JSON.stringify(processedData.payload);
+    }
+    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
+      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
+    }
+    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
+      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
+    }
+    
+    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -20,6 +32,9 @@ async function saveLog(logData) {
     console.log('📝 Log guardado en Supabase');
   } catch (err) {
     console.error('❌ Error al guardar log:', err.message);
+    console.error('📋 Status:', err.response?.status);
+    console.error('📋 Error details:', JSON.stringify(err.response?.data, null, 2));
+    console.error('📋 Datos que intentamos enviar:', JSON.stringify(logData, null, 2));
   }
 }
 
