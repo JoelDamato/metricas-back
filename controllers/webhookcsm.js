@@ -288,8 +288,8 @@ async function sendToSupabase(payload) {
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'csm',
-      error_type: 'invalid_id',
-      error_message: 'El ID es null, undefined o cadena vacía',
+      type: 'invalid_id',
+      message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getValue(p['GHL ID']),
       payload: payload  // objeto, no string
