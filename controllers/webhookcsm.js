@@ -7,6 +7,39 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxnx8V4TnlotjWA
 const queue = [];
 let isProcessing = false;
 
+// Función para normalizar fechas al formato de Supabase (date)
+function normalizeDate(dateValue) {
+  if (!dateValue) return null;
+  
+  // Si ya es null o undefined, retornar null
+  if (dateValue === null || dateValue === undefined) return null;
+  
+  // Si es string vacío, retornar null
+  if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+  
+  try {
+    // Intentar parsear la fecha
+    const date = new Date(dateValue);
+    
+    // Verificar que sea una fecha válida
+    if (isNaN(date.getTime())) return null;
+    
+    // Retornar en formato ISO (YYYY-MM-DD) para tipo date de Supabase
+    // Si la fecha original solo tenía fecha sin hora, retornar solo la fecha
+    const dateStr = dateValue.toString();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Solo fecha, sin hora
+      return dateStr;
+    }
+    
+    // Si tiene hora, retornar solo la parte de la fecha (YYYY-MM-DD)
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
+    return null;
+  }
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
@@ -49,7 +82,7 @@ function mapToSupabase(payload) {
         return prop.multi_select?.map(s => s.name).join(', ') || null;
       
       case 'date':
-        return prop.date?.start ?? null;
+        return normalizeDate(prop.date?.start);
       
       case 'checkbox':
         return prop.checkbox ?? null;
@@ -67,12 +100,12 @@ function mapToSupabase(payload) {
         if (prop.formula.type === 'string') return prop.formula.string;
         if (prop.formula.type === 'number') return prop.formula.number;
         if (prop.formula.type === 'boolean') return prop.formula.boolean;
-        if (prop.formula.type === 'date') return prop.formula.date?.start ?? null;
+        if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
         return null;
       
       case 'rollup':
         if (prop.rollup.type === 'number') return prop.rollup.number;
-        if (prop.rollup.type === 'date') return prop.rollup.date?.start;
+        if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
         if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
         return null;
       
@@ -84,7 +117,7 @@ function mapToSupabase(payload) {
       
       case 'created_time':
       case 'last_edited_time':
-        return prop[prop.type] ?? null;
+        return normalizeDate(prop[prop.type]);
       
       case 'created_by':
       case 'last_edited_by':
@@ -196,7 +229,7 @@ async function sendToSupabase(payload) {
         return prop.multi_select?.map(s => s.name).join(', ') || null;
       
       case 'date':
-        return prop.date?.start ?? null;
+        return normalizeDate(prop.date?.start);
       
       case 'checkbox':
         return prop.checkbox ?? null;
@@ -214,12 +247,12 @@ async function sendToSupabase(payload) {
         if (prop.formula.type === 'string') return prop.formula.string;
         if (prop.formula.type === 'number') return prop.formula.number;
         if (prop.formula.type === 'boolean') return prop.formula.boolean;
-        if (prop.formula.type === 'date') return prop.formula.date?.start ?? null;
+        if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
         return null;
       
       case 'rollup':
         if (prop.rollup.type === 'number') return prop.rollup.number;
-        if (prop.rollup.type === 'date') return prop.rollup.date?.start;
+        if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
         if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
         return null;
       
@@ -231,7 +264,7 @@ async function sendToSupabase(payload) {
       
       case 'created_time':
       case 'last_edited_time':
-        return prop[prop.type] ?? null;
+        return normalizeDate(prop[prop.type]);
       
       case 'created_by':
       case 'last_edited_by':

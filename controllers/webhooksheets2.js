@@ -7,6 +7,39 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzbjJ8jT6XYDbwl
 const queue = [];
 let isProcessing = false;
 
+// Función para normalizar fechas al formato de Supabase (date)
+function normalizeDate(dateValue) {
+  if (!dateValue) return null;
+  
+  // Si ya es null o undefined, retornar null
+  if (dateValue === null || dateValue === undefined) return null;
+  
+  // Si es string vacío, retornar null
+  if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
+  
+  try {
+    // Intentar parsear la fecha
+    const date = new Date(dateValue);
+    
+    // Verificar que sea una fecha válida
+    if (isNaN(date.getTime())) return null;
+    
+    // Retornar en formato ISO (YYYY-MM-DD) para tipo date de Supabase
+    // Si la fecha original solo tenía fecha sin hora, retornar solo la fecha
+    const dateStr = dateValue.toString();
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Solo fecha, sin hora
+      return dateStr;
+    }
+    
+    // Si tiene hora, retornar solo la parte de la fecha (YYYY-MM-DD)
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
+    return null;
+  }
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
@@ -61,8 +94,8 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId,
-    created_time: data.created_time,
-    last_edited_time: data.last_edited_time,
+    created_time: normalizeDate(data.created_time),
+    last_edited_time: normalizeDate(data.last_edited_time),
     archived: data.archived ?? false,
 
     // Identidad
@@ -115,10 +148,10 @@ function mapToSupabase(payload) {
     inversion: p['Inversion']?.number ?? null,
     score: p['Score']?.number ?? null,
 
-    // Fechas (Mantenidas como string del formato Notion)
-    fecha_llamada: p['Fecha de llamada']?.date?.start ?? null,
-    fecha_agenda: p['Fecha de agendamiento']?.date?.start ?? null,
-    fecha_venta: p['Ult fecha de venta']?.date?.start ?? null,
+    // Fechas (Normalizadas al formato date de Supabase)
+    fecha_llamada: normalizeDate(p['Fecha de llamada']?.date?.start),
+    fecha_agenda: normalizeDate(p['Fecha de agendamiento']?.date?.start),
+    fecha_venta: normalizeDate(p['Ult fecha de venta']?.date?.start),
 
     extra: payload // Backup de todo el JSON
   };
