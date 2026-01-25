@@ -24,16 +24,11 @@ function normalizeDate(dateValue) {
     // Verificar que sea una fecha válida
     if (isNaN(date.getTime())) return null;
     
-    // Retornar en formato ISO (YYYY-MM-DD) para tipo date de Supabase
-    // Si la fecha original solo tenía fecha sin hora, retornar solo la fecha
-    const dateStr = dateValue.toString();
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Solo fecha, sin hora
-      return dateStr;
-    }
-    
-    // Si tiene hora, retornar solo la parte de la fecha (YYYY-MM-DD)
-    return date.toISOString().split('T')[0];
+    // Ajustar restando 3 horas
+    const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+
+    // Retornar ISO completo con hora (supabase timestamp) sin milisegundos
+    return adjusted.toISOString().replace(/\.\d{3}Z$/, 'Z');
   } catch (error) {
     console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
     return null;

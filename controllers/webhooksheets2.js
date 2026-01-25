@@ -2,38 +2,24 @@ const axios = require('axios');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzbjJ8jT6XYDbwls0zWcCJzaerciuqsII9KU9oWXY8t5tVfXz-vZ9DNuqoSFYB2J4jmFg/exec";
 
+// URL de tu App Script desplegado como endpoint web
+const googleScriptUrl = "https://script.google.com/macros/s/AKfycbyLw7tUDMcx8taru71YQBnF3SVvKzvjknL7kuTqnnvw-n3MXRFNVx5eMxog28WdDklM/exec";
+
+// Cola en memoria para los envíos
 const queue = [];
 let isProcessing = false;
 
-// Función para normalizar fechas al formato de Supabase (date)
+// Función para normalizar fechas: resta 3 horas y devuelve ISO con hora
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
-  
-  // Si ya es null o undefined, retornar null
   if (dateValue === null || dateValue === undefined) return null;
-  
-  // Si es string vacío, retornar null
   if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
-  
   try {
-    // Intentar parsear la fecha
     const date = new Date(dateValue);
-    
-    // Verificar que sea una fecha válida
     if (isNaN(date.getTime())) return null;
-    
-    // Retornar en formato ISO (YYYY-MM-DD) para tipo date de Supabase
-    // Si la fecha original solo tenía fecha sin hora, retornar solo la fecha
-    const dateStr = dateValue.toString();
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Solo fecha, sin hora
-      return dateStr;
-    }
-    
-    // Si tiene hora, retornar solo la parte de la fecha (YYYY-MM-DD)
-    return date.toISOString().split('T')[0];
+    const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+    return adjusted.toISOString().replace(/\.\d{3}Z$/, 'Z');
   } catch (error) {
     console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
     return null;
