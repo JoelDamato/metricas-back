@@ -40,7 +40,12 @@ async function saveLog(logData) {
     if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
       processedData.supabase_error = JSON.stringify(processedData.supabase_error);
     }
-    
+
+    // Siempre enviar created_at: null si no se proporciona
+    if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
+      processedData.created_at = null;
+    }
+
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
       headers: {
         apikey: SUPABASE_KEY,

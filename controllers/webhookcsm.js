@@ -27,7 +27,12 @@ function normalizeDate(dateValue) {
 async function saveLog(logData) {
   try {
     // NO convertir a strings - dejar como objetos para jsonb
-    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, logData, {
+    const processedData = { ...logData };
+    if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
+      processedData.created_at = null;
+    }
+
+    await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
