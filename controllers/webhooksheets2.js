@@ -10,7 +10,7 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbyLw7tUDMcx8tar
 const queue = [];
 let isProcessing = false;
 
-// Función para normalizar fechas: resta 3 horas y devuelve ISO sin milisegundos
+// Función para normalizar fechas: resta 3 horas y devuelve ISO con hora
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
   if (dateValue === null || dateValue === undefined) return null;
@@ -26,23 +26,59 @@ function normalizeDate(dateValue) {
   }
 }
 
+// Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
+function argentinaNowISO() {
+  const now = new Date();
+  const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+  return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+// Función para safe stringify (evita errores con objetos circulares)
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function(key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
-    // Convertir objetos grandes a JSON strings para evitar errores
     const processedData = { ...logData };
-    if (processedData.payload && typeof processedData.payload === 'object') {
-      processedData.payload = JSON.stringify(processedData.payload);
-    }
-    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
-      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
-    }
-    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
-      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
+
+    // Asegurar que payload, attempted_data y supabase_error sean strings
+    if (processedData.payload && typeof processedData.payload !== 'string') {
+      try {
+        processedData.payload = safeStringify(processedData.payload);
+      } catch (e) {
+        processedData.payload = String(processedData.payload);
+      }
     }
 
-    // NO enviar created_at, dejar que use el default de la base de datos
-    delete processedData.created_at;
+    if (processedData.attempted_data && typeof processedData.attempted_data !== 'string') {
+      try {
+        processedData.attempted_data = safeStringify(processedData.attempted_data);
+      } catch (e) {
+        processedData.attempted_data = String(processedData.attempted_data);
+      }
+    }
+
+    if (processedData.supabase_error && typeof processedData.supabase_error !== 'string') {
+      try {
+        processedData.supabase_error = safeStringify(processedData.supabase_error);
+      } catch (e) {
+        processedData.supabase_error = String(processedData.supabase_error);
+      }
+    }
+
+    // Establecer created_at con la hora actual de Argentina si no se proporciona
+    if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
+      processedData.created_at = argentinaNowISO();
+    }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
       headers: {
@@ -59,101 +95,220 @@ async function saveLog(logData) {
   }
 }
 
+// Helper universal que detecta el tipo de propiedad automáticamente
+function getValue(prop) {
+  if (!prop) return null;
+  
+  switch (prop.type) {
+    case 'title':
+    case 'rich_text':
+      return prop[prop.type]?.[0]?.plain_text || null;
+    
+    case 'number':
+      return prop.number ?? null;
+    
+    case 'select':
+      return prop.select?.name ?? null;
+    
+    case 'multi_select':
+      return prop.multi_select?.map(s => s.name).join(', ') || null;
+    
+    case 'date':
+      return normalizeDate(prop.date?.start);
+    
+    case 'checkbox':
+      return prop.checkbox ?? null;
+    
+    case 'url':
+      return prop.url ?? null;
+    
+    case 'email':
+      return prop.email ?? null;
+    
+    case 'phone_number':
+      return prop.phone_number ?? null;
+    
+    case 'formula':
+      if (prop.formula.type === 'string') return prop.formula.string;
+      if (prop.formula.type === 'number') return prop.formula.number;
+      if (prop.formula.type === 'boolean') return prop.formula.boolean;
+      if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
+      return null;
+    
+    case 'rollup':
+      if (prop.rollup.type === 'number') return prop.rollup.number;
+      if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
+      if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
+      return null;
+    
+    case 'people':
+      return prop.people?.[0]?.name ?? null;
+    
+    case 'files':
+      return prop.files?.[0]?.name ?? null;
+    
+    case 'created_time':
+    case 'last_edited_time':
+      return normalizeDate(prop[prop.type]);
+    
+    case 'created_by':
+    case 'last_edited_by':
+      return prop[prop.type]?.name ?? null;
+    
+    default:
+      return null;
+  }
+}
+
+function mapToSupabase(payload) {
+  const data = payload.data || payload;
+  const p = data.properties || {};
+
+  // Obtener GHL ID (puede ser fórmula o texto)
+  const ghlId = getValue(p['GHL ID']);
+  const finalId = (ghlId && ghlId.toString().trim() !== '') ? ghlId.toString() : data.id;
+
+  return {
+    id: finalId,
+    created_time: normalizeDate(data.created_time),
+    last_edited_time: normalizeDate(data.last_edited_time),
+    archived: data.archived ?? false,
+
+    // Identidad
+    nombre: getValue(p['Nombre']),
+    dni: getValue(p['Dni']),
+    mail: getValue(p['Mail']),
+    telefono: getValue(p['Telefono']),
+    whatsapp: getValue(p['WhatsApp']),
+    instagram: getValue(p['Instagram']),
+    usuario_ig: getValue(p['Usuario IG']),
+
+    // Clasificación
+    origen: getValue(p['Origen']),
+    primer_origen: getValue(p['Primer origen']),
+    etapa: getValue(p['Etapa']),
+    temperatura: getValue(p['Temperatura']),
+    calidad_lead: getValue(p['Calidad del lead']),
+    modelo_negocio: getValue(p['Modelo de negocio']),
+
+    // Marketing
+    utm_source: getValue(p['Utm_source']),
+    utm_medium: getValue(p['Utm_medium']),
+    utm_campaign: getValue(p['Utm_campaign']),
+    utm_content: getValue(p['Utm_content']),
+    utm_term: getValue(p['Utm_term']),
+    adname: getValue(p['Adname']),
+    adset: getValue(p['Adset']),
+    campaign: getValue(p['Campaign']),
+
+    // Responsables
+    responsable: getValue(p['Responsable']),
+    responsable_id: getValue(p['ID responsable']),
+    setter: getValue(p['Setter']),
+    closer: getValue(p['Closer']),
+
+    aplica: getValue(p['Aplica']),
+    lista_negra: getValue(p['Lista negra']),
+    recuperado: getValue(p['Recuperado']),
+    cliente_viejo: getValue(p['Cliente viejo']),
+    agendo: getValue(p['Agendo']),
+    respondio_apertura: getValue(p['Respondio apertura']),
+    confirmo_mensaje: getValue(p['Confirmo mensaje']),
+    llamada_meg: getValue(p['Llamada MEG']),
+
+    // Números
+    facturacion: getValue(p['Facturacion']),
+    facturacion_total: getValue(p['Facturacion total']),
+    cash_collected_total: getValue(p['Cash collected total']),
+    saldo: getValue(p['Saldo']),
+    inversion: getValue(p['Inversion']),
+    score: getValue(p['Score']),
+
+    // Fechas
+    fecha_llamada: getValue(p['Fecha de llamada']),
+    fecha_agenda: getValue(p['Fecha de agendamiento']),
+    fecha_venta: getValue(p['Ult fecha de venta'])
+  };
+}
+
 async function sendToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
   
-  // Helper para extraer texto de Notion (Rich Text o Title)
-  const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
-  
-  // TEST SIMPLIFICADO - Solo campos básicos
-  const row = {
-    id: getText(p['GHL ID']) || data.id,
-    nombre: getText(p['Nombre']),
-    created_time: normalizeDate(data.created_time),
-    last_edited_time: normalizeDate(data.last_edited_time),
-    archived: data.archived ?? false,
-    
-    // Identidad básica
-    dni: getText(p['Dni']),
-    mail: getText(p['Mail']),
-    telefono: getText(p['Telefono']),
-    whatsapp: getText(p['WhatsApp']),
-    instagram: getText(p['Instagram']),
-    usuario_ig: getText(p['Usuario IG']),
-    
-    // Clasificación
-    origen: getText(p['Origen']),
-    primer_origen: getText(p['Primer origen']),
-    etapa: getText(p['Etapa']),
-    temperatura: p['Temperatura']?.select?.name ?? null,
-    calidad_lead: getText(p['Calidad del lead']),
-    modelo_negocio: p['Modelo de negocio']?.select?.name ?? null,
-    
-    // Marketing
-    utm_source: getText(p['Utm_source']),
-    utm_medium: getText(p['Utm_medium']),
-    utm_campaign: getText(p['Utm_campaign']),
-    utm_content: getText(p['Utm_content']),
-    utm_term: getText(p['Utm_term']),
-    adname: getText(p['Adname']),
-    adset: getText(p['Adset']),
-    campaign: getText(p['Campaign']),
-    
-    // Responsables
-    responsable: p['Responsable']?.people?.[0]?.name ?? null,
-    responsable_id: getText(p['ID responsable']),
-    setter: getText(p['Setter']),
-    closer: getText(p['Closer']),
-    
-    // Estados
-    aplica: p['Aplica']?.select?.name ?? null,
-    lista_negra: p['Lista negra']?.checkbox ?? false,
-    recuperado: p['Recuperado']?.select?.name ?? null,
-    cliente_viejo: p['Cliente viejo']?.checkbox ?? false,
-    agendo: p['Agendo']?.select?.name ?? null,
-    respondio_apertura: p['Respondio apertura']?.select?.name ?? null,
-    confirmo_mensaje: p['Confirmo mensaje']?.select?.name ?? null,
-    llamada_meg: p['Llamada MEG']?.select?.name ?? null,
-    
-    // Números - extraer de rich_text si no son number type
-// Números - extraer de rich_text si no son number type
-facturacion: p['Facturacion']?.number ?? null,
-facturacion_total: p['Facturacion total']?.number ?? null,
-cash_collected_total: p['Cash collected total']?.number ?? null,
-saldo: p['Saldo']?.number ?? null,
-inversion: p['Inversion']?.number ?? null,
-score: p['Score']?.number ?? null,
-    
-    // Fechas
-    fecha_llamada: normalizeDate(p['Fecha de llamada']?.date?.start),
-    fecha_agenda: normalizeDate(p['Fecha de agendamiento']?.date?.start),
-    fecha_venta: normalizeDate(p['Ult fecha de venta']?.date?.start),
-    
-    extra: payload
+  // Helper para mostrar datos de forma legible
+  const logSection = (title, data) => {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`📌 ${title}`);
+    console.log('='.repeat(60));
+    if (typeof data === 'object' && data !== null) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      console.log(data);
+    }
   };
   
-  console.log('🧪 Datos a enviar:', JSON.stringify(row, null, 2));
+  // ========== DATOS QUE LLEGAN DE NOTION ==========
+  logSection('DATOS QUE LLEGAN DE NOTION (CRM)', {
+    'ID de Notion': data.id,
+    'Nombre del Lead': getValue(p['Nombre']),
+    'GHL ID (raw)': p['GHL ID'],
+    'GHL ID (extraído)': getValue(p['GHL ID']),
+    'Todas las propiedades disponibles': Object.keys(p).sort(),
+  });
   
-  // Validar que el ID sea válido
+  // Mostrar propiedades importantes de forma individual
+  console.log('\n📋 PROPIEDADES IMPORTANTES DE NOTION:');
+  const importantProps = ['GHL ID', 'Aplica', 'Agendo', 'Respondio apertura', 'Confirmo mensaje', 'Llamada MEG'];
+  importantProps.forEach(propName => {
+    const prop = p[propName];
+    if (prop) {
+      console.log(`\n  🔹 ${propName}:`);
+      console.log(`     Tipo: ${prop.type || 'N/A'}`);
+      console.log(`     Valor extraído: ${getValue(prop) ?? 'null'}`);
+      console.log(`     Valor completo:`, JSON.stringify(prop, null, 4));
+    } else {
+      console.log(`\n  🔹 ${propName}: NO EXISTE en las propiedades`);
+    }
+  });
+  
+  const row = mapToSupabase(payload);
+  
+  // ========== DATOS MAPEADOS PARA SUPABASE ==========
+  logSection('DATOS MAPEADOS PARA SUPABASE', row);
+  
+  // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'CRM',
       type: 'invalid_id',
       message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
-      ghl_id: getText(p['GHL ID']),
+      ghl_id: getValue(p['GHL ID']),
       payload: payload
     };
     
     await saveLog(errorLog);
-    console.log('❌ ERROR: ID INVÁLIDO');
+    
+    logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
+      'GHL ID recibido': getValue(p['GHL ID']),
+      'ID de Notion': data.id,
+      'ID final calculado': row.id,
+      'Motivo': 'El ID es null, undefined o cadena vacía'
+    });
     return;
   }
+  
+  // ========== INTENTANDO GUARDAR EN SUPABASE ==========
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`🚀 INTENTANDO GUARDAR EN SUPABASE`);
+  console.log('='.repeat(60));
+  console.log(`📤 URL: ${SUPABASE_URL}/rest/v1/leads_raw`);
+  console.log(`📤 ID del registro: ${row.id}`);
+  console.log(`📤 Nombre: ${row.nombre || 'Sin nombre'}`);
+  console.log(`📤 Total de campos: ${Object.keys(row).length}`);
 
   try {
-    console.log('🚀 Enviando a:', `${SUPABASE_URL}/rest/v1/leads_raw`);
-    
+    const startTime = Date.now();
     const response = await axios.post(`${SUPABASE_URL}/rest/v1/leads_raw`, row, {
       headers: {
         apikey: SUPABASE_KEY,
@@ -163,46 +318,70 @@ score: p['Score']?.number ?? null,
       },
       params: { on_conflict: 'id' }
     });
+    const duration = Date.now() - startTime;
     
-    console.log('✅ ÉXITO: Registro guardado en Supabase');
-    
-    await saveLog({
+    // ========== ÉXITO EN SUPABASE ==========
+    const successLog = {
       webhook_type: 'CRM',
       type: 'success',
       message: 'Registro guardado exitosamente',
       http_status: response.status,
+      supabase_error: { duration_ms: duration },
       notion_id: data.id,
       ghl_id: row.id,
       attempted_data: row,
       payload: payload
+    };
+    
+    await saveLog(successLog);
+    
+    logSection('✅ ÉXITO: REGISTRO GUARDADO EN SUPABASE', {
+      'Status HTTP': response.status,
+      'Tiempo de respuesta': `${duration}ms`,
+      'ID guardado': row.id,
+      'Respuesta de Supabase': response.data,
+      'Headers de respuesta': response.headers
     });
     
   } catch (err) {
-    console.error('❌ ERROR AL GUARDAR:', err.message);
-    console.error('Status:', err.response?.status);
-    console.error('Data:', JSON.stringify(err.response?.data, null, 2));
-    
-    const debugInfo = {
-      error_message: err.message,
-      supabase_url: SUPABASE_URL,
-      url_completa: `${SUPABASE_URL}/rest/v1/leads_raw`,
-      http_status: err.response?.status,
-      supabase_error: err.response?.data,
-      id_intentado: row.id,
-      nombre_intentado: row.nombre
-    };
-    
-    await saveLog({
+    // ========== ERROR AL GUARDAR EN SUPABASE ==========
+    const errorLog = {
       webhook_type: 'CRM',
       type: 'supabase_error',
-      message: JSON.stringify(debugInfo, null, 2),
+      message: err.message,
       http_status: err.response?.status,
-      supabase_error: err.response?.data,
+      supabase_error: err.response?.data || {},
       notion_id: data.id,
       ghl_id: row.id,
       attempted_data: row,
       payload: payload
+    };
+    
+    await saveLog(errorLog);
+    
+    logSection('❌ ERROR AL GUARDAR EN SUPABASE', {
+      'Mensaje de error': err.message,
+      'Código de estado HTTP': err.response?.status,
+      'Datos del error': err.response?.data,
+      'URL intentada': `${SUPABASE_URL}/rest/v1/leads_raw`,
+      'ID que intentamos guardar': row.id,
+      'Datos que intentamos enviar': row
     });
+    
+    if (err.response?.data) {
+      console.log('\n📋 DETALLES DEL ERROR DE SUPABASE:');
+      console.log(JSON.stringify(err.response.data, null, 2));
+    }
+    
+    if (err.response?.status === 400) {
+      console.log('\n⚠️  Posible causa: Datos inválidos o formato incorrecto');
+    } else if (err.response?.status === 401 || err.response?.status === 403) {
+      console.log('\n⚠️  Posible causa: Problema de autenticación con Supabase');
+    } else if (err.response?.status === 409) {
+      console.log('\n⚠️  Posible causa: Conflicto con registro existente');
+    } else if (err.response?.status === 500) {
+      console.log('\n⚠️  Posible causa: Error del servidor de Supabase');
+    }
   }
 }
 
@@ -211,36 +390,119 @@ async function processQueue() {
   isProcessing = true;
 
   const { payload } = queue.shift();
+  
+  // Procesar Google Sheets (no bloqueante)
   try {
     console.log("⏳ Procesando Sheets...");
-    await axios.post(googleScriptUrl, payload, { headers: { 'Content-Type': 'application/json' } });
+    await axios.post(googleScriptUrl, payload, { 
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 30000
+    });
+    console.log("✅ Google Sheets procesado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al procesar Google Sheets:", error.message);
+    console.error("⚠️  Continuando con Supabase de todos modos...");
     
+    // Log del error de Sheets
+    await saveLog({
+      webhook_type: 'CRM',
+      type: 'google_sheets_error',
+      message: error.message,
+      http_status: error.response?.status,
+      payload: payload
+    });
+  }
+  
+  // Procesar Supabase (independiente de Sheets)
+  try {
     console.log("⏳ Procesando Supabase...");
     await sendToSupabase(payload);
   } catch (error) {
-    console.error("❌ Error en flujo:", error.message);
+    console.error("❌ Error al procesar Supabase:", error.message);
     
+    // Log del error de Supabase
     await saveLog({
       webhook_type: 'CRM',
-      type: 'process_queue_error',
+      type: 'supabase_process_error',
       message: error.message,
       payload: payload
     });
-  } finally {
-    isProcessing = false;
-    if (queue.length > 0) setImmediate(processQueue);
   }
+  
+  isProcessing = false;
+  if (queue.length > 0) setImmediate(processQueue);
 }
 
 exports.handleWebhook = async (req, res) => {
-  console.log("\n" + "=".repeat(60));
-  console.log("📥 WEBHOOK RECIBIDO - CRM");
-  console.log("=".repeat(60));
-  
-  const data = req.body?.data || req.body;
-  console.log("🆔 ID de Notion:", data?.id || 'No disponible');
-  
-  res.status(200).json({ status: "ok" });
-  queue.push({ payload: req.body });
-  processQueue();
+  try {
+    console.log("\n" + "=".repeat(60));
+    console.log("📥 WEBHOOK RECIBIDO (CRM)");
+    console.log("=".repeat(60));
+    console.log("⏰ Timestamp:", new Date().toISOString());
+    
+    // Log temprano para verificar que el payload llegó
+    const receivedBody = req.body;
+    const size = (() => { try { return JSON.stringify(receivedBody).length; } catch(e) { return 'N/A'; }})();
+    console.log("📦 Tamaño del payload recibido:", size);
+    
+    const payload = req.body;
+    const data = payload.data || payload;
+    const p = data?.properties || {};
+    
+    console.log("🆔 ID de Notion:", data?.id || 'No disponible');
+    console.log("📝 Nombre del lead:", getValue(p['Nombre']) || 'No disponible');
+    
+    // Validar payload
+    const isValidPayload = 
+      (payload.data && payload.data.object === 'page') ||
+      (payload.type === 'page.deleted' && payload.entity);
+
+    if (!isValidPayload) {
+      console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
+
+      const errorLog = {
+        webhook_type: 'CRM',
+        type: 'invalid_payload',
+        message: 'Payload no válido - no es un evento reconocido',
+        payload: payload
+      };
+
+      await saveLog(errorLog);
+
+      return res.status(400).json({ 
+        error: "Payload inválido",
+        received: payload.type || 'unknown'
+      });
+    }
+    
+    console.log("\n📋 Payload completo (JSON):");
+    try {
+      console.log(JSON.stringify(req.body, null, 2));
+    } catch(e) {
+      console.log('No se pudo mostrar payload completo:', e.message);
+    }
+    
+    res.status(200).json({ 
+      status: "ok",
+      message: "Webhook de CRM recibido y encolado",
+      receivedAt: new Date().toISOString()
+    });
+    
+    try {
+      queue.push({ payload: req.body });
+      processQueue();
+    } catch (err) {
+      console.error('❌ Error al encolar payload:', err.message);
+      const errorLog = {
+        webhook_type: 'CRM',
+        type: 'enqueue_error',
+        message: err.message,
+        payload: req.body
+      };
+      await saveLog(errorLog);
+    }
+  } catch (err) {
+    console.error('❌ Error en handler CRM:', err.message);
+    return res.status(500).json({ error: 'Error interno en el handler CRM' });
+  }
 };
