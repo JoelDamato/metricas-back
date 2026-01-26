@@ -7,27 +7,20 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-a
 const queue = [];
 let isProcessing = false;
 
-// Función para normalizar fechas al formato de Supabase (date)
+// Función para normalizar fechas al formato de Supabase (timestamp)
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
-  
-  // Si ya es null o undefined, retornar null
   if (dateValue === null || dateValue === undefined) return null;
-  
-  // Si es string vacío, retornar null
   if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
   
   try {
-    // Intentar parsear la fecha
     const date = new Date(dateValue);
-    
-    // Verificar que sea una fecha válida
     if (isNaN(date.getTime())) return null;
     
-    // Ajustar restando 3 horas
+    // Ajustar restando 3 horas (UTC-3 para Argentina)
     const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
-
-    // Retornar ISO completo con hora (supabase timestamp) sin milisegundos
+    
+    // Retornar ISO completo con hora sin milisegundos
     return adjusted.toISOString().replace(/\.\d{3}Z$/, 'Z');
   } catch (error) {
     console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
@@ -42,22 +35,49 @@ function argentinaNowISO() {
   return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+// Función para safe stringify (evita errores con objetos circulares)
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function(key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
-    // Convertir objetos grandes a JSON strings para evitar errores
     const processedData = { ...logData };
-    if (processedData.payload && typeof processedData.payload === 'object') {
-      processedData.payload = JSON.stringify(processedData.payload);
-    }
-    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
-      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
-    }
-    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
-      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
+
+    // Asegurar que payload, attempted_data y supabase_error sean strings
+    if (processedData.payload && typeof processedData.payload !== 'string') {
+      try {
+        processedData.payload = safeStringify(processedData.payload);
+      } catch (e) {
+        processedData.payload = String(processedData.payload);
+      }
     }
 
-    // Siempre enviar created_at: null si no se proporciona (Supabase puede setearlo automáticamente si está configurado)
+    if (processedData.attempted_data && typeof processedData.attempted_data !== 'string') {
+      try {
+        processedData.attempted_data = safeStringify(processedData.attempted_data);
+      } catch (e) {
+        processedData.attempted_data = String(processedData.attempted_data);
+      }
+    }
+
+    if (processedData.supabase_error && typeof processedData.supabase_error !== 'string') {
+      try {
+        processedData.supabase_error = safeStringify(processedData.supabase_error);
+      } catch (e) {
+        processedData.supabase_error = String(processedData.supabase_error);
+      }
+    }
+
+    // Establecer created_at con la hora actual de Argentina si no se proporciona
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
       processedData.created_at = argentinaNowISO();
     }
@@ -74,78 +94,77 @@ async function saveLog(logData) {
     console.error('❌ Error al guardar log:', err.message);
     console.error('📋 Status:', err.response?.status);
     console.error('📋 Error details:', JSON.stringify(err.response?.data, null, 2));
-    console.error('📋 Datos que intentamos enviar:', JSON.stringify(logData, null, 2));
+  }
+}
+
+// Helper universal que detecta el tipo de propiedad automáticamente
+function getValue(prop) {
+  if (!prop) return null;
+  
+  switch (prop.type) {
+    case 'title':
+    case 'rich_text':
+      return prop[prop.type]?.[0]?.plain_text || null;
+    
+    case 'number':
+      return prop.number ?? null;
+    
+    case 'select':
+      return prop.select?.name ?? null;
+    
+    case 'multi_select':
+      return prop.multi_select?.map(s => s.name).join(', ') || null;
+    
+    case 'date':
+      return normalizeDate(prop.date?.start);
+    
+    case 'checkbox':
+      return prop.checkbox ?? null;
+    
+    case 'url':
+      return prop.url ?? null;
+    
+    case 'email':
+      return prop.email ?? null;
+    
+    case 'phone_number':
+      return prop.phone_number ?? null;
+    
+    case 'formula':
+      if (prop.formula.type === 'string') return prop.formula.string;
+      if (prop.formula.type === 'number') return prop.formula.number;
+      if (prop.formula.type === 'boolean') return prop.formula.boolean;
+      if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
+      return null;
+    
+    case 'rollup':
+      if (prop.rollup.type === 'number') return prop.rollup.number;
+      if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
+      if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
+      return null;
+    
+    case 'people':
+      return prop.people?.[0]?.name ?? null;
+    
+    case 'files':
+      return prop.files?.[0]?.name ?? null;
+    
+    case 'created_time':
+    case 'last_edited_time':
+      return normalizeDate(prop[prop.type]);
+    
+    case 'created_by':
+    case 'last_edited_by':
+      return prop[prop.type]?.name ?? null;
+    
+    default:
+      return null;
   }
 }
 
 function mapToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
-
-  // Helper universal que detecta el tipo de propiedad automáticamente
-  const getValue = (prop) => {
-    if (!prop) return null;
-    
-    switch (prop.type) {
-      case 'title':
-      case 'rich_text':
-        return prop[prop.type]?.[0]?.plain_text || null;
-      
-      case 'number':
-        return prop.number ?? null;
-      
-      case 'select':
-        return prop.select?.name ?? null;
-      
-      case 'multi_select':
-        return prop.multi_select?.map(s => s.name).join(', ') || null;
-      
-      case 'date':
-        return normalizeDate(prop.date?.start);
-      
-      case 'checkbox':
-        return prop.checkbox ?? null;
-      
-      case 'url':
-        return prop.url ?? null;
-      
-      case 'email':
-        return prop.email ?? null;
-      
-      case 'phone_number':
-        return prop.phone_number ?? null;
-      
-      case 'formula':
-        if (prop.formula.type === 'string') return prop.formula.string;
-        if (prop.formula.type === 'number') return prop.formula.number;
-        if (prop.formula.type === 'boolean') return prop.formula.boolean;
-        if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
-        return null;
-      
-      case 'rollup':
-        if (prop.rollup.type === 'number') return prop.rollup.number;
-        if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
-        if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
-        return null;
-      
-      case 'people':
-        return prop.people?.[0]?.name ?? null;
-      
-      case 'files':
-        return prop.files?.[0]?.name ?? null;
-      
-      case 'created_time':
-      case 'last_edited_time':
-        return normalizeDate(prop[prop.type]);
-      
-      case 'created_by':
-      case 'last_edited_by':
-        return prop[prop.type]?.name ?? null;
-      
-      default:
-        return null;
-    }
-  };
 
   // Obtener GHL ID (puede ser fórmula o texto)
   const ghlId = getValue(p['GHL ID']);
@@ -237,71 +256,6 @@ async function sendToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
   
-  // Helper universal que detecta el tipo de propiedad automáticamente
-  const getValue = (prop) => {
-    if (!prop) return null;
-    
-    switch (prop.type) {
-      case 'title':
-      case 'rich_text':
-        return prop[prop.type]?.[0]?.plain_text || null;
-      
-      case 'number':
-        return prop.number ?? null;
-      
-      case 'select':
-        return prop.select?.name ?? null;
-      
-      case 'multi_select':
-        return prop.multi_select?.map(s => s.name).join(', ') || null;
-      
-      case 'date':
-        return normalizeDate(prop.date?.start);
-      
-      case 'checkbox':
-        return prop.checkbox ?? null;
-      
-      case 'url':
-        return prop.url ?? null;
-      
-      case 'email':
-        return prop.email ?? null;
-      
-      case 'phone_number':
-        return prop.phone_number ?? null;
-      
-      case 'formula':
-        if (prop.formula.type === 'string') return prop.formula.string;
-        if (prop.formula.type === 'number') return prop.formula.number;
-        if (prop.formula.type === 'boolean') return prop.formula.boolean;
-        if (prop.formula.type === 'date') return normalizeDate(prop.formula.date?.start);
-        return null;
-      
-      case 'rollup':
-        if (prop.rollup.type === 'number') return prop.rollup.number;
-        if (prop.rollup.type === 'date') return normalizeDate(prop.rollup.date?.start);
-        if (prop.rollup.type === 'array') return prop.rollup.array?.length || 0;
-        return null;
-      
-      case 'people':
-        return prop.people?.[0]?.name ?? null;
-      
-      case 'files':
-        return prop.files?.[0]?.name ?? null;
-      
-      case 'created_time':
-      case 'last_edited_time':
-        return normalizeDate(prop[prop.type]);
-      
-      case 'created_by':
-      case 'last_edited_by':
-        return prop[prop.type]?.name ?? null;
-      
-      default:
-        return null;
-    }
-  };
-  
   // Helper para mostrar datos de forma legible
   const logSection = (title, data) => {
     console.log(`\n${'='.repeat(60)}`);
@@ -326,7 +280,7 @@ async function sendToSupabase(payload) {
   
   // Mostrar propiedades importantes de forma individual
   console.log('\n📋 PROPIEDADES IMPORTANTES DE COMPROBANTES:');
-  const importantProps = ['GHL ID', 'Identificador', 'Cliente', 'Comprobante', 'Estado', 'Facturacion', 'Cash collected total'];
+  const importantProps = ['GHL ID', 'Cliente', 'Comprobante', 'Estado', 'Facturacion', 'Cash collected Total'];
   importantProps.forEach(propName => {
     const prop = p[propName];
     if (prop) {
@@ -352,8 +306,7 @@ async function sendToSupabase(payload) {
       message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getValue(p['GHL ID']),
-      payload: payload,
-      created_at: new Date().toISOString()
+      payload: payload
     };
     
     await saveLog(errorLog);
@@ -393,14 +346,13 @@ async function sendToSupabase(payload) {
     const successLog = {
       webhook_type: 'com',
       type: 'success',
-      message: null,
+      message: 'Comprobante guardado exitosamente',
       http_status: response.status,
-      supabase_error: null,
+      supabase_error: { duration_ms: duration },
       notion_id: data.id,
       ghl_id: row.id,
       attempted_data: row,
-      payload: payload,
-      created_at: argentinaNowISO()
+      payload: payload
     };
 
     await saveLog(successLog);
@@ -420,12 +372,11 @@ async function sendToSupabase(payload) {
       type: 'supabase_error',
       message: err.message,
       http_status: err.response?.status,
-      supabase_error: err.response?.data,
+      supabase_error: err.response?.data || {},
       notion_id: data.id,
       ghl_id: row.id,
       attempted_data: row,
-      payload: payload,
-      created_at: argentinaNowISO()
+      payload: payload
     };
 
     await saveLog(errorLog);
@@ -461,73 +412,120 @@ async function processQueue() {
   isProcessing = true;
 
   const { payload } = queue.shift();
+  
+  // Procesar Google Sheets (no bloqueante)
   try {
     console.log("⏳ Procesando Sheets (Comprobantes)...");
     await axios.post(googleScriptUrl, payload, { 
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000
     });
+    console.log("✅ Google Sheets procesado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al procesar Google Sheets:", error.message);
+    console.error("⚠️  Continuando con Supabase de todos modos...");
     
+    // Log del error de Sheets
+    await saveLog({
+      webhook_type: 'com',
+      type: 'google_sheets_error',
+      message: error.message,
+      http_status: error.response?.status,
+      payload: payload
+    });
+  }
+  
+  // Procesar Supabase (independiente de Sheets)
+  try {
     console.log("⏳ Procesando Supabase (Comprobantes)...");
     await sendToSupabase(payload);
   } catch (error) {
-    console.error("❌ Error en flujo de comprobantes:", error.message);
+    console.error("❌ Error al procesar Supabase:", error.message);
     
-    // Log de error general en el flujo
-    const errorLog = {
+    // Log del error de Supabase
+    await saveLog({
       webhook_type: 'com',
-      type: 'process_queue_error',
+      type: 'supabase_process_error',
       message: error.message,
-      payload: payload,
-      created_at: new Date().toISOString()
-    };
-    
-    await saveLog(errorLog);
-  } finally {
-    isProcessing = false;
-    if (queue.length > 0) setImmediate(processQueue);
+      payload: payload
+    });
   }
+  
+  isProcessing = false;
+  if (queue.length > 0) setImmediate(processQueue);
 }
 
 exports.handleWebhook = async (req, res) => {
-  console.log("\n" + "=".repeat(60));
-  console.log("📥 WEBHOOK RECIBIDO (COMPROBANTES)");
-  console.log("=".repeat(60));
-  console.log("⏰ Timestamp:", new Date().toISOString());
-  console.log("📦 Tamaño del payload:", JSON.stringify(req.body).length, "caracteres");
-  
-  const payload = req.body;
-  const data = payload.data || payload;
-  const p = data?.properties || {};
-  
-  console.log("🆔 ID de Notion:", data?.id || 'No disponible');
-  console.log("📝 Cliente:", p['Cliente']?.rich_text?.[0]?.plain_text || 
-              p['Cliente']?.title?.[0]?.plain_text || 'No disponible');
-  console.log("📄 Comprobante:", p['Comprobante']?.rich_text?.[0]?.plain_text || 
-              p['Comprobante']?.title?.[0]?.plain_text || 'No disponible');
-  
-  // Validar payload
-  const isValidPayload = 
-    (payload.data && payload.data.object === 'page') ||
-    (payload.type === 'page.deleted' && payload.entity);
+  try {
+    console.log("\n" + "=".repeat(60));
+    console.log("📥 WEBHOOK RECIBIDO (COMPROBANTES)");
+    console.log("=".repeat(60));
+    console.log("⏰ Timestamp:", new Date().toISOString());
+    
+    // Log temprano para verificar que el payload llegó
+    const receivedBody = req.body;
+    const size = (() => { try { return JSON.stringify(receivedBody).length; } catch(e) { return 'N/A'; }})();
+    console.log("📦 Tamaño del payload recibido:", size);
+    
+    const payload = req.body;
+    const data = payload.data || payload;
+    const p = data?.properties || {};
+    
+    console.log("🆔 ID de Notion:", data?.id || 'No disponible');
+    console.log("📝 Cliente:", getValue(p['Cliente']) || 'No disponible');
+    console.log("📄 Comprobante:", getValue(p['Comprobante']) || 'No disponible');
+    
+    // Validar payload
+    const isValidPayload = 
+      (payload.data && payload.data.object === 'page') ||
+      (payload.type === 'page.deleted' && payload.entity);
 
-  if (!isValidPayload) {
-    console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
-    return res.status(400).json({ 
-      error: "Payload inválido",
-      received: payload.type || 'unknown'
+    if (!isValidPayload) {
+      console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
+
+      const errorLog = {
+        webhook_type: 'com',
+        type: 'invalid_payload',
+        message: 'Payload no válido - no es un evento reconocido',
+        payload: payload
+      };
+
+      await saveLog(errorLog);
+
+      return res.status(400).json({ 
+        error: "Payload inválido",
+        received: payload.type || 'unknown'
+      });
+    }
+    
+    console.log("\n📋 Payload completo (JSON):");
+    try {
+      console.log(JSON.stringify(req.body, null, 2));
+    } catch(e) {
+      console.log('No se pudo mostrar payload completo:', e.message);
+    }
+    
+    res.status(200).json({ 
+      status: "ok",
+      message: "Webhook de comprobantes recibido y encolado",
+      receivedAt: new Date().toISOString()
     });
+    
+    try {
+      queue.push({ payload: req.body });
+      processQueue();
+    } catch (err) {
+      console.error('❌ Error al encolar payload:', err.message);
+      const errorLog = {
+        webhook_type: 'com',
+        type: 'enqueue_error',
+        message: err.message,
+        payload: req.body
+      };
+      await saveLog(errorLog);
+    }
+  } catch (err) {
+    console.error('❌ Error en handler de Comprobantes:', err.message);
+    return res.status(500).json({ error: 'Error interno en el handler de Comprobantes' });
   }
-
-  console.log("\n📋 Payload completo (JSON):");
-  console.log(JSON.stringify(req.body, null, 2));
-  
-  res.status(200).json({ 
-    status: "ok",
-    message: "Webhook de comprobantes recibido",
-    receivedAt: new Date().toISOString()
-  });
-  
-  queue.push({ payload: req.body });
-  processQueue();
 };
