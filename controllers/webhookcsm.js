@@ -23,19 +23,45 @@ function normalizeDate(dateValue) {
   }
 }
 
-// Función para guardar logs en Supabase
+// Función para guardar logs en Supabase (safe stringify y created_at Argentina)
+function safeStringify(obj) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function(key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
 async function saveLog(logData) {
   try {
-    // Convertir objetos grandes a JSON strings para evitar problemas al insertar
     const processedData = { ...logData };
-    if (processedData.payload && typeof processedData.payload === 'object') {
-      processedData.payload = JSON.stringify(processedData.payload);
+
+    // Asegurar que payload, attempted_data y supabase_error sean strings (manejar objetos grandes o circulares)
+    if (processedData.payload && typeof processedData.payload !== 'string') {
+      try {
+        processedData.payload = safeStringify(processedData.payload);
+      } catch (e) {
+        processedData.payload = String(processedData.payload);
+      }
     }
-    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
-      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
+
+    if (processedData.attempted_data && typeof processedData.attempted_data !== 'string') {
+      try {
+        processedData.attempted_data = safeStringify(processedData.attempted_data);
+      } catch (e) {
+        processedData.attempted_data = String(processedData.attempted_data);
+      }
     }
-    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
-      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
+
+    if (processedData.supabase_error && typeof processedData.supabase_error !== 'string') {
+      try {
+        processedData.supabase_error = safeStringify(processedData.supabase_error);
+      } catch (e) {
+        processedData.supabase_error = String(processedData.supabase_error);
+      }
     }
 
     // Establecer created_at con la hora actual de Argentina (UTC-3) si no se proporciona
