@@ -4,7 +4,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // URL de tu App Script desplegado como endpoint web
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbyLw7tUDMcx8taru71YQBnF3SVvKzvjknL7kuTqnnvw-n3MXRFNVx5eMxog28WdDklM/exec";
+
+const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzbjJ8jT6XYDbwls0zWcCJzaerciuqsII9KU9oWXY8t5tVfXz-vZ9DNuqoSFYB2J4jmFg/exec";
 
 // Cola en memoria para los envíos
 const queue = [];
