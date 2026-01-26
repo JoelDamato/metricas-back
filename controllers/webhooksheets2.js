@@ -26,6 +26,13 @@ function normalizeDate(dateValue) {
   }
 }
 
+// Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
+function argentinaNowISO() {
+  const now = new Date();
+  const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+  return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
@@ -43,9 +50,7 @@ async function saveLog(logData) {
 
     // Siempre enviar created_at: null si no se proporciona
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      const now = new Date();
-      const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
-      processedData.created_at = argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+      processedData.created_at = argentinaNowISO();
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
@@ -206,13 +211,13 @@ async function sendToSupabase(payload) {
   // Validar que el ID sea válido antes de enviar
   if (!row.id || row.id === '') {
     const errorLog = {
-      webhook_type: 'sheets2',
+      webhook_type: 'CRM',
       type: 'invalid_id',
       message: 'El ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getText(p['GHL ID']),
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
     
     await saveLog(errorLog);
@@ -250,7 +255,7 @@ async function sendToSupabase(payload) {
     
     // ========== ÉXITO EN SUPABASE ==========
     const successLog = {
-      webhook_type: 'sheets2',
+      webhook_type: 'CRM',
       type: 'success',
       message: null,
       http_status: response.status,
@@ -259,7 +264,7 @@ async function sendToSupabase(payload) {
       ghl_id: row.id,
       attempted_data: row,
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
     
     await saveLog(successLog);
@@ -275,7 +280,7 @@ async function sendToSupabase(payload) {
   } catch (err) {
     // ========== ERROR AL GUARDAR EN SUPABASE ==========
     const errorLog = {
-      webhook_type: 'sheets2',
+      webhook_type: 'CRM',
       type: 'supabase_error',
       message: err.message,
       http_status: err.response?.status,
@@ -284,7 +289,7 @@ async function sendToSupabase(payload) {
       ghl_id: row.id,
       attempted_data: row,
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
     
     await saveLog(errorLog);
@@ -331,13 +336,13 @@ async function processQueue() {
     
     // Log de error general en el flujo
     const errorLog = {
-      webhook_type: 'sheets2',
+      webhook_type: 'CRM',
       type: 'process_queue_error',
       message: error.message,
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
-    
+
     await saveLog(errorLog);
   } finally {
     isProcessing = false;

@@ -35,6 +35,13 @@ function normalizeDate(dateValue) {
   }
 }
 
+// Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
+function argentinaNowISO() {
+  const now = new Date();
+  const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+  return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
@@ -52,10 +59,7 @@ async function saveLog(logData) {
 
     // Siempre enviar created_at: null si no se proporciona (Supabase puede setearlo automáticamente si está configurado)
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      const now = new Date();
-      const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
-      // Formato ISO sin milisegundos
-      processedData.created_at = argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+      processedData.created_at = argentinaNowISO();
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
@@ -396,9 +400,9 @@ async function sendToSupabase(payload) {
       ghl_id: row.id,
       attempted_data: row,
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
-    
+
     await saveLog(successLog);
     
     logSection('✅ ÉXITO: COMPROBANTE GUARDADO EN SUPABASE', {
@@ -421,9 +425,9 @@ async function sendToSupabase(payload) {
       ghl_id: row.id,
       attempted_data: row,
       payload: payload,
-      created_at: new Date().toISOString()
+      created_at: argentinaNowISO()
     };
-    
+
     await saveLog(errorLog);
     
     logSection('❌ ERROR AL GUARDAR COMPROBANTE EN SUPABASE', {

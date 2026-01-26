@@ -26,8 +26,19 @@ function normalizeDate(dateValue) {
 // Función para guardar logs en Supabase
 async function saveLog(logData) {
   try {
-    // NO convertir a strings - dejar como objetos para jsonb
+    // Convertir objetos grandes a JSON strings para evitar problemas al insertar
     const processedData = { ...logData };
+    if (processedData.payload && typeof processedData.payload === 'object') {
+      processedData.payload = JSON.stringify(processedData.payload);
+    }
+    if (processedData.attempted_data && typeof processedData.attempted_data === 'object') {
+      processedData.attempted_data = JSON.stringify(processedData.attempted_data);
+    }
+    if (processedData.supabase_error && typeof processedData.supabase_error === 'object') {
+      processedData.supabase_error = JSON.stringify(processedData.supabase_error);
+    }
+
+    // Establecer created_at con la hora actual de Argentina (UTC-3) si no se proporciona
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
       const now = new Date();
       const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
