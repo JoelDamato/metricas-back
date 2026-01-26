@@ -236,9 +236,9 @@ async function sendToSupabase(payload) {
   console.log(`🚀 INTENTANDO GUARDAR EN SUPABASE`);
   console.log('='.repeat(60));
   console.log(`📤 URL: ${SUPABASE_URL}/rest/v1/leads_raw`);
-  console.log(`📤 ID del registro: ${row.id}`);
-  console.log(`📤 Nombre: ${row.nombre || 'Sin nombre'}`);
-  console.log(`📤 Total de campos: ${Object.keys(row).length}`);
+  console.log('🔍 DEBUG - URL completa:', `${SUPABASE_URL}/rest/v1/leads_raw`);
+  console.log('🔍 DEBUG - SUPABASE_URL:', SUPABASE_URL);
+  console.log('🔍 DEBUG - Headers apikey:', SUPABASE_KEY?.substring(0, 30) + '...');
 
   try {
     const startTime = Date.now();
