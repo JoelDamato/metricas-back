@@ -29,7 +29,9 @@ async function saveLog(logData) {
     // NO convertir a strings - dejar como objetos para jsonb
     const processedData = { ...logData };
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      processedData.created_at = null;
+      const now = new Date();
+      const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+      processedData.created_at = argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {

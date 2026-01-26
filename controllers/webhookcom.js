@@ -52,7 +52,10 @@ async function saveLog(logData) {
 
     // Siempre enviar created_at: null si no se proporciona (Supabase puede setearlo automáticamente si está configurado)
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      processedData.created_at = null;
+      const now = new Date();
+      const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+      // Formato ISO sin milisegundos
+      processedData.created_at = argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {
