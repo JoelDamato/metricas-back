@@ -458,54 +458,84 @@ async function processQueue() {
 }
 
 exports.handleWebhook = async (req, res) => {
-  console.log("\n" + "=".repeat(60));
-  console.log("📥 WEBHOOK RECIBIDO (CSM)");
-  console.log("=".repeat(60));
-  console.log("⏰ Timestamp:", new Date().toISOString());
-  console.log("📦 Tamaño del payload:", JSON.stringify(req.body).length, "caracteres");
-  
-  const payload = req.body;
-  const data = payload.data || payload;
-  const p = data?.properties || {};
-  
-  console.log("🆔 ID de Notion:", data?.id || 'No disponible');
-  console.log("📝 Nombre:", p['Nombre']?.rich_text?.[0]?.plain_text || 
-              p['Nombre']?.title?.[0]?.plain_text || 'No disponible');
-  console.log("📧 Mail:", p['Mail']?.email || 'No disponible');
-  
-  // Validar payload
-  const isValidPayload = 
-    (payload.data && payload.data.object === 'page') ||
-    (payload.type === 'page.deleted' && payload.entity);
+  try {
+    console.log("\n" + "=".repeat(60));
+    console.log("📥 WEBHOOK RECIBIDO (CSM)");
+    console.log("=".repeat(60));
+    console.log("⏰ Timestamp:", new Date().toISOString());
 
-  if (!isValidPayload) {
-    console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
-    
-    // Log de payload inválido
-    const errorLog = {
-      webhook_type: 'csm',
-      type: 'invalid_payload',
-      message: 'Payload no válido - no es un evento reconocido',
-      payload: payload  // objeto, no string
-    };
-    
-    await saveLog(errorLog);
-    
-    return res.status(400).json({ 
-      error: "Payload inválido",
-      received: payload.type || 'unknown'
+    // Log temprano para verificar que el payload llegó al controlador
+    const receivedBody = req.body;
+    const size = (() => { try { return JSON.stringify(receivedBody).length; } catch(e) { return 'N/A'; }})();
+    console.log("📦 Tamaño del payload recibido por CSM:", size);
+    try {
+      const preview = JSON.stringify(receivedBody).slice(0, 2000);
+      console.log("📥 Payload preview (primeros 2000 chars):", preview);
+    } catch (e) {
+      console.log("📥 No se pudo stringificar el payload para preview:", e.message);
+    }
+
+    const payload = req.body;
+    const data = payload.data || payload;
+    const p = data?.properties || {};
+
+    console.log("🆔 ID de Notion:", data?.id || 'No disponible');
+    console.log("📝 Nombre:", p['Nombre']?.rich_text?.[0]?.plain_text || p['Nombre']?.title?.[0]?.plain_text || 'No disponible');
+    console.log("📧 Mail:", p['Mail']?.email || 'No disponible');
+
+    // Validar payload
+    const isValidPayload = 
+      (payload.data && payload.data.object === 'page') ||
+      (payload.type === 'page.deleted' && payload.entity);
+
+    if (!isValidPayload) {
+      console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
+
+      // Log de payload inválido
+      const errorLog = {
+        webhook_type: 'csm',
+        type: 'invalid_payload',
+        message: 'Payload no válido - no es un evento reconocido',
+        payload: payload  // objeto, no string
+      };
+
+      await saveLog(errorLog);
+
+      return res.status(400).json({ 
+        error: "Payload inválido",
+        received: payload.type || 'unknown'
+      });
+    }
+
+    console.log("\n📋 Payload completo (JSON):");
+    try {
+      console.log(JSON.stringify(req.body, null, 2));
+    } catch(e) {
+      console.log('No se pudo mostrar payload completo:', e.message);
+    }
+
+    res.status(200).json({ 
+      status: "ok",
+      message: "Webhook de CSM recibido y encolado",
+      receivedAt: new Date().toISOString()
     });
-  }
 
-  console.log("\n📋 Payload completo (JSON):");
-  console.log(JSON.stringify(req.body, null, 2));
-  
-  res.status(200).json({ 
-    status: "ok",
-    message: "Webhook de CSM recibido y encolado",
-    receivedAt: new Date().toISOString()
-  });
-  
-  queue.push({ payload: req.body });
-  processQueue();
+    try {
+      queue.push({ payload: req.body });
+      processQueue();
+    } catch (err) {
+      console.error('❌ Error al encolar payload en CSM:', err.message);
+      const errorLog = {
+        webhook_type: 'csm',
+        type: 'enqueue_error',
+        message: err.message,
+        payload: req.body,
+        created_at: (new Date()).toISOString()
+      };
+      await saveLog(errorLog);
+    }
+  } catch (err) {
+    console.error('❌ Error en handler CSM:', err.message);
+    return res.status(500).json({ error: 'Error interno en el handler CSM' });
+  }
 };
