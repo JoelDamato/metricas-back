@@ -12,6 +12,123 @@ const queue = [];
 let isProcessing = false;
 let lastVerification = null;
 
+// Supabase config y tablas a borrar
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseTablesToDelete = ['leads_raw', 'csm', 'comprobantes'];
+
+// Helper: stringify seguro para objetos con ciclos
+function safeStringify(obj) {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, function(key, value) {
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) return '[Circular]';
+            seen.add(value);
+        }
+        return value;
+    });
+}
+
+// Helper: hora actual de Argentina (UTC-3) en ISO sin milisegundos
+function argentinaNowISO() {
+    const now = new Date();
+    const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
+    return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+// Función para guardar logs en Supabase desde el distribuidor
+async function saveLog(logData) {
+    try {
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+            console.warn('⚠️ Supabase no configurado, no se guardará el log');
+            return;
+        }
+
+        const processed = { ...logData };
+        if (processed.payload && typeof processed.payload !== 'string') {
+            try { processed.payload = safeStringify(processed.payload); } catch (e) { processed.payload = String(processed.payload); }
+        }
+        if (processed.attempted_data && typeof processed.attempted_data !== 'string') {
+            try { processed.attempted_data = safeStringify(processed.attempted_data); } catch (e) { processed.attempted_data = String(processed.attempted_data); }
+        }
+        if (processed.supabase_error && typeof processed.supabase_error !== 'string') {
+            try { processed.supabase_error = safeStringify(processed.supabase_error); } catch (e) { processed.supabase_error = String(processed.supabase_error); }
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(processed, 'created_at')) {
+            processed.created_at = argentinaNowISO();
+        }
+
+        await axios.post(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/webhook_logs`, processed, {
+            headers: {
+                apikey: SUPABASE_KEY,
+                Authorization: `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('📝 Log guardado en Supabase (distribuidor)');
+    } catch (err) {
+        console.error('❌ Error guardando log en Supabase (distribuidor):', err.message);
+    }
+}
+
+// Función que borra registros en Supabase por GHL ID o Notion ID en las tablas listadas
+async function deleteByGhlId(ghlId, notionId) {
+    // Si no hay ningún id para buscar, retornar vacío
+    if (!ghlId && !notionId) return [];
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        console.warn('⚠️ Supabase no configurado (SUPABASE_URL/SUPABASE_KEY)');
+        return [];
+    }
+
+    const results = [];
+    // Para evitar queries duplicadas por la misma expresión
+    const triedFilters = new Set();
+
+    for (const table of supabaseTablesToDelete) {
+        // Construir lista de posibles filtros por prioridad
+        const filters = [];
+        if (ghlId) {
+            // En tu esquema, el GHL ID puede estar guardado en la columna `ghl_id` o directamente en `id`
+            filters.push({ col: 'ghl_id', val: ghlId });
+            filters.push({ col: 'id', val: ghlId });
+        }
+        // Si recibimos notionId explícito, intentarlo también contra `id`
+        if (notionId) {
+            filters.push({ col: 'id', val: notionId });
+        }
+
+        // Ejecutar cada filtro (si no se repite)
+        for (const f of filters) {
+            const filterKey = `${table}::${f.col}::${f.val}`;
+            if (triedFilters.has(filterKey)) continue;
+            triedFilters.add(filterKey);
+
+            try {
+                const safeVal = String(f.val).replace(/'/g, "''");
+                const filter = `${f.col}=eq.'${safeVal}'`;
+                const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${filter}`;
+
+                console.log(`🗑️ Intentando DELETE en tabla ${table} con filtro ${filter}`);
+                const res = await axios.delete(url, {
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization: `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+
+                results.push({ table, filter: filter, success: true, status: res.status, data: res.data });
+                console.log(`🗑️ Supabase: borrado en tabla ${table}, status ${res.status}`);
+            } catch (err) {
+                console.error(`❌ Error borrando en tabla ${table} con filtro ${f.col}:`, err.response?.data || err.message);
+                results.push({ table, filter: `${f.col}=eq.'${String(f.val)}'`, success: false, error: err.response?.data || err.message, status: err.response?.status });
+            }
+        }
+    }
+
+    return results;
+}
+
 async function processQueue() {
     if (isProcessing || queue.length === 0) return;
     
@@ -145,6 +262,21 @@ exports.handleWebhook = async (req, res) => {
         console.log(`🆔 ID a borrar: ${payload.entity?.id}`);
         console.log(`📍 Parent database: ${payload.data?.parent?.id || 'NO ESPECIFICADO'}`);
         console.log(`🗑️ ========================================\n`);
+        
+        // Llamada no bloqueante a Supabase para borrar por ghl_id
+        (async () => {
+            const ghlId = payload.entity?.id;
+            const notionId = payload.data?.id;
+            console.log(`🔄 Iniciando proceso de borrado en Supabase para GHL ID: ${ghlId} notionId: ${notionId}`);
+            const deleteResults = await deleteByGhlId(ghlId, notionId);
+            console.log(`🔄 Proceso de borrado en Supabase finalizado. Resultados:`, deleteResults);
+            // Guardar log de borrado
+            try {
+                await saveLog({ event_type: 'delete', payload: { ghlId, notionId }, deleteResults });
+            } catch (e) {
+                console.error('❌ Error guardando log de borrado:', e.message);
+            }
+        })();
     } else if (payload.data && payload.data.object === 'page') {
         console.log(`\n📝 ========================================`);
         console.log(`📝 EVENTO DE CREAR/ACTUALIZAR DETECTADO`);
@@ -173,6 +305,21 @@ exports.handleWebhook = async (req, res) => {
     queue.push({ payload });
     console.log(`📊 Items en cola: ${queue.length}\n`);
     
+    // Guardar log no bloqueante
+    (async () => {
+        try {
+            console.log('🔍 DEBUG - guardando payload en Supabase logs');
+            await saveLog({
+                event_type: payload.type || 'unknown',
+                payload,
+                received_at: new Date().toISOString()
+            });
+            console.log('🔍 DEBUG - payload guardado en Supabase logs');
+        } catch (e) {
+            console.error('❌ Error guardando log no bloqueante:', e.message);
+        }
+    })();
+
     processQueue();
 };
 
