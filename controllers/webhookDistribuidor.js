@@ -50,8 +50,9 @@ async function guardarLog(tipo, mensaje, datos = {}) {
 
 // Extraer el Notion ID del payload
 function extraerNotionId(payload) {
-  return payload.id || 
-         payload.entity?.id || 
+  // Para eventos de borrado, el ID está en entity.id
+  return payload.entity?.id || 
+         payload.id || 
          payload.data?.id || 
          payload.page_id || 
          payload.notionid;
