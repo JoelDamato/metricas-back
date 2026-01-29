@@ -161,6 +161,9 @@ function getValue(prop) {
   }
 }
 
+// Helper para extraer texto de Notion (Rich Text o Title)
+const getText = (prop) => prop?.rich_text?.[0]?.plain_text || prop?.title?.[0]?.plain_text || null;
+
 function mapToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
@@ -172,7 +175,6 @@ function mapToSupabase(payload) {
   return {
     id: finalId,
     notionid: data.id,
-    ghl_id: finalId,
     created_time: normalizeDate(data.created_time),
     last_edited_time: normalizeDate(data.last_edited_time),
     archived: data.archived ?? false,
