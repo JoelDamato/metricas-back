@@ -255,3 +255,21 @@ exports.getStats = (req, res) => {
     supabaseConfigurado: !!(SUPABASE_URL && SUPABASE_KEY)
   });
 };
+
+// Endpoint para ver última verificación (si lo usabas)
+exports.getLastVerification = (req, res) => {
+  res.status(200).json({
+    message: 'Endpoint de verificación disponible',
+    timestamp: new Date().toISOString()
+  });
+};
+
+// Endpoint para ver estadísticas de eventos (si lo usabas)
+exports.getEventStats = (req, res) => {
+  res.status(200).json({
+    supabaseConfigured: !!(SUPABASE_URL && SUPABASE_KEY),
+    tablesToDelete: tablasSupabase,
+    webhookUrls: webhookUrls.length,
+    timestamp: new Date().toISOString()
+  });
+};
