@@ -171,12 +171,14 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId,
+    notionid: data.id,
+    ghl_id: finalId,
     created_time: normalizeDate(data.created_time),
     last_edited_time: normalizeDate(data.last_edited_time),
     archived: data.archived ?? false,
 
     // Identidad
-    nombre: getValue(p['Nombre']),
+    nombre: getText(p['Nombre']),
     dni: getValue(p['Dni']),
     mail: getValue(p['Mail']),
     telefono: getValue(p['Telefono']),

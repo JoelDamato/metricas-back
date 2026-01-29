@@ -172,6 +172,8 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId,
+    notionid: data.id,
+    ghl_id: finalId,
     adname: getValue(p['Adname']),
     adset: getValue(p['Adset']),
     agenda_format: getValue(p['Agenda Format']),

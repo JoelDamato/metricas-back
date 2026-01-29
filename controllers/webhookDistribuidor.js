@@ -129,6 +129,39 @@ async function deleteByGhlId(ghlId, notionId) {
     return results;
 }
 
+// Función que borra registros en Supabase por notionid en las tablas listadas
+async function deleteByNotionId(notionId) {
+    if (!notionId) return [];
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        console.warn('⚠️ Supabase no configurado (SUPABASE_URL/SUPABASE_KEY)');
+        return [];
+    }
+
+    const results = [];
+    for (const table of supabaseTablesToDelete) {
+        try {
+            const safeVal = String(notionId).replace(/'/g, "''");
+            const filter = `notionid=eq.'${safeVal}'`;
+            const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${filter}`;
+
+            console.log(`🗑️ Intentando DELETE en tabla ${table} con filtro ${filter}`);
+            const res = await axios.delete(url, {
+                headers: {
+                    apikey: SUPABASE_KEY,
+                    Authorization: `Bearer ${SUPABASE_KEY}`
+                }
+            });
+
+            results.push({ table, filter, success: true, status: res.status, data: res.data });
+            console.log(`🗑️ Supabase: borrado en tabla ${table}, status ${res.status}`);
+        } catch (err) {
+            console.error(`❌ Error borrando en tabla ${table} con filtro notionid:`, err.response?.data || err.message);
+            results.push({ table, filter: `notionid=eq.'${String(notionId)}'`, success: false, error: err.response?.data || err.message, status: err.response?.status });
+        }
+    }
+    return results;
+}
+
 async function processQueue() {
     if (isProcessing || queue.length === 0) return;
     
@@ -268,7 +301,7 @@ exports.handleWebhook = async (req, res) => {
             const ghlId = payload.entity?.id;
             const notionId = payload.data?.id;
             console.log(`🔄 Iniciando proceso de borrado en Supabase para GHL ID: ${ghlId} notionId: ${notionId}`);
-            const deleteResults = await deleteByGhlId(ghlId, notionId);
+            const deleteResults = await deleteByNotionId(notionId);
             console.log(`🔄 Proceso de borrado en Supabase finalizado. Resultados:`, deleteResults);
             // Guardar log de borrado
             try {

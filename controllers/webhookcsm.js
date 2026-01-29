@@ -161,6 +161,8 @@ function mapToSupabase(payload) {
 
   return {
     id: finalId,
+    notionid: data.id,
+    ghl_id: finalId,
     nombre: getValue(p['Nombre']),
     acceso: getValue(p['Acceso']),
     actividad: getValue(p['Actividad']),
