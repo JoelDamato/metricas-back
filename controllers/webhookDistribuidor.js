@@ -13,7 +13,7 @@ let isProcessing = false;
 let lastVerification = null;
 
 // 🆕 Sistema de deduplicación
-const processedEvents = new Map(); // key: eventId, value: timestamp
+const processedEvents = new Map();
 const EVENT_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutos
 
 // Supabase config y tablas a borrar
@@ -57,11 +57,10 @@ function cleanOldEvents() {
 
 // 🆕 Función para generar ID único del evento
 function getEventId(payload) {
-  // Intentar múltiples ubicaciones donde podría estar el ID
   const possibleIds = [
-    payload.id,           // Directamente en payload.id
-    payload.entity?.id,   // En payload.entity.id (Notion API v1)
-    payload.data?.id      // En payload.data.id
+    payload.id,
+    payload.entity?.id,
+    payload.data?.id
   ];
 
   const foundId = possibleIds.find(id => id !== undefined && id !== null);
@@ -70,7 +69,6 @@ function getEventId(payload) {
     return foundId;
   }
 
-  // Fallback: combinar tipo y timestamp
   const type = payload.type || 'unknown';
   const timestamp = payload.timestamp || Date.now();
   return `${type}-${timestamp}`;
@@ -84,8 +82,6 @@ function isDuplicate(eventId) {
     const firstSeen = processedEvents.get(eventId);
     const timeSinceFirst = Date.now() - firstSeen;
     console.log(`⚠️ EVENTO DUPLICADO detectado: ${eventId}`);
-    console.log(`   └─ Primera vez visto: ${new Date(firstSeen).toISOString()}`);
-    console.log(`   └─ Tiempo transcurrido: ${(timeSinceFirst / 1000).toFixed(2)}s`);
     return true;
   }
   
@@ -93,13 +89,10 @@ function isDuplicate(eventId) {
   return false;
 }
 
-// 🔧 FUNCIÓN MEJORADA para extraer el Notion ID del payload
+// 🆕 FUNCIÓN MEJORADA para extraer el Notion ID del payload
 function extractNotionId(payload) {
-  console.log('\n🔍 ========================================');
-  console.log('🔍 EXTRAYENDO NOTION ID DEL PAYLOAD');
-  console.log('🔍 ========================================');
+  console.log('🔍 Extrayendo Notion ID del payload...');
   
-  // Intentar múltiples ubicaciones posibles
   const candidates = [
     { path: 'payload.id', value: payload.id },
     { path: 'payload.entity.id', value: payload.entity?.id },
@@ -108,27 +101,19 @@ function extractNotionId(payload) {
     { path: 'payload.notionid', value: payload.notionid }
   ];
 
-  console.log('📋 Candidatos encontrados:');
-  candidates.forEach(({ path, value }) => {
-    console.log(`  ├─ ${path}: ${value || 'undefined'}`);
-  });
-
-  // Encontrar el primer valor válido
-  const notionId = candidates.find(c => c.value)?.value;
+  const found = candidates.find(c => c.value);
+  const notionId = found?.value;
 
   if (notionId) {
-    console.log(`✅ Notion ID seleccionado: ${notionId}`);
-    console.log(`   └─ Origen: ${candidates.find(c => c.value === notionId)?.path}`);
+    console.log(`✅ Notion ID encontrado: ${notionId} (origen: ${found.path})`);
   } else {
-    console.log('❌ No se encontró ningún Notion ID válido');
+    console.log('❌ No se encontró Notion ID');
   }
-
-  console.log('🔍 ========================================\n');
   
   return notionId;
 }
 
-// Función para guardar logs en Supabase desde el distribuidor
+// 🆕 FUNCIÓN PRINCIPAL DE LOGGING - Guarda en Supabase
 async function saveLog(logData) {
   try {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -138,6 +123,7 @@ async function saveLog(logData) {
 
     const processed = { ...logData };
 
+    // Convertir objetos a strings
     if (processed.payload && typeof processed.payload !== 'string') {
       try {
         processed.payload = safeStringify(processed.payload);
@@ -146,19 +132,19 @@ async function saveLog(logData) {
       }
     }
 
-    if (processed.attempted_data && typeof processed.attempted_data !== 'string') {
+    if (processed.delete_results && typeof processed.delete_results !== 'string') {
       try {
-        processed.attempted_data = safeStringify(processed.attempted_data);
+        processed.delete_results = safeStringify(processed.delete_results);
       } catch (e) {
-        processed.attempted_data = String(processed.attempted_data);
+        processed.delete_results = String(processed.delete_results);
       }
     }
 
-    if (processed.supabase_error && typeof processed.supabase_error !== 'string') {
+    if (processed.error_details && typeof processed.error_details !== 'string') {
       try {
-        processed.supabase_error = safeStringify(processed.supabase_error);
+        processed.error_details = safeStringify(processed.error_details);
       } catch (e) {
-        processed.supabase_error = String(processed.supabase_error);
+        processed.error_details = String(processed.error_details);
       }
     }
 
@@ -166,77 +152,154 @@ async function saveLog(logData) {
       processed.created_at = argentinaNowISO();
     }
 
-    await axios.post(`${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/webhook_logs`, processed, {
+    const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/webhook_logs`;
+
+    const response = await axios.post(url, processed, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
       }
     });
 
-    console.log('📝 Log guardado en Supabase (distribuidor)');
+    console.log('✅ Log guardado en Supabase:', processed.type || 'log');
+    return response.data;
   } catch (err) {
-    console.error('❌ Error guardando log en Supabase (distribuidor):', err.message);
+    console.error('❌ Error guardando log en Supabase:', err.message);
+    if (err.response) {
+      console.error('Response data:', err.response.data);
+    }
   }
 }
 
-// Función que borra registros en Supabase por notionid en las tablas listadas
+// Función que borra registros en Supabase por notionid
 async function deleteByNotionId(notionId) {
+  console.log(`🗑️ Iniciando borrado para Notion ID: ${notionId}`);
+  
+  // 🆕 LOG: Inicio de borrado
+  await saveLog({
+    type: 'delete_start',
+    webhook_id: notionId,
+    message: `Iniciando proceso de borrado para notionId: ${notionId}`,
+    ghl_id: notionId
+  });
+
   if (!notionId) {
-    console.warn('⚠️ deleteByNotionId: notionId es null/undefined, no se puede borrar');
+    await saveLog({
+      type: 'delete_error',
+      webhook_id: 'unknown',
+      message: 'notionId es null/undefined - borrado abortado',
+      error_details: { notionId }
+    });
     return [];
   }
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.warn('⚠️ Supabase no configurado (SUPABASE_URL/SUPABASE_KEY)');
+    await saveLog({
+      type: 'delete_error',
+      webhook_id: notionId,
+      message: 'Supabase no configurado - borrado abortado',
+      error_details: {
+        hasUrl: !!SUPABASE_URL,
+        hasKey: !!SUPABASE_KEY
+      }
+    });
     return [];
   }
 
   const results = [];
 
   for (const table of supabaseTablesToDelete) {
+    console.log(`🔄 Procesando tabla: ${table}`);
+    
     try {
       const safeVal = String(notionId).replace(/'/g, "''");
-      const filter = `notionid=eq.'${safeVal}'`;
+      const filter = `notionid=eq.${safeVal}`;
       const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${filter}`;
 
-      console.log(`🗑️ Intentando DELETE en tabla ${table} con filtro ${filter}`);
+      console.log(`📍 DELETE URL: ${url}`);
 
-      const res = await axios.delete(url, {
+      const deleteResponse = await axios.delete(url, {
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          Prefer: 'return=representation'
+          'Prefer': 'return=representation'
         }
       });
 
-      const deletedCount = Array.isArray(res.data) ? res.data.length : (res.data ? 1 : 0);
+      const deletedCount = Array.isArray(deleteResponse.data) ? deleteResponse.data.length : (deleteResponse.data ? 1 : 0);
 
-      if (deletedCount === 0) {
-        console.log(`ℹ️ No se encontraron registros con notionid=${notionId} en la tabla ${table}`);
-      } else {
-        console.log(`✅ Supabase: borrado exitoso en tabla ${table}, filas eliminadas: ${deletedCount}`);
-      }
+      console.log(`✅ Tabla ${table}: ${deletedCount} registro(s) eliminado(s)`);
+
+      // 🆕 LOG: Resultado por tabla
+      await saveLog({
+        type: 'delete_table_result',
+        webhook_id: notionId,
+        message: `Tabla ${table}: ${deletedCount} registro(s) eliminado(s)`,
+        ghl_id: notionId,
+        delete_results: {
+          table,
+          deletedCount,
+          status: deleteResponse.status,
+          data: deleteResponse.data
+        }
+      });
 
       results.push({
         table,
         filter,
         success: true,
-        status: res.status,
+        status: deleteResponse.status,
         deletedCount,
-        data: res.data
+        data: deleteResponse.data
       });
+
     } catch (err) {
-      console.error(`❌ Error borrando en tabla ${table}:`, err.response?.data || err.message);
+      console.error(`❌ Error en tabla ${table}:`, err.message);
+
+      // 🆕 LOG: Error en tabla específica
+      await saveLog({
+        type: 'delete_table_error',
+        webhook_id: notionId,
+        message: `Error borrando en tabla ${table}: ${err.message}`,
+        ghl_id: notionId,
+        error_details: {
+          table,
+          error: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        }
+      });
+
       results.push({
         table,
-        filter: `notionid=eq.'${String(notionId)}'`,
+        filter: `notionid=eq.${String(notionId)}`,
         success: false,
         error: err.response?.data || err.message,
         status: err.response?.status
       });
     }
   }
+
+  const totalDeleted = results.reduce((sum, r) => sum + (r.deletedCount || 0), 0);
+  
+  console.log(`📊 Borrado completado: ${totalDeleted} registro(s) en total`);
+
+  // 🆕 LOG: Resumen final de borrado
+  await saveLog({
+    type: 'delete_complete',
+    webhook_id: notionId,
+    message: `Borrado completado: ${totalDeleted} registro(s) eliminado(s) en ${results.length} tabla(s)`,
+    ghl_id: notionId,
+    delete_results: {
+      totalDeleted,
+      tablesProcessed: results.length,
+      successfulTables: results.filter(r => r.success).length,
+      failedTables: results.filter(r => !r.success).length,
+      details: results
+    }
+  });
 
   return results;
 }
@@ -247,16 +310,19 @@ async function processQueue() {
   isProcessing = true;
   const { payload } = queue.shift();
 
-  console.log("\n🔄 ========================================");
-  console.log("🔄 INICIANDO DISTRIBUCIÓN");
-  console.log("🔄 ========================================");
-  console.log("📦 Payload a distribuir:", JSON.stringify(payload, null, 2));
-  console.log("🎯 Endpoints destino:", webhookUrls);
-  console.log("🔄 ========================================\n");
+  console.log("🔄 Iniciando distribución...");
+
+  // 🆕 LOG: Inicio de distribución
+  await saveLog({
+    type: 'distribution_start',
+    webhook_id: getEventId(payload),
+    message: `Iniciando distribución a ${webhookUrls.length} endpoints`,
+    payload: payload
+  });
 
   try {
     const promises = webhookUrls.map(async (url) => {
-      console.log(`\n📤 Intentando enviar a: ${url}`);
+      console.log(`📤 Enviando a: ${url}`);
       try {
         const response = await axios.post(url, payload, {
           headers: {
@@ -265,9 +331,7 @@ async function processQueue() {
           timeout: 30000
         });
 
-        console.log(`✅ ÉXITO en ${url}`);
-        console.log(`📊 Status: ${response.status}`);
-        console.log(`📄 Response data:`, JSON.stringify(response.data, null, 2));
+        console.log(`✅ Éxito en ${url}`);
 
         return {
           url,
@@ -276,17 +340,7 @@ async function processQueue() {
           status: response.status
         };
       } catch (error) {
-        console.log(`❌ FALLO en ${url}`);
-        console.log(`⚠️ Error message:`, error.message);
-
-        if (error.response) {
-          console.log(`📊 Response status:`, error.response.status);
-          console.log(`📄 Response data:`, JSON.stringify(error.response.data, null, 2));
-        } else if (error.request) {
-          console.log(`🔌 No response received`);
-        } else {
-          console.log(`⚙️ Error en setup:`, error.message);
-        }
+        console.log(`❌ Fallo en ${url}:`, error.message);
 
         return {
           url,
@@ -297,45 +351,40 @@ async function processQueue() {
       }
     });
 
-    console.log("\n⏳ Esperando respuestas de todos los endpoints...\n");
     const results = await Promise.allSettled(promises);
+    const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const failCount = results.length - successCount;
 
-    console.log("\n📊 ========================================");
-    console.log("📊 RESUMEN DE DISTRIBUCIÓN");
-    console.log("📊 ========================================");
+    console.log(`📈 Distribución: ${successCount} exitosos, ${failCount} fallidos`);
 
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        const value = result.value;
-        const statusEmoji = value.success ? '✅' : '❌';
-        console.log(`${statusEmoji} ${value.url}:`);
-        console.log(`  └─ Success: ${value.success}`);
-        console.log(`  └─ Status: ${value.status || value.error}`);
-        if (value.data) {
-          console.log(`  └─ Data:`, JSON.stringify(value.data, null, 2));
-        }
-      } else {
-        console.log(`💥 ${webhookUrls[index]}: PROMISE REJECTED`);
-        console.log(`  └─ Reason:`, result.reason);
+    // 🆕 LOG: Resultado de distribución
+    await saveLog({
+      type: 'distribution_complete',
+      webhook_id: getEventId(payload),
+      message: `Distribución completada: ${successCount}/${results.length} exitosos`,
+      delete_results: {
+        successCount,
+        failCount,
+        total: results.length,
+        results: results.map(r => r.value || { error: r.reason })
       }
     });
 
-    console.log("📊 ========================================\n");
-
-    const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-    const failCount = results.length - successCount;
-    console.log(`📈 Resultados: ${successCount} exitosos, ${failCount} fallidos de ${results.length} totales\n`);
-
   } catch (error) {
-    console.error("\n💥 ========================================");
-    console.error("💥 ERROR CRÍTICO EN DISTRIBUCIÓN");
-    console.error("💥 ========================================");
-    console.error("❌ Error:", error.message);
-    console.error("📚 Stack:", error.stack);
-    console.error("💥 ========================================\n");
+    console.error("💥 Error crítico en distribución:", error.message);
+
+    // 🆕 LOG: Error crítico
+    await saveLog({
+      type: 'distribution_error',
+      webhook_id: getEventId(payload),
+      message: `Error crítico durante distribución: ${error.message}`,
+      error_details: {
+        error: error.message,
+        stack: error.stack
+      }
+    });
   } finally {
     isProcessing = false;
-    console.log("🔄 Distribución finalizada. Procesando siguiente en cola...\n");
     setImmediate(processQueue);
   }
 }
@@ -343,14 +392,24 @@ async function processQueue() {
 exports.handleWebhook = async (req, res) => {
   let payload = req.body;
 
+  console.log("\n🎯 Webhook recibido:", new Date().toISOString());
+
   // 🆕 Si el payload viene como string, parsearlo
   if (typeof payload === 'string') {
+    console.log('🔄 Parseando payload string...');
     try {
-      console.log('🔄 Parseando payload que vino como string...');
       payload = JSON.parse(payload);
     } catch (e) {
-      console.error('❌ Error parseando payload string:', e.message);
-      console.error('📄 Payload recibido:', payload);
+      console.error('❌ Error parseando JSON:', e.message);
+      
+      // 🆕 LOG: Error de parsing
+      await saveLog({
+        type: 'parsing_error',
+        webhook_id: 'unknown',
+        message: `Error parseando payload JSON: ${e.message}`,
+        error_details: { error: e.message, payload }
+      });
+
       return res.status(400).json({ 
         error: 'Invalid JSON payload',
         message: e.message 
@@ -358,43 +417,66 @@ exports.handleWebhook = async (req, res) => {
     }
   }
 
-  console.log("\n🎯 ========================================");
-  console.log("🎯 DISTRIBUIDOR - WEBHOOK RECIBIDO");
-  console.log("🎯 ========================================");
-  console.log("🕐 Timestamp:", new Date().toISOString());
-  console.log("📥 Payload recibido:", JSON.stringify(payload, null, 2));
-  console.log("🎯 ========================================\n");
+  // 🆕 LOG: Webhook recibido
+  await saveLog({
+    type: 'webhook_received',
+    webhook_id: getEventId(payload),
+    message: `Webhook recibido - Tipo: ${payload.type || 'unknown'}`,
+    payload: payload
+  });
 
   // Manejo de verificación
   if (payload && payload.challenge) {
-    console.log('🔐 Challenge de verificación recibido:', payload.challenge);
+    console.log('🔐 Challenge recibido');
     lastVerification = {
       type: 'challenge',
       value: payload.challenge,
       receivedAt: new Date().toISOString()
     };
+
+    await saveLog({
+      type: 'verification_challenge',
+      webhook_id: 'verification',
+      message: `Challenge de verificación recibido: ${payload.challenge}`
+    });
+
     return res.status(200).send(payload.challenge);
   }
 
   if (payload && payload.code) {
-    console.log('🔐 Código de verificación recibido:', payload.code);
+    console.log('🔐 Código de verificación recibido');
     lastVerification = {
       type: 'code',
       value: payload.code,
       receivedAt: new Date().toISOString()
     };
+
+    await saveLog({
+      type: 'verification_code',
+      webhook_id: 'verification',
+      message: `Código de verificación recibido: ${payload.code}`
+    });
+
     return res.status(200).json({
       message: 'Código de verificación recibido',
       code: payload.code
     });
   }
 
-  // 🆕 Verificar si es un evento duplicado
+  // Verificar duplicados
   const eventId = getEventId(payload);
   console.log(`🔑 Event ID: ${eventId}`);
   
   if (isDuplicate(eventId)) {
-    console.log('⏭️ Evento duplicado ignorado - No se procesará\n');
+    console.log('⏭️ Evento duplicado ignorado');
+
+    // 🆕 LOG: Duplicado
+    await saveLog({
+      type: 'duplicate_ignored',
+      webhook_id: eventId,
+      message: `Evento duplicado ignorado: ${eventId}`
+    });
+
     return res.status(200).json({
       message: "Evento duplicado ignorado",
       eventId,
@@ -402,38 +484,37 @@ exports.handleWebhook = async (req, res) => {
     });
   }
 
-  console.log('✨ Evento nuevo - Procesando...\n');
+  console.log('✨ Evento nuevo');
 
   // Análisis del payload
-  console.log("🔍 ANÁLISIS DEL PAYLOAD:");
+  console.log("🔍 Análisis del payload:");
   console.log("  ├─ Type:", payload.type || 'NO ESPECIFICADO');
-  console.log("  ├─ ID directo:", payload.id || 'NO DISPONIBLE');
+  console.log("  ├─ ID:", payload.id || 'NO DISPONIBLE');
   console.log("  ├─ Entity ID:", payload.entity?.id || 'NO DISPONIBLE');
-  console.log("  ├─ Data ID:", payload.data?.id || 'NO DISPONIBLE');
-  console.log("  ├─ Data object:", payload.data?.object || 'NO DISPONIBLE');
-  console.log("  └─ Integration ID:", payload.integration_id || 'NO DISPONIBLE');
+  console.log("  └─ Data ID:", payload.data?.id || 'NO DISPONIBLE');
 
-  // 🔧 MEJORADO: Detección de tipo de evento
+  // Detección de eventos de borrado
   const isDeleteEvent = payload.type === 'page.deleted' || 
-                        (payload.type === 'page' && payload.id && !payload.data);
+                        (payload.type === 'page' && payload.id && !payload.data) ||
+                        (payload.id && !payload.data && !payload.entity);
+
+  console.log('🎯 ¿Es evento de borrado?', isDeleteEvent ? 'SÍ' : 'NO');
 
   if (isDeleteEvent) {
-    console.log(`\n🗑️ ========================================`);
-    console.log(`🗑️ EVENTO DE BORRADO DETECTADO`);
-    console.log(`🗑️ ========================================`);
+    console.log(`🗑️ Evento de borrado detectado`);
 
-    // 🔧 MEJORADO: Extracción del Notion ID
     const notionId = extractNotionId(payload);
 
     if (!notionId) {
-      console.error('❌ No se pudo extraer el Notion ID del payload de borrado');
-      console.error('📦 Payload completo:', JSON.stringify(payload, null, 2));
+      console.error('❌ No se pudo extraer Notion ID');
       
+      // 🆕 LOG: Error extrayendo ID
       await saveLog({
-        event_type: 'delete_failed',
-        event_id: eventId,
-        error: 'No se pudo extraer notionId del payload',
-        payload: JSON.stringify(payload)
+        type: 'delete_failed_no_id',
+        webhook_id: eventId,
+        message: 'No se pudo extraer notionId del payload de borrado',
+        payload: payload,
+        error_details: { payload }
       });
 
       return res.status(400).json({
@@ -443,36 +524,19 @@ exports.handleWebhook = async (req, res) => {
       });
     }
 
-    console.log(`🆔 Notion ID a borrar: ${notionId}`);
-    console.log(`🗑️ ========================================\n`);
-
     try {
-      // Borrar de forma síncrona (esperar resultado)
-      console.log(`🔄 Iniciando proceso de borrado en Supabase para Notion ID: ${notionId}`);
+      console.log(`🚀 Iniciando borrado para: ${notionId}`);
+      
       const deleteResults = await deleteByNotionId(notionId);
-      console.log(`✅ Proceso de borrado en Supabase finalizado`);
-
-      // Contar borrados exitosos
+      
       const successfulDeletes = deleteResults.filter(r => r.success && r.deletedCount > 0);
       const totalDeleted = successfulDeletes.reduce((sum, r) => sum + r.deletedCount, 0);
 
-      console.log(`📊 Resumen de borrado:`);
-      console.log(`  ├─ Tablas procesadas: ${deleteResults.length}`);
-      console.log(`  ├─ Borrados exitosos: ${successfulDeletes.length}`);
-      console.log(`  └─ Total registros eliminados: ${totalDeleted}`);
+      console.log(`✅ Borrado completado: ${totalDeleted} registro(s)`);
 
-      // Guardar log de borrado
-      await saveLog({
-        event_type: 'delete',
-        event_id: eventId,
-        notionId,
-        deleteResults: JSON.stringify(deleteResults),
-        total_deleted: totalDeleted
-      });
-
-      // Responder y NO distribuir a otros endpoints
+      // Responder y NO distribuir
       return res.status(200).json({
-        message: "Evento de borrado procesado directamente por distribuidor",
+        message: "Evento de borrado procesado directamente",
         eventId,
         notionId,
         deleted: true,
@@ -482,14 +546,18 @@ exports.handleWebhook = async (req, res) => {
       });
 
     } catch (error) {
-      console.error('❌ Error durante el proceso de borrado:', error);
+      console.error('💥 Error durante el borrado:', error.message);
       
+      // 🆕 LOG: Error crítico de borrado
       await saveLog({
-        event_type: 'delete_error',
-        event_id: eventId,
-        notionId,
-        error: error.message,
-        stack: error.stack
+        type: 'delete_critical_error',
+        webhook_id: eventId,
+        message: `Error crítico durante borrado: ${error.message}`,
+        ghl_id: notionId,
+        error_details: {
+          error: error.message,
+          stack: error.stack
+        }
       });
 
       return res.status(500).json({
@@ -501,49 +569,42 @@ exports.handleWebhook = async (req, res) => {
     }
 
   } else if (payload.data && payload.data.object === 'page') {
-    console.log(`\n📝 ========================================`);
-    console.log(`📝 EVENTO DE CREAR/ACTUALIZAR DETECTADO`);
-    console.log(`📝 ========================================`);
-    console.log(`🆔 Page ID: ${payload.data?.id || 'NO ESPECIFICADO'}`);
-    console.log(`📝 ========================================\n`);
+    console.log(`📝 Evento de crear/actualizar detectado`);
+
+    // 🆕 LOG: Evento create/update
+    await saveLog({
+      type: 'page_create_update',
+      webhook_id: eventId,
+      message: `Evento de página create/update - ID: ${payload.data?.id}`,
+      ghl_id: payload.data?.id,
+      payload: payload
+    });
 
   } else {
-    console.log(`\n❓ ========================================`);
-    console.log(`❓ TIPO DE EVENTO NO RECONOCIDO`);
-    console.log(`❓ ========================================`);
-    console.log(`⚠️ Este payload podría no ser procesado correctamente`);
-    console.log(`❓ ========================================\n`);
+    console.log(`❓ Tipo de evento no reconocido`);
+
+    // 🆕 LOG: Evento desconocido
+    await saveLog({
+      type: 'unknown_event',
+      webhook_id: eventId,
+      message: `Tipo de evento no reconocido: ${payload.type}`,
+      payload: payload
+    });
   }
 
   // Responder al cliente
   res.status(200).json({
-    message: "Webhook recibido y encolado para distribución",
+    message: "Webhook recibido y encolado",
     eventId,
     timestamp: new Date().toISOString(),
     eventType: payload.type || 'unknown',
     willDistributeTo: webhookUrls
   });
 
-  console.log("✅ Respuesta 200 enviada al cliente (Notion)");
-  console.log("📋 Encolando payload para distribución...");
+  console.log("✅ Respuesta enviada");
+  console.log(`📋 Items en cola: ${queue.length + 1}`);
 
   queue.push({ payload });
-  console.log(`📊 Items en cola: ${queue.length}\n`);
-
-  // Guardar log no bloqueante
-  (async () => {
-    try {
-      await saveLog({
-        event_type: payload.type || 'unknown',
-        event_id: eventId,
-        payload,
-        received_at: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error('❌ Error guardando log no bloqueante:', e.message);
-    }
-  })();
-
   processQueue();
 };
 
@@ -556,7 +617,6 @@ exports.getLastVerification = (req, res) => {
   return res.status(200).json(lastVerification);
 };
 
-// 🆕 Endpoint adicional para ver estadísticas de eventos procesados
 exports.getEventStats = (req, res) => {
   cleanOldEvents();
   
@@ -565,6 +625,8 @@ exports.getEventStats = (req, res) => {
     cacheExpiryMinutes: EVENT_EXPIRY_TIME / 60000,
     queueLength: queue.length,
     isProcessing,
+    supabaseConfigured: !!(SUPABASE_URL && SUPABASE_KEY),
+    tablesToDelete: supabaseTablesToDelete,
     events: Array.from(processedEvents.entries()).map(([id, timestamp]) => ({
       eventId: id,
       receivedAt: new Date(timestamp).toISOString(),
