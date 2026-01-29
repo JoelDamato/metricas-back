@@ -72,63 +72,6 @@ async function saveLog(logData) {
     }
 }
 
-// Función que borra registros en Supabase por GHL ID o Notion ID en las tablas listadas
-async function deleteByGhlId(ghlId, notionId) {
-    // Si no hay ningún id para buscar, retornar vacío
-    if (!ghlId && !notionId) return [];
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-        console.warn('⚠️ Supabase no configurado (SUPABASE_URL/SUPABASE_KEY)');
-        return [];
-    }
-
-    const results = [];
-    // Para evitar queries duplicadas por la misma expresión
-    const triedFilters = new Set();
-
-    for (const table of supabaseTablesToDelete) {
-        // Construir lista de posibles filtros por prioridad
-        const filters = [];
-        if (ghlId) {
-            // En tu esquema, el GHL ID puede estar guardado en la columna `ghl_id` o directamente en `id`
-            filters.push({ col: 'ghl_id', val: ghlId });
-            filters.push({ col: 'id', val: ghlId });
-        }
-        // Si recibimos notionId explícito, intentarlo también contra `id`
-        if (notionId) {
-            filters.push({ col: 'id', val: notionId });
-        }
-
-        // Ejecutar cada filtro (si no se repite)
-        for (const f of filters) {
-            const filterKey = `${table}::${f.col}::${f.val}`;
-            if (triedFilters.has(filterKey)) continue;
-            triedFilters.add(filterKey);
-
-            try {
-                const safeVal = String(f.val).replace(/'/g, "''");
-                const filter = `${f.col}=eq.'${safeVal}'`;
-                const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${table}?${filter}`;
-
-                console.log(`🗑️ Intentando DELETE en tabla ${table} con filtro ${filter}`);
-                const res = await axios.delete(url, {
-                    headers: {
-                        apikey: SUPABASE_KEY,
-                        Authorization: `Bearer ${SUPABASE_KEY}`
-                    }
-                });
-
-                results.push({ table, filter: filter, success: true, status: res.status, data: res.data });
-                console.log(`🗑️ Supabase: borrado en tabla ${table}, status ${res.status}`);
-            } catch (err) {
-                console.error(`❌ Error borrando en tabla ${table} con filtro ${f.col}:`, err.response?.data || err.message);
-                results.push({ table, filter: `${f.col}=eq.'${String(f.val)}'`, success: false, error: err.response?.data || err.message, status: err.response?.status });
-            }
-        }
-    }
-
-    return results;
-}
-
 // Función que borra registros en Supabase por notionid en las tablas listadas
 async function deleteByNotionId(notionId) {
     if (!notionId) return [];
@@ -296,16 +239,15 @@ exports.handleWebhook = async (req, res) => {
         console.log(`📍 Parent database: ${payload.data?.parent?.id || 'NO ESPECIFICADO'}`);
         console.log(`🗑️ ========================================\n`);
         
-        // Llamada no bloqueante a Supabase para borrar por ghl_id
+        // Llamada no bloqueante a Supabase para borrar por notionid
         (async () => {
-            const ghlId = payload.entity?.id;
-            const notionId = payload.data?.id;
-            console.log(`🔄 Iniciando proceso de borrado en Supabase para GHL ID: ${ghlId} notionId: ${notionId}`);
+            const notionId = payload.entity?.id || payload.data?.id;
+            console.log(`🔄 Iniciando proceso de borrado en Supabase para Notion ID: ${notionId}`);
             const deleteResults = await deleteByNotionId(notionId);
             console.log(`🔄 Proceso de borrado en Supabase finalizado. Resultados:`, deleteResults);
             // Guardar log de borrado
             try {
-                await saveLog({ event_type: 'delete', payload: { ghlId, notionId }, deleteResults });
+                await saveLog({ event_type: 'delete', notionId, deleteResults });
             } catch (e) {
                 console.error('❌ Error guardando log de borrado:', e.message);
             }
