@@ -95,8 +95,15 @@ async function deleteByNotionId(notionId) {
                 }
             });
 
-            results.push({ table, filter, success: true, status: res.status, data: res.data });
-            console.log(`🗑️ Supabase: borrado en tabla ${table}, status ${res.status}`);
+            // Si Supabase devuelve datos, comprobar si se borró algo
+            const deletedCount = Array.isArray(res.data) ? res.data.length : (res.data ? 1 : 0);
+            if (deletedCount === 0) {
+                console.log(`ℹ️ No se encontraron registros con notionid=${notionId} en la tabla ${table}`);
+            } else {
+                console.log(`🗑️ Supabase: borrado en tabla ${table}, filas eliminadas: ${deletedCount}`);
+            }
+
+            results.push({ table, filter, success: true, status: res.status, deletedCount, data: res.data });
         } catch (err) {
             console.error(`❌ Error borrando en tabla ${table} con filtro notionid:`, err.response?.data || err.message);
             results.push({ table, filter: `notionid=eq.'${String(notionId)}'`, success: false, error: err.response?.data || err.message, status: err.response?.status });
@@ -241,15 +248,26 @@ exports.handleWebhook = async (req, res) => {
         
         // Llamada no bloqueante a Supabase para borrar por notionid
         (async () => {
-            const notionId = payload.entity?.id || payload.data?.id;
-            console.log(`🔄 Iniciando proceso de borrado en Supabase para Notion ID: ${notionId}`);
-            const deleteResults = await deleteByNotionId(notionId);
-            console.log(`🔄 Proceso de borrado en Supabase finalizado. Resultados:`, deleteResults);
-            // Guardar log de borrado
-            try {
-                await saveLog({ event_type: 'delete', notionId, deleteResults });
-            } catch (e) {
-                console.error('❌ Error guardando log de borrado:', e.message);
+            const entityId = payload.entity?.id;
+            const dataId = payload.data?.id;
+            const notionId = entityId || dataId;
+
+            console.log('🔎 entity.id recibido:', entityId);
+            console.log('🔎 data.id recibido:', dataId);
+            if (!notionId) {
+                console.warn('⚠️ No se encontró notionId en payload.entity ni en payload.data. No se realizará la búsqueda en Supabase.');
+            } else {
+                console.log('🔎 Notion ID seleccionado para búsqueda en Supabase (columna notionid):', notionId);
+                console.log(`🔄 Iniciando proceso de borrado en Supabase para Notion ID: ${notionId}`);
+                const deleteResults = await deleteByNotionId(notionId);
+                console.log(`🔄 Proceso de borrado en Supabase finalizado. Resultados:`, deleteResults);
+
+                // Guardar log de borrado
+                try {
+                    await saveLog({ event_type: 'delete', notionId, deleteResults });
+                } catch (e) {
+                    console.error('❌ Error guardando log de borrado:', e.message);
+                }
             }
         })();
     } else if (payload.data && payload.data.object === 'page') {
