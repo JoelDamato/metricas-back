@@ -168,11 +168,10 @@ function mapToSupabase(payload) {
 
   // Obtener GHL ID (puede ser fórmula o texto)
   const ghlId = getValue(p['GHL ID']);
-  const finalId = (ghlId && ghlId.toString().trim() !== '') ? ghlId.toString() : data.id;
 
   return {
-    id: finalId,
-    notionid: data.id,
+    id: data.id,  // Notion ID como identificador principal
+    ghlid: ghlId ? ghlId.toString() : null,  // GHL ID como campo separado (puede ser null)
     adname: getValue(p['Adname']),
     adset: getValue(p['Adset']),
     agenda_format: getValue(p['Agenda Format']),
@@ -271,7 +270,7 @@ async function sendToSupabase(payload) {
   
   // ========== DATOS QUE LLEGAN DE NOTION ==========
   logSection('DATOS QUE LLEGAN DE NOTION (COMPROBANTES)', {
-    'ID de Notion': data.id,
+    'ID de Notion (PRINCIPAL)': data.id,
     'GHL ID (raw)': p['GHL ID'],
     'GHL ID (extraído)': getValue(p['GHL ID']),
     'Cliente': getValue(p['Cliente']),
@@ -299,12 +298,12 @@ async function sendToSupabase(payload) {
   // ========== DATOS MAPEADOS PARA SUPABASE ==========
   logSection('DATOS MAPEADOS PARA SUPABASE (COMPROBANTES)', row);
   
-  // Validar que el ID sea válido antes de enviar
+  // Validar que el Notion ID sea válido antes de enviar
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'com',
       type: 'invalid_id',
-      message: 'El ID es null, undefined o cadena vacía',
+      message: 'El Notion ID es null, undefined o cadena vacía',
       notion_id: data.id,
       ghl_id: getValue(p['GHL ID']),
       payload: payload
@@ -312,11 +311,10 @@ async function sendToSupabase(payload) {
     
     await saveLog(errorLog);
     
-    logSection('❌ ERROR: ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
+    logSection('❌ ERROR: NOTION ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
+      'Notion ID recibido': data.id,
       'GHL ID recibido': getValue(p['GHL ID']),
-      'ID de Notion': data.id,
-      'ID final calculado': row.id,
-      'Motivo': 'El ID es null, undefined o cadena vacía'
+      'Motivo': 'El Notion ID es null, undefined o cadena vacía'
     });
     return;
   }
@@ -326,7 +324,8 @@ async function sendToSupabase(payload) {
   console.log(`🚀 INTENTANDO GUARDAR EN SUPABASE (COMPROBANTES)`);
   console.log('='.repeat(60));
   console.log(`📤 URL: ${SUPABASE_URL}/rest/v1/comprobantes`);
-  console.log(`📤 ID del registro: ${row.id}`);
+  console.log(`📤 Notion ID (PRIMARY KEY): ${row.id}`);
+  console.log(`📤 GHL ID: ${row.ghlid || 'null'}`);
   console.log(`📤 Cliente: ${row.cliente || 'Sin cliente'}`);
   console.log(`📤 Total de campos: ${Object.keys(row).length}`);
 
@@ -339,7 +338,7 @@ async function sendToSupabase(payload) {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates'
       },
-      params: { on_conflict: 'id' }
+      params: { on_conflict: 'id' }  // Ahora usa 'id' (Notion ID) como clave de conflicto
     });
     const duration = Date.now() - startTime;
     
@@ -351,7 +350,7 @@ async function sendToSupabase(payload) {
       http_status: response.status,
       supabase_error: { duration_ms: duration },
       notion_id: data.id,
-      ghl_id: row.id,
+      ghl_id: row.ghlid,
       attempted_data: row,
       payload: payload
     };
@@ -361,7 +360,8 @@ async function sendToSupabase(payload) {
     logSection('✅ ÉXITO: COMPROBANTE GUARDADO EN SUPABASE', {
       'Status HTTP': response.status,
       'Tiempo de respuesta': `${duration}ms`,
-      'ID guardado': row.id,
+      'Notion ID guardado': row.id,
+      'GHL ID guardado': row.ghlid || 'null',
       'Respuesta de Supabase': response.data,
       'Headers de respuesta': response.headers
     });
@@ -375,7 +375,7 @@ async function sendToSupabase(payload) {
       http_status: err.response?.status,
       supabase_error: err.response?.data || {},
       notion_id: data.id,
-      ghl_id: row.id,
+      ghl_id: row.ghlid,
       attempted_data: row,
       payload: payload
     };
@@ -387,7 +387,8 @@ async function sendToSupabase(payload) {
       'Código de estado HTTP': err.response?.status,
       'Datos del error': err.response?.data,
       'URL intentada': `${SUPABASE_URL}/rest/v1/comprobantes`,
-      'ID que intentamos guardar': row.id,
+      'Notion ID que intentamos guardar': row.id,
+      'GHL ID': row.ghlid || 'null',
       'Datos que intentamos enviar': row
     });
     
@@ -472,7 +473,7 @@ exports.handleWebhook = async (req, res) => {
     const data = payload.data || payload;
     const p = data?.properties || {};
     
-    console.log("🆔 ID de Notion:", data?.id || 'No disponible');
+    console.log("🆔 Notion ID (PRIMARY KEY):", data?.id || 'No disponible');
     console.log("📝 Cliente:", getValue(p['Cliente']) || 'No disponible');
     console.log("📄 Comprobante:", getValue(p['Comprobante']) || 'No disponible');
     
