@@ -219,6 +219,9 @@ function mapToSupabase(payload) {
     respondio_apertura: getValue(p['Respondio apertura']),
     confirmo_mensaje: getValue(p['Confirmo mensaje']),
     llamada_meg: getValue(p['Llamada MEG']),
+    // Nuevos campos: Call confirm y Llamada CC
+    call_confirm: getValue(p['Call confirm']),
+    llamada_cc: getValue(p['Llamada CC']),
 
     // Números
     facturacion: getValue(p['Facturacion']),
