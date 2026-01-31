@@ -58,16 +58,16 @@ function extraerNotionId(payload) {
          payload.notionid;
 }
 
-// Borrar por notionid en todas las tablas
+// Borrar por Notion ID usando el campo 'id' (PRIMARY KEY) en todas las tablas
 async function borrarDeSupabase(notionId) {
   if (!notionId || !SUPABASE_URL || !SUPABASE_KEY) {
     console.log('❌ Falta notionId o config de Supabase');
     return [];
   }
 
-  console.log(`🗑️ Borrando notionId: ${notionId}`);
+  console.log(`🗑️ Borrando registro con Notion ID: ${notionId}`);
   
-  await guardarLog('info', `Iniciando borrado para notionId: ${notionId}`, {
+  await guardarLog('info', `Iniciando borrado para Notion ID: ${notionId}`, {
     notionId,
     httpStatus: 200
   });
@@ -76,7 +76,10 @@ async function borrarDeSupabase(notionId) {
 
   for (const tabla of tablasSupabase) {
     try {
-      const url = `${SUPABASE_URL}/rest/v1/${tabla}?notionid=eq.${notionId}`;
+      // Ahora buscamos por el campo 'id' que contiene el Notion ID
+      const url = `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${notionId}`;
+      
+      console.log(`🔍 Buscando en tabla ${tabla} con id=${notionId}`);
       
       const response = await axios.delete(url, {
         headers: {
@@ -92,7 +95,7 @@ async function borrarDeSupabase(notionId) {
       // Log por cada tabla
       await guardarLog('success', `Tabla ${tabla}: ${borrados} registro(s) borrado(s)`, {
         notionId,
-        resultados: { tabla, borrados },
+        resultados: { tabla, borrados, registros_borrados: response.data },
         httpStatus: response.status
       });
       
@@ -138,7 +141,7 @@ async function enviarAControladores(payload) {
 exports.handleWebhook = async (req, res) => {
   let payload = req.body;
 
-  console.log('\n🎯 Webhook recibido:', new Date().toISOString());
+  console.log('\n🎯 Webhook de borrado recibido:', new Date().toISOString());
 
   // Parsear si viene como string
   if (typeof payload === 'string') {
@@ -156,7 +159,7 @@ exports.handleWebhook = async (req, res) => {
 
   // Log: webhook recibido
   const webhookId = extraerNotionId(payload) || 'unknown';
-  await guardarLog('info', `Webhook recibido - Tipo: ${payload.type || 'unknown'}`, {
+  await guardarLog('info', `Webhook de borrado recibido - Tipo: ${payload.type || 'unknown'}`, {
     notionId: webhookId,
     payload,
     httpStatus: 200
@@ -176,30 +179,31 @@ exports.handleWebhook = async (req, res) => {
   const notionId = extraerNotionId(payload);
   
   if (!notionId) {
-    console.log('⚠️ No se encontró notionId en el payload');
-    await guardarLog('error', 'No se encontró notionId en el payload', {
+    console.log('⚠️ No se encontró Notion ID en el payload');
+    await guardarLog('error', 'No se encontró Notion ID en el payload', {
       notionId: 'unknown',
       payload,
       httpStatus: 400
     });
-    return res.status(400).json({ error: 'No se encontró notionId' });
+    return res.status(400).json({ error: 'No se encontró Notion ID' });
   }
 
-  console.log(`🔑 Notion ID: ${notionId}`);
+  console.log(`🔑 Notion ID extraído: ${notionId}`);
+  console.log(`📋 Se buscará en el campo 'id' (PRIMARY KEY) de cada tabla`);
 
   try {
     // Log: inicio del proceso
-    await guardarLog('info', `Iniciando proceso para notionId: ${notionId}`, {
+    await guardarLog('info', `Iniciando proceso de borrado para Notion ID: ${notionId}`, {
       notionId,
       httpStatus: 200
     });
 
-    // 1. Borrar de Supabase
+    // 1. Borrar de Supabase usando el campo 'id'
     const resultadosBorrado = await borrarDeSupabase(notionId);
     const totalBorrados = resultadosBorrado.reduce((sum, r) => sum + r.borrados, 0);
     
     // Log: resultado del borrado
-    await guardarLog('success', `Borrado completado: ${totalBorrados} registro(s)`, {
+    await guardarLog('success', `Borrado completado: ${totalBorrados} registro(s) eliminado(s)`, {
       notionId,
       resultados: resultadosBorrado,
       httpStatus: 200
@@ -218,11 +222,12 @@ exports.handleWebhook = async (req, res) => {
 
     // Responder
     return res.status(200).json({
-      mensaje: 'Webhook procesado',
+      mensaje: 'Webhook de borrado procesado exitosamente',
       notionId,
       supabase: {
         totalBorrados,
-        detalles: resultadosBorrado
+        detalles: resultadosBorrado,
+        campo_busqueda: 'id (PRIMARY KEY con Notion ID)'
       },
       controladores: {
         total: webhookUrls.length,
@@ -235,14 +240,14 @@ exports.handleWebhook = async (req, res) => {
     console.error('💥 Error:', error.message);
     
     // Log: error crítico
-    await guardarLog('error', `Error procesando webhook: ${error.message}`, {
+    await guardarLog('error', `Error procesando webhook de borrado: ${error.message}`, {
       notionId,
       supabaseError: error.message,
       httpStatus: 500
     });
 
     return res.status(500).json({ 
-      error: 'Error procesando webhook',
+      error: 'Error procesando webhook de borrado',
       mensaje: error.message 
     });
   }
@@ -253,7 +258,8 @@ exports.getStats = (req, res) => {
   res.json({
     controladores: webhookUrls.length,
     tablasSupabase: tablasSupabase,
-    supabaseConfigurado: !!(SUPABASE_URL && SUPABASE_KEY)
+    supabaseConfigurado: !!(SUPABASE_URL && SUPABASE_KEY),
+    campo_busqueda: 'id (PRIMARY KEY con Notion ID)'
   });
 };
 
@@ -271,6 +277,7 @@ exports.getEventStats = (req, res) => {
     supabaseConfigured: !!(SUPABASE_URL && SUPABASE_KEY),
     tablesToDelete: tablasSupabase,
     webhookUrls: webhookUrls.length,
+    campo_busqueda: 'id (PRIMARY KEY con Notion ID)',
     timestamp: new Date().toISOString()
   });
 };
