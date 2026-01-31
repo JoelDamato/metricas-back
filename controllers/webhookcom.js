@@ -331,14 +331,14 @@ async function sendToSupabase(payload) {
 
   try {
     const startTime = Date.now();
-    const response = await axios.post(`${SUPABASE_URL}/rest/v1/comprobantes`, row, {
+    const response = await supabasePostWithRetry(`${SUPABASE_URL}/rest/v1/comprobantes`, row, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates'
       },
-      params: { on_conflict: 'id' }  // Ahora usa 'id' (Notion ID) como clave de conflicto
+      params: { on_conflict: 'id' }
     });
     const duration = Date.now() - startTime;
     
@@ -406,6 +406,49 @@ async function sendToSupabase(payload) {
     } else if (err.response?.status === 500) {
       console.log('\n⚠️  Posible causa: Error del servidor de Supabase');
     }
+  }
+}
+
+// Helper: delay
+function delay(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+// Supabase POST con retries, backoff exponencial y spacing (usa supabaseWithLimit internamente)
+async function supabasePostWithRetry(url, body, config = {}) {
+  const MAX_RETRIES = parseInt(process.env.SUPABASE_MAX_RETRIES || '3', 10);
+  const BASE_BACKOFF = parseInt(process.env.SUPABASE_BASE_BACKOFF_MS || '500', 10); // ms
+  const SPACING_MS = parseInt(process.env.SUPABASE_SPACING_MS || '1000', 10); // ms entre requests para evitar picos
+
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await supabaseWithLimit(() => axios.post(url, body, config));
+      if (SPACING_MS > 0) await delay(SPACING_MS);
+      return res;
+    } catch (err) {
+      lastErr = err;
+      const jitter = Math.floor(Math.random() * 1000);
+      const wait = Math.min(60000, BASE_BACKOFF * Math.pow(2, attempt - 1) + jitter);
+      console.warn(`⚠️ Supabase POST fallo en intento ${attempt}/${MAX_RETRIES} - esperando ${wait}ms antes de reintentar`);
+      try { await saveLog({ webhook_type: 'comprobantes', type: 'supabase_retry', message: `Retry ${attempt}`, notion_id: body?.id || null, supabase_error: err.response?.data || err.message }); } catch(e) {}
+      if (attempt === MAX_RETRIES) break;
+      await delay(wait);
+    }
+  }
+  throw lastErr;
+}
+
+// Simple concurrency limiter para llamadas a Supabase
+const MAX_SUPABASE_CONCURRENCY = 5;
+let _currentSupabaseConcurrency = 0;
+async function supabaseWithLimit(fn) {
+  while (_currentSupabaseConcurrency >= MAX_SUPABASE_CONCURRENCY) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  _currentSupabaseConcurrency++;
+  try {
+    return await fn();
+  } finally {
+    _currentSupabaseConcurrency--;
   }
 }
 
