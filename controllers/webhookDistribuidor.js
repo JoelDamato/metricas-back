@@ -50,11 +50,25 @@ async function guardarLog(tipo, mensaje, datos = {}) {
 
 // Extraer el Notion ID del payload
 function extraerNotionId(payload) {
+  console.log('\n🔍 ========================================');
+  console.log('🔍 EXTRAYENDO NOTION ID DEL PAYLOAD');
+  console.log('🔍 ========================================');
+  
   // Validar que payload sea un objeto
   if (!payload || typeof payload !== 'object') {
     console.log('⚠️ Payload no es un objeto válido');
+    console.log('   Tipo:', typeof payload);
+    console.log('   Valor:', payload);
     return null;
   }
+
+  console.log('📦 Estructura del payload:');
+  console.log('   - payload.entity:', payload.entity);
+  console.log('   - payload.entity?.id:', payload.entity?.id);
+  console.log('   - payload.id:', payload.id);
+  console.log('   - payload.data?.id:', payload.data?.id);
+  console.log('   - payload.page_id:', payload.page_id);
+  console.log('   - payload.notionid:', payload.notionid);
 
   // Para eventos de borrado, el ID está en entity.id
   const notionId = payload.entity?.id || 
@@ -63,10 +77,11 @@ function extraerNotionId(payload) {
                    payload.page_id || 
                    payload.notionid;
   
-  console.log('🔍 Buscando Notion ID en payload...');
-  console.log('   - entity.id:', payload.entity?.id);
-  console.log('   - payload.id:', payload.id);
-  console.log('   - Resultado:', notionId);
+  console.log('\n✅ Notion ID extraído:', notionId);
+  console.log('   - Tipo:', typeof notionId);
+  console.log('   - Longitud:', notionId?.length);
+  console.log('   - Válido:', !!notionId);
+  console.log('🔍 ========================================\n');
   
   return notionId;
 }
@@ -75,10 +90,18 @@ function extraerNotionId(payload) {
 async function borrarDeSupabase(notionId) {
   if (!notionId || !SUPABASE_URL || !SUPABASE_KEY) {
     console.log('❌ Falta notionId o config de Supabase');
+    console.log('   - notionId:', notionId);
+    console.log('   - SUPABASE_URL:', SUPABASE_URL ? 'Configurado' : 'NO configurado');
+    console.log('   - SUPABASE_KEY:', SUPABASE_KEY ? 'Configurado' : 'NO configurado');
     return [];
   }
 
-  console.log(`🗑️ Borrando registro con Notion ID: ${notionId}`);
+  console.log(`\n🗑️ ========================================`);
+  console.log(`🗑️ INICIANDO BORRADO`);
+  console.log(`🗑️ Notion ID: ${notionId}`);
+  console.log(`🗑️ Tipo de ID: ${typeof notionId}`);
+  console.log(`🗑️ Longitud del ID: ${notionId.length}`);
+  console.log(`🗑️ ========================================\n`);
   
   await guardarLog('info', `Iniciando borrado para Notion ID: ${notionId}`, {
     notionId,
@@ -89,12 +112,31 @@ async function borrarDeSupabase(notionId) {
 
   for (const tabla of tablasSupabase) {
     try {
-      // Ahora buscamos por el campo 'id' que contiene el Notion ID
-      const url = `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${notionId}`;
+      // Primero BUSCAR si existe el registro
+      const urlBuscar = `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${notionId}&select=*`;
       
-      console.log(`🔍 Buscando en tabla ${tabla} con id=${notionId}`);
+      console.log(`\n🔍 BUSCANDO en tabla: ${tabla}`);
+      console.log(`   URL: ${urlBuscar}`);
       
-      const response = await axios.delete(url, {
+      const busqueda = await axios.get(urlBuscar, {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      console.log(`   📊 Registros encontrados: ${busqueda.data.length}`);
+      if (busqueda.data.length > 0) {
+        console.log(`   📄 Datos encontrados:`, JSON.stringify(busqueda.data, null, 2));
+      }
+      
+      // Ahora intentar borrar
+      const urlBorrar = `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${notionId}`;
+      
+      console.log(`\n🗑️ BORRANDO de tabla: ${tabla}`);
+      console.log(`   URL: ${urlBorrar}`);
+      
+      const response = await axios.delete(urlBorrar, {
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -103,31 +145,64 @@ async function borrarDeSupabase(notionId) {
       });
 
       const borrados = Array.isArray(response.data) ? response.data.length : 0;
-      console.log(`✅ Tabla ${tabla}: ${borrados} registro(s) borrado(s)`);
+      console.log(`   ✅ Registros borrados: ${borrados}`);
+      console.log(`   📊 Status HTTP: ${response.status}`);
+      if (borrados > 0) {
+        console.log(`   📄 Datos borrados:`, JSON.stringify(response.data, null, 2));
+      }
       
       // Log por cada tabla
       await guardarLog('success', `Tabla ${tabla}: ${borrados} registro(s) borrado(s)`, {
         notionId,
-        resultados: { tabla, borrados, registros_borrados: response.data },
+        resultados: { 
+          tabla, 
+          borrados, 
+          registros_encontrados: busqueda.data.length,
+          registros_borrados: response.data 
+        },
         httpStatus: response.status
       });
       
-      resultados.push({ tabla, borrados, exito: true });
+      resultados.push({ 
+        tabla, 
+        encontrados: busqueda.data.length,
+        borrados, 
+        exito: true 
+      });
       
     } catch (error) {
-      console.error(`❌ Error en tabla ${tabla}:`, error.message);
+      console.error(`\n❌ ERROR en tabla ${tabla}:`);
+      console.error(`   Mensaje: ${error.message}`);
+      console.error(`   Status: ${error.response?.status}`);
+      console.error(`   Data:`, error.response?.data);
       
       // Log de error por tabla
       await guardarLog('error', `Error en tabla ${tabla}: ${error.message}`, {
         notionId,
-        supabaseError: error.message,
+        supabaseError: {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        },
         resultados: { tabla },
         httpStatus: error.response?.status || 500
       });
       
-      resultados.push({ tabla, borrados: 0, exito: false, error: error.message });
+      resultados.push({ 
+        tabla, 
+        encontrados: 0,
+        borrados: 0, 
+        exito: false, 
+        error: error.message 
+      });
     }
   }
+
+  console.log(`\n🗑️ ========================================`);
+  console.log(`🗑️ RESUMEN DEL BORRADO`);
+  console.log(`🗑️ Total de tablas procesadas: ${resultados.length}`);
+  console.log(`🗑️ Total de registros borrados: ${resultados.reduce((sum, r) => sum + r.borrados, 0)}`);
+  console.log(`🗑️ ========================================\n`);
 
   return resultados;
 }
@@ -310,6 +385,67 @@ exports.getEventStats = (req, res) => {
     tablesToDelete: tablasSupabase,
     webhookUrls: webhookUrls.length,
     campo_busqueda: 'id (PRIMARY KEY con Notion ID)',
+    timestamp: new Date().toISOString()
+  });
+};
+
+// 🆕 Endpoint para probar si un ID existe en las tablas
+exports.testNotionId = async (req, res) => {
+  const { notionId } = req.query;
+  
+  if (!notionId) {
+    return res.status(400).json({ error: 'Falta parámetro notionId' });
+  }
+  
+  console.log(`\n🧪 ========================================`);
+  console.log(`🧪 TEST: Buscando Notion ID: ${notionId}`);
+  console.log(`🧪 ========================================\n`);
+  
+  const resultados = [];
+  
+  for (const tabla of tablasSupabase) {
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${notionId}&select=*`;
+      
+      console.log(`🔍 Buscando en tabla: ${tabla}`);
+      console.log(`   URL: ${url}`);
+      
+      const response = await axios.get(url, {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      const encontrados = response.data.length;
+      console.log(`   📊 Registros encontrados: ${encontrados}`);
+      
+      if (encontrados > 0) {
+        console.log(`   📄 Datos:`, JSON.stringify(response.data, null, 2));
+      }
+      
+      resultados.push({
+        tabla,
+        encontrados,
+        datos: response.data
+      });
+      
+    } catch (error) {
+      console.error(`   ❌ Error: ${error.message}`);
+      resultados.push({
+        tabla,
+        error: error.message
+      });
+    }
+  }
+  
+  console.log(`\n🧪 ========================================`);
+  console.log(`🧪 TEST COMPLETADO`);
+  console.log(`🧪 ========================================\n`);
+  
+  return res.status(200).json({
+    notionId,
+    resultados,
     timestamp: new Date().toISOString()
   });
 };
