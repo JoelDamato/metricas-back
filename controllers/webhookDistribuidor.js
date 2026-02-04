@@ -160,9 +160,17 @@ exports.handleWebhook = async (req, res) => {
   // ⚠️ CRÍTICO: Parsear si viene como string - DEBE IR PRIMERO
   if (typeof payload === 'string') {
     try {
-      console.log('🔄 Parseando payload de string a objeto...');
+      console.log('🔄 Parseando payload (primer parseo)...');
       payload = JSON.parse(payload);
-      console.log('✅ Payload parseado correctamente');
+      console.log('✅ Primer parseo exitoso. Tipo resultante:', typeof payload);
+      
+      // 🔥 DOBLE PARSEO: Si después de parsear sigue siendo string, parsear de nuevo
+      if (typeof payload === 'string') {
+        console.log('🔄 Payload sigue siendo string, parseando segunda vez...');
+        payload = JSON.parse(payload);
+        console.log('✅ Segundo parseo exitoso');
+      }
+      
     } catch (error) {
       console.error('❌ Error parseando JSON:', error.message);
       await guardarLog('error', `Error parseando JSON: ${error.message}`, {
@@ -173,6 +181,9 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ error: 'JSON inválido' });
     }
   }
+  
+  console.log('📋 Payload final (tipo):', typeof payload);
+  console.log('📋 Payload tiene entity?:', !!payload?.entity);
 
   // Verificación (si Notion te envía un challenge)
   if (payload.challenge) {
