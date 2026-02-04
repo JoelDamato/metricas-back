@@ -42,7 +42,7 @@ async function guardarLog(tipo, mensaje, datos = {}) {
       }
     });
 
-    console.log(`📝 Log guardado: ${tipo}`);
+    console.log(`📝 Log guardado: ${tipo} - ${mensaje}`);
   } catch (error) {
     console.error('❌ Error guardando log:', error.message);
   }
@@ -50,12 +50,25 @@ async function guardarLog(tipo, mensaje, datos = {}) {
 
 // Extraer el Notion ID del payload
 function extraerNotionId(payload) {
+  // Validar que payload sea un objeto
+  if (!payload || typeof payload !== 'object') {
+    console.log('⚠️ Payload no es un objeto válido');
+    return null;
+  }
+
   // Para eventos de borrado, el ID está en entity.id
-  return payload.entity?.id || 
-         payload.id || 
-         payload.data?.id || 
-         payload.page_id || 
-         payload.notionid;
+  const notionId = payload.entity?.id || 
+                   payload.id || 
+                   payload.data?.id || 
+                   payload.page_id || 
+                   payload.notionid;
+  
+  console.log('🔍 Buscando Notion ID en payload...');
+  console.log('   - entity.id:', payload.entity?.id);
+  console.log('   - payload.id:', payload.id);
+  console.log('   - Resultado:', notionId);
+  
+  return notionId;
 }
 
 // Borrar por Notion ID usando el campo 'id' (PRIMARY KEY) en todas las tablas
@@ -142,12 +155,16 @@ exports.handleWebhook = async (req, res) => {
   let payload = req.body;
 
   console.log('\n🎯 Webhook de borrado recibido:', new Date().toISOString());
+  console.log('📦 Tipo de payload recibido:', typeof payload);
 
-  // Parsear si viene como string
+  // ⚠️ CRÍTICO: Parsear si viene como string - DEBE IR PRIMERO
   if (typeof payload === 'string') {
     try {
+      console.log('🔄 Parseando payload de string a objeto...');
       payload = JSON.parse(payload);
+      console.log('✅ Payload parseado correctamente');
     } catch (error) {
+      console.error('❌ Error parseando JSON:', error.message);
       await guardarLog('error', `Error parseando JSON: ${error.message}`, {
         supabaseError: error.message,
         payload: req.body,
@@ -156,14 +173,6 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ error: 'JSON inválido' });
     }
   }
-
-  // Log: webhook recibido
-  const webhookId = extraerNotionId(payload) || 'unknown';
-  await guardarLog('info', `Webhook de borrado recibido - Tipo: ${payload.type || 'unknown'}`, {
-    notionId: webhookId,
-    payload,
-    httpStatus: 200
-  });
 
   // Verificación (si Notion te envía un challenge)
   if (payload.challenge) {
@@ -175,21 +184,33 @@ exports.handleWebhook = async (req, res) => {
     return res.status(200).send(payload.challenge);
   }
 
-  // Extraer el ID
+  // Ahora sí extraer el ID (después de parsear)
   const notionId = extraerNotionId(payload);
   
   if (!notionId) {
     console.log('⚠️ No se encontró Notion ID en el payload');
+    console.log('📋 Payload completo:', JSON.stringify(payload, null, 2));
+    
     await guardarLog('error', 'No se encontró Notion ID en el payload', {
       notionId: 'unknown',
       payload,
       httpStatus: 400
     });
-    return res.status(400).json({ error: 'No se encontró Notion ID' });
+    return res.status(400).json({ 
+      error: 'No se encontró Notion ID',
+      payload_recibido: payload
+    });
   }
 
   console.log(`🔑 Notion ID extraído: ${notionId}`);
   console.log(`📋 Se buscará en el campo 'id' (PRIMARY KEY) de cada tabla`);
+
+  // Log: webhook recibido CON el ID ya extraído
+  await guardarLog('info', `Webhook de borrado recibido - Tipo: ${payload.type || 'unknown'}`, {
+    notionId: notionId,
+    payload,
+    httpStatus: 200
+  });
 
   try {
     // Log: inicio del proceso
