@@ -222,6 +222,8 @@ function mapToSupabase(payload) {
     // Nuevos campos: Call confirm y Llamada CC
     call_confirm: getValue(p['Call confirm']),
     llamada_cc: getValue(p['Llamada CC']),
+    // Último producto adquirido (campo u_product_adquirido en Supabase)
+    u_product_adquirido: getValue(p['Ultimo producto adquirido']),
 
     // Números
     facturacion: getValue(p['Facturacion']),
