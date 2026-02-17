@@ -224,6 +224,8 @@ function mapToSupabase(payload) {
     llamada_cc: getValue(p['Llamada CC']),
     // Último producto adquirido (campo u_product_adquirido en Supabase)
     u_product_adquirido: getValue(p['Ultimo producto adquirido']),
+    // Fecha de venta MEG (timestamp)
+    f_venta_meg: getValue(p['F.venta MEG']),
 
     // Números
     facturacion: getValue(p['Facturacion']),
