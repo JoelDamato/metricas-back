@@ -204,6 +204,7 @@ function mapToSupabase(payload) {
     adname: getValue(p['Adname']),
     adset: getValue(p['Adset']),
     campaign: getValue(p['Campaign']),
+    estrategia_a: getText(p['Estrategia apertura']),
 
     // Responsables
     responsable: getValue(p['Responsable']),
