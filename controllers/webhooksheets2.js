@@ -239,7 +239,21 @@ function mapToSupabase(payload) {
     // Fechas
     fecha_llamada: getValue(p['Fecha de llamada']),
     fecha_agenda: getValue(p['Fecha de agendamiento']),
-    fecha_venta: getValue(p['Ult fecha de venta'])
+    fecha_venta: getValue(p['Ult fecha de venta']),
+    fecha_cancelada: getValue(p['Fecha cancelada']),
+    fecha_recuperado: getValue(p['Fecha de recuperado']),
+    fecha_rt: getValue(p['Fecha RT']),
+
+    // Otros campos de tracking / marketing
+    nuevo_seguidor: getValue(p['Nuevo Seguidor']),
+    recurso_ig: getValue(p['Recurso IG']),
+    calendario_agendado: getValue(p['Calendario agendado']),
+    producto_de_interes: getValue(p['Producto de interes']),
+    embudo_meg: getValue(p['Embudo MEG']),
+    embudo_club: getValue(p['Embudo CLUB']),
+    producto_adq: getValue(p['Producto adquirido']),
+    seguimiento_setting: getValue(p['Seguimiento Setting']),
+    fecha_creada: getValue(p['Fecha creada.'])
   };
 }
 
