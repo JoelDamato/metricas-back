@@ -241,7 +241,6 @@ function mapToSupabase(payload) {
     fecha_agenda: getValue(p['Fecha de agendamiento']),
     fecha_venta: getValue(p['Ult fecha de venta']),
     fecha_cancelada: getValue(p['Fecha cancelada']),
-    fecha_recuperado: getValue(p['Fecha de recuperado']),
     fecha_rt: getValue(p['Fecha RT']),
 
     // Otros campos de tracking / marketing
