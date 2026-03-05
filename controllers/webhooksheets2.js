@@ -252,7 +252,7 @@ function mapToSupabase(payload) {
     embudo_club: getValue(p['Embudo CLUB']),
     producto_adq: getValue(p['Producto adquirido']),
     seguimiento_setting: getValue(p['Seguimiento Setting']),
-    fecha_creada: getValue(p['Fecha creada.'])
+    fecha_creada: getValue(p['Fecha creada'])
   };
 }
 
