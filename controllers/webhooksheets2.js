@@ -252,7 +252,15 @@ function mapToSupabase(payload) {
     embudo_club: getValue(p['Embudo CLUB']),
     producto_adq: getValue(p['Producto adquirido']),
     seguimiento_setting: getValue(p['Seguimiento Setting']),
-    fecha_creada: getValue(p['Fecha creada'])
+    fecha_creada: getValue(p['Fecha creada']),
+
+    // Nuevos campos de recursos (Notion -> Supabase)
+    primero_recurso: getValue(p['Primero recurso']),
+    ultimo_recurso: getValue(p['Ultimo recurso']),
+    cantidad_recursos: getValue(p['Cantidad de recursos']),
+    formato_fuente: getValue(p['Formato contenido fuente']),
+    fuente_preagenda: getValue(p['Fuente pre agenda']),
+    recurso_tt: getValue(p['Recurso TT'])
   };
 }
 
