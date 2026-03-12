@@ -259,7 +259,6 @@ function mapToSupabase(payload) {
     ultimo_recurso: getValue(p['Ultimo recurso']),
     cantidad_recursos: getValue(p['Cantidad de recursos']),
     formato_fuente: getValue(p['Formato contenido fuente']),
-    fuente_preagenda: getValue(p['Fuente pre agenda']),
     recurso_tt: getValue(p['Recurso TT'])
   };
 }
