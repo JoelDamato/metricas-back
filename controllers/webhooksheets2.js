@@ -235,6 +235,8 @@ function mapToSupabase(payload) {
     saldo: getValue(p['Saldo']),
     inversion: getValue(p['Inversion']),
     score: getValue(p['Score']),
+    // Monto incobrable (número)
+    monto_incobrable: toNumber(getValue(p['Monto incobrable'])),
 
     // Fechas
     fecha_llamada: getValue(p['Fecha de llamada']),
@@ -261,6 +263,13 @@ function mapToSupabase(payload) {
     formato_fuente: getValue(p['Formato contenido fuente']),
     recurso_tt: getValue(p['Recurso TT'])
   };
+}
+
+// Helper para convertir valores a número o null
+function toNumber(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const n = Number(val);
+  return Number.isNaN(n) ? null : n;
 }
 
 async function sendToSupabase(payload) {

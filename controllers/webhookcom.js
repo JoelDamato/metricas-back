@@ -208,6 +208,7 @@ function mapToSupabase(payload) {
     modelo_de_negocio: getValue(p['Modelo de negocio']),
     monto_pesos: getValue(p['Monto Pesos']),
     origen: getValue(p['Origen']),
+    monto_incobrable: (function(){ const v = getValue(p['Monto incobrable']); const n = Number(v); return Number.isNaN(n)? null : n; })(),
     producto_format: getValue(p['Producto Format']),
     productos: getValue(p['Productos']),
     rebotar_pago: getValue(p['Rebotar pago']),
