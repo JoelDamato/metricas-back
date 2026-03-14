@@ -276,48 +276,14 @@ async function sendToSupabase(payload) {
   const data = payload.data || payload;
   const p = data.properties || {};
   
-  // Helper para mostrar datos de forma legible
-  const logSection = (title, data) => {
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`📌 ${title}`);
-    console.log('='.repeat(60));
-    if (typeof data === 'object' && data !== null) {
-      console.log(JSON.stringify(data, null, 2));
-    } else {
-      console.log(data);
-    }
-  };
-  
-  // ========== DATOS QUE LLEGAN DE NOTION ==========
-  logSection('DATOS QUE LLEGAN DE NOTION (CRM)', {
-    'ID de Notion (PRINCIPAL)': data.id,
-    'Nombre del Lead': getValue(p['Nombre']),
-    'GHL ID (raw)': p['GHL ID'],
-    'GHL ID (extraído)': getValue(p['GHL ID']),
-    'Todas las propiedades disponibles': Object.keys(p).sort(),
-  });
-  
-  // Mostrar propiedades importantes de forma individual
-  console.log('\n📋 PROPIEDADES IMPORTANTES DE NOTION:');
-  const importantProps = ['GHL ID', 'Aplica', 'Agendo', 'Respondio apertura', 'Confirmo mensaje', 'Llamada MEG'];
-  importantProps.forEach(propName => {
-    const prop = p[propName];
-    if (prop) {
-      console.log(`\n  🔹 ${propName}:`);
-      console.log(`     Tipo: ${prop.type || 'N/A'}`);
-      console.log(`     Valor extraído: ${getValue(prop) ?? 'null'}`);
-      console.log(`     Valor completo:`, JSON.stringify(prop, null, 4));
-    } else {
-      console.log(`\n  🔹 ${propName}: NO EXISTE en las propiedades`);
-    }
-  });
-  
   const row = mapToSupabase(payload);
-  
-  // ========== DATOS MAPEADOS PARA SUPABASE ==========
-  logSection('DATOS MAPEADOS PARA SUPABASE', row);
-  
-  // Validar que el Notion ID sea válido antes de enviar
+
+  // Log simple: campos y valores que se envían a Supabase
+  console.log('\n📤 Enviando a Supabase (CRM) – campos y valores:');
+  Object.keys(row).forEach((key) => {
+    console.log(`  ${key}: ${row[key] === null || row[key] === undefined ? 'null' : row[key]}`);
+  });
+
   if (!row.id || row.id === '') {
     const errorLog = {
       webhook_type: 'CRM',
@@ -327,26 +293,10 @@ async function sendToSupabase(payload) {
       ghl_id: getValue(p['GHL ID']),
       payload: payload
     };
-    
     await saveLog(errorLog);
-    
-    logSection('❌ ERROR: NOTION ID INVÁLIDO - NO SE ENVIARÁ A SUPABASE', {
-      'Notion ID recibido': data.id,
-      'GHL ID recibido': getValue(p['GHL ID']),
-      'Motivo': 'El Notion ID es null, undefined o cadena vacía'
-    });
+    console.error('❌ No se envía: ID inválido');
     return;
   }
-  
-  // ========== INTENTANDO GUARDAR EN SUPABASE ==========
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`🚀 INTENTANDO GUARDAR EN SUPABASE`);
-  console.log('='.repeat(60));
-  console.log(`📤 URL: ${SUPABASE_URL}/rest/v1/leads_raw`);
-  console.log(`📤 Notion ID (PRIMARY KEY): ${row.id}`);
-  console.log(`📤 GHL ID: ${row.ghlid || 'null'}`);
-  console.log(`📤 Nombre: ${row.nombre || 'Sin nombre'}`);
-  console.log(`📤 Total de campos: ${Object.keys(row).length}`);
 
   try {
     const startTime = Date.now();
@@ -375,18 +325,8 @@ async function sendToSupabase(payload) {
     };
     
     await saveLog(successLog);
-    
-    logSection('✅ ÉXITO: REGISTRO GUARDADO EN SUPABASE', {
-      'Status HTTP': response.status,
-      'Tiempo de respuesta': `${duration}ms`,
-      'Notion ID guardado': row.id,
-      'GHL ID guardado': row.ghlid || 'null',
-      'Respuesta de Supabase': response.data,
-      'Headers de respuesta': response.headers
-    });
-    
+    console.log('✅ Guardado en Supabase');
   } catch (err) {
-    // ========== ERROR AL GUARDAR EN SUPABASE ==========
     const errorLog = {
       webhook_type: 'CRM',
       type: 'supabase_error',
@@ -398,33 +338,8 @@ async function sendToSupabase(payload) {
       attempted_data: row,
       payload: payload
     };
-    
     await saveLog(errorLog);
-    
-    logSection('❌ ERROR AL GUARDAR EN SUPABASE', {
-      'Mensaje de error': err.message,
-      'Código de estado HTTP': err.response?.status,
-      'Datos del error': err.response?.data,
-      'URL intentada': `${SUPABASE_URL}/rest/v1/leads_raw`,
-      'Notion ID que intentamos guardar': row.id,
-      'GHL ID': row.ghlid || 'null',
-      'Datos que intentamos enviar': row
-    });
-    
-    if (err.response?.data) {
-      console.log('\n📋 DETALLES DEL ERROR DE SUPABASE:');
-      console.log(JSON.stringify(err.response.data, null, 2));
-    }
-    
-    if (err.response?.status === 400) {
-      console.log('\n⚠️  Posible causa: Datos inválidos o formato incorrecto');
-    } else if (err.response?.status === 401 || err.response?.status === 403) {
-      console.log('\n⚠️  Posible causa: Problema de autenticación con Supabase');
-    } else if (err.response?.status === 409) {
-      console.log('\n⚠️  Posible causa: Conflicto con registro existente');
-    } else if (err.response?.status === 500) {
-      console.log('\n⚠️  Posible causa: Error del servidor de Supabase');
-    }
+    console.error('❌ Error Supabase:', err.response?.status, err.response?.data || err.message);
   }
 }
 
@@ -524,53 +439,26 @@ async function processQueue() {
 
 exports.handleWebhook = async (req, res) => {
   try {
-    console.log("\n" + "=".repeat(60));
-    console.log("📥 WEBHOOK RECIBIDO (CRM)");
-    console.log("=".repeat(60));
-    console.log("⏰ Timestamp:", new Date().toISOString());
-    
-    // Log temprano para verificar que el payload llegó
-    const receivedBody = req.body;
-    const size = (() => { try { return JSON.stringify(receivedBody).length; } catch(e) { return 'N/A'; }})();
-    console.log("📦 Tamaño del payload recibido:", size);
-    
+    console.log('📥 Webhook recibido (CRM)');
     const payload = req.body;
     const data = payload.data || payload;
-    const p = data?.properties || {};
-    
-    console.log("🆔 Notion ID (PRIMARY KEY):", data?.id || 'No disponible');
-    console.log("📝 Nombre del lead:", getValue(p['Nombre']) || 'No disponible');
-    
-    // Validar payload
-    const isValidPayload = 
+
+    const isValidPayload =
       (payload.data && payload.data.object === 'page') ||
       (payload.type === 'page.deleted' && payload.entity);
 
     if (!isValidPayload) {
-      console.warn("⚠️ Payload NO VÁLIDO - no es un evento reconocido");
-
+      console.warn('⚠️ Payload no válido');
       const errorLog = {
         webhook_type: 'CRM',
         type: 'invalid_payload',
         message: 'Payload no válido - no es un evento reconocido',
         payload: payload
       };
-
       await saveLog(errorLog);
+      return res.status(400).json({ error: 'Payload inválido', received: payload.type || 'unknown' });
+    }
 
-      return res.status(400).json({ 
-        error: "Payload inválido",
-        received: payload.type || 'unknown'
-      });
-    }
-    
-    console.log("\n📋 Payload completo (JSON):");
-    try {
-      console.log(JSON.stringify(req.body, null, 2));
-    } catch(e) {
-      console.log('No se pudo mostrar payload completo:', e.message);
-    }
-    
     res.status(200).json({ 
       status: "ok",
       message: "Webhook de CRM recibido y encolado",
