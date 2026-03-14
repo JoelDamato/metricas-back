@@ -176,7 +176,7 @@ function mapToSupabase(payload) {
   // Obtener GHL ID (puede ser fórmula o texto)
   const ghlId = getValue(p['GHL ID']);
 
-  return {
+  const row = {
     id: data.id,  // Notion ID como identificador principal
     ghlid: ghlId ? ghlId.toString() : null,  // GHL ID como campo separado (puede ser null)
     adname: getValue(p['Adname']),
@@ -259,8 +259,16 @@ function mapToSupabase(payload) {
     f_renovacion_string: getValue(p['F. Renovacion string'])
   };
 
-  
+  Object.keys(row).forEach(key => {
+    if (key !== 'id' && row[key] === null) {
+      delete row[key];
+    }
+  });
+
+  return row;
 }
+
+
 
 async function sendToSupabase(payload) {
   const data = payload.data || payload;
