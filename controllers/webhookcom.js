@@ -7,6 +7,13 @@ const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-a
 const queue = [];
 let isProcessing = false;
 
+
+
+function toNumber(val) {
+  if (val === null || val === undefined || val === '') return null;
+  const n = Number(val);
+  return Number.isNaN(n) ? null : n;
+}
 // Función para normalizar fechas al formato de Supabase (timestamp)
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
@@ -207,7 +214,7 @@ function mapToSupabase(payload) {
     medios_de_pago: getValue(p['Medios de pago']),
     modelo_de_negocio: getValue(p['Modelo de negocio']),
     monto_pesos: getValue(p['Monto Pesos']),
-    monto_incobrable: getValue(p['Monto incobrable']),
+    monto_incobrable: toNumber(getValue(p['Monto incobrable'])),
     origen: getValue(p['Origen']),
     producto_format: getValue(p['Producto Format']),
     productos: getValue(p['Productos']),
