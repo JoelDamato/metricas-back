@@ -255,6 +255,7 @@ function mapToSupabase(payload) {
     porcentaje_venta_vieja: getValue(p['% venta vieja']),
     f_venta: getValue(p['F.venta']),
     f_transaccion_string: getValue(p['F.transaccion string']),
+    estrategia_a: getValue(p['Estrategia a']),
     f_renovacion: getValue(p['F. renovacion']),
     f_renovacion_string: getValue(p['F. Renovacion string'])
   };
