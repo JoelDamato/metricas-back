@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reportes | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page reportes-page">
+    <main class="container">
+      <div class="nav"><a href="/metricas">Volver al listado</a></div>
+      <section class="ranking-hero">
+        <h1>Reportes</h1>
+        <p>Resumen comercial diario por closer con ventas y cash collected.</p>
+      </section>
+
+      <div class="actions ranking-actions reportes-actions">
+        <label>
+          Desde
+          <input id="desde" type="date" />
+        </label>
+        <label>
+          Hasta
+          <input id="hasta" type="date" />
+        </label>
+        <button id="reload">Aplicar filtros</button>
+      </div>
+
+      <p id="status"></p>
+      <section id="reportesContainer" class="reportes-stack"></section>
+    </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/views/reportes.page.js"></script>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KPI Closers Mensual | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page kpi-closers-page">
+    <main class="container">
+      <div class="nav"><a href="/metricas">Volver al listado</a></div>
+      <section class="ranking-hero">
+        <h1>KPI Closers Mensual</h1>
+        <p>Cumplimiento por closer con reglas editables.</p>
+      </section>
+
+      <div class="actions ranking-actions">
+        <label>
+          Año
+          <select id="anio"></select>
+        </label>
+        <label>
+          Mes
+          <select id="mes"></select>
+        </label>
+        <button id="reload">Aplicar filtros</button>
+      </div>
+
+      <div class="actions ranking-actions kpi-rules">
+        <label>Cierre seg. llamada %
+          <input id="rule_cierre_llamada" type="number" min="0" step="0.1" />
+        </label>
+        <label>Asistencia seg. llamada %
+          <input id="rule_asistencia_llamada" type="number" min="0" step="0.1" />
+        </label>
+        <label>Tasa asistencia %
+          <input id="rule_tasa_asistencia" type="number" min="0" step="0.1" />
+        </label>
+        <label>Tasa cierre %
+          <input id="rule_tasa_cierre" type="number" min="0" step="0.1" />
+        </label>
+        <label>Cash Collected mínimo
+          <input id="rule_cash_collected" type="number" min="0" step="0.01" />
+        </label>
+        <label>Facturación mínima
+          <input id="rule_facturacion" type="number" min="0" step="0.01" />
+        </label>
+        <button id="saveRules">Guardar reglas</button>
+      </div>
+
+      <p id="status"></p>
+      <section id="tableContainer"></section>
+    </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/views/kpi-closers.page.js"></script>
+  </body>
+</html>

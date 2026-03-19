@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vista | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <div class="nav"><a href="/metricas">Volver al listado</a></div>
+      <h1 id="title">Vista</h1>
+      <p>Consulta dinámica por recurso.</p>
+
+      <div class="actions">
+        <input id="limit" type="number" value="100" min="1" max="1000" />
+        <input id="orderBy" type="text" placeholder="Ordenar por columna (ej: created_at)" />
+        <button id="reload">Recargar</button>
+      </div>
+
+      <p id="status"></p>
+      <section id="tableContainer"></section>
+    </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/views/table-render.js"></script>
+    <script src="/metricas/js/views/view.page.js"></script>
+  </body>
+</html>

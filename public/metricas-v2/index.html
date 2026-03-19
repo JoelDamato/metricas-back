@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Central de Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page central-page">
+    <main class="container">
+      <section class="ranking-hero">
+        <h1>Central de Métricas</h1>
+        <p>Tableros activos del equipo con diseño unificado.</p>
+      </section>
+
+      <section class="cards central-cards">
+        <a class="card" href="/metricas/views/ranking.html">
+          <h3>Ranking Closers Mensual</h3>
+          <p>Ranking comercial con filtros y lectura rápida.</p>
+        </a>
+        <a class="card" href="/metricas/views/agendas-totales.html">
+          <h3>Agendas Totales</h3>
+          <p>Matriz de meses y totales por embudo.</p>
+        </a>
+        <a class="card" href="/metricas/views/agendas-detalle-closer.html">
+          <h3>Agenda Detalle Origen + Closer</h3>
+          <p>Detalle mensual por origen y closer.</p>
+        </a>
+        <a class="card" href="/metricas/views/kpi-closers.html">
+          <h3>KPI Closers Mensual</h3>
+          <p>Objetivos editables y cumplimiento por closer.</p>
+        </a>
+        <a class="card" href="/metricas/views/setting.html">
+          <h3>Setting</h3>
+          <p>Embudo detallado por setter y período.</p>
+        </a>
+        <a class="card" href="/metricas/views/reportes.html">
+          <h3>Reportes</h3>
+          <p>Resumen diario por closer con ventas y cash collected.</p>
+        </a>
+        <a class="card" href="/metricas/views/leads-bdd.html">
+          <h3>Informe Por Respuestas</h3>
+          <p>Tablas de respuestas desde la base de leads por fecha de agenda.</p>
+        </a>
+      </section>
+    </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+  </body>
+</html>

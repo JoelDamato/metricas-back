@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ranking Closers | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page">
+    <main class="container">
+      <div class="nav"><a href="/metricas">Volver al listado</a></div>
+      <section class="ranking-hero">
+        <h1>Ranking Closers</h1>
+        <p>Vista mensual con facturación, cash collected, ventas y efectividad.</p>
+      </section>
+
+      <div class="actions ranking-actions">
+        <label>
+          Año
+          <input id="anio" type="number" min="2020" max="2100" />
+        </label>
+        <label>
+          Mes
+          <select id="mes"></select>
+        </label>
+        <button id="reload">Aplicar filtros</button>
+      </div>
+
+      <p id="status"></p>
+      <section id="kpiContainer" class="cards"></section>
+      <section id="tableContainer"></section>
+      <section class="chart-panel">
+        <h3>Comparativa por Closer</h3>
+        <p>Facturación vs Cash Collected (mes seleccionado).</p>
+        <canvas id="rankingChart" height="120"></canvas>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/views/ranking.page.js"></script>
+  </body>
+</html>

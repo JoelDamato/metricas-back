@@ -1,0 +1,93 @@
+const supabaseService = require('../services/supabase.service');
+
+async function health(req, res) {
+  res.json({
+    ok: true,
+    service: 'metricas',
+    date: new Date().toISOString()
+  });
+}
+
+async function getResources(req, res, next) {
+  try {
+    const resources = await supabaseService.listResources();
+    res.json({
+      ok: true,
+      count: resources.length,
+      resources
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getResourceRows(req, res, next) {
+  try {
+    const resource = req.params.resource;
+    const eqFilters = {};
+
+    Object.keys(req.query).forEach((key) => {
+      if (!key.startsWith('eq_')) return;
+      const field = key.slice(3);
+      if (!field) return;
+      eqFilters[field] = req.query[key];
+    });
+
+    const rows = await supabaseService.listRows(resource, {
+      limit: req.query.limit,
+      offset: req.query.offset,
+      orderBy: req.query.orderBy,
+      orderDir: req.query.orderDir,
+      from: req.query.from,
+      to: req.query.to,
+      dateField: req.query.dateField,
+      eqFilters
+    });
+
+    res.json({
+      ok: true,
+      resource: supabaseService.normalizeResourceName(resource),
+      count: rows.length,
+      rows
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getKpiCloserRules(req, res, next) {
+  try {
+    const rules = await supabaseService.getKpiCloserRules({
+      anio: req.query.anio,
+      mes: req.query.mes
+    });
+
+    res.json({
+      ok: true,
+      rules
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveKpiCloserRules(req, res, next) {
+  try {
+    const rules = await supabaseService.upsertKpiCloserRules(req.body || {});
+
+    res.json({
+      ok: true,
+      rules
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  health,
+  getResources,
+  getResourceRows,
+  getKpiCloserRules,
+  saveKpiCloserRules
+};

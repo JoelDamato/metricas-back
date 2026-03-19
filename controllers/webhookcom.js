@@ -14,21 +14,36 @@ function toNumber(val) {
   const n = Number(val);
   return Number.isNaN(n) ? null : n;
 }
+
+function formatIsoNoMillis(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 // Función para normalizar fechas al formato de Supabase (timestamp)
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
   if (dateValue === null || dateValue === undefined) return null;
   if (typeof dateValue === 'string' && dateValue.trim() === '') return null;
-  
+
   try {
+    if (typeof dateValue === 'string') {
+      const trimmed = dateValue.trim();
+
+      // Notion suele enviar fechas "solo fecha" como YYYY-MM-DD.
+      // Las guardamos como medianoche de Argentina para no caer el día anterior en UTC.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return `${trimmed}T03:00:00Z`;
+      }
+
+      const parsed = new Date(trimmed);
+      if (isNaN(parsed.getTime())) return null;
+      return formatIsoNoMillis(parsed);
+    }
+
     const date = new Date(dateValue);
     if (isNaN(date.getTime())) return null;
-    
-    // Ajustar restando 3 horas (UTC-3 para Argentina)
-    const adjusted = new Date(date.getTime() - 3 * 60 * 60 * 1000);
-    
-    // Retornar ISO completo con hora sin milisegundos
-    return adjusted.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    return formatIsoNoMillis(date);
   } catch (error) {
     console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
     return null;
@@ -37,9 +52,7 @@ function normalizeDate(dateValue) {
 
 // Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
 function argentinaNowISO() {
-  const now = new Date();
-  const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
-  return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return formatIsoNoMillis(new Date());
 }
 
 // Función para safe stringify (evita errores con objetos circulares)
