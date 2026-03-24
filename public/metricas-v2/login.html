@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ingresar | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page auth-page">
+    <main class="container auth-container">
+      <section class="ranking-hero">
+        <h1>Ingreso a Métricas</h1>
+        <p>Entrá con tu usuario y rol asignado.</p>
+      </section>
+      <section class="card auth-card">
+        <form id="loginForm" class="auth-form">
+          <label>
+            Email
+            <input id="email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            Contraseña
+            <input id="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">Ingresar</button>
+        </form>
+        <p id="authStatus"></p>
+      </section>
+    </main>
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/auth/login.page.js"></script>
+  </body>
+</html>

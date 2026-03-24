@@ -3,21 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Informe Por Respuestas | Métricas</title>
+    <title>Totales MKT | Métricas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/metricas/css/styles.css" />
   </head>
-  <body class="ranking-page leads-page">
+  <body class="ranking-page marketing-page">
     <main class="container">
       <div class="nav"><a href="/metricas">Volver al listado</a></div>
       <section class="ranking-hero">
-        <h1>Informe Por Respuestas</h1>
-        <p>Desglose por respuestas tomado desde la base de leads y filtrado por fecha de agenda.</p>
+        <h1>Totales MKT</h1>
+        <p>KPIs de marketing con inversión editable, filtros por fecha y origen.</p>
       </section>
 
-      <div class="actions ranking-actions leads-actions">
+      <div class="actions ranking-actions marketing-actions">
         <label>
           Desde
           <input id="desde" type="date" />
@@ -26,23 +26,42 @@
           Hasta
           <input id="hasta" type="date" />
         </label>
+        <label>
+          Origen
+          <select id="origen"></select>
+        </label>
         <button id="reload">Buscar</button>
       </div>
 
+      <section class="marketing-editor card">
+        <div>
+          <h3>Inversión realizada</h3>
+          <p>Guardala para el rango y origen filtrados.</p>
+        </div>
+        <label>
+          Monto
+          <input id="inversionRealizada" type="number" min="0" step="0.01" placeholder="0.00" />
+        </label>
+        <button id="saveInvestment" class="marketing-save">Guardar inversión</button>
+      </section>
+
       <p id="status"></p>
-      <section id="tableContainer"></section>
+      <section id="marketingContainer" class="marketing-grid"></section>
+      <section id="adsMetricsContainer"></section>
+      <section id="qualityMetricsContainer"></section>
+      <section id="traceabilityContainer"></section>
     </main>
 
     <div id="loadingPopup" class="loading-popup" hidden>
       <div class="loading-popup-card">
-        <div class="loading-logo" aria-hidden="true">MR</div>
-        <p>Cargando informe...</p>
+        <div class="loading-logo">MR</div>
+        <p id="loadingMessage">Cargando KPI Marketing...</p>
       </div>
     </div>
 
     <script src="/metricas/js/api/http.js"></script>
     <script src="/metricas/js/api/metricas.api.js"></script>
     <script src="/metricas/js/auth-shell.js"></script>
-    <script src="/metricas/js/views/leads-bdd.page.js"></script>
+    <script src="/metricas/js/views/marketing.page.js"></script>
   </body>
 </html>

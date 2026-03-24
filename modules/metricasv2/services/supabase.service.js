@@ -237,11 +237,254 @@ async function upsertKpiCloserRules(payload) {
   }
 }
 
+function normalizeMarketingOrigin(value) {
+  const origin = String(value || '').trim();
+  return origin || '__ALL__';
+}
+
+function normalizeMarketingOriginGroup(value) {
+  const text = String(value || '').trim().toUpperCase();
+  if (!text) return 'Sin origen';
+  if (text.includes('APSET')) return 'APSET';
+  if (text.includes('CLASES') || text.includes('CLASE')) return 'CLASES';
+  if (text.includes('ORG')) return 'ORG';
+  if (text.includes('VSL')) return 'VSL';
+  return String(value || '').trim() || 'Sin origen';
+}
+
+function validateDateRange(from, to) {
+  if (!from || !to) {
+    const error = new Error('Debés enviar desde y hasta');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) {
+    const error = new Error('Rango de fechas inválido');
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+async function getMarketingInvestment({ from, to, origen }) {
+  validateDateRange(from, to);
+
+  const safeOrigin = normalizeMarketingOrigin(origen);
+  const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: '*',
+        fecha_desde: `eq.${from}`,
+        fecha_hasta: `eq.${to}`,
+        origen: `eq.${safeOrigin}`,
+        limit: 1
+      }
+    });
+
+    return response.data?.[0] || {
+      fecha_desde: from,
+      fecha_hasta: to,
+      origen: safeOrigin,
+      inversion_planificada: 0,
+      inversion_realizada: 0
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error leyendo inversión MKT: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function upsertMarketingInvestment(payload) {
+  validateDateRange(payload.from, payload.to);
+
+  const body = {
+    fecha_desde: payload.from,
+    fecha_hasta: payload.to,
+    origen: normalizeMarketingOrigin(payload.origen),
+    inversion_planificada: Number(payload.inversion_planificada || 0),
+    inversion_realizada: Number(payload.inversion_realizada || 0),
+    updated_at: new Date().toISOString()
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'fecha_desde,fecha_hasta,origen'
+      }
+    });
+
+    return response.data?.[0] || body;
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando inversión MKT: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function listAllRows(resourceName, options = {}) {
+  const limit = Math.min(Number(options.limit || 1000), 1000);
+  let offset = Number(options.offset || 0);
+  const rows = [];
+
+  while (true) {
+    const chunk = await listRows(resourceName, {
+      ...options,
+      limit,
+      offset
+    });
+
+    rows.push(...chunk);
+
+    if (chunk.length < limit) {
+      break;
+    }
+
+    offset += limit;
+  }
+
+  return rows;
+}
+
+function parseFlexibleDateParts(value) {
+  if (!value) return null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate()
+    };
+  }
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const slashMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slashMatch) {
+    const day = Number(slashMatch[1]);
+    const month = Number(slashMatch[2]);
+    let year = Number(slashMatch[3]);
+
+    if (year < 100) {
+      year += 2000;
+    }
+
+    return { year, month, day };
+  }
+
+  const parsed = Date.parse(text);
+  if (Number.isNaN(parsed)) return null;
+
+  const date = new Date(parsed);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate()
+  };
+}
+
+function sameDay(dateA, dateB) {
+  const a = parseFlexibleDateParts(dateA);
+  const b = parseFlexibleDateParts(dateB);
+  if (!a || !b) return false;
+
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+async function getMarketingAovDia1({ from, to, origen }) {
+  validateDateRange(from, to);
+
+  const rows = await listAllRows('comprobantes', {
+    limit: 1000,
+    from,
+    to,
+    dateField: 'fecha_de_agendamiento',
+    orderBy: 'fecha_de_agendamiento',
+    orderDir: 'desc'
+  });
+
+  const filtered = rows.filter((row) => {
+    if (String(row.tipo || '').trim().toLowerCase() !== 'venta') return false;
+
+    const producto = String(row.producto_format || '').trim();
+    if (!producto || producto.toLowerCase() === 'empty') return false;
+    if (producto.toLowerCase().includes('club')) return false;
+
+    if (!sameDay(row.fecha_correspondiente, row.fecha_de_llamada)) return false;
+
+    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const facturacionDia1 = filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0);
+  const cashCollectedDia1 = filtered.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0);
+  const ventasDia1 = filtered.length;
+
+  return {
+    aovDia1: cashCollectedDia1,
+    ventasDia1,
+    facturacionDia1,
+    cashCollectedDia1
+  };
+}
+
+async function getMarketingVentasTotales({ from, to, origen }) {
+  validateDateRange(from, to);
+
+  const rows = await listAllRows('comprobantes', {
+    limit: 1000,
+    from,
+    to,
+    dateField: 'fecha_de_agendamiento',
+    orderBy: 'fecha_de_agendamiento',
+    orderDir: 'desc'
+  });
+
+  const filtered = rows.filter((row) => {
+    if (String(row.tipo || '').trim().toLowerCase() !== 'venta') return false;
+
+    const producto = String(row.producto_format || '').trim();
+    if (!producto || producto.toLowerCase() === 'empty') return false;
+    if (producto.toLowerCase().includes('club')) return false;
+
+    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return {
+    ventasTotales: filtered.length,
+    facturacionVentasTotales: filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0)
+  };
+}
+
 module.exports = {
   listResources,
   listRows,
   getKpiCloserRules,
   upsertKpiCloserRules,
+  getMarketingInvestment,
+  upsertMarketingInvestment,
+  getMarketingAovDia1,
+  getMarketingVentasTotales,
   normalizeResourceName,
   parseLimit,
   parseOffset

@@ -17,38 +17,70 @@
       </section>
 
       <section class="cards central-cards">
-        <a class="card" href="/metricas/views/ranking.html">
+        <a class="card" href="/metricas/views/ranking.html" data-roles="total,comercial">
           <h3>Ranking Closers Mensual</h3>
           <p>Ranking comercial con filtros y lectura rápida.</p>
         </a>
-        <a class="card" href="/metricas/views/agendas-totales.html">
+        <a class="card" href="/metricas/views/agendas-totales.html" data-roles="total,comercial">
           <h3>Agendas Totales</h3>
           <p>Matriz de meses y totales por embudo.</p>
         </a>
-        <a class="card" href="/metricas/views/agendas-detalle-closer.html">
+        <a class="card" href="/metricas/views/agendas-detalle-closer.html" data-roles="total,comercial">
           <h3>Agenda Detalle Origen + Closer</h3>
           <p>Detalle mensual por origen y closer.</p>
         </a>
-        <a class="card" href="/metricas/views/kpi-closers.html">
+        <a class="card" href="/metricas/views/kpi-closers.html" data-roles="total,comercial">
           <h3>KPI Closers Mensual</h3>
           <p>Objetivos editables y cumplimiento por closer.</p>
         </a>
-        <a class="card" href="/metricas/views/setting.html">
+        <a class="card" href="/metricas/views/setting.html" data-roles="total,comercial">
           <h3>Setting</h3>
           <p>Embudo detallado por setter y período.</p>
         </a>
-        <a class="card" href="/metricas/views/reportes.html">
+        <a class="card" href="/metricas/views/reportes.html" data-roles="total,comercial">
           <h3>Reportes</h3>
           <p>Resumen diario por closer con ventas y cash collected.</p>
         </a>
-        <a class="card" href="/metricas/views/leads-bdd.html">
+        <a class="card" href="/metricas/views/leads-bdd.html" data-roles="total,comercial,csm">
           <h3>Informe Por Respuestas</h3>
           <p>Tablas de respuestas desde la base de leads por fecha de agenda.</p>
         </a>
+        <a class="card" href="/metricas/views/marketing.html" data-roles="total,comercial,csm">
+          <h3>Totales MKT</h3>
+          <p>KPI de marketing con inversión editable por período y origen.</p>
+        </a>
+      </section>
+
+      <section class="central-section" data-roles="total,csm">
+        <div class="central-section-head">
+          <h2>CSM</h2>
+          <p>Métricas en preparación para seguimiento del equipo CSM.</p>
+        </div>
+
+        <div class="cards central-cards central-cards-soon">
+          <article class="card card-soon" aria-disabled="true">
+            <span class="card-badge">Próximamente</span>
+            <h3>Por Tiempo</h3>
+            <p>Vista de seguimiento por tiempo y ventanas operativas.</p>
+          </article>
+
+          <article class="card card-soon" aria-disabled="true">
+            <span class="card-badge">Próximamente</span>
+            <h3>Por Situación</h3>
+            <p>Estado del pipeline CSM segmentado por situación del cliente.</p>
+          </article>
+
+          <article class="card card-soon" aria-disabled="true">
+            <span class="card-badge">Próximamente</span>
+            <h3>Renovaciones</h3>
+            <p>Panel de renovaciones y oportunidades pendientes de seguimiento.</p>
+          </article>
+        </div>
       </section>
     </main>
 
     <script src="/metricas/js/api/http.js"></script>
     <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/auth-shell.js"></script>
   </body>
 </html>

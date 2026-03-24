@@ -1,4 +1,5 @@
 const supabaseService = require('../services/supabase.service');
+const assistantService = require('../services/assistant.service');
 
 async function health(req, res) {
   res.json({
@@ -84,10 +85,91 @@ async function saveKpiCloserRules(req, res, next) {
   }
 }
 
+async function getMarketingInvestment(req, res, next) {
+  try {
+    const investment = await supabaseService.getMarketingInvestment({
+      from: req.query.from,
+      to: req.query.to,
+      origen: req.query.origen
+    });
+
+    res.json({
+      ok: true,
+      investment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveMarketingInvestment(req, res, next) {
+  try {
+    const investment = await supabaseService.upsertMarketingInvestment(req.body || {});
+
+    res.json({
+      ok: true,
+      investment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getMarketingAovDia1(req, res, next) {
+  try {
+    const data = await supabaseService.getMarketingAovDia1({
+      from: req.query.from,
+      to: req.query.to,
+      origen: req.query.origen
+    });
+
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function askAssistant(req, res, next) {
+  try {
+    const result = await assistantService.askMetricAssistant(req.body?.question, req.body?.pageContext || {});
+    res.json({
+      ok: true,
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getMarketingVentasTotales(req, res, next) {
+  try {
+    const data = await supabaseService.getMarketingVentasTotales({
+      from: req.query.from,
+      to: req.query.to,
+      origen: req.query.origen
+    });
+
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
   getResources,
   getResourceRows,
   getKpiCloserRules,
-  saveKpiCloserRules
+  saveKpiCloserRules,
+  getMarketingInvestment,
+  saveMarketingInvestment,
+  getMarketingAovDia1,
+  getMarketingVentasTotales,
+  askAssistant
 };
