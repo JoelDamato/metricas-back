@@ -184,7 +184,7 @@ function mapToSupabase(payload) {
     mail: getValue(p['Mail']),
     telefono: getValue(p['Telefono']),
     whatsapp: getValue(p['WhatsApp']),
-    cc_whatsapp: getValue(p['CC WP']),
+    cc_whatsapp: getValue(p['CC WP']) ?? getValue(p['cc_whatsapp']),
     instagram: getValue(p['Instagram']),
     usuario_ig: getValue(p['Usuario IG']),
 

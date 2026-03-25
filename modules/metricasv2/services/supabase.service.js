@@ -437,7 +437,7 @@ async function getMarketingAovDia1({ from, to, origen }) {
   const ventasDia1 = filtered.length;
 
   return {
-    aovDia1: cashCollectedDia1,
+    aovDia1: ventasDia1 > 0 ? cashCollectedDia1 / ventasDia1 : 0,
     ventasDia1,
     facturacionDia1,
     cashCollectedDia1

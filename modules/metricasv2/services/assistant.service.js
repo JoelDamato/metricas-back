@@ -42,7 +42,7 @@ Contexto del sistema:
 - Tasa de cierre: ventas totales / reuniones totales * 100
 - ROAS sobre CC: cash_collected / inversion_realizada
 - ROAS sobre facturación total: facturacion / inversion_realizada
-- AOV día 1: suma de cash_collected de comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento
+- AOV día 1: promedio de cash_collected por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento
 
 3. Ranking Closers Mensual
 - Muestra facturación, cash collected, ventas y % por closer
@@ -54,7 +54,7 @@ Contexto del sistema:
 4. Agenda Detalle Origen + Closer
 - Similar a Agendas Totales pero desagregado por origen y closer
 - total_ventas: comprobantes tipo='Venta', producto_format válido, agrupado por fecha_de_agendamiento, origen y closer
-- facturacion_total: suma de facturacion de esos comprobantes
+- facturacion_total: suma de facturacion por f_venta, desagregada por origen y closer
 - cash collected está alineado con la lógica de Agendas Totales
 
 5. Reportes
