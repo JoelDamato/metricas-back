@@ -70,7 +70,7 @@ function metricasApiGuard(req, res, next) {
     return next();
   }
 
-  if (req.path === '/marketing/inversion') {
+  if (req.path === '/marketing/inversion' || req.path === '/marketing/inversiones') {
     if (!access.canAccessFeature(req.authUser.role, 'marketing_inversion')) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para inversión marketing' });
     }

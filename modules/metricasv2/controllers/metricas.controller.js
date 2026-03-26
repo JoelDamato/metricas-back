@@ -115,6 +115,49 @@ async function saveMarketingInvestment(req, res, next) {
   }
 }
 
+async function listMarketingInvestments(req, res, next) {
+  try {
+    const rows = await supabaseService.listMarketingInvestments({
+      from: req.query.from,
+      to: req.query.to
+    });
+
+    res.json({
+      ok: true,
+      count: rows.length,
+      rows
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateMarketingInvestmentRecord(req, res, next) {
+  try {
+    const investment = await supabaseService.updateMarketingInvestmentRecord(req.body || {});
+
+    res.json({
+      ok: true,
+      investment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteMarketingInvestmentRecord(req, res, next) {
+  try {
+    const result = await supabaseService.deleteMarketingInvestmentRecord(req.body || {});
+
+    res.json({
+      ok: true,
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMarketingAovDia1(req, res, next) {
   try {
     const data = await supabaseService.getMarketingAovDia1({
@@ -169,6 +212,9 @@ module.exports = {
   saveKpiCloserRules,
   getMarketingInvestment,
   saveMarketingInvestment,
+  listMarketingInvestments,
+  updateMarketingInvestmentRecord,
+  deleteMarketingInvestmentRecord,
   getMarketingAovDia1,
   getMarketingVentasTotales,
   askAssistant

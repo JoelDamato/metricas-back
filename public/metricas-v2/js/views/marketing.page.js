@@ -111,6 +111,15 @@ const MARKETING_METRIC_INFO = {
   }
 };
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function ensureMarketingViewStyles() {
   if (document.getElementById('marketingViewStyles')) return;
 
@@ -186,6 +195,141 @@ function ensureMarketingViewStyles() {
     .traceability-table th:not(:first-child) .marketing-sort-trigger {
       justify-content: center;
     }
+
+    .marketing-editor-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-self: stretch;
+      justify-content: flex-end;
+    }
+
+    .marketing-editor-buttons .marketing-save {
+      width: 100%;
+    }
+
+    .marketing-history-link {
+      align-self: flex-start;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #1d66c2;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .investment-history-card {
+      width: min(1220px, 100%);
+      text-align: left;
+      padding: 20px;
+    }
+
+    .investment-history-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .investment-history-top h3 {
+      margin: 0;
+      color: #17345f;
+    }
+
+    .investment-history-top p {
+      margin: 6px 0 0;
+      color: #42597d;
+    }
+
+    .investment-history-close {
+      padding: 10px 14px;
+      border: 1px solid rgba(23, 63, 115, 0.16);
+      border-radius: 12px;
+      background: #f6fbff;
+      color: #173f73;
+      font-weight: 700;
+    }
+
+    .investment-history-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .investment-history-filters label {
+      min-width: 180px;
+    }
+
+    .investment-history-status {
+      margin: 0 0 12px;
+      color: #36517b;
+      font-weight: 600;
+    }
+
+    .investment-history-table-wrap {
+      max-height: 62vh;
+      overflow: auto;
+    }
+
+    .investment-history-table th,
+    .investment-history-table td {
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    .investment-history-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .investment-history-table td input,
+    .investment-history-table td select {
+      width: 100%;
+      min-width: 110px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(20, 70, 132, 0.16);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .investment-history-actions-cell {
+      display: flex;
+      gap: 8px;
+    }
+
+    .investment-history-row-btn {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 0;
+      font-weight: 700;
+    }
+
+    .investment-history-row-btn.save {
+      background: #1d66c2;
+      color: #ffffff;
+    }
+
+    .investment-history-row-btn.delete {
+      background: #ffe8e8;
+      color: #a32626;
+    }
+
+    @media (max-width: 980px) {
+      .investment-history-top {
+        flex-direction: column;
+      }
+
+      .investment-history-card {
+        padding: 16px;
+      }
+    }
   `;
 
   document.head.appendChild(style);
@@ -244,6 +388,35 @@ function showMetricInfo(info) {
     if (event.target === popup) close();
   });
   document.getElementById('metricInfoPopupClose').addEventListener('click', close);
+}
+
+function formatDateTimeLabel(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function serializeInvestmentRecordKey(row) {
+  return encodeURIComponent(JSON.stringify({
+    fecha_desde: row.fecha_desde,
+    fecha_hasta: row.fecha_hasta,
+    origen: row.origen
+  }));
+}
+
+function parseInvestmentRecordKey(value) {
+  try {
+    return JSON.parse(decodeURIComponent(String(value || '')));
+  } catch (error) {
+    return null;
+  }
 }
 
 function setDefaultDates() {
@@ -662,6 +835,211 @@ function formatDateLabel(value) {
   }).format(date);
 }
 
+function getInvestmentHistoryPopup() {
+  return document.getElementById('investmentHistoryPopup');
+}
+
+function getInvestmentHistoryFilters() {
+  return {
+    from: document.getElementById('investmentHistoryFrom')?.value || '',
+    to: document.getElementById('investmentHistoryTo')?.value || ''
+  };
+}
+
+function setInvestmentHistoryStatus(message) {
+  const status = document.getElementById('investmentHistoryStatus');
+  if (status) status.textContent = message || '';
+}
+
+function renderInvestmentHistoryTable(rows) {
+  const container = document.getElementById('investmentHistoryTableWrap');
+  if (!container) return;
+
+  if (!(rows || []).length) {
+    container.innerHTML = '<div class="report-empty">No hay inversiones guardadas para ese rango.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="marketing-table investment-history-table">
+      <thead>
+        <tr>
+          <th>Fecha desde</th>
+          <th>Fecha hasta</th>
+          <th>Origen</th>
+          <th>Inversión planificada</th>
+          <th>Inversión realizada</th>
+          <th>Última actualización</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(rows || []).map((row) => {
+          const recordKey = serializeInvestmentRecordKey(row);
+          return `
+            <tr data-record-key="${recordKey}">
+              <td>${escapeHtml(row.fecha_desde || '-')}</td>
+              <td>${escapeHtml(row.fecha_hasta || '-')}</td>
+              <td>${escapeHtml(row.origen || '-')}</td>
+              <td>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="investment-history-planificada"
+                  value="${Number(row.inversion_planificada || 0)}"
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="investment-history-realizada"
+                  value="${Number(row.inversion_realizada || 0)}"
+                />
+              </td>
+              <td>${escapeHtml(formatDateTimeLabel(row.updated_at))}</td>
+              <td class="investment-history-actions-cell">
+                <button type="button" class="investment-history-row-btn save" data-action="save">Guardar</button>
+                <button type="button" class="investment-history-row-btn delete" data-action="delete">Borrar</button>
+              </td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+
+  container.querySelectorAll('.investment-history-row-btn[data-action="save"]').forEach((button) => {
+    button.addEventListener('click', () => saveInvestmentHistoryRow(button));
+  });
+
+  container.querySelectorAll('.investment-history-row-btn[data-action="delete"]').forEach((button) => {
+    button.addEventListener('click', () => deleteInvestmentHistoryRow(button));
+  });
+}
+
+async function loadInvestmentHistory() {
+  const { from, to } = getInvestmentHistoryFilters();
+
+  if (from && to && from > to) {
+    setInvestmentHistoryStatus('El rango del historial es inválido.');
+    return;
+  }
+
+  setInvestmentHistoryStatus('Cargando inversiones guardadas...');
+
+  try {
+    const response = await window.metricasApi.fetchMarketingInvestments({ from, to });
+    const rows = response.rows || [];
+    renderInvestmentHistoryTable(rows);
+    setInvestmentHistoryStatus(`${rows.length} registro(s) encontrados para el rango seleccionado.`);
+  } catch (error) {
+    renderInvestmentHistoryTable([]);
+    setInvestmentHistoryStatus(error.message);
+  }
+}
+
+async function saveInvestmentHistoryRow(button) {
+  const row = button.closest('tr');
+  const record = parseInvestmentRecordKey(row?.dataset.recordKey);
+  if (!row || !record) return;
+
+  const inversionPlanificada = Number(row.querySelector('.investment-history-planificada')?.value || 0);
+  const inversionRealizada = Number(row.querySelector('.investment-history-realizada')?.value || 0);
+
+  if (inversionPlanificada < 0 || inversionRealizada < 0) {
+    setInvestmentHistoryStatus('Los montos editados no pueden ser negativos.');
+    return;
+  }
+
+  setInvestmentHistoryStatus('Guardando cambios del registro seleccionado...');
+
+  try {
+    await window.metricasApi.updateMarketingInvestmentRecord({
+      ...record,
+      inversion_planificada: inversionPlanificada,
+      inversion_realizada: inversionRealizada
+    });
+
+    showPopup('Registro de inversión actualizado.');
+    await loadInvestmentHistory();
+    await loadDashboard();
+  } catch (error) {
+    setInvestmentHistoryStatus(error.message);
+  }
+}
+
+async function deleteInvestmentHistoryRow(button) {
+  const row = button.closest('tr');
+  const record = parseInvestmentRecordKey(row?.dataset.recordKey);
+  if (!row || !record) return;
+
+  const confirmed = window.confirm(`Vas a borrar la inversión ${record.fecha_desde} a ${record.fecha_hasta} de ${record.origen}.`);
+  if (!confirmed) return;
+
+  setInvestmentHistoryStatus('Borrando registro seleccionado...');
+
+  try {
+    await window.metricasApi.deleteMarketingInvestmentRecord(record);
+    showPopup('Registro de inversión borrado.');
+    await loadInvestmentHistory();
+    await loadDashboard();
+  } catch (error) {
+    setInvestmentHistoryStatus(error.message);
+  }
+}
+
+function closeInvestmentHistoryPopup() {
+  getInvestmentHistoryPopup()?.remove();
+}
+
+function openInvestmentHistoryPopup() {
+  closeInvestmentHistoryPopup();
+
+  const mainFilters = getFilters();
+  const popup = document.createElement('div');
+  popup.id = 'investmentHistoryPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card investment-history-card">
+      <div class="investment-history-top">
+        <div>
+          <h3>Inversiones totales</h3>
+          <p>Filtrá por fecha para revisar todos los registros guardados y administrarlos uno por uno.</p>
+        </div>
+        <button id="investmentHistoryClose" type="button" class="investment-history-close">Cerrar</button>
+      </div>
+
+      <div class="actions investment-history-filters">
+        <label>
+          Desde
+          <input id="investmentHistoryFrom" type="date" value="${escapeHtml(mainFilters.from || '')}" />
+        </label>
+        <label>
+          Hasta
+          <input id="investmentHistoryTo" type="date" value="${escapeHtml(mainFilters.to || '')}" />
+        </label>
+        <button id="investmentHistorySearch" type="button">Buscar</button>
+      </div>
+
+      <p id="investmentHistoryStatus" class="investment-history-status"></p>
+      <div id="investmentHistoryTableWrap" class="table-wrap marketing-panel investment-history-table-wrap"></div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) closeInvestmentHistoryPopup();
+  });
+
+  document.getElementById('investmentHistoryClose').addEventListener('click', closeInvestmentHistoryPopup);
+  document.getElementById('investmentHistorySearch').addEventListener('click', loadInvestmentHistory);
+
+  loadInvestmentHistory();
+}
+
 function renderTraceabilityTable(rows) {
   const container = document.getElementById('traceabilityContainer');
   const wasOpen = container.querySelector('.ads-collapse')?.open ?? false;
@@ -735,11 +1113,16 @@ function renderDashboard(rows, investment, extras = {}) {
 
   if (!(rows || []).length) {
     container.innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No hay datos para el rango seleccionado.</div></div>';
+    const currentInvestment = Number(investment?.inversion_realizada || 0);
+    document.getElementById('investmentEditorHelp').textContent = `Total actual del filtro: ${formatCurrency(currentInvestment)}. El monto que cargues abajo se suma a este total.`;
+    document.getElementById('inversionRealizada').value = '';
     return;
   }
 
   const m = computeMetrics(rows, investment, extras);
-  document.getElementById('inversionRealizada').value = Number(m.inversionRealizada || 0).toFixed(2);
+  const investmentHelp = document.getElementById('investmentEditorHelp');
+  investmentHelp.textContent = `Total actual del filtro: ${formatCurrency(m.inversionRealizada)}. El monto que cargues abajo se suma a este total.`;
+  document.getElementById('inversionRealizada').value = '';
 
   const leftRows = [
     { label: 'Inversión planificada', value: formatCurrency(m.inversionPlanificada) },
@@ -893,6 +1276,11 @@ async function saveInvestment() {
     return;
   }
 
+  if (inversionRealizada <= 0) {
+    status.textContent = 'Ingresá un monto mayor a 0 para agregar.';
+    return;
+  }
+
   showLoading('Guardando inversión...');
 
   try {
@@ -901,7 +1289,7 @@ async function saveInvestment() {
       inversion_realizada: inversionRealizada
     });
 
-    showPopup('Inversión guardada correctamente.');
+    showPopup(`Se agregaron ${formatCurrency(inversionRealizada)} al filtro seleccionado.`);
     await loadDashboard();
   } catch (error) {
     showPopup(error.message, 'error');
@@ -918,6 +1306,10 @@ async function init() {
 
   document.getElementById('reload').addEventListener('click', loadDashboard);
   document.getElementById('saveInvestment').addEventListener('click', saveInvestment);
+  document.getElementById('openInvestmentHistory').addEventListener('click', (event) => {
+    event.preventDefault();
+    openInvestmentHistoryPopup();
+  });
 }
 
 init();

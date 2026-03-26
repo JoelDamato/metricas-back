@@ -43,6 +43,20 @@ async function saveMarketingInvestment(payload = {}) {
   return window.http.postJson('/api/metricas/marketing/inversion', payload);
 }
 
+async function fetchMarketingInvestments(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/marketing/inversiones${suffix}`);
+}
+
+async function updateMarketingInvestmentRecord(payload = {}) {
+  return window.http.patchJson('/api/metricas/marketing/inversiones', payload);
+}
+
+async function deleteMarketingInvestmentRecord(payload = {}) {
+  return window.http.deleteJson('/api/metricas/marketing/inversiones', payload);
+}
+
 async function fetchMarketingAovDia1(options = {}) {
   const qs = queryString(options);
   const suffix = qs ? `?${qs}` : '';
@@ -98,9 +112,12 @@ window.metricasApi = {
   fetchLeadsRaw,
   fetchKpiMarketingDiario,
   fetchMarketingInvestment,
+  fetchMarketingInvestments,
   fetchMarketingAovDia1,
   fetchMarketingVentasTotales,
   askScalito,
   saveMarketingInvestment,
+  updateMarketingInvestmentRecord,
+  deleteMarketingInvestmentRecord,
   fetchAllRows
 };

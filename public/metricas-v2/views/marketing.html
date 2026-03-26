@@ -36,13 +36,16 @@
       <section class="marketing-editor card">
         <div>
           <h3>Inversión realizada</h3>
-          <p>Guardala para el rango y origen filtrados.</p>
+          <p id="investmentEditorHelp">Agregá montos al rango y origen filtrados sin reemplazar el total acumulado.</p>
         </div>
         <label>
-          Monto
+          Monto a agregar
           <input id="inversionRealizada" type="number" min="0" step="0.01" placeholder="0.00" />
         </label>
-        <button id="saveInvestment" class="marketing-save">Guardar inversión</button>
+        <div class="marketing-editor-buttons">
+          <a id="openInvestmentHistory" class="marketing-history-link" href="#">Abrir registros</a>
+          <button id="saveInvestment" class="marketing-save" type="button">Agregar monto</button>
+        </div>
       </section>
 
       <p id="status"></p>

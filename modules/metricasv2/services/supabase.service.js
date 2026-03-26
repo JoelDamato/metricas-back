@@ -269,28 +269,57 @@ function validateDateRange(from, to) {
 async function getMarketingInvestment({ from, to, origen }) {
   validateDateRange(from, to);
 
+  const rawOrigin = String(origen || '').trim();
+  const hasOriginFilter = Boolean(rawOrigin);
   const safeOrigin = normalizeMarketingOrigin(origen);
   const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+  const params = {
+    select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,updated_at',
+    and: `(fecha_desde.gte.${from},fecha_hasta.lte.${to})`,
+    order: 'fecha_desde.asc,fecha_hasta.asc',
+    limit: 1000
+  };
+
+  if (hasOriginFilter) {
+    params.origen = `eq.${safeOrigin}`;
+  }
 
   try {
     const response = await axios.get(url, {
       headers: buildHeaders(),
-      params: {
-        select: '*',
-        fecha_desde: `eq.${from}`,
-        fecha_hasta: `eq.${to}`,
-        origen: `eq.${safeOrigin}`,
-        limit: 1
-      }
+      params
     });
 
-    return response.data?.[0] || {
+    const rows = response.data || [];
+
+    if (!rows.length) {
+      return {
+        fecha_desde: from,
+        fecha_hasta: to,
+        origen: hasOriginFilter ? safeOrigin : '__ALL__',
+        inversion_planificada: 0,
+        inversion_realizada: 0,
+        cantidad_registros: 0
+      };
+    }
+
+    return rows.reduce((acc, row) => ({
       fecha_desde: from,
       fecha_hasta: to,
-      origen: safeOrigin,
+      origen: hasOriginFilter ? safeOrigin : '__ALL__',
+      inversion_planificada: acc.inversion_planificada + Number(row.inversion_planificada || 0),
+      inversion_realizada: acc.inversion_realizada + Number(row.inversion_realizada || 0),
+      cantidad_registros: acc.cantidad_registros + 1,
+      updated_at: row.updated_at || acc.updated_at || null
+    }), {
+      fecha_desde: from,
+      fecha_hasta: to,
+      origen: hasOriginFilter ? safeOrigin : '__ALL__',
       inversion_planificada: 0,
-      inversion_realizada: 0
-    };
+      inversion_realizada: 0,
+      cantidad_registros: 0,
+      updated_at: null
+    });
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error leyendo inversión MKT: ${message}`);
@@ -303,18 +332,43 @@ async function getMarketingInvestment({ from, to, origen }) {
 async function upsertMarketingInvestment(payload) {
   validateDateRange(payload.from, payload.to);
 
-  const body = {
-    fecha_desde: payload.from,
-    fecha_hasta: payload.to,
-    origen: normalizeMarketingOrigin(payload.origen),
-    inversion_planificada: Number(payload.inversion_planificada || 0),
-    inversion_realizada: Number(payload.inversion_realizada || 0),
-    updated_at: new Date().toISOString()
-  };
-
   const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+  const safeOrigin = normalizeMarketingOrigin(payload.origen);
+  const addPlanificada = payload.inversion_planificada === undefined
+    ? null
+    : Number(payload.inversion_planificada || 0);
+  const addRealizada = payload.inversion_realizada === undefined
+    ? null
+    : Number(payload.inversion_realizada || 0);
+
+  if ((addPlanificada !== null && addPlanificada < 0) || (addRealizada !== null && addRealizada < 0)) {
+    const error = new Error('Solo podés agregar montos positivos o cero');
+    error.statusCode = 400;
+    throw error;
+  }
 
   try {
+    const currentResponse = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada',
+        fecha_desde: `eq.${payload.from}`,
+        fecha_hasta: `eq.${payload.to}`,
+        origen: `eq.${safeOrigin}`,
+        limit: 1
+      }
+    });
+
+    const current = currentResponse.data?.[0] || null;
+    const body = {
+      fecha_desde: payload.from,
+      fecha_hasta: payload.to,
+      origen: safeOrigin,
+      inversion_planificada: Number(current?.inversion_planificada || 0) + Number(addPlanificada || 0),
+      inversion_realizada: Number(current?.inversion_realizada || 0) + Number(addRealizada || 0),
+      updated_at: new Date().toISOString()
+    };
+
     const response = await axios.post(url, body, {
       headers: buildHeaders({
         Prefer: 'resolution=merge-duplicates,return=representation'
@@ -328,6 +382,120 @@ async function upsertMarketingInvestment(payload) {
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error guardando inversión MKT: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function listMarketingInvestments({ from, to }) {
+  const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+  const params = {
+    select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,updated_at',
+    order: 'fecha_desde.desc,fecha_hasta.desc,origen.asc',
+    limit: 1000
+  };
+
+  if (from && to) {
+    validateDateRange(from, to);
+    params.and = `(fecha_desde.gte.${from},fecha_hasta.lte.${to})`;
+  } else if (from) {
+    if (Number.isNaN(Date.parse(from))) {
+      const error = new Error('Fecha desde inválida');
+      error.statusCode = 400;
+      throw error;
+    }
+    params.fecha_desde = `gte.${from}`;
+  } else if (to) {
+    if (Number.isNaN(Date.parse(to))) {
+      const error = new Error('Fecha hasta inválida');
+      error.statusCode = 400;
+      throw error;
+    }
+    params.fecha_hasta = `lte.${to}`;
+  }
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params
+    });
+
+    return response.data || [];
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error listando inversiones MKT: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function updateMarketingInvestmentRecord(payload) {
+  validateDateRange(payload.fecha_desde, payload.fecha_hasta);
+
+  const safeOrigin = normalizeMarketingOrigin(payload.origen);
+  const body = {
+    inversion_planificada: Number(payload.inversion_planificada || 0),
+    inversion_realizada: Number(payload.inversion_realizada || 0),
+    updated_at: new Date().toISOString()
+  };
+
+  if (body.inversion_planificada < 0 || body.inversion_realizada < 0) {
+    const error = new Error('Los montos no pueden ser negativos');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+
+  try {
+    const response = await axios.patch(url, body, {
+      headers: buildHeaders({
+        Prefer: 'return=representation'
+      }),
+      params: {
+        fecha_desde: `eq.${payload.fecha_desde}`,
+        fecha_hasta: `eq.${payload.fecha_hasta}`,
+        origen: `eq.${safeOrigin}`
+      }
+    });
+
+    return response.data?.[0] || null;
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error actualizando inversión MKT: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function deleteMarketingInvestmentRecord(payload) {
+  validateDateRange(payload.fecha_desde, payload.fecha_hasta);
+
+  const safeOrigin = normalizeMarketingOrigin(payload.origen);
+  const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
+
+  try {
+    await axios.delete(url, {
+      headers: buildHeaders(),
+      params: {
+        fecha_desde: `eq.${payload.fecha_desde}`,
+        fecha_hasta: `eq.${payload.fecha_hasta}`,
+        origen: `eq.${safeOrigin}`
+      }
+    });
+
+    return {
+      ok: true,
+      fecha_desde: payload.fecha_desde,
+      fecha_hasta: payload.fecha_hasta,
+      origen: safeOrigin
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error borrando inversión MKT: ${message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;
     throw error;
@@ -483,6 +651,9 @@ module.exports = {
   upsertKpiCloserRules,
   getMarketingInvestment,
   upsertMarketingInvestment,
+  listMarketingInvestments,
+  updateMarketingInvestmentRecord,
+  deleteMarketingInvestmentRecord,
   getMarketingAovDia1,
   getMarketingVentasTotales,
   normalizeResourceName,
