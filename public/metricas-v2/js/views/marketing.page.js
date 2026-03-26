@@ -27,6 +27,170 @@ function safeDiv(a, b) {
   return Number(a || 0) / Number(b || 0);
 }
 
+const MARKETING_SORT_STATE = {
+  ads: {
+    sortKey: 'agendas',
+    direction: 'desc',
+    rows: []
+  },
+  quality: {
+    sortKey: 'agendas',
+    direction: 'desc',
+    rows: []
+  },
+  traceability: {
+    sortKey: 'fecha_agenda',
+    direction: 'desc',
+    rows: []
+  }
+};
+
+const MARKETING_NUMERIC_SORT_KEYS = new Set([
+  'agendas',
+  'cce',
+  'llamadas',
+  'ventas'
+]);
+
+const MARKETING_DATE_SORT_KEYS = new Set([
+  'fecha_agenda',
+  'created_time',
+  'fecha_venta'
+]);
+
+const MARKETING_METRIC_INFO = {
+  'Agendas': {
+    title: 'Agendas',
+    dateLabel: '"fecha"',
+    logic: 'Suma "reuniones_agendadas" de "kpi_marketing_diario" en el rango seleccionado.'
+  },
+  'Aplican': {
+    title: 'Aplican',
+    dateLabel: '"fecha"',
+    logic: 'Suma "agendas_aplicables" de "kpi_marketing_diario" en el rango seleccionado.'
+  },
+  'Cash collected': {
+    title: 'Cash collected',
+    dateLabel: '"f_acreditacion"',
+    logic: 'Suma "cash_collected" en "kpi_marketing_diario", consolidado por fecha diaria del KPI.'
+  },
+  'Facturación': {
+    title: 'Facturación',
+    dateLabel: '"fecha_de_agendamiento" y "f_venta"',
+    logic: 'Usa la facturación consolidada del KPI de marketing para el rango seleccionado.'
+  },
+  'AOV': {
+    title: 'AOV',
+    dateLabel: 'Mixta: facturación / ventas',
+    logic: 'Se calcula como "facturacion" dividido "ventasTotales".'
+  },
+  'AOV día 1': {
+    title: 'AOV día 1',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Promedio de "cash_collected" por venta del día 1, filtrando comprobantes donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día.'
+  },
+  'Reuniones TOTALES': {
+    title: 'Reuniones TOTALES',
+    dateLabel: '"fecha"',
+    logic: 'Se calcula como "llamadas_venta_asistidas_cce" + "llamadas_venta_asistidas_ccne".'
+  },
+  'Ventas totales': {
+    title: 'Ventas totales',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Cuenta ventas de comprobantes por "fecha_de_agendamiento" para mantener la misma base que agendas.'
+  },
+  'Tasa de cierre (%)': {
+    title: 'Tasa de cierre (%)',
+    dateLabel: 'Mixta: reuniones y ventas',
+    logic: 'Se calcula como "ventasTotales" dividido "reunionesTotales" por 100.'
+  },
+  'CC Exitosos': {
+    title: 'CC Exitosos',
+    dateLabel: '"fecha"',
+    logic: 'Suma "call_confirmer_exitosos" de "kpi_marketing_diario".'
+  }
+};
+
+function ensureMarketingViewStyles() {
+  if (document.getElementById('marketingViewStyles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'marketingViewStyles';
+  style.textContent = `
+    .metric-info-trigger {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 700;
+      text-align: left;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 3px;
+    }
+
+    .metric-info-trigger.metric-label {
+      color: #1f3b63;
+    }
+
+    .metric-info-card {
+      width: min(560px, 100%);
+      text-align: left;
+    }
+
+    .metric-info-card h3 {
+      margin: 0 0 12px;
+      color: #17345f;
+    }
+
+    .metric-info-card p {
+      margin: 0 0 10px;
+      color: #42597d;
+    }
+
+    .ads-collapse > summary {
+      color: #111111;
+      background: rgba(255, 255, 255, 0.78);
+      text-shadow: none;
+    }
+
+    .marketing-sort-trigger {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      color: inherit;
+      font: inherit;
+      font-weight: inherit;
+      text-align: inherit;
+    }
+
+    .marketing-sort-trigger.active {
+      color: #173f73;
+    }
+
+    .marketing-sort-arrow {
+      flex: 0 0 auto;
+      font-size: 0.9rem;
+      color: #1d5bb0;
+    }
+
+    .ads-table th:not(:first-child) .marketing-sort-trigger,
+    .traceability-table th:not(:first-child) .marketing-sort-trigger {
+      justify-content: center;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
 function showLoading(message) {
   const popup = document.getElementById('loadingPopup');
   document.getElementById('loadingMessage').textContent = message || 'Cargando...';
@@ -55,6 +219,31 @@ function showPopup(message, type = 'success') {
   const close = () => popup.remove();
   document.getElementById('kpiPopupClose').addEventListener('click', close);
   setTimeout(close, 2500);
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
 }
 
 function setDefaultDates() {
@@ -98,6 +287,100 @@ function normalizeOriginGroup(value) {
 
 function sumField(rows, key) {
   return (rows || []).reduce((sum, row) => sum + Number(row[key] || 0), 0);
+}
+
+function getMarketingSortValue(row, key) {
+  if (!row || !key) return '';
+
+  if (MARKETING_DATE_SORT_KEYS.has(key)) {
+    const raw = row[key];
+    if (!raw) return Number.NEGATIVE_INFINITY;
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? Number.NEGATIVE_INFINITY : date.getTime();
+  }
+
+  if (MARKETING_NUMERIC_SORT_KEYS.has(key)) {
+    return Number(row[key] || 0);
+  }
+
+  return normalizeText(row[key]);
+}
+
+function compareMarketingSortValues(a, b, direction) {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return direction === 'desc' ? b - a : a - b;
+  }
+
+  const left = String(a || '');
+  const right = String(b || '');
+  return direction === 'desc'
+    ? right.localeCompare(left, 'es')
+    : left.localeCompare(right, 'es');
+}
+
+function sortMarketingRows(rows, sectionKey, fallbackKey, fallbackLabelKey) {
+  const state = MARKETING_SORT_STATE[sectionKey];
+  const sortKey = state?.sortKey || fallbackKey;
+  const direction = state?.direction || 'desc';
+
+  return [...(rows || [])].sort((a, b) => {
+    const primary = compareMarketingSortValues(
+      getMarketingSortValue(a, sortKey),
+      getMarketingSortValue(b, sortKey),
+      direction
+    );
+
+    if (primary !== 0) return primary;
+
+    return compareMarketingSortValues(
+      getMarketingSortValue(a, fallbackLabelKey),
+      getMarketingSortValue(b, fallbackLabelKey),
+      'asc'
+    );
+  });
+}
+
+function renderMarketingSortHeader(sectionKey, columnKey, label) {
+  const state = MARKETING_SORT_STATE[sectionKey];
+  const isActive = state?.sortKey === columnKey;
+  const arrow = isActive
+    ? (state.direction === 'desc' ? '↓' : '↑')
+    : '↕';
+
+  return `
+    <button
+      type="button"
+      class="marketing-sort-trigger${isActive ? ' active' : ''}"
+      data-sort-section="${sectionKey}"
+      data-sort-key="${columnKey}"
+      aria-label="Ordenar por ${label}"
+    >
+      <span>${label}</span>
+      <span class="marketing-sort-arrow">${arrow}</span>
+    </button>
+  `;
+}
+
+function updateMarketingSort(sectionKey, columnKey) {
+  const state = MARKETING_SORT_STATE[sectionKey];
+  if (!state) return;
+
+  if (state.sortKey === columnKey) {
+    state.direction = state.direction === 'desc' ? 'asc' : 'desc';
+    return;
+  }
+
+  state.sortKey = columnKey;
+  state.direction = 'desc';
+}
+
+function attachMarketingSortHandlers(container, sectionKey, renderFn) {
+  container.querySelectorAll(`.marketing-sort-trigger[data-sort-section="${sectionKey}"]`).forEach((button) => {
+    button.addEventListener('click', () => {
+      updateMarketingSort(sectionKey, button.dataset.sortKey);
+      renderFn();
+    });
+  });
 }
 
 function computeMetrics(rows, investment, extras = {}) {
@@ -159,7 +442,7 @@ function renderMetricTable(title, rows) {
         <tbody>
           ${rows.map((row) => `
             <tr>
-              <th>${row.label}</th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-metric-label="${row.label}">${row.label}</button></th>
               <td>${row.value}</td>
             </tr>
           `).join('')}
@@ -211,6 +494,10 @@ function aggregateAdsMetrics(rows, filters) {
 
 function renderAdsMetricsTable(rows) {
   const container = document.getElementById('adsMetricsContainer');
+  const wasOpen = container.querySelector('.ads-collapse')?.open ?? false;
+
+  MARKETING_SORT_STATE.ads.rows = [...(rows || [])];
+  const orderedRows = sortMarketingRows(MARKETING_SORT_STATE.ads.rows, 'ads', 'agendas', 'adname');
 
   if (!rows.length) {
     container.innerHTML = `
@@ -224,7 +511,7 @@ function renderAdsMetricsTable(rows) {
     return;
   }
 
-  const body = rows.map((row) => `
+  const body = orderedRows.map((row) => `
     <tr>
       <td>${row.adname}</td>
       <td>${formatInteger(row.agendas)}</td>
@@ -235,17 +522,17 @@ function renderAdsMetricsTable(rows) {
   `).join('');
 
   container.innerHTML = `
-    <details class="ads-collapse">
+    <details class="ads-collapse"${wasOpen ? ' open' : ''}>
       <summary>Metricas Anuncios</summary>
       <div class="table-wrap marketing-panel ads-panel">
         <table class="marketing-table ads-table">
           <thead>
             <tr>
-              <th>Adname</th>
-              <th>Agendas</th>
-              <th>CCE</th>
-              <th>Llamadas</th>
-              <th>Ventas</th>
+              <th>${renderMarketingSortHeader('ads', 'adname', 'Adname')}</th>
+              <th>${renderMarketingSortHeader('ads', 'agendas', 'Agendas')}</th>
+              <th>${renderMarketingSortHeader('ads', 'cce', 'CCE')}</th>
+              <th>${renderMarketingSortHeader('ads', 'llamadas', 'Llamadas')}</th>
+              <th>${renderMarketingSortHeader('ads', 'ventas', 'Ventas')}</th>
             </tr>
           </thead>
           <tbody>${body}</tbody>
@@ -253,6 +540,8 @@ function renderAdsMetricsTable(rows) {
       </div>
     </details>
   `;
+
+  attachMarketingSortHandlers(container, 'ads', () => renderAdsMetricsTable(MARKETING_SORT_STATE.ads.rows));
 }
 
 function aggregateQualityMetrics(rows, filters) {
@@ -296,6 +585,10 @@ function aggregateQualityMetrics(rows, filters) {
 
 function renderQualityMetricsTable(rows) {
   const container = document.getElementById('qualityMetricsContainer');
+  const wasOpen = container.querySelector('.ads-collapse')?.open ?? false;
+
+  MARKETING_SORT_STATE.quality.rows = [...(rows || [])];
+  const orderedRows = sortMarketingRows(MARKETING_SORT_STATE.quality.rows, 'quality', 'agendas', 'calidad');
 
   if (!rows.length) {
     container.innerHTML = `
@@ -316,7 +609,7 @@ function renderQualityMetricsTable(rows) {
     ventas: acc.ventas + row.ventas
   }), { agendas: 0, cce: 0, llamadas: 0, ventas: 0 });
 
-  const body = rows.map((row) => `
+  const body = orderedRows.map((row) => `
     <tr>
       <td>${row.calidad}</td>
       <td>${formatInteger(row.agendas)}</td>
@@ -327,17 +620,17 @@ function renderQualityMetricsTable(rows) {
   `).join('');
 
   container.innerHTML = `
-    <details class="ads-collapse">
+    <details class="ads-collapse"${wasOpen ? ' open' : ''}>
       <summary>Metricas por Calidad</summary>
       <div class="table-wrap marketing-panel ads-panel">
         <table class="marketing-table ads-table">
           <thead>
             <tr>
-              <th>Calidad Lead</th>
-              <th>Agendas</th>
-              <th>CCE</th>
-              <th>Llamadas</th>
-              <th>Ventas</th>
+              <th>${renderMarketingSortHeader('quality', 'calidad', 'Calidad Lead')}</th>
+              <th>${renderMarketingSortHeader('quality', 'agendas', 'Agendas')}</th>
+              <th>${renderMarketingSortHeader('quality', 'cce', 'CCE')}</th>
+              <th>${renderMarketingSortHeader('quality', 'llamadas', 'Llamadas')}</th>
+              <th>${renderMarketingSortHeader('quality', 'ventas', 'Ventas')}</th>
             </tr>
           </thead>
           <tbody>
@@ -354,6 +647,8 @@ function renderQualityMetricsTable(rows) {
       </div>
     </details>
   `;
+
+  attachMarketingSortHandlers(container, 'quality', () => renderQualityMetricsTable(MARKETING_SORT_STATE.quality.rows));
 }
 
 function formatDateLabel(value) {
@@ -369,6 +664,10 @@ function formatDateLabel(value) {
 
 function renderTraceabilityTable(rows) {
   const container = document.getElementById('traceabilityContainer');
+  const wasOpen = container.querySelector('.ads-collapse')?.open ?? false;
+
+  MARKETING_SORT_STATE.traceability.rows = [...(rows || [])];
+  const orderedRows = sortMarketingRows(MARKETING_SORT_STATE.traceability.rows, 'traceability', 'fecha_agenda', 'nombre');
 
   if (!rows.length) {
     container.innerHTML = `
@@ -382,7 +681,7 @@ function renderTraceabilityTable(rows) {
     return;
   }
 
-  const body = rows.map((row) => `
+  const body = orderedRows.map((row) => `
     <tr>
       <td>${formatDateLabel(row.fecha_agenda)}</td>
       <td>${row.nombre || '-'}</td>
@@ -401,25 +700,25 @@ function renderTraceabilityTable(rows) {
   `).join('');
 
   container.innerHTML = `
-    <details class="ads-collapse">
+    <details class="ads-collapse"${wasOpen ? ' open' : ''}>
       <summary>Trazabilidad Anuncios</summary>
       <div class="table-wrap marketing-panel ads-panel traceability-panel">
         <table class="marketing-table ads-table traceability-table">
           <thead>
             <tr>
-              <th>Fecha agenda</th>
-              <th>Nombre</th>
-              <th>Mail</th>
-              <th>Campaign</th>
-              <th>Adset</th>
-              <th>Adname</th>
-              <th>Calidad</th>
-              <th>Aplica</th>
-              <th>Call confirm</th>
-              <th>Llamada Meg</th>
-              <th>Venta</th>
-              <th>Setter</th>
-              <th>created_time</th>
+              <th>${renderMarketingSortHeader('traceability', 'fecha_agenda', 'Fecha agenda')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'nombre', 'Nombre')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'mail', 'Mail')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'campaign', 'Campaign')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'adset', 'Adset')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'adname', 'Adname')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'calidad_lead', 'Calidad')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'aplica', 'Aplica')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'call_confirm', 'Call confirm')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'llamada_meg', 'Llamada Meg')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'fecha_venta', 'Venta')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'setter', 'Setter')}</th>
+              <th>${renderMarketingSortHeader('traceability', 'created_time', 'created_time')}</th>
             </tr>
           </thead>
           <tbody>${body}</tbody>
@@ -427,6 +726,8 @@ function renderTraceabilityTable(rows) {
       </div>
     </details>
   `;
+
+  attachMarketingSortHandlers(container, 'traceability', () => renderTraceabilityTable(MARKETING_SORT_STATE.traceability.rows));
 }
 
 function renderDashboard(rows, investment, extras = {}) {
@@ -483,6 +784,17 @@ function renderDashboard(rows, investment, extras = {}) {
     renderMetricTable('Resumen General', leftRows),
     renderMetricTable('Embudo Comercial', rightRows)
   ].join('');
+
+  container.querySelectorAll('.metric-label').forEach((button) => {
+    button.addEventListener('click', () => {
+      const label = button.dataset.metricLabel;
+      showMetricInfo(MARKETING_METRIC_INFO[label] || {
+        title: label,
+        dateLabel: '"fecha"',
+        logic: `Se calcula dentro de "kpi_marketing_diario" para el rango seleccionado, usando la agregación diaria correspondiente a "${label}".`
+      });
+    });
+  });
 }
 
 async function loadOrigins() {
@@ -599,6 +911,7 @@ async function saveInvestment() {
 }
 
 async function init() {
+  ensureMarketingViewStyles();
   setDefaultDates();
   await loadOrigins();
   await loadDashboard();
