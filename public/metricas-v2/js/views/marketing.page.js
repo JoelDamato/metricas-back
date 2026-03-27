@@ -61,53 +61,165 @@ const MARKETING_DATE_SORT_KEYS = new Set([
 const MARKETING_METRIC_INFO = {
   'Agendas': {
     title: 'Agendas',
-    dateLabel: '"fecha"',
-    logic: 'Suma "reuniones_agendadas" de "kpi_marketing_diario" en el rango seleccionado.'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "reuniones_agendadas" de "kpi_marketing_diario". En esta métrica, la fila diaria representa directamente la fecha de agenda: date("leads_raw"."fecha_agenda").'
+  },
+  'Inversión planificada': {
+    title: 'Inversión planificada',
+    viewLabel: '"kpi_marketing_inversiones"',
+    dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
+    logic: 'Suma "inversion_planificada" de los registros de inversión cuyo rango queda dentro del filtro seleccionado. Si el origen es "Todos", no filtra por "origen".'
+  },
+  'Inversión realizada': {
+    title: 'Inversión realizada',
+    viewLabel: '"kpi_marketing_inversiones"',
+    dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
+    logic: 'Suma "inversion_realizada" de los registros de "kpi_marketing_inversiones" que entran en el rango seleccionado. Si el origen es "Todos", agrega todos los orígenes.'
   },
   'Aplican': {
     title: 'Aplican',
-    dateLabel: '"fecha"',
-    logic: 'Suma "agendas_aplicables" de "kpi_marketing_diario" en el rango seleccionado.'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "agendas_aplicables" de "kpi_marketing_diario". La fila diaria está armada sobre date("leads_raw"."fecha_agenda").'
+  },
+  'Costo por Agenda': {
+    title: 'Costo por Agenda',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + "kpi_marketing_diario"."fecha", donde "fecha" = date("leads_raw"."fecha_agenda")',
+    logic: 'Se calcula como "inversion_realizada" dividido "agendas". La inversión sale de "kpi_marketing_inversiones" y "agendas" de "reuniones_agendadas" en "kpi_marketing_diario", cuya fecha diaria nace de date("leads_raw"."fecha_agenda").'
+  },
+  'Costo por aplicables': {
+    title: 'Costo por aplicables',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + "kpi_marketing_diario"."fecha", donde "fecha" = date("leads_raw"."fecha_agenda")',
+    logic: 'Se calcula como "inversion_realizada" dividido "agendas_aplicables". La base diaria de aplicables sale de "kpi_marketing_diario", cuya fecha nace de date("leads_raw"."fecha_agenda").'
   },
   'Cash collected': {
     title: 'Cash collected',
-    dateLabel: '"f_acreditacion"',
-    logic: 'Suma "cash_collected" en "kpi_marketing_diario", consolidado por fecha diaria del KPI.'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero para esta métrica se completa con comprobantes donde date("f_acreditacion") = "fecha"',
+    logic: 'Suma "cash_collected" desde "kpi_marketing_diario". Internamente la vista hace un join diario contra comprobantes acreditados por "f_acreditacion", y vuelca ese total sobre la fila cuyo alias "fecha" coincide con esa acreditación.'
   },
   'Facturación': {
     title: 'Facturación',
-    dateLabel: '"fecha_de_agendamiento" y "f_venta"',
-    logic: 'Usa la facturación consolidada del KPI de marketing para el rango seleccionado.'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero la facturación se cruza en la vista con comprobantes donde date("f_acreditacion") = "fecha"',
+    logic: 'Muestra "facturacion" desde "kpi_marketing_diario". Hoy ese valor no entra por "f_venta": la vista lo pega al día usando comprobantes agrupados por date("f_acreditacion").'
+  },
+  'Costo por Call Confirmer Exitoso': {
+    title: 'Costo por Call Confirmer Exitoso',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + "kpi_marketing_diario"."fecha", donde "fecha" = date("leads_raw"."fecha_agenda")',
+    logic: 'Se calcula como "inversion_realizada" dividido "call_confirmer_exitosos". Esa cantidad sale de "kpi_marketing_diario" sobre filas diarias cuyo alias "fecha" nace de date("leads_raw"."fecha_agenda").'
+  },
+  'Costo por reunión realizada': {
+    title: 'Costo por reunión realizada',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + "kpi_marketing_diario"."fecha", donde "fecha" = date("leads_raw"."fecha_agenda")',
+    logic: 'Se calcula como "inversion_realizada" dividido "reunionesTotales". "reunionesTotales" sale de la suma de asistidas CCE y CCNE dentro de "kpi_marketing_diario", usando la fila diaria cuyo alias "fecha" nace de date("leads_raw"."fecha_agenda").'
+  },
+  'Costo por venta': {
+    title: 'Costo por venta',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + endpoint "marketing/ventas-totales"',
+    dateLabel: 'Mixta: rango de "fecha_desde"/"fecha_hasta" + "fecha_de_agendamiento"',
+    logic: 'Se calcula como "inversion_realizada" dividido "ventasTotales". El total de ventas se trae desde comprobantes por "fecha_de_agendamiento".'
+  },
+  'Leads contactados CC': {
+    title: 'Leads contactados CC',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "leads_contactados_cc". En la vista actual solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y call confirmer exitoso, agrupadas por date("leads_raw"."fecha_agenda").'
   },
   'AOV': {
     title: 'AOV',
-    dateLabel: 'Mixta: facturación / ventas',
-    logic: 'Se calcula como "facturacion" dividido "ventasTotales".'
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_diario" + endpoint de ventas',
+    dateLabel: 'Mixta: la facturación se lee sobre "kpi_marketing_diario"."fecha" y ese alias hoy se cruza por date("f_acreditacion"); las ventas salen por "fecha_de_agendamiento"',
+    logic: 'Se calcula en frontend como "facturacion" dividido "ventasTotales". Ojo: hoy mezcla facturación diaria pegada por date("f_acreditacion") en "kpi_marketing_diario" con ventas traídas desde comprobantes por "fecha_de_agendamiento".'
   },
   'AOV día 1': {
     title: 'AOV día 1',
+    viewLabel: 'Endpoint "marketing/aov-dia-1" sobre "comprobantes"',
     dateLabel: '"fecha_de_agendamiento"',
     logic: 'Promedio de "cash_collected" por venta del día 1, filtrando comprobantes donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día.'
   },
   'Reuniones TOTALES': {
     title: 'Reuniones TOTALES',
-    dateLabel: '"fecha"',
-    logic: 'Se calcula como "llamadas_venta_asistidas_cce" + "llamadas_venta_asistidas_ccne".'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Se calcula como "llamadas_venta_asistidas_cce" + "llamadas_venta_asistidas_ccne". Ambas columnas se agrupan sobre date("leads_raw"."fecha_agenda") y ya vienen filtradas por "agendo"=\'Agendo\', "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\'.'
+  },
+  'Llamadas ventas asistidas CCE': {
+    title: 'Llamadas ventas asistidas CCE',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "llamadas_venta_asistidas_cce". En la vista solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\', call confirmer exitoso y "llamada_meg"=\'Efectuada\', agrupadas por date("leads_raw"."fecha_agenda").'
+  },
+  'Ventas CCE': {
+    title: 'Ventas CCE',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero para esta métrica la vista cruza comprobantes donde date("fecha_de_agendamiento") = "fecha"',
+    logic: 'Suma "ventas_cce". La vista trae este total desde comprobantes agrupados por date("fecha_de_agendamiento") y origen, filtrando "estado_cc"=\'Exitoso\', y lo pega sobre la fila cuyo alias "fecha" coincide con esa fecha de agendamiento.'
+  },
+  'Costo por Venta (CCE)': {
+    title: 'Costo por Venta (CCE)',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: rango de "fecha_desde"/"fecha_hasta" + "fecha"/"fecha_de_agendamiento"',
+    logic: 'Se calcula como "inversion_realizada" dividido "ventas_cce". Las ventas CCE salen de comprobantes por "fecha_de_agendamiento" y "estado_cc"=\'Exitoso\'.'
+  },
+  'Llamadas venta asistidas CCNE': {
+    title: 'Llamadas venta asistidas CCNE',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "llamadas_venta_asistidas_ccne". La vista solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\', sin call confirmer exitoso y "llamada_meg"=\'Efectuada\', agrupadas por date("leads_raw"."fecha_agenda").'
+  },
+  'Call Confirmer NO EXITOSOS': {
+    title: 'Call Confirmer NO EXITOSOS',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "aplicaciones_no_calificaban_cc". En la vista cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y sin éxito en "call_confirm" ni "cc_whatsapp", agrupadas por date("leads_raw"."fecha_agenda").'
+  },
+  'Ventas CCNE': {
+    title: 'Ventas CCNE',
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero para esta métrica la vista cruza comprobantes donde date("fecha_de_agendamiento") = "fecha"',
+    logic: 'Suma "ventas_ccne". La vista lo trae desde comprobantes agrupados por date("fecha_de_agendamiento") y origen, filtrando "estado_cc"=\'No exitoso\', y lo pega sobre la fila cuyo alias "fecha" coincide con esa fecha.'
+  },
+  'Costo por Venta (CCNE)': {
+    title: 'Costo por Venta (CCNE)',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: rango de "fecha_desde"/"fecha_hasta" + "fecha"/"fecha_de_agendamiento"',
+    logic: 'Se calcula como "inversion_realizada" dividido "ventas_ccne". Las ventas CCNE salen de comprobantes por "fecha_de_agendamiento" con "estado_cc"=\'No exitoso\'.'
   },
   'Ventas totales': {
     title: 'Ventas totales',
+    viewLabel: 'Endpoint "marketing/ventas-totales" sobre "comprobantes"',
     dateLabel: '"fecha_de_agendamiento"',
     logic: 'Cuenta ventas de comprobantes por "fecha_de_agendamiento" para mantener la misma base que agendas.'
   },
   'Tasa de cierre (%)': {
     title: 'Tasa de cierre (%)',
-    dateLabel: 'Mixta: reuniones y ventas',
-    logic: 'Se calcula como "ventasTotales" dividido "reunionesTotales" por 100.'
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_diario" + endpoint de ventas',
+    dateLabel: 'Mixta: reuniones sobre "kpi_marketing_diario"."fecha", donde "fecha" = date("leads_raw"."fecha_agenda"), y ventas por "fecha_de_agendamiento"',
+    logic: 'Se calcula en frontend como "ventasTotales" dividido "reunionesTotales" por 100. "reunionesTotales" sale de la vista diaria armada sobre date("leads_raw"."fecha_agenda"), mientras que "ventasTotales" sale de comprobantes por "fecha_de_agendamiento".'
   },
   'CC Exitosos': {
     title: 'CC Exitosos',
-    dateLabel: '"fecha"',
-    logic: 'Suma "call_confirmer_exitosos" de "kpi_marketing_diario".'
+    viewLabel: '"kpi_marketing_diario"',
+    dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
+    logic: 'Suma "call_confirmer_exitosos" de "kpi_marketing_diario". En la vista actual esa columna solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y call confirmer exitoso, agrupadas por date("leads_raw"."fecha_agenda").'
+  },
+  'ROAS sobre facturación total': {
+    title: 'ROAS sobre facturación total',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + facturación diaria pegada sobre "kpi_marketing_diario"."fecha", donde hoy se cruza por date("f_acreditacion")',
+    logic: 'Se calcula como "facturacion" dividido "inversion_realizada". La inversión sale de "kpi_marketing_inversiones" y la facturación del valor diario de "kpi_marketing_diario", que hoy se asigna por date("f_acreditacion").'
+  },
+  'ROAS sobre CC': {
+    title: 'ROAS sobre CC',
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + cash diario pegado sobre "kpi_marketing_diario"."fecha", donde hoy se cruza por date("f_acreditacion")',
+    logic: 'Se calcula como "cash_collected" dividido "inversion_realizada". El cash sale de "kpi_marketing_diario" y se asigna al día por date("f_acreditacion"), mientras que la inversión sale del acumulado filtrado en "kpi_marketing_inversiones".'
   }
 };
 
@@ -376,6 +488,7 @@ function showMetricInfo(info) {
   popup.innerHTML = `
     <div class="kpi-popup-card metric-info-card">
       <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"kpi_marketing_diario"'}</p>
       <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
       <p><strong>Lógica:</strong> ${info.logic}</p>
       <button id="metricInfoPopupClose" type="button">Cerrar</button>
@@ -1173,8 +1286,9 @@ function renderDashboard(rows, investment, extras = {}) {
       const label = button.dataset.metricLabel;
       showMetricInfo(MARKETING_METRIC_INFO[label] || {
         title: label,
+        viewLabel: '"kpi_marketing_diario"',
         dateLabel: '"fecha"',
-        logic: `Se calcula dentro de "kpi_marketing_diario" para el rango seleccionado, usando la agregación diaria correspondiente a "${label}".`
+        logic: `Se muestra para el rango seleccionado usando la fuente diaria que corresponda a "${label}". Si esta métrica mezcla inversión, ventas o cash, la definición final puede combinar "kpi_marketing_diario", "kpi_marketing_inversiones" y comprobantes.`
       });
     });
   });

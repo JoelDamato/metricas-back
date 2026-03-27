@@ -60,7 +60,7 @@ Contexto del sistema:
 5. Reportes
 - Usa agenda_detalle_diario_closer, ventas_diario_closer y cash_collected_diario_closer
 - filtro por desde/hasta diario
-- bloque 1: agendadas, asistidas y vendidas por closer
+- bloque 1: agendadas y vendidas por closer desde agenda_detalle_diario_closer; asistidas recalculadas desde leads_raw con agendo='Agendo' AND aplica='Aplica' AND llamada_meg='Efectuada'
 - bloque 2: agendadas y aplicables por closer
 - bloque 3: ventas diarias por closer
 - bloque 4: cash collected diario por closer, con CC USD, CC ARS, CCC y % CC según la vista
@@ -70,7 +70,7 @@ Contexto del sistema:
 - usa fecha_agenda
 - muestra tablas por facturación, inversión, modelo, calidad y adname
 - Agendas: cantidad de registros por grupo
-- Asistencia: llamada_meg='Efectuada'
+- Asistencia: aplica='Aplica' AND llamada_meg='Efectuada'
 - Ventas: fecha_venta con valor
 - % Asistencia: asistencia / agendas
 - % Venta: ventas / asistencia

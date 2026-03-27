@@ -8,6 +8,9 @@ const PAGE_ROLE_ACCESS = {
   'reportes.html': ['total', 'comercial'],
   'leads-bdd.html': ['total', 'comercial', 'csm'],
   'marketing.html': ['total', 'comercial', 'csm'],
+  'csm-tiempo.html': ['total', 'csm'],
+  'csm-situacion.html': ['total', 'csm'],
+  'csm-renovaciones.html': ['total', 'csm'],
   'view.html': ['total']
 };
 
@@ -22,6 +25,7 @@ const RESOURCE_ROLE_ACCESS = {
   ventas_diario_closer: ['total', 'comercial'],
   cash_collected_diario_closer: ['total', 'comercial'],
   leads_raw: ['total', 'comercial', 'csm'],
+  csm: ['total', 'csm'],
   kpi_marketing_diario: ['total', 'comercial', 'csm'],
   kpi_marketing_inversiones: ['total', 'comercial', 'csm']
 };

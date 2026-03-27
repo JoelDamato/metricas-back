@@ -1,4 +1,111 @@
 const RESOURCE = 'setters';
+const SETTING_METRIC_INFO = {
+  'Totales IG': {
+    title: 'Totales IG',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta registros de "leads_raw" donde "primer_origen"=\'Instagram\'. Se agrupa por setter y por mes de "fecha_creada".'
+  },
+  'Contactados': {
+    title: 'Contactados',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads de Instagram con "seguimiento_setting" no vacío. La agrupación sigue el mes de "fecha_creada".'
+  },
+  '% Contactados': {
+    title: '% Contactados',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "contactados" dividido "totales_ig" por 100.'
+  },
+  'No contactados': {
+    title: 'No contactados',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "totales_ig" menos "contactados".'
+  },
+  '% No contactados': {
+    title: '% No contactados',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "noContactados" dividido "totales_ig" por 100.'
+  },
+  'Aplica MEG': {
+    title: 'Aplica MEG',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads de Instagram con "seguimiento_setting" no vacío y "producto_de_interes"=\'MEG\'.'
+  },
+  '% Aplica MEG': {
+    title: '% Aplica MEG',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "aplica_meg" dividido "contactados" por 100.'
+  },
+  'Link Enviado MEG': {
+    title: 'Link Enviado MEG',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads con "producto_de_interes"=\'MEG\' y "embudo_meg"=\'Link Enviado\'.'
+  },
+  '% Link enviado': {
+    title: '% Link enviado',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "link_enviado_meg" dividido "aplica_meg" por 100.'
+  },
+  'Agendo': {
+    title: 'Agendo',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Cuenta leads MEG con "agendo"=\'Agendo\'. En esta fila el corte temporal usa el mes de "fecha_agenda".'
+  },
+  '% Agendo': {
+    title: '% Agendo',
+    dateLabel: 'Mixta: "fecha_creada" y "fecha_agenda"',
+    logic: 'Se calcula como "agendo" dividido "aplica_meg" por 100. El numerador sale del mes de "fecha_agenda" y el denominador del mes de "fecha_creada".'
+  },
+  'Venta MEG': {
+    title: 'Venta MEG',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Cuenta leads MEG con "agendo"=\'Agendo\' y "producto_adq" no vacío. En la vista se agrupa por el mes de "fecha_agenda".'
+  },
+  '% Venta MEG': {
+    title: '% Venta MEG',
+    dateLabel: 'Mixta: "fecha_creada" y "fecha_agenda"',
+    logic: 'Se calcula como "venta_meg" dividido "aplica_meg" por 100.'
+  },
+  'Aplica Club': {
+    title: 'Aplica Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads con "producto_de_interes"=\'CLUB\' dentro del mes de "fecha_creada".'
+  },
+  '% Aplica Club': {
+    title: '% Aplica Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "aplica_club" dividido "contactados" por 100.'
+  },
+  'Consideración Club': {
+    title: 'Consideración Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads CLUB con "embudo_club" no vacío y distinto de "Propuesta" y "Pago".'
+  },
+  '% Consideración': {
+    title: '% Consideración',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "consideracion_club" dividido "aplica_club" por 100.'
+  },
+  'Link enviado Club': {
+    title: 'Link enviado Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads CLUB con "embudo_club"=\'Propuesta\'.'
+  },
+  '% Link enviado club': {
+    title: '% Link enviado club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "link_enviado_club" dividido "consideracion_club" por 100.'
+  },
+  'Venta Club': {
+    title: 'Venta Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Cuenta leads CLUB con "embudo_club"=\'Pago\'.'
+  },
+  '% Venta Club': {
+    title: '% Venta Club',
+    dateLabel: '"fecha_creada"',
+    logic: 'Se calcula como "venta_club" dividido "aplica_club" por 100.'
+  }
+};
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -26,6 +133,31 @@ function formatPercent(value) {
 function safeDiv(a, b) {
   if (!b) return 0;
   return Number(a || 0) / Number(b || 0);
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"setters"'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
 }
 
 function getCurrentPeriod() {
@@ -310,7 +442,7 @@ function buildTable(rows) {
       const total = rowDef.isHtml ? rowDef.total : `<strong>${rowDef.total}</strong>`;
       return `
         <tr>
-          <td><strong>${rowDef.label}</strong></td>
+          <td><button type="button" class="metric-info-trigger metric-label" data-metric-label="${rowDef.label}"><strong>${rowDef.label}</strong></button></td>
           ${cells}
           <td>${total}</td>
         </tr>
@@ -332,6 +464,16 @@ function buildTable(rows) {
       </table>
     </div>
   `;
+
+  container.querySelectorAll('.metric-label').forEach((button) => {
+    button.addEventListener('click', () => {
+      showMetricInfo(SETTING_METRIC_INFO[button.dataset.metricLabel] || {
+        title: button.dataset.metricLabel,
+        dateLabel: 'Mixta según la fila',
+        logic: `Esta fila se calcula dentro de la vista "setters" usando la lógica específica del embudo para "${button.dataset.metricLabel}".`
+      });
+    });
+  });
 }
 
 async function initFilters() {

@@ -23,6 +23,62 @@ const DEFAULT_RULES = {
   cashCollectedMin: 1,
   facturacionMin: 1
 };
+const KPI_CLOSERS_INFO = {
+  'Cierre seg. llamada': {
+    title: 'Cierre seg. llamada',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Se muestra desde "cierre_segun_llamada" y luego se multiplica por 100 para verlo en porcentaje.'
+  },
+  'Asistencia seg. llamada': {
+    title: 'Asistencia seg. llamada',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Se muestra desde "asistencia_segun_llamada" y luego se multiplica por 100.'
+  },
+  'Tasa asistencia': {
+    title: 'Tasa asistencia',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Se muestra desde "tasa_asistencia" y luego se multiplica por 100.'
+  },
+  'Tasa cierre': {
+    title: 'Tasa cierre',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Se muestra desde "tasa_cierre" y luego se multiplica por 100.'
+  },
+  'Cash collected': {
+    title: 'Cash collected',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Muestra el valor mensual de "cash_collected" para el closer en el período seleccionado.'
+  },
+  'CC 3m': {
+    title: 'CC 3m',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Rolling 3 meses en "kpi_closers_mensual"',
+    logic: 'Muestra "cash_collected_3m", una acumulación móvil de 3 meses por closer.'
+  },
+  'Facturación': {
+    title: 'Facturación',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Base mensual de "kpi_closers_mensual"',
+    logic: 'Muestra el valor mensual de "facturacion" para el closer en el período seleccionado.'
+  },
+  'Fact 3m': {
+    title: 'Fact 3m',
+    viewLabel: '"kpi_closers_mensual"',
+    dateLabel: 'Rolling 3 meses en "kpi_closers_mensual"',
+    logic: 'Muestra "facturacion_3m", acumulado móvil de 3 meses por closer.'
+  },
+  'Objetivo': {
+    title: 'Objetivo',
+    viewLabel: '"kpi_closers_rules" + "kpi_closers_mensual"',
+    dateLabel: '"anio" y "mes"',
+    logic: 'La celda de objetivo compara el valor real de "kpi_closers_mensual" contra las reglas guardadas en "kpi_closers_rules" para el mismo "anio" y "mes".'
+  }
+};
 
 function getCurrentPeriod() {
   const now = new Date();
@@ -43,6 +99,31 @@ function formatPercent(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('es-AR').format(Number(value || 0));
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"kpi_closers_mensual"'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
 }
 
 function parseRules(raw) {
@@ -231,20 +312,20 @@ function buildTable(rows, rules) {
   const head = `
     <tr>
       <th>Closer</th>
-      <th>Cierre seg. llamada</th>
-      <th>Objetivo</th>
-      <th>Asistencia seg. llamada</th>
-      <th>Objetivo</th>
-      <th>Tasa asistencia</th>
-      <th>Objetivo</th>
-      <th>Tasa cierre</th>
-      <th>Objetivo</th>
-      <th>Cash collected</th>
-      <th>Objetivo</th>
-      <th>CC 3m</th>
-      <th>Facturación</th>
-      <th>Objetivo</th>
-      <th>Fact 3m</th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Cierre seg. llamada">Cierre seg. llamada</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Asistencia seg. llamada">Asistencia seg. llamada</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Tasa asistencia">Tasa asistencia</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Tasa cierre">Tasa cierre</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Cash collected">Cash collected</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="CC 3m">CC 3m</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Facturación">Facturación</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Fact 3m">Fact 3m</button></th>
     </tr>
   `;
 
@@ -345,6 +426,12 @@ function buildTable(rows, rules) {
       </table>
     </div>
   `;
+
+  wrap.querySelectorAll('.metric-info-trigger').forEach((button) => {
+    button.addEventListener('click', () => {
+      showMetricInfo(KPI_CLOSERS_INFO[button.dataset.infoKey]);
+    });
+  });
 }
 
 async function initFilters() {

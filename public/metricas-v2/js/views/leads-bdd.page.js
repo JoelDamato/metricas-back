@@ -1,5 +1,67 @@
 let allRows = [];
 let hasLoadedRows = false;
+const LEADS_BDD_INFO = {
+  'Facturacion': {
+    title: 'Bloque Facturación',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Agrupa los registros de "leads_raw" por el valor del campo "facturacion". Solo entra al bloque si el lead cae dentro del rango por "fecha_agenda".'
+  },
+  'Inversion': {
+    title: 'Bloque Inversión',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Agrupa los registros de "leads_raw" por el valor del campo "inversion", filtrando por "fecha_agenda".'
+  },
+  'Modelo': {
+    title: 'Bloque Modelo',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Agrupa los registros por "modelo_negocio" dentro del rango de "fecha_agenda".'
+  },
+  'Calidad': {
+    title: 'Bloque Calidad',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Agrupa los registros por "calidad_lead" dentro del rango de "fecha_agenda".'
+  },
+  'Adname': {
+    title: 'Bloque Adname',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Agrupa los registros por "adname" dentro del rango de "fecha_agenda".'
+  },
+  'Agendas': {
+    title: 'Agendas',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Cuenta la cantidad de registros que quedan en cada grupo dentro del rango filtrado por "fecha_agenda".'
+  },
+  'Asistencia': {
+    title: 'Asistencia',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Cuenta registros donde "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\'. El corte temporal del tablero sigue siendo "fecha_agenda".'
+  },
+  '% Asistencia': {
+    title: '% Asistencia',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como "asistencia" dividido "agendas" por 100, donde "asistencia" solo cuenta filas con "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\'.'
+  },
+  'Ventas': {
+    title: 'Ventas',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Cuenta registros donde "fecha_venta" tiene valor. La condición interna mira "fecha_venta", pero el filtro temporal del tablero sigue siendo "fecha_agenda".'
+  },
+  '% Venta': {
+    title: '% Venta',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como ("ventas" / "asistencia") * 100. "ventas" cuenta filas con "fecha_venta" cargada y "asistencia" solo cuenta filas con "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\'; el rango del tablero sigue siendo "fecha_agenda".'
+  }
+};
 
 const BLOCKS = [
   { key: 'facturacion', title: 'Facturacion', layout: 'half' },
@@ -27,6 +89,31 @@ function formatPercent(value) {
   }
 
   return `${Number(value).toFixed(2)} %`;
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"leads_raw"'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
 }
 
 function toDateOnly(value) {
@@ -73,7 +160,7 @@ function filterRows(rows, filters) {
 }
 
 function isAsistencia(row) {
-  return normalizeText(row.llamada_meg) === 'efectuada';
+  return normalizeText(row.aplica) === 'aplica' && normalizeText(row.llamada_meg) === 'efectuada';
 }
 
 function isVenta(row) {
@@ -144,12 +231,12 @@ function buildBlock(block, rows) {
         <table class="respuesta-table">
           <thead>
             <tr>
-              <th>${block.title}</th>
-              <th>Agendas</th>
-              <th>Asistencia</th>
-              <th>% Asistencia</th>
-              <th>Ventas</th>
-              <th>% Venta</th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="${block.title}">${block.title}</button></th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="Agendas">Agendas</button></th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="Asistencia">Asistencia</button></th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="% Asistencia">% Asistencia</button></th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="Ventas">Ventas</button></th>
+              <th><button type="button" class="metric-info-trigger metric-label" data-info-key="% Venta">% Venta</button></th>
             </tr>
           </thead>
           <tbody>${body}</tbody>
@@ -166,6 +253,17 @@ function renderBlocks(rows) {
       ${BLOCKS.map((block) => buildBlock(block, rows)).join('')}
     </div>
   `;
+
+  container.querySelectorAll('.metric-label').forEach((button) => {
+    button.addEventListener('click', () => {
+      showMetricInfo(LEADS_BDD_INFO[button.dataset.infoKey] || {
+        title: button.dataset.infoKey,
+        viewLabel: '"leads_raw"',
+        dateLabel: '"fecha_agenda"',
+        logic: `La métrica o dimensión "${button.dataset.infoKey}" se interpreta dentro del tablero con filtro temporal por "fecha_agenda".`
+      });
+    });
+  });
 }
 
 async function bootstrap() {

@@ -15,6 +15,161 @@ const MONTHS = [
 
 const ORIGIN_WHITELIST = ['VSL', 'ORG', 'CLASES', 'APSET'];
 let estrategiaField = null;
+const AGENDA_KPI_INFO = {
+  total_agendados: {
+    title: 'Total Agendados',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Lee "total_agendados" de "agenda_totales". Ese total sale de la base mensual de agendas armada desde "leads_raw" sobre el mes de "fecha_agenda".'
+  },
+  total_ventas: {
+    title: 'Total Ventas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Cuenta comprobantes de "Venta" con producto válido y no Club. Las ventas se agrupan por mes de "fecha_de_agendamiento" para alinear con agendas.'
+  },
+  tasa_cierre: {
+    title: 'Tasa Cierre',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Mixta: "fecha_agenda" y "fecha_de_agendamiento"',
+    logic: 'Se calcula como ("total_ventas" / "total_agendados") * 100. El numerador usa ventas por "fecha_de_agendamiento" y el denominador agendas por "fecha_agenda".'
+  },
+  facturacion_total_mes: {
+    title: 'Facturación Total',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"f_venta"',
+    logic: 'Suma "facturacion" de comprobantes de "Venta" con producto válido y no Club, agrupados por mes de "f_venta".'
+  },
+  cash_collected_real_mes: {
+    title: 'Cash Real Total',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"f_acreditacion"',
+    logic: 'Suma "cash_collected" por mes de "f_acreditacion". En el mes actual aplica corte hasta hoy Argentina.'
+  }
+};
+
+const AGENDA_ROW_INFO = {
+  agendados: {
+    title: 'Agendados',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_agendados" de "agenda_totales". La base mensual viene de agendas/leads agrupados por mes de "fecha_agenda".'
+  },
+  aplicables: {
+    title: 'Aplicables',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_aplica" de "agenda_totales". La vista lo trae ya consolidado por mes, origen y estrategia desde la base de agendas.'
+  },
+  respuesta: {
+    title: 'Respuesta',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_respondio" de "agenda_totales", ya calculado en la vista base sobre la misma cohorte mensual de agendas.'
+  },
+  confirmados: {
+    title: 'Confirmados',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_confirmo" de "agenda_totales", ya consolidado sobre el mes de "fecha_agenda".'
+  },
+  canceladas: {
+    title: 'Canceladas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_cancelado" de "agenda_totales", dentro de la misma base mensual de agendas.'
+  },
+  noAsistidas: {
+    title: 'No asistidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_no_asistidas" de "agenda_totales", ya consolidado sobre la base de agendas del mes.'
+  },
+  pendientes: {
+    title: 'Pendientes',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_pendientes" de "agenda_totales", ya calculado en la vista base mensual.'
+  },
+  efectuadas: {
+    title: 'Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "total_efectuadas" de "agenda_totales", consolidado por mes, origen y estrategia.'
+  },
+  ventas: {
+    title: 'Ventas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Muestra "total_ventas" de "agenda_totales". La vista lo arma desde comprobantes de "Venta" agrupados por mes de "fecha_de_agendamiento".'
+  },
+  paidUpfront: {
+    title: 'Paid Upfront',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Campo mensual ya calculado en la vista base',
+    logic: 'Muestra "total_paid_upfront" ya consolidado dentro de "agenda_totales". El popup de porcentaje usa este valor contra "facturacion_total_mes".'
+  },
+  ccne: {
+    title: 'CCNE',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "ccne" de "agenda_totales", un contador ya calculado en la vista base sobre la cohorte mensual de agendas.'
+  },
+  ccneEfectuadas: {
+    title: 'CCNE Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "ccne_efectuadas" de "agenda_totales", ya consolidado en la vista base mensual.'
+  },
+  ccneVendidas: {
+    title: 'CCNE Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "ccne_vendidas" de "agenda_totales", ya consolidado en la vista base mensual.'
+  },
+  cce: {
+    title: 'CCE',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce" de "agenda_totales", ya calculado en la vista base sobre el mes de agendas.'
+  },
+  cceEfectuadas: {
+    title: 'CCE Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_efectuadas" de "agenda_totales", ya consolidado por mes, origen y estrategia.'
+  },
+  cceVendidas: {
+    title: 'CCE Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_vendidas" de "agenda_totales", ya consolidado en la vista base mensual.'
+  },
+  factTotalMes: {
+    title: 'Facturación Total Mes',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"f_venta"',
+    logic: 'Muestra "facturacion_total_mes". La vista lo arma desde comprobantes de "Venta" agrupados por mes de "f_venta".'
+  },
+  ccRealMes: {
+    title: 'Cash Collected Real Mes',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"f_acreditacion"',
+    logic: 'Muestra "cash_collected_real_mes". La vista suma "cash_collected" por mes de "f_acreditacion" y en el mes actual corta hasta hoy Argentina.'
+  },
+  ccOtrosMeses: {
+    title: 'Cash Collected Otros Meses',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Mixta: "f_acreditacion" comparada contra "fecha_de_agendamiento"',
+    logic: 'Muestra "cash_collected_otros_meses". La vista toma cash acreditado por "f_acreditacion" cuyo mes de agenda es nulo o distinto al mes acreditado.'
+  },
+  ccAgendasMes: {
+    title: 'Cash Collected Agendas Mes',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Mixta: "f_acreditacion" comparada contra "fecha_de_agendamiento"',
+    logic: 'Muestra "cash_collected_agendas_mes". La vista toma cash acreditado por "f_acreditacion" solo cuando el mes de "fecha_de_agendamiento" coincide con el mes acreditado.'
+  }
+};
 
 const SUM_FIELDS = [
   'total_agendados',
@@ -56,6 +211,78 @@ function formatNumber(value) {
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"agenda_totales"'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
+}
+
+function getAgendaMetricInfo(metricKey, label) {
+  if (AGENDA_ROW_INFO[metricKey]) return AGENDA_ROW_INFO[metricKey];
+  if (metricKey === 'agendados') return AGENDA_KPI_INFO.total_agendados;
+  if (metricKey === 'ventas') return AGENDA_KPI_INFO.total_ventas;
+  if (metricKey === 'tasaCierre') return AGENDA_KPI_INFO.tasa_cierre;
+  if (metricKey === 'factTotalMes') return AGENDA_KPI_INFO.facturacion_total_mes;
+  if (metricKey === 'ccRealMes') return AGENDA_KPI_INFO.cash_collected_real_mes;
+  if (metricKey === 'aov') {
+    return {
+      title: 'AOV',
+      viewLabel: '"agenda_totales"',
+      dateLabel: 'Mixta: "f_venta" y "fecha_de_agendamiento"',
+      logic: 'Se calcula como "facturacion_total_mes" dividido "total_ventas". La facturación sale del mes de "f_venta" y las ventas del mes de "fecha_de_agendamiento".'
+    };
+  }
+  if (metricKey.startsWith('pct')) {
+    const formulas = {
+      pctAplicables: '"aplicables" / "agendados" * 100',
+      pctRespuesta: '"respuesta" / "aplicables" * 100',
+      pctConfirmados: '"confirmados" / "respuesta" * 100',
+      pctCanceladas: '"canceladas" / "aplicables" * 100',
+      pctNoAsistidas: '"noAsistidas" / "aplicables" * 100',
+      pctEfectuadas: '"efectuadas" / "aplicables" * 100',
+      pctVendidas: '"ventas" / "efectuadas" * 100',
+      pctPaidUpfront: '"paidUpfront" / "facturacion_total_mes" * 100',
+      pctCcne: '"ccne" / "aplicables" * 100',
+      pctCcneEfectuadas: '"ccneEfectuadas" / "efectuadas" * 100',
+      pctCcneVendidas: '"ccneVendidas" / "ventas" * 100',
+      pctCce: '"cce" / "aplicables" * 100',
+      pctCceEfectuadas: '"cceEfectuadas" / "efectuadas" * 100',
+      pctCceVendidas: '"cceVendidas" / "ventas" * 100'
+    };
+    return {
+      title: label,
+      viewLabel: 'Cálculo frontend sobre "agenda_totales"',
+      dateLabel: '"fecha_agenda"',
+      logic: `Se calcula en frontend como ${formulas[metricKey] || 'porcentaje entre contadores de la misma fila'}. Los contadores base salen de "agenda_totales".`
+    };
+  }
+  return {
+    title: label,
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se muestra desde "agenda_totales" usando la cohorte mensual del mes de "fecha_agenda".'
+  };
 }
 
 function safeDiv(a, b) {
@@ -299,7 +526,7 @@ function buildMatrixTable(rows, filters) {
 
       return `
         <tr>
-          <td><strong>${metric.label}</strong></td>
+          <td><button type="button" class="metric-info-trigger metric-label" data-metric-key="${metric.key}"><strong>${metric.label}</strong></button></td>
           ${monthCells}
           <td><strong>${totalValue}</strong></td>
         </tr>
@@ -329,6 +556,13 @@ function buildMatrixTable(rows, filters) {
       </table>
     </div>
   `;
+
+  container.querySelectorAll('.metric-label').forEach((button) => {
+    button.addEventListener('click', () => {
+      const metric = metricDefinitions.find((item) => item.key === button.dataset.metricKey);
+      showMetricInfo(getAgendaMetricInfo(button.dataset.metricKey, metric?.label || button.dataset.metricKey));
+    });
+  });
 }
 
 function buildKpis(rows) {
@@ -343,12 +577,23 @@ function buildKpis(rows) {
   const metrics = metricRowsFor(totals);
 
   wrap.innerHTML = `
-    <article class="card"><h4>Total Agendados</h4><p>${formatNumber(totals.total_agendados)}</p></article>
-    <article class="card"><h4>Total Ventas</h4><p>${formatNumber(totals.total_ventas)}</p></article>
-    <article class="card"><h4>Tasa Cierre</h4><p>${formatPercent(metrics.tasaCierre)}</p></article>
-    <article class="card"><h4>Facturación Total</h4><p>${formatCurrency(totals.facturacion_total_mes)}</p></article>
-    <article class="card"><h4>Cash Real Total</h4><p>${formatCurrency(totals.cash_collected_real_mes)}</p></article>
+    <article class="card metric-card" data-kpi-key="total_agendados" role="button" tabindex="0"><h4>Total Agendados</h4><p>${formatNumber(totals.total_agendados)}</p></article>
+    <article class="card metric-card" data-kpi-key="total_ventas" role="button" tabindex="0"><h4>Total Ventas</h4><p>${formatNumber(totals.total_ventas)}</p></article>
+    <article class="card metric-card" data-kpi-key="tasa_cierre" role="button" tabindex="0"><h4>Tasa Cierre</h4><p>${formatPercent(metrics.tasaCierre)}</p></article>
+    <article class="card metric-card" data-kpi-key="facturacion_total_mes" role="button" tabindex="0"><h4>Facturación Total</h4><p>${formatCurrency(totals.facturacion_total_mes)}</p></article>
+    <article class="card metric-card" data-kpi-key="cash_collected_real_mes" role="button" tabindex="0"><h4>Cash Real Total</h4><p>${formatCurrency(totals.cash_collected_real_mes)}</p></article>
   `;
+
+  wrap.querySelectorAll('[data-kpi-key]').forEach((node) => {
+    const open = () => showMetricInfo(AGENDA_KPI_INFO[node.dataset.kpiKey]);
+    node.addEventListener('click', open);
+    node.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
 }
 
 async function initFilters() {

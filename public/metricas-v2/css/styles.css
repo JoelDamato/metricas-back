@@ -62,6 +62,10 @@ p {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+.metric-card {
+  cursor: pointer;
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -205,6 +209,10 @@ th {
   border-color: rgba(29, 78, 216, 0.2);
 }
 
+.ranking-page #kpiContainer .metric-card {
+  cursor: pointer;
+}
+
 .ranking-page #kpiContainer .card h4 {
   margin: 0;
   color: #2b4d7d;
@@ -227,6 +235,44 @@ th {
   background: linear-gradient(90deg, #1d66c2 0%, #3a8de6 100%);
   color: #f3f8ff;
   border-bottom-color: rgba(243, 248, 255, 0.2);
+}
+
+.metric-info-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.metric-info-trigger.metric-label {
+  color: #1f3b63;
+}
+
+.metric-info-card {
+  width: min(560px, 100%);
+  text-align: left;
+}
+
+.metric-info-card h3 {
+  margin: 0 0 12px;
+  color: #17345f;
+}
+
+.metric-info-card p {
+  margin: 0 0 10px;
+  color: #42597d;
+}
+
+@media (max-width: 980px) {
+  .kpi-popup {
+    padding: 18px;
+  }
 }
 
 .ranking-page td {
@@ -368,6 +414,7 @@ th {
 .kpi-popup {
   position: fixed;
   inset: 0;
+  padding: 28px 72px;
   background: rgba(0, 0, 0, 0.25);
   display: grid;
   place-items: center;
@@ -379,6 +426,7 @@ th {
   border-radius: 12px;
   padding: 16px;
   min-width: 280px;
+  max-width: min(680px, 100%);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
   text-align: center;
 }
@@ -536,13 +584,13 @@ th {
 
 .card-soon {
   position: relative;
-  cursor: default;
+  cursor: pointer;
   opacity: 0.96;
 }
 
 .card-soon:hover {
-  transform: none;
-  box-shadow: 0 10px 24px rgba(9, 69, 140, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(9, 69, 140, 0.2);
 }
 
 .card-badge {
@@ -557,6 +605,89 @@ th {
   font-weight: 800;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.metric-info-card ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.metric-info-card li + li {
+  margin-top: 6px;
+}
+
+.csm-page .container {
+  width: min(1240px, 95vw);
+}
+
+.csm-page #status {
+  color: #eef7ff;
+  margin: 10px 0 12px;
+  font-weight: 600;
+}
+
+.csm-page #kpiContainer .card {
+  background: linear-gradient(165deg, #ffffff, #f2f8ff);
+  border-color: rgba(29, 78, 216, 0.2);
+}
+
+.csm-page #kpiContainer .card h4 {
+  margin: 0;
+  color: #2b4d7d;
+  font-size: 0.82rem;
+}
+
+.csm-page #kpiContainer .card p {
+  margin-top: 8px;
+  color: #101b2f;
+  font-size: 1.22rem;
+  font-weight: 700;
+}
+
+.csm-table-wrap {
+  margin-top: 14px;
+}
+
+.csm-table th,
+.csm-table td {
+  vertical-align: top;
+}
+
+.csm-table td {
+  background: rgba(255, 255, 255, 0.92);
+  color: #20314c;
+}
+
+.csm-table tbody tr:nth-child(even) td {
+  background: rgba(229, 239, 255, 0.95);
+}
+
+.csm-detail-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.csm-detail-panel {
+  padding: 0;
+}
+
+.csm-detail-head {
+  padding: 14px 14px 0;
+}
+
+.csm-detail-head h3 {
+  margin: 0;
+  color: #1c3c6e;
+}
+
+.csm-detail-head p {
+  margin-top: 6px;
+}
+
+.csm-detail-table {
+  border-top: 1px solid rgba(60, 108, 182, 0.18);
 }
 
 .reportes-actions input {
@@ -583,6 +714,13 @@ th {
   padding: 4px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.report-block-title {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .report-block-head p {
@@ -786,7 +924,7 @@ th {
 .ads-collapse > summary {
   list-style: none;
   cursor: pointer;
-  color: #ffffff;
+  color: #111111;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -797,8 +935,8 @@ th {
   user-select: none;
   padding: 6px 14px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.14);
-  text-shadow: 0 2px 10px rgba(6, 33, 74, 0.28);
+  background: rgba(255, 255, 255, 0.78);
+  text-shadow: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
@@ -896,6 +1034,38 @@ th {
   background: rgba(25, 84, 157, 0.12);
   color: #4c4c4c;
   font-weight: 800;
+}
+
+.marketing-sort-trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+}
+
+.marketing-sort-trigger.active {
+  color: #173f73;
+}
+
+.marketing-sort-arrow {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  color: #1d5bb0;
+}
+
+.ads-table th:not(:first-child) .marketing-sort-trigger,
+.traceability-table th:not(:first-child) .marketing-sort-trigger {
+  justify-content: center;
 }
 
 .marketing-table td {

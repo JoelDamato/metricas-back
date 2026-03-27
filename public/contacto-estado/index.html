@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estado del contacto</title>
+    <link rel="stylesheet" href="/contacto-estado/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="hero">
+        <div class="hero-main">
+          <p class="eyebrow">Consulta rápida</p>
+          <h1>Estado del contacto</h1>
+          <p class="hero-copy">
+            Una ficha clara, prolija y rápida para mostrar el estado actual del contacto, con sus datos principales y sus métricas comerciales.
+          </p>
+        </div>
+
+        <aside class="hero-side">
+          <p class="side-label">Búsqueda directa</p>
+          <form id="lookupForm" class="lookup-form">
+            <label class="field">
+              <span>GHL ID</span>
+              <input id="ghlIdInput" name="ghlId" type="text" placeholder="Ej: v8VEe7k9Huub94XJ6E9j" autocomplete="off" />
+            </label>
+            <button type="submit">Ver ficha</button>
+          </form>
+          <p class="side-note">Podés compartir la URL con el <code>GHL ID</code> ya incluido.</p>
+        </aside>
+      </section>
+
+      <section id="statusBox" class="status-box" hidden></section>
+      <section id="cardContainer" class="card-grid"></section>
+    </main>
+
+    <script src="/contacto-estado/app.js"></script>
+  </body>
+  </html>

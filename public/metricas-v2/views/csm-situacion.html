@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSM Por Situación | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page csm-page" data-csm-page="situacion">
+    <main class="container">
+      <div class="nav"><a href="/metricas">Volver al listado</a></div>
+      <section class="ranking-hero">
+        <h1>CSM · Por Situación</h1>
+        <p>Estado del cliente, salud del programa, NPS y desglose por modelo de negocio.</p>
+      </section>
+
+      <p id="status"></p>
+      <section id="kpiContainer" class="cards"></section>
+      <section class="chart-panel">
+        <h3 id="chartTitle">Foto Actual del Programa</h3>
+        <p id="chartDescription">Clientes totales, activos, engagement, primer resultado, éxito y alertas.</p>
+        <canvas id="csmChart" height="120"></canvas>
+      </section>
+      <section id="tableContainer"></section>
+      <section id="detailContainer" class="csm-detail-grid"></section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/auth-shell.js"></script>
+    <script src="/metricas/js/views/csm.page.js"></script>
+  </body>
+</html>

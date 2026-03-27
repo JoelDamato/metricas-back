@@ -15,6 +15,38 @@ const MONTHS = [
 ];
 
 let rankingChart = null;
+const RANKING_METRIC_INFO = {
+  facturacion_total: {
+    title: 'Facturación Total',
+    viewLabel: '"ranking_closers_mensual"',
+    dateLabel: 'Mes del ranking por "f_venta"',
+    logic: 'Suma "facturacion" de comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "creado_por" y por mes de "f_venta".'
+  },
+  cash_collected_total: {
+    title: 'Cash Collected Total',
+    viewLabel: '"ranking_closers_mensual"',
+    dateLabel: 'Mes del ranking por "f_venta", con corte de cash por "f_acreditacion"',
+    logic: 'Suma "cash_collected" de comprobantes no Club. El ranking mensual se sigue agrupando por mes de "f_venta", pero para el cash del mes actual la vista solo deja pasar filas con "f_acreditacion" hasta hoy Argentina.'
+  },
+  total_ventas: {
+    title: 'Ventas Totales',
+    viewLabel: '"ranking_closers_mensual"',
+    dateLabel: 'Mes del ranking por "f_venta"',
+    logic: 'Cuenta comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "creado_por" y por mes de "f_venta".'
+  },
+  efectividad: {
+    title: 'Efectividad',
+    viewLabel: '"ranking_closers_mensual"',
+    dateLabel: 'Mixta: mes del ranking por "f_venta" + corte de cash por "f_acreditacion"',
+    logic: 'Se calcula como ("cash_collected_total" / "facturacion_total") * 100. El numerador ya viene con la lógica de acreditación y corte al día de hoy; el denominador usa la facturación del mes de "f_venta".'
+  },
+  monto_incobrable_total: {
+    title: 'Incobrable',
+    viewLabel: '"ranking_closers_mensual"',
+    dateLabel: 'Mes del ranking por "f_venta"',
+    logic: 'Suma "monto_incobrable" de comprobantes no Club, agrupado por "creado_por" dentro del mismo mes de "f_venta" que usa el ranking.'
+  }
+};
 
 function formatCurrency(value) {
   const n = Number(value || 0);
@@ -27,6 +59,35 @@ function formatCurrency(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('es-AR').format(Number(value || 0));
+}
+
+function showMetricInfo(metricKey) {
+  const info = RANKING_METRIC_INFO[metricKey];
+  if (!info) return;
+
+  const existing = document.getElementById('rankingMetricPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'rankingMetricPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"ranking_closers_mensual"'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="rankingMetricPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('rankingMetricPopupClose').addEventListener('click', close);
 }
 
 function getCurrentPeriod() {
@@ -99,23 +160,33 @@ function buildKpiCards(rows) {
   const effectiveness = totalFacturacion > 0 ? (totalCash / totalFacturacion) * 100 : 0;
 
   wrap.innerHTML = `
-    <article class="card">
+    <article class="card metric-card" data-metric-info="facturacion_total" role="button" tabindex="0">
       <h4>Facturación Total</h4>
       <p>${formatCurrency(totalFacturacion)}</p>
     </article>
-    <article class="card">
+    <article class="card metric-card" data-metric-info="cash_collected_total" role="button" tabindex="0">
       <h4>Cash Collected Total</h4>
       <p>${formatCurrency(totalCash)}</p>
     </article>
-    <article class="card">
+    <article class="card metric-card" data-metric-info="total_ventas" role="button" tabindex="0">
       <h4>Ventas Totales</h4>
       <p>${formatNumber(totalVentas)}</p>
     </article>
-    <article class="card">
+    <article class="card metric-card" data-metric-info="efectividad" role="button" tabindex="0">
       <h4>Efectividad Global</h4>
       <p>${effectiveness.toFixed(2)}%</p>
     </article>
   `;
+
+  wrap.querySelectorAll('[data-metric-info]').forEach((node) => {
+    node.addEventListener('click', () => showMetricInfo(node.dataset.metricInfo));
+    node.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        showMetricInfo(node.dataset.metricInfo);
+      }
+    });
+  });
 }
 
 function buildTable(rows) {
@@ -132,11 +203,11 @@ function buildTable(rows) {
     <tr>
       <th>#</th>
       <th>Closer</th>
-      <th>Facturación</th>
-      <th>Cash Collected</th>
-      <th>Ventas</th>
-      <th>% Efectividad</th>
-      <th>Incobrable</th>
+      <th><button type="button" class="metric-info-trigger" data-metric-info="facturacion_total">Facturación</button></th>
+      <th><button type="button" class="metric-info-trigger" data-metric-info="cash_collected_total">Cash Collected</button></th>
+      <th><button type="button" class="metric-info-trigger" data-metric-info="total_ventas">Ventas</button></th>
+      <th><button type="button" class="metric-info-trigger" data-metric-info="efectividad">% Efectividad</button></th>
+      <th><button type="button" class="metric-info-trigger" data-metric-info="monto_incobrable_total">Incobrable</button></th>
     </tr>
   `;
 
@@ -164,6 +235,10 @@ function buildTable(rows) {
       </table>
     </div>
   `;
+
+  container.querySelectorAll('.metric-info-trigger').forEach((button) => {
+    button.addEventListener('click', () => showMetricInfo(button.dataset.metricInfo));
+  });
 }
 
 function renderChart(rows) {

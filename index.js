@@ -20,26 +20,25 @@ let isReady = false;
 // --- 4. RUTAS ---
 const routes = require('./routes/rutas');
 const metricasV2Routes = require('./routes/metricasV2');
-const carruselStudioRoutes = require('./routes/carruselStudio');
 const metricasV2ErrorHandler = require('./modules/metricasv2/errorHandler');
 const authMiddleware = require('./modules/auth/middleware');
 
 app.use(authMiddleware.attachAuthUser);
 
+app.use('/contacto-estado', express.static(path.join(__dirname, 'public/contacto-estado'), { index: false, redirect: false }));
+app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
+});
+
 app.get('/metricas', authMiddleware.metricasPageGuard, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/metricas-v2/index.html'));
 });
 app.use('/metricas', authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
-app.get('/carrusel-studio', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/carrusel-studio/index.html'));
-});
-app.use('/carrusel-studio', express.static(path.join(__dirname, 'public/carrusel-studio'), { index: 'index.html', redirect: false }));
 
 app.use('/api', routes);
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
-app.use('/api/carrusel', carruselStudioRoutes);
 app.use(metricasV2ErrorHandler);
 app.use((error, req, res, next) => {
   const statusCode = error.statusCode || 500;

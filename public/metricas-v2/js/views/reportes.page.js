@@ -1,4 +1,92 @@
 const EXCLUDED_CLOSERS = ['sin closer', 'nahuel', 'shirlet', 'shirley'];
+const REPORTES_BLOCK_INFO = {
+  'Reporte de Llamadas': {
+    title: 'Reporte de Llamadas',
+    viewLabel: '"agenda_detalle_diario_closer" + "leads_raw"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Las columnas "Agendadas" y "Vendidas" salen de "agenda_detalle_diario_closer". La columna "Asistidas" se recalcula desde "leads_raw" con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\', agrupando por "closer" dentro del rango de "fecha_llamada".'
+  },
+  'Reporte de Agenda': {
+    title: 'Reporte de Agenda',
+    viewLabel: '"agenda_detalle_diario_closer"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Usa la vista "agenda_detalle_diario_closer" y suma por closer las columnas "agendadas" y "aplicables" para el rango diario filtrado.'
+  },
+  'Ventas Diarias': {
+    title: 'Ventas Diarias',
+    viewLabel: '"ventas_diario_closer"',
+    dateLabel: '"fecha_venta"',
+    logic: 'Usa la vista "ventas_diario_closer" y agrupa por closer las ventas cerradas del rango, tomando como fecha de corte "fecha_venta".'
+  },
+  'Cash Collected Diario': {
+    title: 'Cash Collected Diario',
+    viewLabel: '"cash_collected_diario_closer"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" se calcula como "cash_collected_conciliado" / "cash_collected_total" * 100.'
+  }
+};
+const REPORTES_METRIC_INFO = {
+  'Reporte de Llamadas|Agendadas': {
+    title: 'Reporte de Llamadas · Agendadas',
+    viewLabel: '"agenda_detalle_diario_closer"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Suma "llamadas_agendadas" en "agenda_detalle_diario_closer", agrupado por closer dentro del rango diario.'
+  },
+  'Reporte de Llamadas|Asistidas': {
+    title: 'Reporte de Llamadas · Asistidas',
+    viewLabel: '"leads_raw"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Cuenta registros de "leads_raw" donde "agendo"=\'Agendo\', "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\', agrupados por "closer" dentro del rango de "fecha_llamada".'
+  },
+  'Reporte de Llamadas|Vendidas': {
+    title: 'Reporte de Llamadas · Vendidas',
+    viewLabel: '"agenda_detalle_diario_closer"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Suma "llamadas_vendidas" en "agenda_detalle_diario_closer", agrupado por closer dentro del rango diario.'
+  },
+  'Reporte de Agenda|Agendadas': {
+    title: 'Reporte de Agenda · Agendadas',
+    viewLabel: '"agenda_detalle_diario_closer"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Suma "agendadas" en "agenda_detalle_diario_closer", agrupado por closer en el rango diario.'
+  },
+  'Reporte de Agenda|Aplicables': {
+    title: 'Reporte de Agenda · Aplicables',
+    viewLabel: '"agenda_detalle_diario_closer"',
+    dateLabel: '"fecha_llamada"',
+    logic: 'Suma "aplicables" en "agenda_detalle_diario_closer", agrupado por closer en el rango diario.'
+  },
+  'Ventas Diarias|Ventas': {
+    title: 'Ventas Diarias',
+    viewLabel: '"ventas_diario_closer"',
+    dateLabel: '"fecha_venta"',
+    logic: 'Suma "ventas" en "ventas_diario_closer", agrupado por closer dentro del rango de "fecha_venta".'
+  },
+  'Cash Collected Diario|CC USD': {
+    title: 'Cash Collected Diario · CC USD',
+    viewLabel: '"cash_collected_diario_closer"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Suma "cash_collected_total" en "cash_collected_diario_closer", agrupado por closer dentro del rango de "fecha_acreditacion".'
+  },
+  'Cash Collected Diario|CC ARS': {
+    title: 'Cash Collected Diario · CC ARS',
+    viewLabel: '"cash_collected_diario_closer"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Suma "cash_collected_ars_total" en "cash_collected_diario_closer", agrupado por closer.'
+  },
+  'Cash Collected Diario|CCC': {
+    title: 'Cash Collected Diario · CCC',
+    viewLabel: '"cash_collected_diario_closer"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Suma "cash_collected_conciliado" en "cash_collected_diario_closer", agrupado por closer.'
+  },
+  'Cash Collected Diario|% CC': {
+    title: 'Cash Collected Diario · % CC',
+    viewLabel: '"cash_collected_diario_closer"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Se calcula como ("cash_collected_conciliado" / "cash_collected_total") * 100 dentro del rango filtrado por "fecha_acreditacion".'
+  }
+};
 function normalizeText(value) {
   return String(value || '')
     .toLowerCase()
@@ -28,6 +116,31 @@ function formatCurrency(value, currency = 'USD') {
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function showMetricInfo(info) {
+  if (!info) return;
+  const existing = document.getElementById('metricInfoPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'metricInfoPopup';
+  popup.className = 'kpi-popup metric-info-popup';
+  popup.innerHTML = `
+    <div class="kpi-popup-card metric-info-card">
+      <h3>${info.title}</h3>
+      <p><strong>Vista que usa:</strong> ${info.viewLabel || 'Depende del bloque'}</p>
+      <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
+      <p><strong>Lógica:</strong> ${info.logic}</p>
+      <button id="metricInfoPopupClose" type="button">Cerrar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const close = () => popup.remove();
+  popup.addEventListener('click', (event) => {
+    if (event.target === popup) close();
+  });
+  document.getElementById('metricInfoPopupClose').addEventListener('click', close);
 }
 
 function setupFilters() {
@@ -79,7 +192,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
     return `
       <section class="report-block">
         <div class="report-block-head">
-          <h3>${title}</h3>
+          <h3><button type="button" class="metric-info-trigger report-block-title" data-block-key="${title}">${title}</button></h3>
           <p>${subtitle}</p>
         </div>
         <div class="table-wrap report-table-wrap">
@@ -114,7 +227,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
 
       return `
         <tr>
-          <td>${metric.label}</td>
+          <td><button type="button" class="metric-info-trigger metric-label" data-block-title="${title}" data-metric-label="${metric.label}">${metric.label}</button></td>
           ${cells}
           <td class="total-col">${formatter(totals[metric.key] || 0, metric)}</td>
         </tr>
@@ -125,7 +238,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
   return `
     <section class="report-block">
       <div class="report-block-head">
-        <h3>${title}</h3>
+        <h3><button type="button" class="metric-info-trigger report-block-title" data-block-key="${title}">${title}</button></h3>
         <p>${subtitle}</p>
       </div>
       <div class="table-wrap report-table-wrap">
@@ -206,20 +319,54 @@ function buildReportMarkup(data) {
 }
 
 async function loadAgendaData(range) {
-  const response = await window.metricasApi.fetchAgendaDetalleDiarioCloser({
-    limit: 1000,
-    from: range.from,
-    to: range.to,
-    dateField: 'fecha_llamada'
-  });
+  const [response, leadsResponse] = await Promise.all([
+    window.metricasApi.fetchAgendaDetalleDiarioCloser({
+      limit: 1000,
+      from: range.from,
+      to: range.to,
+      dateField: 'fecha_llamada'
+    }),
+    window.metricasApi.fetchAllRows('leads_raw', {
+      limit: 1000,
+      from: range.from,
+      to: range.to,
+      dateField: 'fecha_llamada'
+    })
+  ]);
 
-  return groupByCloser(response.rows || [], (row) => ({
+  const agendaRows = groupByCloser(response.rows || [], (row) => ({
     llamadas_agendadas: row.llamadas_agendadas,
     llamadas_asistidas: row.llamadas_asistidas,
     llamadas_vendidas: row.llamadas_vendidas,
     agendadas: row.agendadas,
     aplicables: row.aplicables
   }));
+
+  const asistidasAplicaRows = groupByCloser(leadsResponse.rows || [], (row) => ({
+    llamadas_asistidas:
+      normalizeText(row.agendo) === 'agendo'
+      && normalizeText(row.aplica) === 'aplica'
+      && normalizeText(row.llamada_meg) === 'efectuada'
+        ? 1
+        : 0
+  }));
+
+  const agendaMap = new Map(agendaRows.map((row) => [row.closer, { ...row }]));
+  asistidasAplicaRows.forEach((row) => {
+    const current = agendaMap.get(row.closer) || {
+      closer: row.closer,
+      llamadas_agendadas: 0,
+      llamadas_asistidas: 0,
+      llamadas_vendidas: 0,
+      agendadas: 0,
+      aplicables: 0
+    };
+
+    current.llamadas_asistidas = Number(row.llamadas_asistidas || 0);
+    agendaMap.set(row.closer, current);
+  });
+
+  return [...agendaMap.values()];
 }
 
 async function loadVentasData(range) {
@@ -290,6 +437,29 @@ async function loadReportes() {
       agendaResumen,
       ventasResumen,
       cashResumen
+    });
+
+    container.querySelectorAll('.metric-label').forEach((button) => {
+      button.addEventListener('click', () => {
+        const key = `${button.dataset.blockTitle}|${button.dataset.metricLabel}`;
+        showMetricInfo(REPORTES_METRIC_INFO[key] || {
+          title: `${button.dataset.blockTitle} · ${button.dataset.metricLabel}`,
+          viewLabel: 'Depende del bloque',
+          dateLabel: 'Depende del bloque',
+          logic: `Esta métrica se calcula dentro del bloque "${button.dataset.blockTitle}" usando la vista diaria correspondiente.`
+        });
+      });
+    });
+
+    container.querySelectorAll('.report-block-title').forEach((button) => {
+      button.addEventListener('click', () => {
+        showMetricInfo(REPORTES_BLOCK_INFO[button.dataset.blockKey] || {
+          title: button.dataset.blockKey,
+          viewLabel: 'Depende del bloque',
+          dateLabel: 'Depende del bloque',
+          logic: `Este bloque agrupa métricas diarias del reporte "${button.dataset.blockKey}" usando la vista correspondiente.`
+        });
+      });
     });
 
     status.textContent = `Rango cargado: ${range.from} a ${range.to}`;
