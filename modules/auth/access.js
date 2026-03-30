@@ -43,7 +43,8 @@ const RESTRICTED_COMMERCIAL_EMAILS = new Set([
   'posadaelmontecito@gmail.com',
   'charliecarlostu@gmail.com',
   'meg.claudionicolini@gmail.com',
-  'gaitanmauro23@gmail.com'
+  'gaitanmauro23@gmail.com',
+  'pmbutera1234@gmail.com'
 ]);
 
 const MARKETING_BLOCKED_PAGES = new Set(['marketing.html']);
