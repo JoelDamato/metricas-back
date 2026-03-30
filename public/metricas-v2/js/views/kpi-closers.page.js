@@ -297,6 +297,49 @@ function showPopup(message, type = 'success') {
   setTimeout(close, 2500);
 }
 
+async function loadAuthPermissions() {
+  if (window.metricasAuthPermissions) return window.metricasAuthPermissions;
+
+  try {
+    const response = await window.http.getJson('/api/metricas/auth/session');
+    const user = response.user || null;
+    window.metricasAuthUser = user;
+    window.metricasAuthPermissions = user?.permissions || {};
+    return window.metricasAuthPermissions;
+  } catch (error) {
+    return {};
+  }
+}
+
+function applyRulesEditPermissions(permissions = {}) {
+  const canEdit = permissions.canEditKpiClosersRules !== false;
+  const rulesWrap = document.querySelector('.kpi-rules');
+  if (!rulesWrap) return;
+
+  rulesWrap.querySelectorAll('input').forEach((input) => {
+    input.disabled = !canEdit;
+    input.readOnly = !canEdit;
+  });
+
+  const saveButton = document.getElementById('saveRules');
+  if (saveButton) {
+    saveButton.disabled = !canEdit;
+    saveButton.hidden = !canEdit;
+  }
+
+  let note = document.getElementById('kpiRulesReadOnlyNote');
+  if (!canEdit) {
+    if (!note) {
+      note = document.createElement('p');
+      note.id = 'kpiRulesReadOnlyNote';
+      note.textContent = 'Modo solo lectura: este usuario puede ver KPI Closers, pero no editar objetivos.';
+      rulesWrap.insertAdjacentElement('afterend', note);
+    }
+  } else if (note) {
+    note.remove();
+  }
+}
+
 function buildTable(rows, rules) {
   const wrap = document.getElementById('tableContainer');
 
@@ -480,6 +523,12 @@ async function loadKpiTable() {
 
 function handleSaveRules() {
   (async () => {
+    const permissions = await loadAuthPermissions();
+    if (permissions.canEditKpiClosersRules === false) {
+      showPopup('Este usuario solo puede visualizar los objetivos.', 'error');
+      return;
+    }
+
     const status = document.getElementById('status');
     const year = Number(document.getElementById('anio').value);
     const month = Number(document.getElementById('mes').value);
@@ -498,6 +547,8 @@ function handleSaveRules() {
 }
 
 async function initPage() {
+  const permissions = await loadAuthPermissions();
+  applyRulesEditPermissions(permissions);
   fillRuleInputs(DEFAULT_RULES);
   await initFilters();
   await loadKpiTable();

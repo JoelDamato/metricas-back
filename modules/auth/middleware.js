@@ -29,7 +29,7 @@ function metricasPageGuard(req, res, next) {
   }
 
   const pageName = resolvePageName(req.path);
-  if (!access.canAccessPage(req.authUser.role, pageName)) {
+  if (!access.canAccessPageForUser(req.authUser, pageName)) {
     if (pageName === 'index.html') {
       return next();
     }
@@ -40,6 +40,8 @@ function metricasPageGuard(req, res, next) {
 }
 
 function metricasApiGuard(req, res, next) {
+  const reqPath = String(req.path || '');
+
   if (req.path.startsWith('/auth/')) {
     return next();
   }
@@ -48,43 +50,43 @@ function metricasApiGuard(req, res, next) {
     return res.status(401).json({ ok: false, message: 'Sesión requerida' });
   }
 
-  if (req.path === '/views') {
+  if (reqPath === '/views') {
     if (!access.canAccessFeature(req.authUser.role, 'views')) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para ver vistas' });
     }
     return next();
   }
 
-  if (req.path.startsWith('/views/')) {
-    const resource = String(req.path.split('/').pop() || '').replace(/[^a-zA-Z0-9_]/g, '');
-    if (!access.canAccessResource(req.authUser.role, resource)) {
+  if (reqPath.startsWith('/views/')) {
+    const resource = String(reqPath.split('/').pop() || '').replace(/[^a-zA-Z0-9_]/g, '');
+    if (!access.canAccessResourceForUser(req.authUser, resource)) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para esa vista' });
     }
     return next();
   }
 
-  if (req.path === '/kpi-closers/rules') {
-    if (!access.canAccessFeature(req.authUser.role, 'kpi_closers_rules')) {
+  if (reqPath.endsWith('/kpi-closers/rules')) {
+    if (!access.canAccessFeatureForUser(req.authUser, 'kpi_closers_rules', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para reglas KPI' });
     }
     return next();
   }
 
-  if (req.path === '/marketing/inversion' || req.path === '/marketing/inversiones') {
-    if (!access.canAccessFeature(req.authUser.role, 'marketing_inversion')) {
+  if (reqPath === '/marketing/inversion' || reqPath === '/marketing/inversiones') {
+    if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para inversión marketing' });
     }
     return next();
   }
 
-  if (req.path === '/marketing/aov-dia-1') {
-    if (!access.canAccessFeature(req.authUser.role, 'marketing_inversion')) {
+  if (reqPath === '/marketing/aov-dia-1') {
+    if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para KPI marketing' });
     }
     return next();
   }
 
-  if (req.path === '/assistant/ask') {
+  if (reqPath === '/assistant/ask') {
     if (!access.canAccessFeature(req.authUser.role, 'assistant')) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para usar Scalito' });
     }

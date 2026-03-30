@@ -7,6 +7,10 @@
     const data = await response.json();
     const user = data.user;
     if (!user) return;
+    const permissions = user.permissions || {};
+
+    window.metricasAuthUser = user;
+    window.metricasAuthPermissions = permissions;
 
     const shell = document.createElement('div');
     shell.className = 'auth-shell';
@@ -26,6 +30,10 @@
         node.remove();
       }
     });
+
+    if (permissions.canAccessMarketing === false) {
+      document.querySelectorAll('a[href="/metricas/views/marketing.html"]').forEach((node) => node.remove());
+    }
 
     document.getElementById('logoutMetricas').addEventListener('click', async () => {
       await fetch('/api/metricas/auth/logout', { method: 'POST', credentials: 'same-origin' });

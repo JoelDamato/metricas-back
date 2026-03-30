@@ -38,6 +38,30 @@ const FEATURE_ROLE_ACCESS = {
   assistant: ['total', 'comercial', 'csm']
 };
 
+const RESTRICTED_COMMERCIAL_EMAILS = new Set([
+  'walteralegre56@gmail.com',
+  'posadaelmontecito@gmail.com',
+  'charliecarlostu@gmail.com',
+  'meg.claudionicolini@gmail.com',
+  'gaitanmauro23@gmail.com'
+]);
+
+const MARKETING_BLOCKED_PAGES = new Set(['marketing.html']);
+const MARKETING_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones']);
+const MARKETING_BLOCKED_FEATURES = new Set(['marketing_inversion']);
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isRestrictedCommercialUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+
+  return RESTRICTED_COMMERCIAL_EMAILS.has(email);
+}
+
 function hasRoleAccess(allowedRoles, role) {
   if (!Array.isArray(allowedRoles) || !allowedRoles.length) return false;
   return allowedRoles.includes(role);
@@ -55,11 +79,54 @@ function canAccessFeature(role, featureName) {
   return hasRoleAccess(FEATURE_ROLE_ACCESS[featureName], role);
 }
 
+function canAccessPageForUser(user, pageName) {
+  if (!canAccessPage(user?.role, pageName)) return false;
+  if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_PAGES.has(pageName)) return false;
+  return true;
+}
+
+function canAccessResourceForUser(user, resourceName) {
+  if (!canAccessResource(user?.role, resourceName)) return false;
+  if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_RESOURCES.has(resourceName)) return false;
+  return true;
+}
+
+function canAccessFeatureForUser(user, featureName, options = {}) {
+  if (!canAccessFeature(user?.role, featureName)) return false;
+
+  if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_FEATURES.has(featureName)) {
+    return false;
+  }
+
+  if (
+    isRestrictedCommercialUser(user)
+    && featureName === 'kpi_closers_rules'
+    && String(options.method || 'GET').toUpperCase() !== 'GET'
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function getUserPermissions(user) {
+  return {
+    canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
+    canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' })
+  };
+}
+
 module.exports = {
   PAGE_ROLE_ACCESS,
   RESOURCE_ROLE_ACCESS,
   FEATURE_ROLE_ACCESS,
+  RESTRICTED_COMMERCIAL_EMAILS,
+  isRestrictedCommercialUser,
   canAccessPage,
   canAccessResource,
-  canAccessFeature
+  canAccessFeature,
+  canAccessPageForUser,
+  canAccessResourceForUser,
+  canAccessFeatureForUser,
+  getUserPermissions
 };

@@ -1,4 +1,13 @@
 const authService = require('../../auth/service');
+const access = require('../../auth/access');
+
+function withPermissions(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    permissions: access.getUserPermissions(user)
+  };
+}
 
 async function login(req, res, next) {
   try {
@@ -16,7 +25,7 @@ async function login(req, res, next) {
 
     const token = authService.createSessionToken(user);
     res.setHeader('Set-Cookie', authService.serializeCookie(authService.SESSION_COOKIE, token));
-    res.json({ ok: true, user });
+    res.json({ ok: true, user: withPermissions(user) });
   } catch (error) {
     next(error);
   }
@@ -32,7 +41,7 @@ async function session(req, res) {
     return res.status(401).json({ ok: false, message: 'Sesión no iniciada' });
   }
 
-  res.json({ ok: true, user: req.authUser });
+  res.json({ ok: true, user: withPermissions(req.authUser) });
 }
 
 module.exports = {
