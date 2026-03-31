@@ -252,6 +252,12 @@ function normalizeMarketingOriginGroup(value) {
   return String(value || '').trim() || 'Sin origen';
 }
 
+function normalizeStrategyGroup(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text || text === 'sin estrategia') return 'sin estrategia';
+  return text;
+}
+
 function validateDateRange(from, to) {
   if (!from || !to) {
     const error = new Error('Debés enviar desde y hasta');
@@ -572,7 +578,7 @@ function sameDay(dateA, dateB) {
   return a.year === b.year && a.month === b.month && a.day === b.day;
 }
 
-async function getMarketingAovDia1({ from, to, origen }) {
+async function getMarketingAovDia1({ from, to, origen, estrategia }) {
   validateDateRange(from, to);
 
   const rows = await listAllRows('comprobantes', {
@@ -594,6 +600,10 @@ async function getMarketingAovDia1({ from, to, origen }) {
     if (!sameDay(row.fecha_correspondiente, row.fecha_de_llamada)) return false;
 
     if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+      return false;
+    }
+
+    if (estrategia && normalizeStrategyGroup(row.estrategia_a || row.estrategia) !== normalizeStrategyGroup(estrategia)) {
       return false;
     }
 

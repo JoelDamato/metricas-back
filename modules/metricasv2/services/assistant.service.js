@@ -31,6 +31,7 @@ Contexto del sistema:
 - total_ventas: comprobantes tipo='Venta', producto_format válido, agrupado por fecha_de_agendamiento
 - facturacion_total_mes: comprobantes por f_venta o lógica ya consolidada en la vista
 - cash_collected_real_mes: comprobantes por f_acreditacion, con corte hasta hoy para el mes actual, usando cash_collected
+- AOV día 1: promedio de cash_collected por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento y opcionalmente por origen/estrategia
 
 2. Marketing / Totales MKT
 - KPI principal base: kpi_marketing_diario
@@ -83,6 +84,8 @@ Contexto del sistema:
 8. KPI Closers Mensual
 - combina métricas mensuales por closer con objetivos editables
 - los objetivos se guardan en base
+- el objetivo de cash collected se interpreta como porcentaje: (cash_collected / facturacion) * 100
+- el objetivo de facturación se evalúa a nivel equipo en la fila Team Closers, no por closer individual
 - muestra valor real, objetivo configurado y si cumple o no
 - los totales de porcentaje se calculan sobre agregados, no sumando porcentajes fila por fila
 

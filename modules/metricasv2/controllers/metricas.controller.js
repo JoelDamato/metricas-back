@@ -163,7 +163,8 @@ async function getMarketingAovDia1(req, res, next) {
     const data = await supabaseService.getMarketingAovDia1({
       from: req.query.from,
       to: req.query.to,
-      origen: req.query.origen
+      origen: req.query.origen,
+      estrategia: req.query.estrategia
     });
 
     res.json({

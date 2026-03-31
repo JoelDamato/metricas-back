@@ -45,6 +45,12 @@ const AGENDA_KPI_INFO = {
     viewLabel: '"agenda_totales"',
     dateLabel: '"f_acreditacion"',
     logic: 'Suma "cash_collected" por mes de "f_acreditacion". En el mes actual aplica corte hasta hoy Argentina.'
+  },
+  aov_dia_1: {
+    title: 'AOV día 1',
+    viewLabel: 'Endpoint "marketing/aov-dia-1" sobre "comprobantes"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Calcula el promedio de "cash_collected" por venta para comprobantes tipo="Venta", con "producto_format" válido y no Club, donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día. En Agendas Totales se filtra por año, "origen" y también por "estrategia_a" cuando el filtro de estrategia está seleccionado.'
   }
 };
 
@@ -253,6 +259,9 @@ function getAgendaMetricInfo(metricKey, label) {
       logic: 'Se calcula como "facturacion_total_mes" dividido "total_ventas". La facturación sale del mes de "f_venta" y las ventas del mes de "fecha_de_agendamiento".'
     };
   }
+  if (metricKey === 'aovDia1') {
+    return AGENDA_KPI_INFO.aov_dia_1;
+  }
   if (metricKey.startsWith('pct')) {
     const formulas = {
       pctAplicables: '"aplicables" / "agendados" * 100',
@@ -293,6 +302,23 @@ function safeDiv(a, b) {
 function getCurrentPeriod() {
   const now = new Date();
   return { year: now.getFullYear(), month: now.getMonth() + 1 };
+}
+
+function getYearRange(year) {
+  const safeYear = Number(year);
+  return {
+    from: `${safeYear}-01-01`,
+    to: `${safeYear}-12-31`
+  };
+}
+
+function getMonthRange(year, month) {
+  const safeYear = Number(year);
+  const safeMonth = Number(month);
+  const from = `${safeYear}-${String(safeMonth).padStart(2, '0')}-01`;
+  const lastDay = new Date(safeYear, safeMonth, 0).getDate();
+  const to = `${safeYear}-${String(safeMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
 }
 
 function setOptions(selectId, options, selectedValue, includeAll = false) {
@@ -446,7 +472,7 @@ function metricRowsFor(acc) {
   };
 }
 
-function buildMatrixTable(rows, filters) {
+function buildMatrixTable(rows, filters, aovDia1Data = {}) {
   const container = document.getElementById('tableContainer');
   const currentMonth = new Date().getMonth() + 1;
 
@@ -458,10 +484,13 @@ function buildMatrixTable(rows, filters) {
   const { byMonth, totals } = aggregateByMonth(rows);
   const months = MONTHS.map((m) => m.value);
   const totalMetrics = metricRowsFor(totals);
+  totalMetrics.aovDia1 = Number(aovDia1Data.total || 0);
 
   const monthMetricsMap = new Map();
   months.forEach((m) => {
-    monthMetricsMap.set(m, metricRowsFor(byMonth.get(m) || emptyAccumulator()));
+    const monthMetrics = metricRowsFor(byMonth.get(m) || emptyAccumulator());
+    monthMetrics.aovDia1 = Number(aovDia1Data.byMonth?.[m] || 0);
+    monthMetricsMap.set(m, monthMetrics);
   });
 
   const metricDefinitions = [
@@ -484,6 +513,7 @@ function buildMatrixTable(rows, filters) {
     { key: 'paidUpfront', label: 'Paid Upfront', format: 'currency' },
     { key: 'pctPaidUpfront', label: '% Paid Upfront', format: 'percent' },
     { key: 'aov', label: 'AOV', format: 'currency' },
+    { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
     { key: 'pctCcne', label: '% CCNE', format: 'percent' },
@@ -654,11 +684,38 @@ async function loadAgendaTotales() {
       query[`eq_${estrategiaField}`] = filters.estrategia;
     }
 
-    const response = await window.metricasApi.fetchRows('agenda_totales', query);
+    const yearRange = getYearRange(selectedYear);
+    const aovRequests = MONTHS.map((month) => {
+      const range = getMonthRange(selectedYear, month.value);
+      return window.metricasApi.fetchMarketingAovDia1({
+        from: range.from,
+        to: range.to,
+        origen: filters.origen || undefined,
+        estrategia: filters.estrategia || undefined
+      });
+    });
+
+    const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
+      window.metricasApi.fetchRows('agenda_totales', query),
+      window.metricasApi.fetchMarketingAovDia1({
+        from: yearRange.from,
+        to: yearRange.to,
+        origen: filters.origen || undefined,
+        estrategia: filters.estrategia || undefined
+      }),
+      ...aovRequests
+    ]);
     const rows = applyLocalFilters(sanitizeRowsForYear(response.rows, selectedYear), filters);
+    const aovDia1Data = {
+      total: Number(totalAovDia1Response?.aovDia1 || 0),
+      byMonth: MONTHS.reduce((acc, month, index) => {
+        acc[month.value] = Number(monthAovResponses[index]?.aovDia1 || 0);
+        return acc;
+      }, {})
+    };
 
     buildKpis(rows);
-    buildMatrixTable(rows, filters);
+    buildMatrixTable(rows, filters, aovDia1Data);
     status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ''}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
   } catch (error) {
     status.textContent = error.message;

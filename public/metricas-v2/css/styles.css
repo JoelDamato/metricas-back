@@ -385,6 +385,13 @@ th {
   color: #103212;
 }
 
+.kpi-table .kpi-separator-row td {
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .kpi-table .rule-cell {
   display: flex;
   flex-direction: column;

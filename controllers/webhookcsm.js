@@ -197,6 +197,7 @@ function mapToSupabase(payload) {
     telefono: getValue(p['Telefono']),
     // Nuevos mapeos solicitados desde Notion -> Supabase
     pago_a_onbo: getValue(p['Pago a onbo']),
+    pago_a_diagnostico: getValue(p['Pago a diagnostico']) ?? getValue(p['Pago a Diagnostico']),
     diagnostico_7dias: getValue(p['Diagnostico en 7 dias']),
     proximo_renovar_15d: getValue(p['Proximo a renovar 15D']),
     proximo_renovar_30d: getValue(p['Proximo a renovar 30D']),
@@ -243,6 +244,7 @@ function mapToSupabase(payload) {
     coaching_format: getValue(p['Coaching - Format']),
     traffiker_format: getValue(p['Traffiker - Format']),
     despedida: getValue(p['Despedida']),
+    f_primer_resultado: getValue(p['F. Primer Resultado']) ?? getValue(p['F Primer Resultado']),
     caso_de_exito: getValue(p['Caso de exito']),
     fecha_final_renovacion: getValue(p['Fecha final renovacion'])
   };

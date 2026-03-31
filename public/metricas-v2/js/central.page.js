@@ -3,13 +3,15 @@
     tiempo: {
       title: 'CSM · Por Tiempo',
       viewLabel: '"csm"',
-      dateLabel: 'Principalmente "f_acceso", "f_onboarding", "caso_de_exito", "fecha_final", "modulo_1" a "modulo_10" y sus campos "*_format".',
-      fieldsLabel: '"pago_a_onbo", "diagnostico_7dias", "f_acceso", "f_onboarding", "caso_de_exito", "fecha_final", "modulo_1" a "modulo_10", "modulo_1_format" a "modulo_10_format", "ultima_fecha_de_avance".',
+      dateLabel: 'Prioriza campos calculados directos y, si faltan, cae a fechas base como "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito" y "modulo_1" a "modulo_10".',
+      fieldsLabel: '"pago_a_onbo", "pago_a_diagnostico", "diagnostico_7dias", "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito", "modulo_1" a "modulo_10", "ultima_fecha_de_avance".',
       logic: [
-        'Este panel va a concentrar métricas de demora entre hitos del programa. La base más directa ya está en "csm", y varias métricas vienen precalculadas.',
-        'Para "Tiempo promedio desde pago a ver onboarding" la base prevista es el campo calculado "pago_a_onbo". Si más adelante querés recalcularlo desde cero, la referencia natural sería la diferencia entre "f_acceso" y "f_onboarding".',
-        'Para "Tiempo promedio desde pago a sesión diagnóstico" y "Cantidad de sesiones diagnóstico menor a 7 días" hoy la referencia más directa es "diagnostico_7dias", que ya guarda el resultado calculado en la tabla.',
-        'Para "Tiempo promedio a primer resultado", "Tiempo promedio a caso de éxito" y "Tiempo promedio en cada unidad" la base está en las fechas o marcas de avance de "modulo_1" a "modulo_10", junto con "caso_de_exito", "f_onboarding" y "ultima_fecha_de_avance".'
+        'Este panel concentra tiempos entre hitos del programa. Cuando la tabla "csm" ya trae el indicador calculado, ese valor tiene prioridad; si todavía está vacío, el panel cae a la diferencia entre fechas base.',
+        'Para "Tiempo promedio desde pago a ver onboarding" prioriza "pago_a_onbo" y, si falta, calcula la diferencia entre "f_acceso" y "f_onboarding".',
+        'Para "Tiempo promedio desde pago a sesión diagnóstico" prioriza "pago_a_diagnostico". Si falta, toma "f_acceso" y la compara contra la fecha operativa de diagnóstico, que sale de "modulo_1" y, si no existe, de "f_onboarding".',
+        'Para "Cantidad de sesiones diagnóstico menor a 7 días" prioriza el flag "diagnostico_7dias". Si todavía no llegó desde Notion, usa el tiempo a diagnóstico resuelto por el panel y marca positivo cuando es menor o igual a 7.',
+        'Para "Tiempo promedio a primer resultado" usa "f_primer_resultado" y calcula el promedio contra "f_onboarding". Si esa fecha todavía no está cargada, usa como respaldo la primera fecha completada entre "modulo_2" y "modulo_10".',
+        'Para "Tiempo promedio a caso de éxito" toma la diferencia entre "f_onboarding" y "caso_de_exito". Para "Tiempo promedio en cada unidad" mide el tramo entre un hito y el siguiente: onboarding a "modulo_1", luego "modulo_1" a "modulo_2" y así sucesivamente.'
       ]
     },
     situacion: {

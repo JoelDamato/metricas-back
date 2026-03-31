@@ -31,6 +31,10 @@
       }
     });
 
+    if (permissions.canAccessLeadsBdd === false) {
+      document.querySelectorAll('a[href="/metricas/views/leads-bdd.html"]').forEach((node) => node.remove());
+    }
+
     if (permissions.canAccessMarketing === false) {
       document.querySelectorAll('a[href="/metricas/views/marketing.html"]').forEach((node) => node.remove());
     }

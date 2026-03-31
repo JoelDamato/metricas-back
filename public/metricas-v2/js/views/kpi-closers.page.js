@@ -20,7 +20,7 @@ const DEFAULT_RULES = {
   asistenciaLlamadaPct: 45,
   tasaAsistenciaPct: 45,
   tasaCierrePct: 45,
-  cashCollectedMin: 1,
+  cashCollectedMin: 100,
   facturacionMin: 1
 };
 const KPI_CLOSERS_INFO = {
@@ -49,10 +49,10 @@ const KPI_CLOSERS_INFO = {
     logic: 'Se muestra desde "tasa_cierre" y luego se multiplica por 100.'
   },
   'Cash collected': {
-    title: 'Cash collected',
+    title: 'Cash collected % sobre facturación',
     viewLabel: '"kpi_closers_mensual"',
     dateLabel: 'Base mensual de "kpi_closers_mensual"',
-    logic: 'Muestra el valor mensual de "cash_collected" para el closer en el período seleccionado.'
+    logic: 'Calcula ("cash_collected" / "facturacion") * 100 para el closer y el mes seleccionados. Si el cash cobrado coincide con toda la facturación, el resultado es 100%.'
   },
   'CC 3m': {
     title: 'CC 3m',
@@ -76,7 +76,13 @@ const KPI_CLOSERS_INFO = {
     title: 'Objetivo',
     viewLabel: '"kpi_closers_rules" + "kpi_closers_mensual"',
     dateLabel: '"anio" y "mes"',
-    logic: 'La celda de objetivo compara el valor real de "kpi_closers_mensual" contra las reglas guardadas en "kpi_closers_rules" para el mismo "anio" y "mes".'
+    logic: 'La celda de objetivo compara el valor real de "kpi_closers_mensual" contra las reglas guardadas en "kpi_closers_rules" para el mismo "anio" y "mes". En cash collected el objetivo se interpreta como porcentaje de "cash_collected" sobre "facturacion". El objetivo de facturación no se evalúa por closer: se revisa solo en la fila "Team Closers" contra la suma total del equipo.'
+  },
+  'Ponderación': {
+    title: 'Ponderación',
+    viewLabel: '"kpi_closers_rules" + "kpi_closers_mensual"',
+    dateLabel: '"anio" y "mes"',
+    logic: 'En cada closer cuenta cuántos objetivos cumplió y lo convierte en porcentaje sobre 5 objetivos: cierre según llamada, asistencia según llamada, tasa asistencia, tasa cierre y porcentaje de cash collected sobre facturación. La fila "Team Closers" usa 6 checks: esos mismos 5, pero evaluados si al menos 50% del equipo los cumple, más el check de facturación total del equipo.'
   }
 };
 
@@ -132,6 +138,12 @@ function parseRules(raw) {
     const n = Number(rules[key]);
     rules[key] = Number.isFinite(n) ? n : DEFAULT_RULES[key];
   });
+
+  // Compatibilidad con reglas viejas donde "cash_collected_min" se guardaba como monto.
+  if (rules.cashCollectedMin > 100 && rules.facturacionMin > 0) {
+    rules.cashCollectedMin = (rules.cashCollectedMin / rules.facturacionMin) * 100;
+  }
+
   return rules;
 }
 
@@ -249,27 +261,45 @@ function computeFlags(row, rules) {
   const tasaCierrePct = Number(row.tasa_cierre || 0) * 100;
   const cashCollected = Number(row.cash_collected || 0);
   const facturacion = Number(row.facturacion || 0);
+  const cashCollectedPct = facturacion > 0 ? (cashCollected / facturacion) * 100 : 0;
+  const cierreLlamadaOk = cierreLlamadaPct >= rules.cierreLlamadaPct ? 1 : 0;
+  const asistenciaLlamadaOk = asistenciaLlamadaPct >= rules.asistenciaLlamadaPct ? 1 : 0;
+  const tasaAsistenciaOk = tasaAsistenciaPct >= rules.tasaAsistenciaPct ? 1 : 0;
+  const tasaCierreOk = tasaCierrePct >= rules.tasaCierrePct ? 1 : 0;
+  const cashCollectedOk = cashCollectedPct >= rules.cashCollectedMin ? 1 : 0;
+  const facturacionOk = facturacion >= rules.facturacionMin ? 1 : 0;
+  const objetivosEvaluados = 5;
+  const objetivosCumplidos = cierreLlamadaOk + asistenciaLlamadaOk + tasaAsistenciaOk + tasaCierreOk + cashCollectedOk;
+  const ponderacionPct = (objetivosCumplidos / objetivosEvaluados) * 100;
 
   return {
     cierreLlamadaPct,
-    cierreLlamadaOk: cierreLlamadaPct >= rules.cierreLlamadaPct ? 1 : 0,
+    cierreLlamadaOk,
     asistenciaLlamadaPct,
-    asistenciaLlamadaOk: asistenciaLlamadaPct >= rules.asistenciaLlamadaPct ? 1 : 0,
+    asistenciaLlamadaOk,
     tasaAsistenciaPct,
-    tasaAsistenciaOk: tasaAsistenciaPct >= rules.tasaAsistenciaPct ? 1 : 0,
+    tasaAsistenciaOk,
     tasaCierrePct,
-    tasaCierreOk: tasaCierrePct >= rules.tasaCierrePct ? 1 : 0,
+    tasaCierreOk,
     cashCollected,
-    cashCollectedOk: cashCollected >= rules.cashCollectedMin ? 1 : 0,
+    cashCollectedPct,
+    cashCollectedOk,
     cashCollected3m: Number(row.cash_collected_3m || 0),
     facturacion,
-    facturacionOk: facturacion >= rules.facturacionMin ? 1 : 0,
-    facturacion3m: Number(row.facturacion_3m || 0)
+    facturacionOk,
+    facturacion3m: Number(row.facturacion_3m || 0),
+    objetivosCumplidos,
+    objetivosEvaluados,
+    ponderacionPct
   };
 }
 
 function isSinCloserRow(row) {
   return String(row?.closer || '').trim().toLowerCase() === 'sin closer';
+}
+
+function teamCheckCell(isOk) {
+  return `<div class="rule-cell"><span class="rule-mark ${isOk ? 'ok' : 'fail'}">${isOk ? '✓' : '✗'}</span></div>`;
 }
 
 function ruleCell(value, isOk, type = 'number') {
@@ -356,19 +386,20 @@ function buildTable(rows, rules) {
     <tr>
       <th>Closer</th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Cierre seg. llamada">Cierre seg. llamada</button></th>
-      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Obj. Team</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Asistencia seg. llamada">Asistencia seg. llamada</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Tasa asistencia">Tasa asistencia</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Tasa cierre">Tasa cierre</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
-      <th><button type="button" class="metric-info-trigger" data-info-key="Cash collected">Cash collected</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Cash collected">CC / Fact %</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="CC 3m">CC 3m</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Facturación">Facturación</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Fact 3m">Fact 3m</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Ponderación">Ponderación</button></th>
     </tr>
   `;
 
@@ -386,12 +417,13 @@ function buildTable(rows, rules) {
           <td class="ok-cell ${k.tasaAsistenciaOk ? 'is-ok' : ''}">${ruleCell(rules.tasaAsistenciaPct, k.tasaAsistenciaOk, 'percent')}</td>
           <td>${formatPercent(k.tasaCierrePct)}</td>
           <td class="ok-cell ${k.tasaCierreOk ? 'is-ok' : ''}">${ruleCell(rules.tasaCierrePct, k.tasaCierreOk, 'percent')}</td>
-          <td>${formatCurrency(k.cashCollected)}</td>
-          <td class="ok-cell ${k.cashCollectedOk ? 'is-ok' : ''}">${ruleCell(rules.cashCollectedMin, k.cashCollectedOk, 'currency')}</td>
+          <td>${formatPercent(k.cashCollectedPct)}</td>
+          <td class="ok-cell ${k.cashCollectedOk ? 'is-ok' : ''}">${ruleCell(rules.cashCollectedMin, k.cashCollectedOk, 'percent')}</td>
           <td>${formatCurrency(k.cashCollected3m)}</td>
           <td>${formatCurrency(k.facturacion)}</td>
-          <td class="ok-cell ${k.facturacionOk ? 'is-ok' : ''}">${ruleCell(rules.facturacionMin, k.facturacionOk, 'currency')}</td>
+          <td class="ok-cell">-</td>
           <td>${formatCurrency(k.facturacion3m)}</td>
+          <td><strong>${formatPercent(k.ponderacionPct)}</strong></td>
         </tr>
       `;
     })
@@ -410,6 +442,8 @@ function buildTable(rows, rules) {
       acc.facturacion += k.facturacion;
       acc.facturacionOk += k.facturacionOk;
       acc.facturacion3m += k.facturacion3m;
+      acc.objetivosCumplidos += k.objetivosCumplidos;
+      acc.objetivosEvaluados += k.objetivosEvaluados;
       acc.sumAplica += Number(row.aplica || 0);
       acc.sumVentasLlamada += Number(row.ventas_llamada || 0);
       acc.sumEfectuadas += Number(row.efectuadas || 0);
@@ -428,6 +462,8 @@ function buildTable(rows, rules) {
       facturacion: 0,
       facturacionOk: 0,
       facturacion3m: 0,
+      objetivosCumplidos: 0,
+      objetivosEvaluados: 0,
       sumAplica: 0,
       sumVentasLlamada: 0,
       sumEfectuadas: 0,
@@ -440,6 +476,19 @@ function buildTable(rows, rules) {
   const totalAsistenciaLlamadaPct = totals.sumAplica > 0 ? (totals.sumEfectuadas / totals.sumAplica) * 100 : 0;
   const totalTasaAsistenciaPct = totals.sumAplicaAgenda > 0 ? (totals.sumEfectuadasAgenda / totals.sumAplicaAgenda) * 100 : 0;
   const totalTasaCierrePct = totals.sumEfectuadas > 0 ? (totals.sumVentasLlamada / totals.sumEfectuadas) * 100 : 0;
+  const totalCashCollectedPct = totals.facturacion > 0 ? (totals.cashCollected / totals.facturacion) * 100 : 0;
+  const totalPonderacionPct = totals.objetivosEvaluados > 0 ? (totals.objetivosCumplidos / totals.objetivosEvaluados) * 100 : 0;
+  const teamBase = rowsWithFlags.length;
+  const teamCierreOk = teamBase > 0 ? (totals.cierreLlamadaOk / teamBase) * 100 >= 50 : false;
+  const teamAsistenciaOk = teamBase > 0 ? (totals.asistenciaLlamadaOk / teamBase) * 100 >= 50 : false;
+  const teamTasaAsistenciaOk = teamBase > 0 ? (totals.tasaAsistenciaOk / teamBase) * 100 >= 50 : false;
+  const teamTasaCierreOk = teamBase > 0 ? (totals.tasaCierreOk / teamBase) * 100 >= 50 : false;
+  const teamCashCollectedOk = teamBase > 0 ? (totals.cashCollectedOk / teamBase) * 100 >= 50 : false;
+  const teamFacturacionOk = totals.facturacion >= rules.facturacionMin;
+  const teamObjetivosCumplidos = [teamCierreOk, teamAsistenciaOk, teamTasaAsistenciaOk, teamTasaCierreOk, teamCashCollectedOk, teamFacturacionOk]
+    .filter(Boolean)
+    .length;
+  const teamPonderacionPct = (teamObjetivosCumplidos / 6) * 100;
 
   const totalRow = `
     <tr>
@@ -452,12 +501,40 @@ function buildTable(rows, rules) {
       <td class="ok-cell"><strong>${formatNumber(totals.tasaAsistenciaOk)}</strong></td>
       <td><strong>${formatPercent(totalTasaCierrePct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.tasaCierreOk)}</strong></td>
-      <td><strong>${formatCurrency(totals.cashCollected)}</strong></td>
+      <td><strong>${formatPercent(totalCashCollectedPct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.cashCollectedOk)}</strong></td>
       <td><strong>${formatCurrency(totals.cashCollected3m)}</strong></td>
       <td><strong>${formatCurrency(totals.facturacion)}</strong></td>
-      <td class="ok-cell"><strong>${formatNumber(totals.facturacionOk)}</strong></td>
+      <td class="ok-cell"><strong>-</strong></td>
       <td><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
+      <td><strong>${formatPercent(totalPonderacionPct)}</strong></td>
+    </tr>
+  `;
+
+  const spacerRow = `
+    <tr class="kpi-separator-row" aria-hidden="true">
+      <td colspan="16"></td>
+    </tr>
+  `;
+
+  const teamRow = `
+    <tr>
+      <td><strong>Team Closers</strong></td>
+      <td><strong>${formatPercent(totalCierreLlamadaPct)}</strong></td>
+      <td class="ok-cell ${teamCierreOk ? 'is-ok' : ''}">${teamCheckCell(teamCierreOk)}</td>
+      <td><strong>${formatPercent(totalAsistenciaLlamadaPct)}</strong></td>
+      <td class="ok-cell ${teamAsistenciaOk ? 'is-ok' : ''}">${teamCheckCell(teamAsistenciaOk)}</td>
+      <td><strong>${formatPercent(totalTasaAsistenciaPct)}</strong></td>
+      <td class="ok-cell ${teamTasaAsistenciaOk ? 'is-ok' : ''}">${teamCheckCell(teamTasaAsistenciaOk)}</td>
+      <td><strong>${formatPercent(totalTasaCierrePct)}</strong></td>
+      <td class="ok-cell ${teamTasaCierreOk ? 'is-ok' : ''}">${teamCheckCell(teamTasaCierreOk)}</td>
+      <td><strong>${formatPercent(totalCashCollectedPct)}</strong></td>
+      <td class="ok-cell ${teamCashCollectedOk ? 'is-ok' : ''}">${teamCheckCell(teamCashCollectedOk)}</td>
+      <td><strong>${formatCurrency(totals.cashCollected3m)}</strong></td>
+      <td><strong>${formatCurrency(totals.facturacion)}</strong></td>
+      <td class="ok-cell ${teamFacturacionOk ? 'is-ok' : ''}">${teamCheckCell(teamFacturacionOk)}</td>
+      <td><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
+      <td><strong>${formatPercent(teamPonderacionPct)}</strong></td>
     </tr>
   `;
 
@@ -465,7 +542,7 @@ function buildTable(rows, rules) {
     <div class="table-wrap">
       <table class="kpi-table">
         <thead>${head}</thead>
-        <tbody>${body}${totalRow}</tbody>
+        <tbody>${body}${totalRow}${spacerRow}${teamRow}</tbody>
       </table>
     </div>
   `;

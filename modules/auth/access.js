@@ -47,9 +47,18 @@ const RESTRICTED_COMMERCIAL_EMAILS = new Set([
   'pmbutera1234@gmail.com'
 ]);
 
+const CSM_ONLY_EMAILS = new Set([
+  'valecalmet@gmail.com',
+  'belenherrera.gestion@gmail.com',
+  'glcosta.gc11@gmail.com'
+]);
+
 const MARKETING_BLOCKED_PAGES = new Set(['marketing.html']);
 const MARKETING_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones']);
 const MARKETING_BLOCKED_FEATURES = new Set(['marketing_inversion']);
+const CSM_ONLY_BLOCKED_PAGES = new Set(['marketing.html', 'leads-bdd.html']);
+const CSM_ONLY_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones', 'leads_raw']);
+const CSM_ONLY_BLOCKED_FEATURES = new Set(['marketing_inversion']);
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -61,6 +70,14 @@ function isRestrictedCommercialUser(userOrEmail) {
     : normalizeEmail(userOrEmail?.email);
 
   return RESTRICTED_COMMERCIAL_EMAILS.has(email);
+}
+
+function isCsmOnlyUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+
+  return CSM_ONLY_EMAILS.has(email);
 }
 
 function hasRoleAccess(allowedRoles, role) {
@@ -83,12 +100,14 @@ function canAccessFeature(role, featureName) {
 function canAccessPageForUser(user, pageName) {
   if (!canAccessPage(user?.role, pageName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_PAGES.has(pageName)) return false;
+  if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_PAGES.has(pageName)) return false;
   return true;
 }
 
 function canAccessResourceForUser(user, resourceName) {
   if (!canAccessResource(user?.role, resourceName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_RESOURCES.has(resourceName)) return false;
+  if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_RESOURCES.has(resourceName)) return false;
   return true;
 }
 
@@ -96,6 +115,10 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
   if (!canAccessFeature(user?.role, featureName)) return false;
 
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_FEATURES.has(featureName)) {
+    return false;
+  }
+
+  if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_FEATURES.has(featureName)) {
     return false;
   }
 
@@ -112,6 +135,7 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 
 function getUserPermissions(user) {
   return {
+    canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' })
   };
@@ -122,7 +146,9 @@ module.exports = {
   RESOURCE_ROLE_ACCESS,
   FEATURE_ROLE_ACCESS,
   RESTRICTED_COMMERCIAL_EMAILS,
+  CSM_ONLY_EMAILS,
   isRestrictedCommercialUser,
+  isCsmOnlyUser,
   canAccessPage,
   canAccessResource,
   canAccessFeature,

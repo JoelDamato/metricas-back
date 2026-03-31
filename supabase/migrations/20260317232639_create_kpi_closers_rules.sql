@@ -7,7 +7,7 @@ create table if not exists public.kpi_closers_rules (
   asistencia_llamada_pct numeric(10,2) not null default 45,
   tasa_asistencia_pct numeric(10,2) not null default 45,
   tasa_cierre_pct numeric(10,2) not null default 45,
-  cash_collected_min numeric(14,2) not null default 1,
+  cash_collected_min numeric(10,2) not null default 100,
   facturacion_min numeric(14,2) not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

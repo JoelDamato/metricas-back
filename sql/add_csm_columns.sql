@@ -3,6 +3,7 @@
 -- Esta versión usa sentencias separadas para mayor compatibilidad con distintos ejecutores.
 
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS pago_a_onbo text;
+ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS pago_a_diagnostico text;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS diagnostico_7dias text;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS proximo_renovar_15d text;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS proximo_renovar_30d text;
@@ -22,3 +23,4 @@ ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS nps_9 integer;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS nps_10 integer;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS insatisfecho boolean;
 ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS solicito_devolucion boolean;
+ALTER TABLE IF EXISTS csm ADD COLUMN IF NOT EXISTS f_primer_resultado timestamptz;

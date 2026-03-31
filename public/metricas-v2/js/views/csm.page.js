@@ -60,6 +60,49 @@ function asTruthy(value) {
   return ['1', 'true', 'si', 'sí', 'yes', 'y', 'x'].includes(normalized);
 }
 
+function parseMetricNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const normalized = text
+    .toLowerCase()
+    .replace(/d[ií]as?/g, '')
+    .replace(/,/g, '.')
+    .replace(/[^\d.-]/g, '');
+
+  if (!normalized || ['-', '.', '-.'].includes(normalized)) return null;
+
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function normalizeDayMetric(value) {
+  if (value === null || value === undefined) return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return numeric;
+}
+
+function parseUnderSevenMetric(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'boolean') return value;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return null;
+
+  if (normalized === '1') return true;
+  if (normalized === '0') return false;
+  if (['si', 'sí', 'true', 'yes', 'y', 'x'].includes(normalized)) return true;
+  if (['no', 'false', 'n'].includes(normalized)) return false;
+
+  const numeric = parseMetricNumber(value);
+  if (numeric === null) return null;
+  return numeric <= 7;
+}
+
 function normalizeModel(value) {
   const text = String(value || '')
     .toLowerCase()
@@ -159,14 +202,24 @@ function enrichRows(rows) {
     const moduleDates = Array.from({ length: 10 }, (_, index) => parseDate(row[`modulo_${index + 1}`]));
     const onboardingDate = parseDate(row.f_onboarding);
     const accessDate = parseDate(row.f_acceso);
+    const firstResultDirectDate = parseDate(row.f_primer_resultado);
     const successDate = parseDate(row.caso_de_exito);
     const abandonDate = parseDate(row.f_abandono);
     const finalDate = parseDate(row.fecha_final);
     const renewalCompletedDate = parseDate(row.fecha_final_renovacion);
     const advanceDate = parseDate(row.ultima_fecha_de_avance);
     const responseDate = parseDate(row.ultima_respuesta);
-    const firstResultDate = getFirstResultDate(moduleDates);
+    const firstResultDerivedDate = getFirstResultDate(moduleDates);
+    const firstResultDate = firstResultDirectDate || firstResultDerivedDate;
     const diagnosisDate = getDiagnosisDate(moduleDates, onboardingDate);
+    const payToOnboardingDirect = normalizeDayMetric(parseMetricNumber(row.pago_a_onbo));
+    const payToOnboardingDerived = normalizeDayMetric(daysBetween(accessDate, onboardingDate));
+    const payToOnboardingMetric = payToOnboardingDirect ?? payToOnboardingDerived;
+    const payToDiagnosisDirect = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
+    const payToDiagnosisDerived = normalizeDayMetric(daysBetween(accessDate, diagnosisDate));
+    const payToDiagnosisMetric = payToDiagnosisDirect ?? payToDiagnosisDerived;
+    const diagnosisUnder7Direct = parseUnderSevenMetric(row.diagnostico_7dias);
+    const diagnosisUnder7Flag = diagnosisUnder7Direct ?? (payToDiagnosisMetric !== null ? payToDiagnosisMetric <= 7 : null);
     const npsValues = Array.from({ length: 10 }, (_, index) => {
       const value = Number(row[`nps_${index + 1}`]);
       return Number.isFinite(value) ? value : null;
@@ -178,6 +231,17 @@ function enrichRows(rows) {
       accessDate,
       onboardingDate,
       diagnosisDate,
+      payToOnboardingDirect,
+      payToOnboardingDerived,
+      payToOnboardingMetric,
+      payToOnboardingUsesFallback: payToOnboardingDirect === null && payToOnboardingDerived !== null,
+      payToDiagnosisDirect,
+      payToDiagnosisDerived,
+      payToDiagnosisMetric,
+      payToDiagnosisUsesFallback: payToDiagnosisDirect === null && payToDiagnosisDerived !== null,
+      diagnosisUnder7Direct,
+      diagnosisUnder7Flag,
+      diagnosisUnder7UsesFallback: diagnosisUnder7Direct === null && payToDiagnosisMetric !== null,
       successDate,
       abandonDate,
       finalDate,
@@ -185,6 +249,9 @@ function enrichRows(rows) {
       advanceDate,
       responseDate,
       firstResultDate,
+      firstResultDirectDate,
+      firstResultDerivedDate,
+      firstResultUsesFallback: !firstResultDirectDate && !!firstResultDerivedDate,
       moduleDates,
       npsValues,
       isActive: row.activos === true,
@@ -304,10 +371,22 @@ function renderChart(config) {
 }
 
 function buildTimePage(rows) {
-  const payToOnboarding = collectDayDiffs(rows, (row) => row.accessDate, (row) => row.onboardingDate);
-  const payToDiagnosis = collectDayDiffs(rows, (row) => row.accessDate, (row) => row.diagnosisDate);
+  const payToOnboarding = rows
+    .map((row) => row.payToOnboardingMetric)
+    .filter((value) => value !== null && Number.isFinite(value));
+  const payToDiagnosis = rows
+    .map((row) => row.payToDiagnosisMetric)
+    .filter((value) => value !== null && Number.isFinite(value));
   const onboardingToFirstResult = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.firstResultDate);
   const onboardingToSuccess = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.successDate);
+  const directPayToOnboardingCount = rows.filter((row) => row.payToOnboardingDirect !== null).length;
+  const fallbackPayToOnboardingCount = rows.filter((row) => row.payToOnboardingUsesFallback).length;
+  const directPayToDiagnosisCount = rows.filter((row) => row.payToDiagnosisDirect !== null).length;
+  const fallbackPayToDiagnosisCount = rows.filter((row) => row.payToDiagnosisUsesFallback).length;
+  const directDiagnosisUnder7Count = rows.filter((row) => row.diagnosisUnder7Direct !== null).length;
+  const fallbackDiagnosisUnder7Count = rows.filter((row) => row.diagnosisUnder7UsesFallback).length;
+  const directFirstResultCount = rows.filter((row) => row.firstResultDirectDate).length;
+  const fallbackFirstResultCount = rows.filter((row) => row.firstResultUsesFallback).length;
 
   const unitStats = Array.from({ length: 10 }, (_, index) => {
     const diffs = rows
@@ -326,7 +405,8 @@ function buildTimePage(rows) {
     };
   });
 
-  const diagnosticUnder7 = payToDiagnosis.filter((value) => value <= 7).length;
+  const diagnosticUnder7 = rows.filter((row) => row.diagnosisUnder7Flag === true).length;
+  const diagnosticUnder7Base = rows.filter((row) => row.diagnosisUnder7Flag !== null).length;
   const averageUnit = average(unitStats.map((row) => row.avgDays).filter((value) => value !== null));
 
   const metrics = [
@@ -334,41 +414,41 @@ function buildTimePage(rows) {
       key: 'pay_to_onboarding',
       label: 'Tiempo promedio desde pago a ver onboarding',
       value: formatDays(average(payToOnboarding)),
-      base: `${formatInteger(payToOnboarding.length)} clientes con "f_acceso" y "f_onboarding"`,
-      note: 'Mide la demora entre acceso al programa y onboarding registrado.',
-      dateLabel: '"f_acceso" -> "f_onboarding"',
-      fieldsLabel: '"f_acceso", "f_onboarding"',
-      logic: 'Promedio de días entre "f_acceso" y "f_onboarding", usando solo clientes que tienen ambas fechas.'
+      base: `${formatInteger(payToOnboarding.length)} clientes con base calculable (${formatInteger(directPayToOnboardingCount)} desde "pago_a_onbo"${fallbackPayToOnboardingCount ? `, ${formatInteger(fallbackPayToOnboardingCount)} fallback` : ''})`,
+      note: 'Prioriza el campo calculado y usa respaldo por fechas si todavía falta.',
+      dateLabel: 'Campo calculado "pago_a_onbo" (fallback "f_acceso" -> "f_onboarding")',
+      fieldsLabel: '"pago_a_onbo" (fallback "f_acceso", "f_onboarding")',
+      logic: 'Promedia "pago_a_onbo" cuando ya llegó calculado desde Notion. Si ese campo todavía está vacío, cae al cálculo por diferencia entre "f_acceso" y "f_onboarding".'
     }),
     buildMetricRow({
       key: 'pay_to_diagnosis',
       label: 'Tiempo promedio desde pago a sesión diagnóstico',
       value: formatDays(average(payToDiagnosis)),
-      base: `${formatInteger(payToDiagnosis.length)} clientes con "f_acceso" y fecha de diagnóstico`,
-      note: 'Hoy tomo como diagnóstico la primera marca disponible del programa.',
-      dateLabel: '"f_acceso" -> "modulo_1" (fallback "f_onboarding")',
-      fieldsLabel: '"f_acceso", "modulo_1", "f_onboarding"',
-      logic: 'Hasta definir una fecha específica de diagnóstico, uso la primera marca del recorrido: "modulo_1" y, si falta, "f_onboarding".'
+      base: `${formatInteger(payToDiagnosis.length)} clientes con base calculable (${formatInteger(directPayToDiagnosisCount)} desde "pago_a_diagnostico"${fallbackPayToDiagnosisCount ? `, ${formatInteger(fallbackPayToDiagnosisCount)} fallback` : ''})`,
+      note: 'Prioriza el campo específico de diagnóstico y conserva respaldo temporal.',
+      dateLabel: 'Campo calculado "pago_a_diagnostico" (fallback "f_acceso" -> "modulo_1"/"f_onboarding")',
+      fieldsLabel: '"pago_a_diagnostico" (fallback "f_acceso", "modulo_1", "f_onboarding")',
+      logic: 'Promedia "pago_a_diagnostico" cuando el valor llega desde Notion. Si aún no está cargado, usa el cálculo por diferencia entre "f_acceso" y la fecha de diagnóstico operativa del panel.'
     }),
     buildMetricRow({
       key: 'diagnosis_under_7',
       label: 'Cantidad de sesiones diagnóstico menor a 7 días',
       value: formatInteger(diagnosticUnder7),
-      base: `${formatInteger(payToDiagnosis.length)} clientes con base de diagnóstico`,
-      note: 'Cuenta los casos donde el diagnóstico ocurrió dentro de la primera semana.',
-      dateLabel: '"f_acceso" -> "modulo_1" (fallback "f_onboarding")',
-      fieldsLabel: '"f_acceso", "modulo_1", "f_onboarding"',
-      logic: 'Cuenta clientes con diferencia menor o igual a 7 días entre el acceso al programa y la primera fecha de diagnóstico usada por el panel.'
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con base calculable (${formatInteger(directDiagnosisUnder7Count)} desde "diagnostico_7dias"${fallbackDiagnosisUnder7Count ? `, ${formatInteger(fallbackDiagnosisUnder7Count)} fallback` : ''})`,
+      note: 'Cuenta los casos que entran dentro de la ventana de 7 días.',
+      dateLabel: 'Campo calculado "diagnostico_7dias" (fallback sobre "pago_a_diagnostico")',
+      fieldsLabel: '"diagnostico_7dias" (fallback "pago_a_diagnostico")',
+      logic: 'Cuenta como positivo el campo "diagnostico_7dias" cuando llega calculado desde Notion. Si falta, usa el tiempo a diagnóstico resuelto por el panel y marca positivo cuando es menor o igual a 7 días.'
     }),
     buildMetricRow({
       key: 'onboarding_to_first_result',
       label: 'Tiempo promedio a primer resultado',
       value: formatDays(average(onboardingToFirstResult)),
-      base: `${formatInteger(onboardingToFirstResult.length)} clientes con onboarding y primer avance`,
-      note: 'Asumo como primer resultado la primera unidad posterior al onboarding.',
-      dateLabel: '"f_onboarding" -> primera fecha entre "modulo_2" y "modulo_10"',
-      fieldsLabel: '"f_onboarding", "modulo_2" a "modulo_10"',
-      logic: 'Como aún no hay un campo explícito de primer resultado, tomo la primera fecha completada desde "modulo_2" en adelante.'
+      base: `${formatInteger(onboardingToFirstResult.length)} clientes con onboarding y primer resultado (${formatInteger(directFirstResultCount)} desde "f_primer_resultado"${fallbackFirstResultCount ? `, ${formatInteger(fallbackFirstResultCount)} fallback` : ''})`,
+      note: 'Prioriza la fecha específica de primer resultado y mantiene respaldo operativo.',
+      dateLabel: '"f_onboarding" -> "f_primer_resultado" (fallback primera fecha entre "modulo_2" y "modulo_10")',
+      fieldsLabel: '"f_onboarding", "f_primer_resultado" (fallback "modulo_2" a "modulo_10")',
+      logic: 'Calcula el promedio de días entre "f_onboarding" y "f_primer_resultado". Si ese campo todavía no está cargado, usa como respaldo la primera fecha completada desde "modulo_2" en adelante.'
     }),
     buildMetricRow({
       key: 'onboarding_to_success',
@@ -844,7 +924,7 @@ async function initCsmPage() {
     renderMetricsTable(page.metrics, infoMap);
     renderSections(page.sections);
 
-    status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm". Algunas metricas usan supuestos operativos hasta que definamos la regla final exacta.`;
+    status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm". El panel prioriza campos directos de Notion y usa fallback operativo cuando todavía falta completar alguno.`;
   } catch (error) {
     document.getElementById('kpiContainer').innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No se pudieron cargar las metricas de CSM.</div></div>';
