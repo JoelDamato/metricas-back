@@ -24,7 +24,13 @@ Contexto del sistema:
 - total_no_asistidas: agendo='Agendo' AND aplica='Aplica' AND llamada_meg='No show'
 - total_pendientes: agendo='Agendo' AND aplica='Aplica' AND (llamada_meg='Pendiente' OR llamada_meg IS NULL)
 - total_efectuadas: agendo='Agendo' AND aplica='Aplica' AND llamada_meg='Efectuada'
-- CCE: agendo='Agendo' AND aplica='Aplica' AND (call_confirm='Exitoso' OR llamada_cc='Exitoso')
+- CCE: agendo='Agendo' AND aplica='Aplica' AND (call_confirm='Exitoso' OR llamada_cc='Exitoso' OR cc_whatsapp='Exitoso')
+- CCE llamada: agendo='Agendo' AND aplica='Aplica' AND (call_confirm='Exitoso' OR llamada_cc='Exitoso')
+- CCE WhatsApp: agendo='Agendo' AND aplica='Aplica' AND cc_whatsapp='Exitoso'
+- CCE llamada efectuadas: misma lógica de CCE llamada + llamada_meg='Efectuada'
+- CCE WhatsApp efectuadas: misma lógica de CCE WhatsApp + llamada_meg='Efectuada'
+- CCE llamada vendidas: comprobantes tipo='Venta' por fecha_de_agendamiento, asociados por "ghlid" a leads con CCE llamada
+- CCE WhatsApp vendidas: comprobantes tipo='Venta' por fecha_de_agendamiento, asociados por "ghlid" a leads con CCE WhatsApp
 - CCE efectuadas: misma lógica de CCE + llamada_meg='Efectuada'
 - CCNE: agendo='Agendo' AND aplica='Aplica' AND call_confirm no es 'Exitoso' AND cc_whatsapp no es 'Exitoso'
 - CCNE efectuadas: misma lógica de CCNE + llamada_meg='Efectuada'
@@ -64,7 +70,8 @@ Contexto del sistema:
 - bloque 1: agendadas y vendidas por closer desde agenda_detalle_diario_closer; asistidas recalculadas desde leads_raw con agendo='Agendo' AND aplica='Aplica' AND llamada_meg='Efectuada'
 - bloque 2: agendadas y aplicables por closer
 - bloque 3: ventas diarias por closer
-- bloque 4: cash collected diario por closer, con CC USD, CC ARS, CCC y % CC según la vista
+- bloque 4: cash collected diario por closer, con CC USD, CC ARS, CCC y % CC como participación de cada closer sobre el CCC total del bloque
+- bloque 5: comprobantes por closer y por estado, usando comprobantes filtrados por f_acreditacion
 
 6. Informe Por Respuestas
 - Base: leads_raw

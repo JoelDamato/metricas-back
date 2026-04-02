@@ -14,11 +14,27 @@
 
     const shell = document.createElement('div');
     shell.className = 'auth-shell';
+    const showDashboardLink = window.location.pathname !== '/metricas/dashboard.html';
+    const displayName = user.nombre || user.email;
+    const accessLabel = String(user.role || '').trim() || 'sin acceso';
     shell.innerHTML = `
-      <span>${user.email} · ${user.role}</span>
-      <button id="logoutMetricas">Salir</button>
+      <div class="auth-shell-inner">
+        <div class="auth-shell-group auth-shell-group--primary">
+          <a class="auth-shell-brand" href="/metricas/dashboard.html" aria-label="Dashboard">
+            <img src="/metricas-assets/mati-randazzo-logo-web.png" alt="Mati Randazzo" />
+          </a>
+          ${showDashboardLink ? '<a class="auth-shell-link" href="/metricas/dashboard.html">Dashboard</a>' : ''}
+        </div>
+        <div class="auth-shell-group auth-shell-group--secondary">
+          <div class="auth-shell-account">
+            <span class="auth-shell-user">${displayName}</span>
+            <span class="auth-shell-access">Acceso: <strong>${accessLabel}</strong></span>
+          </div>
+          <button id="logoutMetricas">Salir</button>
+        </div>
+      </div>
     `;
-    document.body.appendChild(shell);
+    document.body.prepend(shell);
 
     document.querySelectorAll('[data-roles]').forEach((node) => {
       const allowedRoles = String(node.dataset.roles || '')

@@ -25,6 +25,10 @@ async function fetchCashCollectedDiarioCloser(options = {}) {
   return fetchRows('cash_collected_diario_closer', options);
 }
 
+async function fetchComprobantes(options = {}) {
+  return fetchRows('comprobantes', options);
+}
+
 async function fetchLeadsRaw(options = {}) {
   return fetchRows('leads_raw', options);
 }
@@ -109,6 +113,7 @@ window.metricasApi = {
   fetchAgendaDetalleDiarioCloser,
   fetchVentasDiarioCloser,
   fetchCashCollectedDiarioCloser,
+  fetchComprobantes,
   fetchLeadsRaw,
   fetchKpiMarketingDiario,
   fetchMarketingInvestment,

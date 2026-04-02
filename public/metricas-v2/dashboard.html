@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page dashboard-home-page">
+    <main class="container">
+      <section class="ranking-hero dashboard-hero">
+        <h1>Dashboard</h1>
+      </section>
+
+      <section class="cards central-cards dashboard-home-cards">
+        <a class="card" href="/metricas" data-roles="total,comercial,csm">
+          <span class="dashboard-home-badge">Interno</span>
+          <h3>Central de Métricas</h3>
+          <p>Entrá a los tableros operativos, vistas comerciales y paneles de seguimiento.</p>
+        </a>
+
+        <a class="card" href="/contacto-estado/" data-roles="total,comercial,csm">
+          <span class="dashboard-home-badge dashboard-home-badge-secondary">Cliente</span>
+          <h3>Estado de Contacto</h3>
+          <p>Buscá o abrí una ficha por "GHL ID" para ver estado, mail, teléfono, facturación y cash collected.</p>
+        </a>
+      </section>
+    </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/auth-shell.js"></script>
+  </body>
+</html>

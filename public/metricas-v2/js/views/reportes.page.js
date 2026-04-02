@@ -22,7 +22,13 @@ const REPORTES_BLOCK_INFO = {
     title: 'Cash Collected Diario',
     viewLabel: '"cash_collected_diario_closer"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" se calcula como "cash_collected_conciliado" / "cash_collected_total" * 100.'
+    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" muestra qué porcentaje del "cash_collected_conciliado" total del rango aporta cada closer.'
+  },
+  Comprobantes: {
+    title: 'Comprobantes',
+    viewLabel: '"comprobantes"',
+    dateLabel: '"f_acreditacion"',
+    logic: 'Cuenta comprobantes por closer usando "creado_por" y los separa por "estado" dentro del rango filtrado de "f_acreditacion". En este bloque se excluyen comprobantes cuyo "producto_format" contiene "Club". Los estados salen directo de la tabla, por ejemplo "Conciliado", "Rectificado", "Rebotado" o sin estado.'
   }
 };
 const REPORTES_METRIC_INFO = {
@@ -84,7 +90,7 @@ const REPORTES_METRIC_INFO = {
     title: 'Cash Collected Diario · % CC',
     viewLabel: '"cash_collected_diario_closer"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Se calcula como ("cash_collected_conciliado" / "cash_collected_total") * 100 dentro del rango filtrado por "fecha_acreditacion".'
+    logic: 'Se calcula como ("cash_collected_conciliado" del closer / "cash_collected_conciliado" total del bloque) * 100 dentro del rango filtrado por "fecha_acreditacion".'
   }
 };
 function normalizeText(value) {
@@ -93,6 +99,15 @@ function normalizeText(value) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function normalizeComprobanteState(value) {
+  const text = String(value || '').trim();
+  return text || 'Sin estado';
+}
+
+function buildComprobanteStateKey(state) {
+  return `estado_${normalizeText(state).replace(/[^a-z0-9]+/g, '_') || 'sin_estado'}`;
 }
 
 function shouldIncludeCloser(name) {
@@ -265,12 +280,16 @@ function cashFormatter(value, metric) {
 }
 
 cashFormatter.computeTotals = (totals) => {
-  const total = Number(totals.cash_collected_total || 0);
   const conciliado = Number(totals.cash_collected_conciliado || 0);
-  totals.cash_collected_pct = total > 0 ? (conciliado / total) * 100 : 0;
+  totals.cash_collected_pct = conciliado > 0 ? 100 : 0;
 };
 
 function buildReportMarkup(data) {
+  const comprobantesMetrics = (data.comprobantesStates || []).map((state) => ({
+    key: buildComprobanteStateKey(state),
+    label: state
+  }));
+
   return [
     buildTableBlock({
       title: 'Reporte de Llamadas',
@@ -304,7 +323,7 @@ function buildReportMarkup(data) {
     }),
     buildTableBlock({
       title: 'Cash Collected Diario',
-      subtitle: 'Cash USD, cash conciliado y porcentaje de conciliación.',
+      subtitle: 'Cash USD, cash conciliado y participación de cada closer sobre el CCC total.',
       rows: data.cashResumen,
       sortKey: 'cash_collected_total',
       metrics: [
@@ -314,6 +333,15 @@ function buildReportMarkup(data) {
         { key: 'cash_collected_pct', label: '% CC' }
       ],
       formatter: cashFormatter
+    }),
+    buildTableBlock({
+      title: 'Comprobantes',
+      subtitle: 'Cantidad de comprobantes por closer, separados por "estado" dentro del rango de acreditación y excluyendo "Club".',
+      rows: data.comprobantesResumen,
+      sortKey: 'total_comprobantes',
+      metrics: comprobantesMetrics.length
+        ? comprobantesMetrics
+        : [{ key: 'sin_datos', label: 'Sin datos' }]
     })
   ].join('');
 }
@@ -390,7 +418,7 @@ async function loadCashData(range) {
     dateField: 'fecha_acreditacion'
   });
 
-  return groupByCloser(response.rows || [], (row) => {
+  const grouped = groupByCloser(response.rows || [], (row) => {
     const total = Number(row.cash_collected_total || 0);
     const conciliado = Number(row.cash_collected_conciliado || 0);
 
@@ -399,12 +427,63 @@ async function loadCashData(range) {
       cash_collected_ars_total: Number(row.cash_collected_ars_total || 0),
       cash_collected_conciliado: conciliado
     };
-  }).map((row) => ({
+  });
+
+  const totalConciliado = grouped.reduce((sum, row) => sum + Number(row.cash_collected_conciliado || 0), 0);
+
+  return grouped.map((row) => ({
     ...row,
-    cash_collected_pct: Number(row.cash_collected_total || 0) > 0
-      ? (Number(row.cash_collected_conciliado || 0) / Number(row.cash_collected_total || 0)) * 100
+    cash_collected_pct: totalConciliado > 0
+      ? (Number(row.cash_collected_conciliado || 0) / totalConciliado) * 100
       : 0
   }));
+}
+
+function orderComprobanteStates(states) {
+  const priority = ['Conciliado', 'Rectificado', 'Rebotado', 'Sin estado'];
+  return [...states].sort((a, b) => {
+    const ai = priority.indexOf(a);
+    const bi = priority.indexOf(b);
+    if (ai !== -1 || bi !== -1) {
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    }
+    return a.localeCompare(b, 'es');
+  });
+}
+
+async function loadComprobantesData(range) {
+  const response = await window.metricasApi.fetchAllRows('comprobantes', {
+    limit: 1000,
+    from: range.from,
+    to: range.to,
+    dateField: 'f_acreditacion'
+  });
+
+  const map = new Map();
+  const states = new Set();
+
+  (response.rows || []).forEach((row) => {
+    const closer = String(row.creado_por || '').trim();
+    if (!shouldIncludeCloser(closer)) return;
+    if (normalizeText(row.producto_format).includes('club')) return;
+
+    const state = normalizeComprobanteState(row.estado);
+    const key = buildComprobanteStateKey(state);
+    const current = map.get(closer) || { closer, total_comprobantes: 0 };
+
+    current[key] = Number(current[key] || 0) + 1;
+    current.total_comprobantes += 1;
+
+    map.set(closer, current);
+    states.add(state);
+  });
+
+  return {
+    rows: [...map.values()],
+    states: orderComprobanteStates(states)
+  };
 }
 
 async function loadReportes() {
@@ -427,21 +506,33 @@ async function loadReportes() {
   status.textContent = 'Cargando reportes...';
 
   try {
-    const [agendaResumen, ventasResumen, cashResumen] = await Promise.all([
+    const [agendaResumen, ventasResumen, cashResumen, comprobantesData] = await Promise.all([
       loadAgendaData(range),
       loadVentasData(range),
-      loadCashData(range)
+      loadCashData(range),
+      loadComprobantesData(range)
     ]);
 
     container.innerHTML = buildReportMarkup({
       agendaResumen,
       ventasResumen,
-      cashResumen
+      cashResumen,
+      comprobantesResumen: comprobantesData.rows,
+      comprobantesStates: comprobantesData.states
     });
 
     container.querySelectorAll('.metric-label').forEach((button) => {
       button.addEventListener('click', () => {
         const key = `${button.dataset.blockTitle}|${button.dataset.metricLabel}`;
+        if (button.dataset.blockTitle === 'Comprobantes') {
+          showMetricInfo({
+            title: `Comprobantes · ${button.dataset.metricLabel}`,
+            viewLabel: '"comprobantes"',
+            dateLabel: '"f_acreditacion"',
+            logic: `Cuenta comprobantes donde "estado" = "${button.dataset.metricLabel}" y los agrupa por "creado_por" dentro del rango filtrado por "f_acreditacion". En este bloque no se incluyen filas cuyo "producto_format" contiene "Club".`
+          });
+          return;
+        }
         showMetricInfo(REPORTES_METRIC_INFO[key] || {
           title: `${button.dataset.blockTitle} · ${button.dataset.metricLabel}`,
           viewLabel: 'Depende del bloque',

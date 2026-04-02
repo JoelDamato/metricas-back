@@ -1,4 +1,5 @@
 const PAGE_ROLE_ACCESS = {
+  'dashboard.html': ['total', 'comercial', 'csm'],
   'index.html': ['total', 'comercial', 'csm'],
   'ranking.html': ['total', 'comercial'],
   'agendas-totales.html': ['total', 'comercial'],
@@ -24,6 +25,7 @@ const RESOURCE_ROLE_ACCESS = {
   agenda_detalle_diario_closer: ['total', 'comercial'],
   ventas_diario_closer: ['total', 'comercial'],
   cash_collected_diario_closer: ['total', 'comercial'],
+  comprobantes: ['total', 'comercial'],
   leads_raw: ['total', 'comercial', 'csm'],
   csm: ['total', 'csm'],
   kpi_marketing_diario: ['total', 'comercial', 'csm'],
@@ -98,6 +100,7 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  if (pageName === 'dashboard.html') return Boolean(user);
   if (!canAccessPage(user?.role, pageName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_PAGES.has(pageName)) return false;
   if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_PAGES.has(pageName)) return false;

@@ -424,8 +424,8 @@ function ensureMarketingViewStyles() {
     }
 
     .investment-history-row-btn.save {
-      background: #1d66c2;
-      color: #ffffff;
+      background: linear-gradient(90deg, #d7e9ff 0%, #afcff8 100%);
+      color: #111111;
     }
 
     .investment-history-row-btn.delete {

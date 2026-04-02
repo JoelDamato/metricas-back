@@ -47,6 +47,17 @@ function normalizeResourceName(name) {
   return String(name || '').replace(/[^a-zA-Z0-9_]/g, '');
 }
 
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+}
+
+function nextDate(value) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 function resourceListFromOpenApi(openApi) {
   const paths = openApi?.paths || {};
   const resources = [];
@@ -94,9 +105,11 @@ function applyDateFilter(params, from, to, dateField) {
   if (!from && !to) return;
 
   const field = normalizeResourceName(dateField || 'created_at') || 'created_at';
+  const safeTo = isDateOnly(to) ? nextDate(to) : to;
+  const toOperator = isDateOnly(to) ? 'lt' : 'lte';
 
   if (from && to) {
-    params.and = `(${field}.gte.${from},${field}.lte.${to})`;
+    params.and = `(${field}.gte.${from},${field}.${toOperator}.${safeTo})`;
     return;
   }
 
@@ -105,7 +118,7 @@ function applyDateFilter(params, from, to, dateField) {
     return;
   }
 
-  params[field] = `lte.${to}`;
+  params[field] = `${toOperator}.${safeTo}`;
 }
 
 async function listRows(resourceName, options = {}) {
@@ -212,6 +225,13 @@ async function upsertKpiCloserRules(payload) {
     tasa_asistencia_pct: Number(payload.tasa_asistencia_pct || 0),
     tasa_cierre_pct: Number(payload.tasa_cierre_pct || 0),
     cash_collected_min: Number(payload.cash_collected_min || 0),
+    cash_collected_3m_min: Number(payload.cash_collected_3m_min || 0),
+    cierre_llamada_weight: Number(payload.cierre_llamada_weight || 0),
+    asistencia_llamada_weight: Number(payload.asistencia_llamada_weight || 0),
+    tasa_asistencia_weight: Number(payload.tasa_asistencia_weight || 0),
+    tasa_cierre_weight: Number(payload.tasa_cierre_weight || 0),
+    cash_collected_weight: Number(payload.cash_collected_weight || 0),
+    cash_collected_3m_weight: Number(payload.cash_collected_3m_weight || 0),
     facturacion_min: Number(payload.facturacion_min || 0)
   };
 

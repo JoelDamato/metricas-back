@@ -30,25 +30,85 @@
       </div>
 
       <div class="actions ranking-actions kpi-rules">
-        <label>Cierre seg. llamada %
-          <input id="rule_cierre_llamada" type="number" min="0" step="0.1" />
-        </label>
-        <label>Asistencia seg. llamada %
-          <input id="rule_asistencia_llamada" type="number" min="0" step="0.1" />
-        </label>
-        <label>Tasa asistencia %
-          <input id="rule_tasa_asistencia" type="number" min="0" step="0.1" />
-        </label>
-        <label>Tasa cierre %
-          <input id="rule_tasa_cierre" type="number" min="0" step="0.1" />
-        </label>
-        <label>Cash Collected objetivo %
-          <input id="rule_cash_collected" type="number" min="0" step="0.1" />
-        </label>
-        <label>Facturación mínima
-          <input id="rule_facturacion" type="number" min="0" step="0.01" />
-        </label>
-        <button id="saveRules">Guardar reglas</button>
+        <div class="kpi-rule-card">
+          <h3>Cierre seg. llamada</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_cierre_llamada" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_cierre_llamada" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card">
+          <h3>Asistencia seg. llamada</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_asistencia_llamada" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_asistencia_llamada" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card">
+          <h3>Tasa asistencia</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_tasa_asistencia" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_tasa_asistencia" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card">
+          <h3>Tasa cierre</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_tasa_cierre" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_tasa_cierre" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card">
+          <h3>Cash Collected</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_cash_collected" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_cash_collected" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card">
+          <h3>Cash Collected 3m</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo %
+              <input id="rule_cash_collected_3m" type="number" min="0" step="0.1" />
+            </label>
+            <label>Peso ponderación %
+              <input id="weight_cash_collected_3m" type="number" min="0" step="0.1" />
+            </label>
+          </div>
+        </div>
+        <div class="kpi-rule-card kpi-rule-card--facturacion">
+          <h3>Facturación</h3>
+          <div class="kpi-rule-card-grid">
+            <label>Objetivo mínimo
+              <input id="rule_facturacion" type="number" min="0" step="0.01" />
+            </label>
+          </div>
+          <p>Este objetivo se muestra en Team Closers, pero no entra en la ponderación por closer.</p>
+        </div>
+        <div class="kpi-rules-footer">
+          <p id="weightsSummary">Suma de pesos de closers: 0%</p>
+          <button id="saveRules">Guardar reglas</button>
+        </div>
       </div>
 
       <p id="status"></p>

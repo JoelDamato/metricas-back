@@ -26,6 +26,7 @@ const authMiddleware = require('./modules/auth/middleware');
 app.use(authMiddleware.attachAuthUser);
 
 app.use('/contacto-estado', express.static(path.join(__dirname, 'public/contacto-estado'), { index: false, redirect: false }));
+app.use('/metricas-assets', express.static(path.join(__dirname, 'public/metricas-v2/assets'), { index: false, redirect: false }));
 app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
 });

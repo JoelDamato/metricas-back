@@ -16,6 +16,10 @@ const MONTHS = [
 ];
 
 const ORIGIN_WHITELIST = ['VSL', 'ORG', 'CLASES', 'APSET'];
+const CLOSER_ALIAS_MAP = {
+  'pablo butera': 'Pablo Butera Vie',
+  'pablo butera vie': 'Pablo Butera Vie'
+};
 const AGENDA_CLOSER_KPI_INFO = {
   total_leads: {
     title: 'Total Leads',
@@ -328,6 +332,19 @@ function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function canonicalizeCloserName(value) {
+  const text = String(value || '').trim();
+  if (!text) return text;
+  return CLOSER_ALIAS_MAP[normalizeText(text)] || text;
+}
+
+function normalizeCloserRows(rows) {
+  return (rows || []).map((row) => ({
+    ...row,
+    closer: canonicalizeCloserName(row.closer)
+  }));
+}
+
 function applyLocalFilters(rows, filters) {
   return (rows || []).filter((row) => {
     if (filters.origen) {
@@ -594,7 +611,7 @@ async function initFilters() {
     orderDir: 'desc'
   });
 
-  const rows = response.rows || [];
+  const rows = normalizeCloserRows(response.rows || []);
   const current = getCurrentPeriod();
 
   const years = uniqueValues(rows, 'anio')
@@ -640,11 +657,10 @@ async function loadAgendaCloser() {
     };
 
     if (filters.origen) query.eq_origen = filters.origen;
-    if (filters.closer) query.eq_closer = filters.closer;
     if (filters.estrategia && estrategiaField) query[`eq_${estrategiaField}`] = filters.estrategia;
 
     const response = await window.metricasApi.fetchRows(RESOURCE, query);
-    const rows = applyLocalFilters(sanitizeRowsForYear(response.rows, selectedYear), filters);
+    const rows = applyLocalFilters(sanitizeRowsForYear(normalizeCloserRows(response.rows), selectedYear), filters);
 
     buildKpis(rows);
     buildMatrixTable(rows, filters);

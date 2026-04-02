@@ -40,6 +40,12 @@ const AGENDA_KPI_INFO = {
     dateLabel: '"f_venta"',
     logic: 'Suma "facturacion" de comprobantes de "Venta" con producto válido y no Club, agrupados por mes de "f_venta".'
   },
+  facturacion_f_agenda: {
+    title: 'Facturación por agenda',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Suma "facturacion" de comprobantes de "Venta" con producto válido y no Club, pero solo ubicando cada comprobante en el mes de "fecha_de_agendamiento".'
+  },
   cash_collected_real_mes: {
     title: 'Cash Real Total',
     viewLabel: '"agenda_totales"',
@@ -137,13 +143,85 @@ const AGENDA_ROW_INFO = {
     title: 'CCE',
     viewLabel: '"agenda_totales"',
     dateLabel: '"fecha_agenda"',
-    logic: 'Muestra "cce" de "agenda_totales", ya calculado en la vista base sobre el mes de agendas.'
+    logic: 'Muestra "cce" de "agenda_totales". Ahora cuenta registros con call confirm exitoso por llamada o por WhatsApp, sin duplicar por mes de "fecha_agenda".'
+  },
+  cceLlamada: {
+    title: 'CCE llamada',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_llamada" de "agenda_totales". Cuenta registros con éxito en "call_confirm" o "llamada_cc", agrupados por el mes de "fecha_agenda".'
+  },
+  pctCceLlamada: {
+    title: '% CCE llamada',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como ("cce_llamada" / "total_aplica") * 100. Usa el mismo denominador de aplicables del mes.'
+  },
+  cceLlamadaEfectuadas: {
+    title: 'CCE llamada Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_llamada_efectuadas" de "agenda_totales". Toma solo éxitos por llamada y además filtra "llamada_meg"=\'Efectuada\'.'
+  },
+  pctCceLlamadaEfectuadas: {
+    title: '% CCE llamada Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como ("cce_llamada_efectuadas" / "total_efectuadas") * 100.'
+  },
+  cceLlamadaVendidas: {
+    title: 'CCE llamada Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Muestra "cce_llamada_vendidas" de "agenda_totales". Cuenta comprobantes de "Venta" por "fecha_de_agendamiento", filtrados a los que están asociados a leads con éxito por llamada.'
+  },
+  pctCceLlamadaVendidas: {
+    title: '% CCE llamada Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Mixta: "fecha_de_agendamiento" y total de ventas del mes',
+    logic: 'Se calcula como ("cce_llamada_vendidas" / "total_ventas") * 100.'
+  },
+  cceWhatsapp: {
+    title: 'CCE WhatsApp',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_whatsapp" de "agenda_totales". Cuenta registros con éxito en "cc_whatsapp", agrupados por el mes de "fecha_agenda".'
+  },
+  pctCceWhatsapp: {
+    title: '% CCE WhatsApp',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como ("cce_whatsapp" / "total_aplica") * 100. Usa el mismo denominador de aplicables del mes.'
+  },
+  cceWhatsappEfectuadas: {
+    title: 'CCE WhatsApp Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Muestra "cce_whatsapp_efectuadas" de "agenda_totales". Toma solo éxitos por WhatsApp y además filtra "llamada_meg"=\'Efectuada\'.'
+  },
+  pctCceWhatsappEfectuadas: {
+    title: '% CCE WhatsApp Efectuadas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_agenda"',
+    logic: 'Se calcula como ("cce_whatsapp_efectuadas" / "total_efectuadas") * 100.'
+  },
+  cceWhatsappVendidas: {
+    title: 'CCE WhatsApp Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Muestra "cce_whatsapp_vendidas" de "agenda_totales". Cuenta comprobantes de "Venta" por "fecha_de_agendamiento", filtrados a los que están asociados a leads con éxito por WhatsApp.'
+  },
+  pctCceWhatsappVendidas: {
+    title: '% CCE WhatsApp Vendidas',
+    viewLabel: '"agenda_totales"',
+    dateLabel: 'Mixta: "fecha_de_agendamiento" y total de ventas del mes',
+    logic: 'Se calcula como ("cce_whatsapp_vendidas" / "total_ventas") * 100.'
   },
   cceEfectuadas: {
     title: 'CCE Efectuadas',
     viewLabel: '"agenda_totales"',
     dateLabel: '"fecha_agenda"',
-    logic: 'Muestra "cce_efectuadas" de "agenda_totales", ya consolidado por mes, origen y estrategia.'
+    logic: 'Muestra "cce_efectuadas" de "agenda_totales". Toma los call confirms exitosos por llamada o WhatsApp y filtra además "llamada_meg"=\'Efectuada\'.'
   },
   cceVendidas: {
     title: 'CCE Vendidas',
@@ -156,6 +234,12 @@ const AGENDA_ROW_INFO = {
     viewLabel: '"agenda_totales"',
     dateLabel: '"f_venta"',
     logic: 'Muestra "facturacion_total_mes". La vista lo arma desde comprobantes de "Venta" agrupados por mes de "f_venta".'
+  },
+  factAgenda: {
+    title: 'Facturación por agenda',
+    viewLabel: '"agenda_totales"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Muestra "facturacion_f_agenda". La vista suma "facturacion" de comprobantes de "Venta" y ubica cada registro en el mes de "fecha_de_agendamiento".'
   },
   ccRealMes: {
     title: 'Cash Collected Real Mes',
@@ -192,9 +276,16 @@ const SUM_FIELDS = [
   'ccne_efectuadas',
   'ccne_vendidas',
   'cce',
+  'cce_llamada',
+  'cce_whatsapp',
+  'cce_llamada_efectuadas',
+  'cce_whatsapp_efectuadas',
+  'cce_llamada_vendidas',
+  'cce_whatsapp_vendidas',
   'cce_efectuadas',
   'cce_vendidas',
   'facturacion_total_mes',
+  'facturacion_f_agenda',
   'cash_collected_real_mes',
   'cash_collected_otros_meses',
   'cash_collected_agendas_mes'
@@ -275,6 +366,12 @@ function getAgendaMetricInfo(metricKey, label) {
       pctCcne: '"ccne" / "aplicables" * 100',
       pctCcneEfectuadas: '"ccneEfectuadas" / "efectuadas" * 100',
       pctCcneVendidas: '"ccneVendidas" / "ventas" * 100',
+      pctCceLlamada: '"cceLlamada" / "aplicables" * 100',
+      pctCceLlamadaEfectuadas: '"cceLlamadaEfectuadas" / "efectuadas" * 100',
+      pctCceLlamadaVendidas: '"cceLlamadaVendidas" / "ventas" * 100',
+      pctCceWhatsapp: '"cceWhatsapp" / "aplicables" * 100',
+      pctCceWhatsappEfectuadas: '"cceWhatsappEfectuadas" / "efectuadas" * 100',
+      pctCceWhatsappVendidas: '"cceWhatsappVendidas" / "ventas" * 100',
       pctCce: '"cce" / "aplicables" * 100',
       pctCceEfectuadas: '"cceEfectuadas" / "efectuadas" * 100',
       pctCceVendidas: '"cceVendidas" / "ventas" * 100'
@@ -461,15 +558,73 @@ function metricRowsFor(acc) {
     pctCcneVendidas: safeDiv(acc.ccne_vendidas * 100, venTotal),
     cce,
     pctCce: safeDiv(cce * 100, apl),
+    cceLlamada: acc.cce_llamada,
+    pctCceLlamada: safeDiv(acc.cce_llamada * 100, apl),
+    cceLlamadaEfectuadas: acc.cce_llamada_efectuadas,
+    pctCceLlamadaEfectuadas: safeDiv(acc.cce_llamada_efectuadas * 100, efTotal),
+    cceLlamadaVendidas: acc.cce_llamada_vendidas,
+    pctCceLlamadaVendidas: safeDiv(acc.cce_llamada_vendidas * 100, venTotal),
+    cceWhatsapp: acc.cce_whatsapp,
+    pctCceWhatsapp: safeDiv(acc.cce_whatsapp * 100, apl),
+    cceWhatsappEfectuadas: acc.cce_whatsapp_efectuadas,
+    pctCceWhatsappEfectuadas: safeDiv(acc.cce_whatsapp_efectuadas * 100, efTotal),
+    cceWhatsappVendidas: acc.cce_whatsapp_vendidas,
+    pctCceWhatsappVendidas: safeDiv(acc.cce_whatsapp_vendidas * 100, venTotal),
     cceEfectuadas: acc.cce_efectuadas,
     pctCceEfectuadas: safeDiv(acc.cce_efectuadas * 100, efTotal),
     cceVendidas: acc.cce_vendidas,
     pctCceVendidas: safeDiv(acc.cce_vendidas * 100, venTotal),
     factTotalMes: acc.facturacion_total_mes,
+    factAgenda: acc.facturacion_f_agenda,
     ccRealMes: acc.cash_collected_real_mes,
     ccOtrosMeses: acc.cash_collected_otros_meses,
     ccAgendasMes: acc.cash_collected_agendas_mes
   };
+}
+
+function buildExecutionMetricGroups(metrics) {
+  const keySet = new Set(metrics.map((metric) => metric.key));
+
+  const pick = (key) => metrics.find((metric) => metric.key === key);
+  const groups = [
+    [
+      'ccne',
+      'pctCcne',
+      'ccneEfectuadas',
+      'pctCcneEfectuadas',
+      'ccneVendidas',
+      'pctCcneVendidas'
+    ],
+    [
+      'cceLlamada',
+      'pctCceLlamada',
+      'cceLlamadaEfectuadas',
+      'pctCceLlamadaEfectuadas',
+      'cceLlamadaVendidas',
+      'pctCceLlamadaVendidas'
+    ],
+    [
+      'cceWhatsapp',
+      'pctCceWhatsapp',
+      'cceWhatsappEfectuadas',
+      'pctCceWhatsappEfectuadas',
+      'cceWhatsappVendidas',
+      'pctCceWhatsappVendidas'
+    ]
+  ];
+
+  return groups
+    .map((group, index) => {
+      const rows = group.map((key) => pick(key)).filter(Boolean);
+      if (!rows.length) return [];
+      if (index === 0) return rows;
+      return [
+        { type: 'separator', key: `separator-${index}` },
+        ...rows
+      ];
+    })
+    .flat()
+    .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
 function buildMatrixTable(rows, filters, aovDia1Data = {}) {
@@ -512,7 +667,6 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}) {
     { key: 'pctVendidas', label: '% Vendidas', format: 'percent' },
     { key: 'paidUpfront', label: 'Paid Upfront', format: 'currency' },
     { key: 'pctPaidUpfront', label: '% Paid Upfront', format: 'percent' },
-    { key: 'aov', label: 'AOV', format: 'currency' },
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
@@ -521,13 +675,20 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}) {
     { key: 'pctCcneEfectuadas', label: '% CCNE Efectuadas', format: 'percent' },
     { key: 'ccneVendidas', label: 'CCNE Vendidas', format: 'number' },
     { key: 'pctCcneVendidas', label: '% CCNE Vendidas', format: 'percent' },
-    { key: 'cce', label: 'CCE', format: 'number' },
-    { key: 'pctCce', label: '% CCE', format: 'percent' },
-    { key: 'cceEfectuadas', label: 'CCE Efectuadas', format: 'number' },
-    { key: 'pctCceEfectuadas', label: '% CCE Efectuadas', format: 'percent' },
-    { key: 'cceVendidas', label: 'CCE Vendidas', format: 'number' },
-    { key: 'pctCceVendidas', label: '% CCE Vendidas', format: 'percent' },
+    { key: 'cceLlamada', label: 'CCE llamada', format: 'number' },
+    { key: 'pctCceLlamada', label: '% CCE llamada', format: 'percent' },
+    { key: 'cceLlamadaEfectuadas', label: 'CCE llamada Efectuadas', format: 'number' },
+    { key: 'pctCceLlamadaEfectuadas', label: '% CCE llamada Efectuadas', format: 'percent' },
+    { key: 'cceLlamadaVendidas', label: 'CCE llamada Vendidas', format: 'number' },
+    { key: 'pctCceLlamadaVendidas', label: '% CCE llamada Vendidas', format: 'percent' },
+    { key: 'cceWhatsapp', label: 'CCE WhatsApp', format: 'number' },
+    { key: 'pctCceWhatsapp', label: '% CCE WhatsApp', format: 'percent' },
+    { key: 'cceWhatsappEfectuadas', label: 'CCE WhatsApp Efectuadas', format: 'number' },
+    { key: 'pctCceWhatsappEfectuadas', label: '% CCE WhatsApp Efectuadas', format: 'percent' },
+    { key: 'cceWhatsappVendidas', label: 'CCE WhatsApp Vendidas', format: 'number' },
+    { key: 'pctCceWhatsappVendidas', label: '% CCE WhatsApp Vendidas', format: 'percent' },
     { key: 'factTotalMes', label: 'Facturación Total Mes', format: 'currency' },
+    { key: 'factAgenda', label: 'Facturación por agenda', format: 'currency' },
     { key: 'ccRealMes', label: 'Cash Collected Real Mes', format: 'currency' },
     { key: 'ccOtrosMeses', label: 'Cash Collected Otros Meses', format: 'currency' },
     { key: 'ccAgendasMes', label: 'Cash Collected Agendas Mes', format: 'currency' }
@@ -543,49 +704,104 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}) {
     .map((month) => `<th class="${month === currentMonth ? 'month-current' : ''}">${month}</th>`)
     .join('');
 
-  const bodyRows = metricDefinitions
-    .map((metric) => {
-      const monthCells = months
-        .map((month) => {
-          const monthMetrics = monthMetricsMap.get(month);
-          return `<td class="${month === currentMonth ? 'month-current' : ''}">${formatValue(monthMetrics[metric.key], metric.format)}</td>`;
-        })
-        .join('');
+  const renderMetricTable = (metrics, title, subtitle, tone = 'default') => {
+    const bodyRows = metrics
+      .map((metric) => {
+        if (metric.type === 'separator') {
+          return `
+            <tr class="agenda-separator-row">
+              <td colspan="${months.length + 2}">
+                <div class="agenda-separator-bar" aria-hidden="true"></div>
+              </td>
+            </tr>
+          `;
+        }
 
-      const totalValue = formatValue(totalMetrics[metric.key], metric.format);
+        const monthCells = months
+          .map((month) => {
+            const monthMetrics = monthMetricsMap.get(month);
+            return `<td class="${month === currentMonth ? 'month-current' : ''}">${formatValue(monthMetrics[metric.key], metric.format)}</td>`;
+          })
+          .join('');
 
-      return `
-        <tr>
-          <td><button type="button" class="metric-info-trigger metric-label" data-metric-key="${metric.key}"><strong>${metric.label}</strong></button></td>
-          ${monthCells}
-          <td><strong>${totalValue}</strong></td>
-        </tr>
-      `;
-    })
-    .join('');
+        const totalValue = formatValue(totalMetrics[metric.key], metric.format);
 
-  container.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead>
+        return `
           <tr>
-            <th>Mes</th>
-            ${headerMonths}
-            <th>Total</th>
+            <td><button type="button" class="metric-info-trigger metric-label" data-metric-key="${metric.key}"><strong>${metric.label}</strong></button></td>
+            ${monthCells}
+            <td><strong>${totalValue}</strong></td>
           </tr>
-        </thead>
-        <tbody>
-          ${bodyRows}
-          <tr>
-            <td><strong>Totales del período</strong></td>
-            <td colspan="${months.length + 1}">
-              Año ${filters.anio}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  `;
+        `;
+      })
+      .join('');
+
+    return `
+      <section class="agenda-table-panel agenda-table-panel--${tone}">
+        <div class="agenda-table-header">
+          <h3>${title}</h3>
+          <p>${subtitle}</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mes</th>
+                ${headerMonths}
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+              <tr>
+                <td><strong>Totales del período</strong></td>
+                <td colspan="${months.length + 1}">
+                  Año ${filters.anio}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  };
+
+  const firstBreakIndex = metricDefinitions.findIndex((metric) => metric.key === 'tasaCierre');
+  const secondBreakIndex = metricDefinitions.findIndex((metric) => metric.key === 'factTotalMes');
+
+  const firstTableMetrics = firstBreakIndex === -1 ? metricDefinitions : metricDefinitions.slice(0, firstBreakIndex + 1);
+  const secondTableMetricsBase = firstBreakIndex === -1
+    ? []
+    : secondBreakIndex === -1
+      ? metricDefinitions.slice(firstBreakIndex + 1)
+      : metricDefinitions.slice(firstBreakIndex + 1, secondBreakIndex);
+  const secondTableMetrics = buildExecutionMetricGroups(secondTableMetricsBase);
+  const thirdTableMetrics = secondBreakIndex === -1 ? [] : metricDefinitions.slice(secondBreakIndex);
+
+  container.innerHTML = [
+    renderMetricTable(
+      firstTableMetrics,
+      'Embudo de agendas',
+      'Desde agendados hasta la tasa de cierre, con lectura mensual y total anual.',
+      'flow'
+    ),
+          secondTableMetrics.length
+      ? renderMetricTable(
+          secondTableMetrics,
+          'Call Confirm y ejecución',
+          'Seguimiento separado de CCNE, CCE llamada y CCE WhatsApp sobre la misma cohorte mensual de agendas.',
+          'execution'
+        )
+      : '',
+    thirdTableMetrics.length
+      ? renderMetricTable(
+          thirdTableMetrics,
+          'Facturación y cash',
+          'Bloque separado para comparar facturación por venta, facturación por agenda y cash collected.',
+          'finance'
+        )
+      : ''
+  ].join('');
 
   container.querySelectorAll('.metric-label').forEach((button) => {
     button.addEventListener('click', () => {
