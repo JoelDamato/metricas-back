@@ -1,5 +1,8 @@
 const RESOURCE = 'kpi_closers_mensual';
 const EXCLUDED_CLOSERS = ['nahuel', 'shirlet', 'shirley'];
+const ALL_CLOSERS_VALUE = '__ALL__';
+const ALL_MONTHS_VALUE = '__ALL__';
+let kpiClosersChart = null;
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -71,8 +74,8 @@ const KPI_CLOSERS_INFO = {
   'CC 3m': {
     title: 'CC 3m',
     viewLabel: '"kpi_closers_mensual"',
-    dateLabel: 'Rolling 3 meses en "kpi_closers_mensual"',
-    logic: 'Muestra "cash_collected_3m", una acumulación móvil de 3 meses por closer.'
+    dateLabel: '3 meses previos completos por "f_venta"',
+    logic: 'Muestra "cash_collected_3m" sumando siempre los 3 meses anteriores al mes de la fila. Excluye el mes actual de la fila y, si hace falta, trae meses del año anterior.'
   },
   'CC 3m %': {
     title: 'CC 3m %',
@@ -89,8 +92,8 @@ const KPI_CLOSERS_INFO = {
   'Fact 3m': {
     title: 'Fact 3m',
     viewLabel: '"kpi_closers_mensual"',
-    dateLabel: 'Rolling 3 meses en "kpi_closers_mensual"',
-    logic: 'Muestra "facturacion_3m", acumulado móvil de 3 meses por closer.'
+    dateLabel: '3 meses previos completos por "f_venta"',
+    logic: 'Muestra "facturacion_3m" sumando siempre los 3 meses anteriores al mes de la fila. Solo incluye comprobantes con "tipo" = "Venta", excluye el mes actual de la fila y, si hace falta, trae meses del año anterior.'
   },
   'Objetivo': {
     title: 'Objetivo',
@@ -125,6 +128,11 @@ function formatPercent(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('es-AR').format(Number(value || 0));
+}
+
+function getMonthLabel(month) {
+  const found = MONTHS.find((item) => Number(item.value) === Number(month));
+  return found ? found.label : String(month || '');
 }
 
 function showMetricInfo(info) {
@@ -377,6 +385,18 @@ function isExcludedCloserRow(row) {
   return EXCLUDED_CLOSERS.some((excluded) => normalized.includes(excluded));
 }
 
+function getDisplayRows(rows) {
+  return (rows || []).filter((row) => !isSinCloserRow(row) && !isExcludedCloserRow(row));
+}
+
+function populateCloserFilter(rows, selectedCloser = ALL_CLOSERS_VALUE) {
+  const closers = [...new Set(getDisplayRows(rows).map((row) => String(row.closer || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  const options = [{ value: ALL_CLOSERS_VALUE, label: 'Todos' }, ...closers.map((closer) => ({ value: closer, label: closer }))];
+  const currentValue = options.some((option) => option.value === selectedCloser) ? selectedCloser : ALL_CLOSERS_VALUE;
+  setOptions('closer', options, currentValue);
+  return currentValue;
+}
+
 function teamCheckCell(isOk) {
   return `<div class="rule-cell"><span class="rule-mark ${isOk ? 'ok' : 'fail'}">${isOk ? '✓' : '✗'}</span></div>`;
 }
@@ -449,10 +469,11 @@ function applyRulesEditPermissions(permissions = {}) {
   }
 }
 
-function buildTable(rows, rules) {
+function buildTable(rows, rules, options = {}) {
   const wrap = document.getElementById('tableContainer');
+  const showMonthColumn = options.showMonthColumn === true;
 
-  const visibleRows = (rows || []).filter((row) => !isSinCloserRow(row) && !isExcludedCloserRow(row));
+  const visibleRows = getDisplayRows(rows);
 
   if (!visibleRows.length) {
     wrap.innerHTML = '<p>No hay datos para el período seleccionado.</p>';
@@ -463,6 +484,7 @@ function buildTable(rows, rules) {
 
   const head = `
     <tr>
+      ${showMonthColumn ? '<th>Mes</th>' : ''}
       <th>Closer</th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Cierre seg. llamada">Cierre seg. llamada</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Obj. Team</button></th>
@@ -490,6 +512,7 @@ function buildTable(rows, rules) {
       const k = row.__kpi;
       return `
         <tr>
+          ${showMonthColumn ? `<td>${getMonthLabel(row.mes)}</td>` : ''}
           <td>${row.closer || ''}</td>
           <td>${formatPercent(k.cierreLlamadaPct)}</td>
           <td class="ok-cell ${k.cierreLlamadaOk ? 'is-ok' : ''}">${ruleCell(rules.cierreLlamadaPct, k.cierreLlamadaOk, 'percent')}</td>
@@ -584,6 +607,7 @@ function buildTable(rows, rules) {
 
   const totalRow = `
     <tr>
+      ${showMonthColumn ? '<td><strong>Todos</strong></td>' : ''}
       <td><strong>Total</strong></td>
       <td><strong>${formatPercent(totalCierreLlamadaPct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.cierreLlamadaOk)}</strong></td>
@@ -608,12 +632,13 @@ function buildTable(rows, rules) {
 
   const spacerRow = `
     <tr class="kpi-separator-row" aria-hidden="true">
-      <td colspan="19"></td>
+      <td colspan="${showMonthColumn ? 20 : 19}"></td>
     </tr>
   `;
 
   const teamRow = `
     <tr class="kpi-team-row">
+      ${showMonthColumn ? '<td><strong>Todos</strong></td>' : ''}
       <td><strong>Team Closers</strong></td>
       <td><strong>${formatPercent(totalCierreLlamadaPct)}</strong></td>
       <td class="ok-cell ${teamCierreOk ? 'is-ok' : ''}">${teamCheckCell(teamCierreOk)}</td>
@@ -652,6 +677,146 @@ function buildTable(rows, rules) {
   });
 }
 
+function renderChart(rows, year, monthValue, selectedCloser) {
+  const canvas = document.getElementById('kpiClosersChart');
+  const title = document.getElementById('kpiClosersChartTitle');
+  const description = document.getElementById('kpiClosersChartDescription');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const visibleRows = getDisplayRows(rows);
+
+  if (kpiClosersChart) {
+    kpiClosersChart.destroy();
+    kpiClosersChart = null;
+  }
+
+  if (!visibleRows.length) {
+    title.textContent = 'Comparativa KPI Closers';
+    description.textContent = 'No hay datos para graficar con el filtro elegido.';
+    return;
+  }
+
+  const isAllMonths = monthValue === ALL_MONTHS_VALUE;
+  const closerLabel = selectedCloser === ALL_CLOSERS_VALUE ? 'equipo' : selectedCloser;
+  let config = null;
+
+  if (isAllMonths) {
+    const byMonth = MONTHS.map((month) => {
+      const monthRows = visibleRows.filter((row) => Number(row.mes) === Number(month.value));
+      return {
+        label: month.label,
+        facturacion: monthRows.reduce((sum, row) => sum + Number(row.facturacion || 0), 0),
+        cash: monthRows.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0)
+      };
+    });
+
+    title.textContent = selectedCloser === ALL_CLOSERS_VALUE
+      ? `Evolución mensual del equipo ${year}`
+      : `Evolución mensual de ${closerLabel} en ${year}`;
+    description.textContent = 'Avance mes a mes de "Facturación" y "Cash Collected" para el filtro seleccionado.';
+
+    config = {
+      type: 'line',
+      data: {
+        labels: byMonth.map((item) => item.label),
+        datasets: [
+          {
+            label: 'Facturación',
+            data: byMonth.map((item) => item.facturacion),
+            borderColor: 'rgba(39, 121, 230, 0.9)',
+            backgroundColor: 'rgba(39, 121, 230, 0.18)',
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Cash Collected',
+            data: byMonth.map((item) => item.cash),
+            borderColor: 'rgba(14, 165, 140, 0.95)',
+            backgroundColor: 'rgba(14, 165, 140, 0.18)',
+            tension: 0.3,
+            fill: true
+          }
+        ]
+      }
+    };
+  } else if (visibleRows.length === 1) {
+    const [row] = visibleRows;
+    title.textContent = `Detalle de ${row.closer || 'Closer'} - ${getMonthLabel(monthValue)} ${year}`;
+    description.textContent = 'Comparativa puntual de "Facturación" y "Cash Collected" para el período filtrado.';
+
+    config = {
+      type: 'bar',
+      data: {
+        labels: ['Facturación', 'Cash Collected'],
+        datasets: [
+          {
+            label: row.closer || 'Closer',
+            data: [Number(row.facturacion || 0), Number(row.cash_collected || 0)],
+            borderRadius: 8,
+            backgroundColor: ['rgba(39, 121, 230, 0.78)', 'rgba(14, 165, 140, 0.78)']
+          }
+        ]
+      }
+    };
+  } else {
+    const ordered = [...visibleRows].sort((a, b) => String(a.closer || '').localeCompare(String(b.closer || ''), 'es'));
+    title.textContent = `Comparativa por closer - ${getMonthLabel(monthValue)} ${year}`;
+    description.textContent = 'Facturación vs Cash Collected para el mes seleccionado.';
+
+    config = {
+      type: 'bar',
+      data: {
+        labels: ordered.map((row) => row.closer || 'Sin closer'),
+        datasets: [
+          {
+            label: 'Facturación',
+            data: ordered.map((row) => Number(row.facturacion || 0)),
+            borderRadius: 8,
+            backgroundColor: 'rgba(39, 121, 230, 0.75)'
+          },
+          {
+            label: 'Cash Collected',
+            data: ordered.map((row) => Number(row.cash_collected || 0)),
+            borderRadius: 8,
+            backgroundColor: 'rgba(14, 165, 140, 0.75)'
+          }
+        ]
+      }
+    };
+  }
+
+  kpiClosersChart = new Chart(canvas, {
+    ...config,
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#1f3b63',
+            font: { weight: '700' }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#1f3b63' },
+          grid: { display: false }
+        },
+        y: {
+          ticks: {
+            color: '#1f3b63',
+            callback(value) {
+              return formatCurrency(value);
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
 async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones...';
@@ -667,30 +832,45 @@ async function initFilters() {
   const current = getCurrentPeriod();
 
   setOptions('anio', years, years.includes(current.year) ? current.year : years[0]);
-  setOptions('mes', MONTHS, current.month);
+  setOptions('mes', [{ value: ALL_MONTHS_VALUE, label: 'Todos' }, ...MONTHS], current.month);
+  setOptions('closer', [{ value: ALL_CLOSERS_VALUE, label: 'Todos' }], ALL_CLOSERS_VALUE);
 }
 
 async function loadKpiTable() {
   const status = document.getElementById('status');
   const year = Number(document.getElementById('anio').value);
-  const month = Number(document.getElementById('mes').value);
+  const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
+  const rulesMonth = monthValue === ALL_MONTHS_VALUE ? getCurrentPeriod().month : Number(monthValue);
+  const selectedCloser = document.getElementById('closer').value || ALL_CLOSERS_VALUE;
   status.textContent = 'Cargando kpi_closers_mensual...';
 
   try {
-    const rules = await fetchRulesFromApi(year, month);
+    const rules = await fetchRulesFromApi(year, rulesMonth);
     fillRuleInputs(rules);
 
     const response = await window.metricasApi.fetchRows(RESOURCE, {
       limit: 500,
       eq_anio: year,
-      eq_mes: month,
+      ...(monthValue !== ALL_MONTHS_VALUE ? { eq_mes: Number(monthValue) } : {}),
       orderBy: 'closer',
       orderDir: 'asc'
     });
 
-    const rows = (response.rows || []).filter((r) => Number(r.anio) === year && Number(r.mes) === month);
-    buildTable(rows, rules);
-    status.textContent = `Filas: ${rows.length} | ${month}/${year}`;
+    const rows = (response.rows || []).filter((r) => {
+      const sameYear = Number(r.anio) === year;
+      const sameMonth = monthValue === ALL_MONTHS_VALUE ? true : Number(r.mes) === Number(monthValue);
+      return sameYear && sameMonth;
+    });
+    const effectiveCloser = populateCloserFilter(rows, selectedCloser);
+    const filteredRows = effectiveCloser === ALL_CLOSERS_VALUE
+      ? rows
+      : rows.filter((row) => String(row.closer || '').trim() === effectiveCloser);
+
+    buildTable(filteredRows, rules, { showMonthColumn: monthValue === ALL_MONTHS_VALUE });
+    renderChart(filteredRows, year, monthValue, effectiveCloser);
+    status.textContent = effectiveCloser === ALL_CLOSERS_VALUE
+      ? `Filas: ${getDisplayRows(filteredRows).length} | ${monthValue === ALL_MONTHS_VALUE ? `Todos los meses ${year}` : `${Number(monthValue)}/${year}`}`
+      : `Closer: ${effectiveCloser} | ${monthValue === ALL_MONTHS_VALUE ? `Todos los meses ${year}` : `${Number(monthValue)}/${year}`}`;
   } catch (error) {
     status.textContent = error.message;
   }
@@ -706,7 +886,13 @@ function handleSaveRules() {
 
     const status = document.getElementById('status');
     const year = Number(document.getElementById('anio').value);
-    const month = Number(document.getElementById('mes').value);
+    const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
+    if (monthValue === ALL_MONTHS_VALUE) {
+      showPopup('Elegí un mes puntual para guardar objetivos.', 'error');
+      status.textContent = 'Seleccioná un mes puntual para guardar reglas.';
+      return;
+    }
+    const month = Number(monthValue);
     const rules = readRuleInputs();
 
     try {
