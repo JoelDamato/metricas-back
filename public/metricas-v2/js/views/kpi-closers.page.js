@@ -1,8 +1,6 @@
 const RESOURCE = 'kpi_closers_mensual';
 const EXCLUDED_CLOSERS = ['nahuel', 'shirlet', 'shirley'];
 const ALL_CLOSERS_VALUE = '__ALL__';
-const ALL_MONTHS_VALUE = '__ALL__';
-let kpiClosersChart = null;
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -677,146 +675,6 @@ function buildTable(rows, rules, options = {}) {
   });
 }
 
-function renderChart(rows, year, monthValue, selectedCloser) {
-  const canvas = document.getElementById('kpiClosersChart');
-  const title = document.getElementById('kpiClosersChartTitle');
-  const description = document.getElementById('kpiClosersChartDescription');
-  if (!canvas || typeof Chart === 'undefined') return;
-
-  const visibleRows = getDisplayRows(rows);
-
-  if (kpiClosersChart) {
-    kpiClosersChart.destroy();
-    kpiClosersChart = null;
-  }
-
-  if (!visibleRows.length) {
-    title.textContent = 'Comparativa KPI Closers';
-    description.textContent = 'No hay datos para graficar con el filtro elegido.';
-    return;
-  }
-
-  const isAllMonths = monthValue === ALL_MONTHS_VALUE;
-  const closerLabel = selectedCloser === ALL_CLOSERS_VALUE ? 'equipo' : selectedCloser;
-  let config = null;
-
-  if (isAllMonths) {
-    const byMonth = MONTHS.map((month) => {
-      const monthRows = visibleRows.filter((row) => Number(row.mes) === Number(month.value));
-      return {
-        label: month.label,
-        facturacion: monthRows.reduce((sum, row) => sum + Number(row.facturacion || 0), 0),
-        cash: monthRows.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0)
-      };
-    });
-
-    title.textContent = selectedCloser === ALL_CLOSERS_VALUE
-      ? `Evolución mensual del equipo ${year}`
-      : `Evolución mensual de ${closerLabel} en ${year}`;
-    description.textContent = 'Avance mes a mes de "Facturación" y "Cash Collected" para el filtro seleccionado.';
-
-    config = {
-      type: 'line',
-      data: {
-        labels: byMonth.map((item) => item.label),
-        datasets: [
-          {
-            label: 'Facturación',
-            data: byMonth.map((item) => item.facturacion),
-            borderColor: 'rgba(39, 121, 230, 0.9)',
-            backgroundColor: 'rgba(39, 121, 230, 0.18)',
-            tension: 0.3,
-            fill: true
-          },
-          {
-            label: 'Cash Collected',
-            data: byMonth.map((item) => item.cash),
-            borderColor: 'rgba(14, 165, 140, 0.95)',
-            backgroundColor: 'rgba(14, 165, 140, 0.18)',
-            tension: 0.3,
-            fill: true
-          }
-        ]
-      }
-    };
-  } else if (visibleRows.length === 1) {
-    const [row] = visibleRows;
-    title.textContent = `Detalle de ${row.closer || 'Closer'} - ${getMonthLabel(monthValue)} ${year}`;
-    description.textContent = 'Comparativa puntual de "Facturación" y "Cash Collected" para el período filtrado.';
-
-    config = {
-      type: 'bar',
-      data: {
-        labels: ['Facturación', 'Cash Collected'],
-        datasets: [
-          {
-            label: row.closer || 'Closer',
-            data: [Number(row.facturacion || 0), Number(row.cash_collected || 0)],
-            borderRadius: 8,
-            backgroundColor: ['rgba(39, 121, 230, 0.78)', 'rgba(14, 165, 140, 0.78)']
-          }
-        ]
-      }
-    };
-  } else {
-    const ordered = [...visibleRows].sort((a, b) => String(a.closer || '').localeCompare(String(b.closer || ''), 'es'));
-    title.textContent = `Comparativa por closer - ${getMonthLabel(monthValue)} ${year}`;
-    description.textContent = 'Facturación vs Cash Collected para el mes seleccionado.';
-
-    config = {
-      type: 'bar',
-      data: {
-        labels: ordered.map((row) => row.closer || 'Sin closer'),
-        datasets: [
-          {
-            label: 'Facturación',
-            data: ordered.map((row) => Number(row.facturacion || 0)),
-            borderRadius: 8,
-            backgroundColor: 'rgba(39, 121, 230, 0.75)'
-          },
-          {
-            label: 'Cash Collected',
-            data: ordered.map((row) => Number(row.cash_collected || 0)),
-            borderRadius: 8,
-            backgroundColor: 'rgba(14, 165, 140, 0.75)'
-          }
-        ]
-      }
-    };
-  }
-
-  kpiClosersChart = new Chart(canvas, {
-    ...config,
-    options: {
-      animation: false,
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          labels: {
-            color: '#1f3b63',
-            font: { weight: '700' }
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: '#1f3b63' },
-          grid: { display: false }
-        },
-        y: {
-          ticks: {
-            color: '#1f3b63',
-            callback(value) {
-              return formatCurrency(value);
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
 async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones...';
@@ -832,33 +690,32 @@ async function initFilters() {
   const current = getCurrentPeriod();
 
   setOptions('anio', years, years.includes(current.year) ? current.year : years[0]);
-  setOptions('mes', [{ value: ALL_MONTHS_VALUE, label: 'Todos' }, ...MONTHS], current.month);
+  setOptions('mes', MONTHS, current.month);
   setOptions('closer', [{ value: ALL_CLOSERS_VALUE, label: 'Todos' }], ALL_CLOSERS_VALUE);
 }
 
 async function loadKpiTable() {
   const status = document.getElementById('status');
   const year = Number(document.getElementById('anio').value);
-  const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
-  const rulesMonth = monthValue === ALL_MONTHS_VALUE ? getCurrentPeriod().month : Number(monthValue);
+  const monthValue = Number(document.getElementById('mes').value);
   const selectedCloser = document.getElementById('closer').value || ALL_CLOSERS_VALUE;
   status.textContent = 'Cargando kpi_closers_mensual...';
 
   try {
-    const rules = await fetchRulesFromApi(year, rulesMonth);
+    const rules = await fetchRulesFromApi(year, monthValue);
     fillRuleInputs(rules);
 
     const response = await window.metricasApi.fetchRows(RESOURCE, {
       limit: 500,
       eq_anio: year,
-      ...(monthValue !== ALL_MONTHS_VALUE ? { eq_mes: Number(monthValue) } : {}),
+      eq_mes: monthValue,
       orderBy: 'closer',
       orderDir: 'asc'
     });
 
     const rows = (response.rows || []).filter((r) => {
       const sameYear = Number(r.anio) === year;
-      const sameMonth = monthValue === ALL_MONTHS_VALUE ? true : Number(r.mes) === Number(monthValue);
+      const sameMonth = Number(r.mes) === monthValue;
       return sameYear && sameMonth;
     });
     const effectiveCloser = populateCloserFilter(rows, selectedCloser);
@@ -866,11 +723,10 @@ async function loadKpiTable() {
       ? rows
       : rows.filter((row) => String(row.closer || '').trim() === effectiveCloser);
 
-    buildTable(filteredRows, rules, { showMonthColumn: monthValue === ALL_MONTHS_VALUE });
-    renderChart(filteredRows, year, monthValue, effectiveCloser);
+    buildTable(filteredRows, rules);
     status.textContent = effectiveCloser === ALL_CLOSERS_VALUE
-      ? `Filas: ${getDisplayRows(filteredRows).length} | ${monthValue === ALL_MONTHS_VALUE ? `Todos los meses ${year}` : `${Number(monthValue)}/${year}`}`
-      : `Closer: ${effectiveCloser} | ${monthValue === ALL_MONTHS_VALUE ? `Todos los meses ${year}` : `${Number(monthValue)}/${year}`}`;
+      ? `Filas: ${getDisplayRows(filteredRows).length} | ${monthValue}/${year}`
+      : `Closer: ${effectiveCloser} | ${monthValue}/${year}`;
   } catch (error) {
     status.textContent = error.message;
   }
@@ -886,13 +742,7 @@ function handleSaveRules() {
 
     const status = document.getElementById('status');
     const year = Number(document.getElementById('anio').value);
-    const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
-    if (monthValue === ALL_MONTHS_VALUE) {
-      showPopup('Elegí un mes puntual para guardar objetivos.', 'error');
-      status.textContent = 'Seleccioná un mes puntual para guardar reglas.';
-      return;
-    }
-    const month = Number(monthValue);
+    const month = Number(document.getElementById('mes').value);
     const rules = readRuleInputs();
 
     try {

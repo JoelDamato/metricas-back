@@ -1,4 +1,6 @@
 const EXCLUDED_CLOSERS = ['nahuel', 'shirlet', 'shirley'];
+const ALL_CLOSERS_VALUE = '__ALL__';
+const ALL_MONTHS_VALUE = '__ALL__';
 const MONTHS = [
   { value: 1, label: 'Enero' },
   { value: 2, label: 'Febrero' },
@@ -102,11 +104,18 @@ function setupDefaultFilters() {
   const period = getCurrentPeriod();
   const anioInput = document.getElementById('anio');
   const mesSelect = document.getElementById('mes');
+  const closerSelect = document.getElementById('closer');
 
   anioInput.value = period.year;
 
-  mesSelect.innerHTML = MONTHS.map((m) => `<option value="${m.value}">${m.label}</option>`).join('');
+  mesSelect.innerHTML = [{ value: ALL_MONTHS_VALUE, label: 'Todos' }, ...MONTHS]
+    .map((m) => `<option value="${m.value}">${m.label}</option>`)
+    .join('');
   mesSelect.value = String(period.month);
+  if (closerSelect) {
+    closerSelect.innerHTML = `<option value="${ALL_CLOSERS_VALUE}">Todos</option>`;
+    closerSelect.value = ALL_CLOSERS_VALUE;
+  }
 }
 
 function normalizeText(value) {
@@ -122,20 +131,42 @@ function isExcludedCloser(name) {
 }
 
 function getFilters() {
+  const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
   return {
     anio: Number(document.getElementById('anio').value),
-    mes: Number(document.getElementById('mes').value),
+    mes: monthValue === ALL_MONTHS_VALUE ? ALL_MONTHS_VALUE : Number(monthValue),
+    closer: document.getElementById('closer')?.value || ALL_CLOSERS_VALUE,
     limit: 80
   };
 }
 
-function filterRows(rows, anio, mes) {
+function getMonthLabel(month) {
+  const found = MONTHS.find((item) => Number(item.value) === Number(month));
+  return found ? found.label : String(month || '');
+}
+
+function populateCloserFilter(rows, selectedCloser = ALL_CLOSERS_VALUE) {
+  const closers = [...new Set((rows || []).map((row) => String(row.closer || '').trim()).filter(Boolean))]
+    .filter((name) => !isExcludedCloser(name))
+    .sort((a, b) => a.localeCompare(b, 'es'));
+  const select = document.getElementById('closer');
+  if (!select) return ALL_CLOSERS_VALUE;
+  select.innerHTML = [{ value: ALL_CLOSERS_VALUE, label: 'Todos' }, ...closers.map((closer) => ({ value: closer, label: closer }))]
+    .map((option) => `<option value="${option.value}">${option.label}</option>`)
+    .join('');
+  const effectiveCloser = closers.includes(selectedCloser) ? selectedCloser : ALL_CLOSERS_VALUE;
+  select.value = effectiveCloser;
+  return effectiveCloser;
+}
+
+function filterRows(rows, anio, mes, closer = ALL_CLOSERS_VALUE) {
   return rows.filter((row) => {
     if (isExcludedCloser(row.closer)) return false;
 
     const okAnio = anio ? Number(row.anio) === Number(anio) : true;
-    const okMes = mes ? Number(row.mes) === Number(mes) : true;
-    return okAnio && okMes;
+    const okMes = mes === ALL_MONTHS_VALUE ? true : (mes ? Number(row.mes) === Number(mes) : true);
+    const okCloser = closer === ALL_CLOSERS_VALUE ? true : String(row.closer || '').trim() === closer;
+    return okAnio && okMes && okCloser;
   });
 }
 
@@ -144,6 +175,24 @@ function computeEffectiveness(row) {
   const cash = Number(row.cash_collected_total || 0);
   if (fact <= 0) return 0;
   return (cash / fact) * 100;
+}
+
+function buildTrendLine(values) {
+  const points = values.map((value, index) => ({ x: index + 1, y: Number(value || 0) }));
+  const n = points.length;
+  if (!n) return [];
+
+  const sumX = points.reduce((acc, point) => acc + point.x, 0);
+  const sumY = points.reduce((acc, point) => acc + point.y, 0);
+  const sumXY = points.reduce((acc, point) => acc + point.x * point.y, 0);
+  const sumXX = points.reduce((acc, point) => acc + point.x * point.x, 0);
+  const denominator = (n * sumXX) - (sumX * sumX);
+
+  if (!denominator) return values.map((value) => Number(value || 0));
+
+  const slope = ((n * sumXY) - (sumX * sumY)) / denominator;
+  const intercept = (sumY - (slope * sumX)) / n;
+  return points.map((point) => intercept + (slope * point.x));
 }
 
 function buildKpiCards(rows) {
@@ -189,18 +238,23 @@ function buildKpiCards(rows) {
   });
 }
 
-function buildTable(rows) {
+function buildTable(rows, options = {}) {
   const container = document.getElementById('tableContainer');
+  const showMonthColumn = options.showMonthColumn === true;
 
   if (!rows.length) {
     container.innerHTML = '<p>No hay datos para ese filtro.</p>';
     return;
   }
 
-  const ordered = [...rows].sort((a, b) => Number(a.ranking_posicion) - Number(b.ranking_posicion));
+  const ordered = [...rows].sort((a, b) => {
+    if (showMonthColumn && Number(a.mes) !== Number(b.mes)) return Number(a.mes) - Number(b.mes);
+    return Number(a.ranking_posicion) - Number(b.ranking_posicion);
+  });
 
   const head = `
     <tr>
+      ${showMonthColumn ? '<th>Mes</th>' : ''}
       <th>#</th>
       <th>Closer</th>
       <th><button type="button" class="metric-info-trigger" data-metric-info="facturacion_total">Facturación</button></th>
@@ -215,6 +269,7 @@ function buildTable(rows) {
     .map(
       (row) => `
       <tr>
+        ${showMonthColumn ? `<td>${getMonthLabel(row.mes)}</td>` : ''}
         <td>${row.ranking_posicion ?? ''}</td>
         <td>${row.closer ?? ''}</td>
         <td>${formatCurrency(row.facturacion_total)}</td>
@@ -241,40 +296,128 @@ function buildTable(rows) {
   });
 }
 
-function renderChart(rows) {
+function renderChart(rows, year, monthValue, selectedCloser) {
   const canvas = document.getElementById('rankingChart');
+  const title = document.querySelector('.chart-panel h3');
+  const description = document.querySelector('.chart-panel p');
   if (!canvas || typeof Chart === 'undefined') return;
-
-  const ordered = [...rows]
-    .sort((a, b) => Number(a.ranking_posicion) - Number(b.ranking_posicion))
-    .slice(0, 10);
-  const labels = ordered.map((row) => row.closer || 'Sin nombre');
-  const facturacion = ordered.map((row) => Number(row.facturacion_total || 0));
-  const cash = ordered.map((row) => Number(row.cash_collected_total || 0));
 
   if (rankingChart) {
     rankingChart.destroy();
+    rankingChart = null;
+  }
+
+  if (!rows.length) {
+    if (title) title.textContent = 'Comparativa por Closer';
+    if (description) description.textContent = 'No hay datos para graficar con el filtro elegido.';
+    return;
+  }
+
+  const isAllMonths = monthValue === ALL_MONTHS_VALUE;
+  let config;
+
+  if (isAllMonths) {
+    const currentPeriod = getCurrentPeriod();
+    const visibleMonths = Number(year) === Number(currentPeriod.year)
+      ? MONTHS.filter((month) => Number(month.value) <= Number(currentPeriod.month))
+      : MONTHS;
+
+    const byMonth = visibleMonths.map((month) => {
+      const monthRows = rows.filter((row) => Number(row.mes) === Number(month.value));
+      return {
+        label: month.label,
+        facturacion: monthRows.reduce((sum, row) => sum + Number(row.facturacion_total || 0), 0),
+        cash: monthRows.reduce((sum, row) => sum + Number(row.cash_collected_total || 0), 0)
+      };
+    });
+    if (title) title.textContent = selectedCloser === ALL_CLOSERS_VALUE ? `Evolución mensual del equipo ${year}` : `Evolución mensual de ${selectedCloser} en ${year}`;
+    if (description) description.textContent = 'Avance mes a mes de "Facturación" y "Cash Collected". La línea roja marca la tendencia del "Cash Collected" para el filtro seleccionado.';
+    const datasets = [
+      {
+        label: 'Facturación',
+        data: byMonth.map((item) => item.facturacion),
+        borderColor: 'rgba(39, 121, 230, 0.9)',
+        backgroundColor: 'rgba(39, 121, 230, 0.18)',
+        tension: 0.3,
+        fill: true
+      },
+      {
+        label: 'Cash Collected',
+        data: byMonth.map((item) => item.cash),
+        borderColor: 'rgba(14, 165, 140, 0.95)',
+        backgroundColor: 'rgba(14, 165, 140, 0.18)',
+        tension: 0.3,
+        fill: true
+      }
+    ];
+
+    datasets.push({
+      label: 'Tendencia',
+      data: buildTrendLine(byMonth.map((item) => item.cash)),
+      borderColor: 'rgba(220, 38, 38, 0.95)',
+      backgroundColor: 'transparent',
+      borderWidth: 3,
+      borderDash: [10, 8],
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0
+    });
+
+    config = {
+      type: 'line',
+      data: {
+        labels: byMonth.map((item) => item.label),
+        datasets
+      }
+    };
+  } else if (rows.length === 1) {
+    const [row] = rows;
+    if (title) title.textContent = `Detalle de ${row.closer || 'Closer'} - ${getMonthLabel(monthValue)} ${year}`;
+    if (description) description.textContent = 'Comparativa puntual de "Facturación" y "Cash Collected" para el período filtrado.';
+    config = {
+      type: 'bar',
+      data: {
+        labels: ['Facturación', 'Cash Collected'],
+        datasets: [
+          {
+            label: row.closer || 'Closer',
+            data: [Number(row.facturacion_total || 0), Number(row.cash_collected_total || 0)],
+            borderRadius: 8,
+            backgroundColor: ['rgba(39, 121, 230, 0.78)', 'rgba(14, 165, 140, 0.78)']
+          }
+        ]
+      }
+    };
+  } else {
+    const ordered = [...rows]
+      .sort((a, b) => Number(a.ranking_posicion) - Number(b.ranking_posicion))
+      .slice(0, 10);
+    if (title) title.textContent = `Comparativa por closer - ${getMonthLabel(monthValue)} ${year}`;
+    if (description) description.textContent = 'Facturación vs Cash Collected para el mes seleccionado.';
+    config = {
+      type: 'bar',
+      data: {
+        labels: ordered.map((row) => row.closer || 'Sin nombre'),
+        datasets: [
+          {
+            label: 'Facturación',
+            data: ordered.map((row) => Number(row.facturacion_total || 0)),
+            borderRadius: 8,
+            backgroundColor: 'rgba(39, 121, 230, 0.75)'
+          },
+          {
+            label: 'Cash Collected',
+            data: ordered.map((row) => Number(row.cash_collected_total || 0)),
+            borderRadius: 8,
+            backgroundColor: 'rgba(14, 165, 140, 0.75)'
+          }
+        ]
+      }
+    };
   }
 
   rankingChart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Facturación',
-          data: facturacion,
-          borderRadius: 8,
-          backgroundColor: 'rgba(39, 121, 230, 0.75)'
-        },
-        {
-          label: 'Cash Collected',
-          data: cash,
-          borderRadius: 8,
-          backgroundColor: 'rgba(14, 165, 140, 0.75)'
-        }
-      ]
-    },
+    ...config,
     options: {
       animation: false,
       responsive: true,
@@ -317,14 +460,17 @@ async function loadRanking() {
       orderBy: 'ranking_posicion',
       orderDir: 'asc',
       eq_anio: filters.anio,
-      eq_mes: filters.mes
+      ...(filters.mes !== ALL_MONTHS_VALUE ? { eq_mes: filters.mes } : {})
     });
 
-    const filteredRows = filterRows(response.rows || [], filters.anio, filters.mes);
+    const effectiveCloser = populateCloserFilter(response.rows || [], filters.closer);
+    const filteredRows = filterRows(response.rows || [], filters.anio, filters.mes, effectiveCloser);
     buildKpiCards(filteredRows);
-    buildTable(filteredRows);
-    renderChart(filteredRows);
-    status.textContent = `Filas cargadas: ${filteredRows.length} (mes ${filters.mes}/${filters.anio})`;
+    buildTable(filteredRows, { showMonthColumn: filters.mes === ALL_MONTHS_VALUE });
+    renderChart(filteredRows, filters.anio, filters.mes, effectiveCloser);
+    status.textContent = effectiveCloser === ALL_CLOSERS_VALUE
+      ? `Filas cargadas: ${filteredRows.length} (${filters.mes === ALL_MONTHS_VALUE ? `Todos los meses ${filters.anio}` : `mes ${filters.mes}/${filters.anio}`})`
+      : `Closer: ${effectiveCloser} | ${filters.mes === ALL_MONTHS_VALUE ? `Todos los meses ${filters.anio}` : `mes ${filters.mes}/${filters.anio}`}`;
   } catch (error) {
     status.textContent = error.message;
   }
