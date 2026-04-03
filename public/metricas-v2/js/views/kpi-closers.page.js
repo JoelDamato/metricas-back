@@ -473,11 +473,12 @@ function buildTable(rows, rules) {
       <th><button type="button" class="metric-info-trigger" data-info-key="Tasa cierre">Tasa cierre</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th class="kpi-col-wide"><button type="button" class="metric-info-trigger" data-info-key="Cash collected">Cash Collected</button></th>
-      <th><button type="button" class="metric-info-trigger" data-info-key="Facturación">Facturación</button></th>
+      <th class="kpi-col-medium"><button type="button" class="metric-info-trigger" data-info-key="Facturación">Facturación</button></th>
+      <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Obj. Team</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="CC / Fact %">CC / Fact %</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th class="kpi-col-wide"><button type="button" class="metric-info-trigger" data-info-key="CC 3m">CC 3m</button></th>
-      <th><button type="button" class="metric-info-trigger" data-info-key="Fact 3m">Fact 3m</button></th>
+      <th class="kpi-col-medium"><button type="button" class="metric-info-trigger" data-info-key="Fact 3m">Fact 3m</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="CC 3m %">CC 3m %</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Objetivo">Objetivo</button></th>
       <th><button type="button" class="metric-info-trigger" data-info-key="Ponderación">Ponderación</button></th>
@@ -499,11 +500,12 @@ function buildTable(rows, rules) {
           <td>${formatPercent(k.tasaCierrePct)}</td>
           <td class="ok-cell ${k.tasaCierreOk ? 'is-ok' : ''}">${ruleCell(rules.tasaCierrePct, k.tasaCierreOk, 'percent')}</td>
           <td class="kpi-col-wide">${formatCurrency(k.cashCollected)}</td>
-          <td>${formatCurrency(k.facturacion)}</td>
+          <td class="kpi-col-medium">${formatCurrency(k.facturacion)}</td>
+          <td class="ok-cell">-</td>
           <td>${formatPercent(k.cashCollectedPct)}</td>
           <td class="ok-cell ${k.cashCollectedOk ? 'is-ok' : ''}">${ruleCell(rules.cashCollectedMin, k.cashCollectedOk, 'percent')}</td>
           <td class="kpi-col-wide">${formatCurrency(k.cashCollected3m)}</td>
-          <td>${formatCurrency(k.facturacion3m)}</td>
+          <td class="kpi-col-medium">${formatCurrency(k.facturacion3m)}</td>
           <td>${formatPercent(k.cashCollected3mPct)}</td>
           <td class="ok-cell ${k.cashCollected3mOk ? 'is-ok' : ''}">${ruleCell(rules.cashCollected3mMin, k.cashCollected3mOk, 'percent')}</td>
           <td><strong>${formatPercent(k.ponderacionPct)}</strong></td>
@@ -592,11 +594,12 @@ function buildTable(rows, rules) {
       <td><strong>${formatPercent(totalTasaCierrePct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.tasaCierreOk)}</strong></td>
       <td class="kpi-col-wide"><strong>${formatCurrency(totals.cashCollected)}</strong></td>
-      <td><strong>${formatCurrency(totals.facturacion)}</strong></td>
+      <td class="kpi-col-medium"><strong>${formatCurrency(totals.facturacion)}</strong></td>
+      <td class="ok-cell"><strong>-</strong></td>
       <td><strong>${formatPercent(totalCashCollectedPct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.cashCollectedOk)}</strong></td>
       <td class="kpi-col-wide"><strong>${formatCurrency(totals.cashCollected3m)}</strong></td>
-      <td><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
+      <td class="kpi-col-medium"><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
       <td><strong>${formatPercent(totalCashCollected3mPct)}</strong></td>
       <td class="ok-cell"><strong>${formatNumber(totals.cashCollected3mOk)}</strong></td>
       <td><strong>${formatPercent(totalPonderacionPct)}</strong></td>
@@ -605,7 +608,7 @@ function buildTable(rows, rules) {
 
   const spacerRow = `
     <tr class="kpi-separator-row" aria-hidden="true">
-      <td colspan="18"></td>
+      <td colspan="19"></td>
     </tr>
   `;
 
@@ -621,11 +624,12 @@ function buildTable(rows, rules) {
       <td><strong>${formatPercent(totalTasaCierrePct)}</strong></td>
       <td class="ok-cell ${teamTasaCierreOk ? 'is-ok' : ''}">${teamCheckCell(teamTasaCierreOk)}</td>
       <td class="kpi-col-wide"><strong>${formatCurrency(totals.cashCollected)}</strong></td>
-      <td><strong>${formatCurrency(totals.facturacion)}</strong></td>
+      <td class="kpi-col-medium"><strong>${formatCurrency(totals.facturacion)}</strong></td>
+      <td class="ok-cell ${teamFacturacionOk ? 'is-ok' : ''}">${teamCheckCell(teamFacturacionOk)}</td>
       <td><strong>${formatPercent(totalCashCollectedPct)}</strong></td>
       <td class="ok-cell ${teamCashCollectedOk ? 'is-ok' : ''}">${teamCheckCell(teamCashCollectedOk)}</td>
       <td class="kpi-col-wide"><strong>${formatCurrency(totals.cashCollected3m)}</strong></td>
-      <td><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
+      <td class="kpi-col-medium"><strong>${formatCurrency(totals.facturacion3m)}</strong></td>
       <td><strong>${formatPercent(totalCashCollected3mPct)}</strong></td>
       <td class="ok-cell ${teamCashCollected3mOk ? 'is-ok' : ''}">${teamCheckCell(teamCashCollected3mOk)}</td>
       <td><strong>${formatPercent(teamPonderacionPct)}</strong></td>

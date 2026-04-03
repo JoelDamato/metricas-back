@@ -638,6 +638,11 @@ th {
   min-width: 98px;
 }
 
+.kpi-table .kpi-col-medium {
+  width: 90px;
+  min-width: 90px;
+}
+
 .kpi-table .ok-cell.is-ok {
   background: #7fbe7e;
   color: #103212;
