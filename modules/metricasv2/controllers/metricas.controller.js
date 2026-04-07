@@ -85,6 +85,32 @@ async function saveKpiCloserRules(req, res, next) {
   }
 }
 
+async function getReportesPremioConfig(req, res, next) {
+  try {
+    const config = await supabaseService.getReportesPremioConfig();
+
+    res.json({
+      ok: true,
+      config
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveReportesPremioConfig(req, res, next) {
+  try {
+    const config = await supabaseService.upsertReportesPremioConfig(req.body || {}, req.authUser);
+
+    res.json({
+      ok: true,
+      config
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMarketingInvestment(req, res, next) {
   try {
     const investment = await supabaseService.getMarketingInvestment({
@@ -211,6 +237,8 @@ module.exports = {
   getResourceRows,
   getKpiCloserRules,
   saveKpiCloserRules,
+  getReportesPremioConfig,
+  saveReportesPremioConfig,
   getMarketingInvestment,
   saveMarketingInvestment,
   listMarketingInvestments,

@@ -1,4 +1,5 @@
 const EXCLUDED_CLOSERS = ['sin closer', 'nahuel', 'shirlet', 'shirley'];
+const DEFAULT_CASH_PREMIO_PCT = 1;
 const REPORTES_BLOCK_INFO = {
   'Reporte de Llamadas': {
     title: 'Reporte de Llamadas',
@@ -22,7 +23,7 @@ const REPORTES_BLOCK_INFO = {
     title: 'Cash Collected Diario',
     viewLabel: '"cash_collected_diario_closer"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" muestra qué porcentaje del "cash_collected_conciliado" total del rango aporta cada closer.'
+    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" muestra qué porcentaje del "cash_collected_conciliado" total del rango aporta cada closer. La fila "Premio" toma el porcentaje configurable sobre el CCC total y lo reparte según esa participación.'
   },
   Comprobantes: {
     title: 'Comprobantes',
@@ -91,6 +92,12 @@ const REPORTES_METRIC_INFO = {
     viewLabel: '"cash_collected_diario_closer"',
     dateLabel: '"fecha_acreditacion"',
     logic: 'Se calcula como ("cash_collected_conciliado" del closer / "cash_collected_conciliado" total del bloque) * 100 dentro del rango filtrado por "fecha_acreditacion".'
+  },
+  'Cash Collected Diario|Premio': {
+    title: 'Cash Collected Diario · Premio',
+    viewLabel: '"cash_collected_diario_closer" + "reportes_config"',
+    dateLabel: '"fecha_acreditacion"',
+    logic: 'Se calcula como ("cash_collected_conciliado" del closer * porcentaje de premio configurado) / 100. Equivale a repartir la bolsa total del premio, calculada sobre el CCC total del bloque, según el "% CC" aportado por cada closer.'
   }
 };
 function normalizeText(value) {
@@ -131,6 +138,39 @@ function formatCurrency(value, currency = 'USD') {
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(date);
+}
+
+function normalizeCashPremioPct(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_CASH_PREMIO_PCT;
+}
+
+function formatEditablePercentValue(value) {
+  return Number(normalizeCashPremioPct(value)).toFixed(2).replace(/\.?0+$/, '');
+}
+
+async function loadAuthPermissions() {
+  if (window.metricasAuthPermissions) return window.metricasAuthPermissions;
+
+  try {
+    const response = await window.http.getJson('/api/metricas/auth/session');
+    const user = response.user || null;
+    window.metricasAuthUser = user;
+    window.metricasAuthPermissions = user?.permissions || {};
+    return window.metricasAuthPermissions;
+  } catch (error) {
+    return { canEditReportesPremio: false };
+  }
 }
 
 function showMetricInfo(info) {
@@ -200,7 +240,7 @@ function orderClosers(rows, metricKey) {
   });
 }
 
-function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = formatInteger }) {
+function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = formatInteger, footerHtml = '' }) {
   const ordered = orderClosers(rows, sortKey);
 
   if (!ordered.length) {
@@ -213,6 +253,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
         <div class="table-wrap report-table-wrap">
           <div class="report-empty">No hay datos para este período.</div>
         </div>
+        ${footerHtml}
       </section>
     `;
   }
@@ -262,6 +303,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
           <tbody>${body}</tbody>
         </table>
       </div>
+      ${footerHtml}
     </section>
   `;
 }
@@ -270,7 +312,11 @@ function cashFormatter(value, metric) {
   if (metric.key === 'cash_collected_ars_total') {
     return formatCurrency(value, 'ARS');
   }
-  if (metric.key === 'cash_collected_total' || metric.key === 'cash_collected_conciliado') {
+  if (
+    metric.key === 'cash_collected_total'
+    || metric.key === 'cash_collected_conciliado'
+    || metric.key === 'cash_collected_premio'
+  ) {
     return formatCurrency(value, 'USD');
   }
   if (metric.key === 'cash_collected_pct') {
@@ -283,6 +329,43 @@ cashFormatter.computeTotals = (totals) => {
   const conciliado = Number(totals.cash_collected_conciliado || 0);
   totals.cash_collected_pct = conciliado > 0 ? 100 : 0;
 };
+
+function buildCashPremioFooter(config = {}, canEdit = false, cashResumen = []) {
+  const premioPct = normalizeCashPremioPct(config.cash_collected_premio_pct);
+  const premioTotal = (cashResumen || []).reduce((sum, row) => sum + Number(row.cash_collected_premio || 0), 0);
+  const updatedAt = formatDateTime(config.updated_at);
+  const updatedBy = String(config.updated_by_email || '').trim();
+
+  return `
+    <div class="report-premio-panel">
+      <div class="report-premio-summary">
+        <span class="report-premio-tag">Premio CCC</span>
+        <strong>${formatCurrency(premioTotal, 'USD')}</strong>
+        <p>Bolsa total: ${formatPercent(premioPct)} del CCC conciliado, repartida por el aporte de cada closer.</p>
+        ${updatedAt ? `<p class="report-premio-meta">Actualizado: ${updatedAt}${updatedBy ? ` · ${updatedBy}` : ''}</p>` : ''}
+      </div>
+      <form id="cashPremioForm" class="report-premio-form">
+        <label for="cashPremioPct">Premio</label>
+        <div class="report-premio-input-wrap">
+          <input
+            id="cashPremioPct"
+            name="cashPremioPct"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value="${formatEditablePercentValue(premioPct)}"
+            ${canEdit ? '' : 'disabled readonly'}
+          />
+          <span>%</span>
+        </div>
+        ${canEdit
+          ? '<button type="submit">Guardar</button>'
+          : '<span class="report-premio-readonly">Solo acceso total puede editarlo.</span>'}
+      </form>
+    </div>
+  `;
+}
 
 function buildReportMarkup(data) {
   const comprobantesMetrics = (data.comprobantesStates || []).map((state) => ({
@@ -323,16 +406,22 @@ function buildReportMarkup(data) {
     }),
     buildTableBlock({
       title: 'Cash Collected Diario',
-      subtitle: 'Cash USD, cash conciliado y participación de cada closer sobre el CCC total.',
+      subtitle: 'Cash USD, cash conciliado, participación sobre el CCC total y premio distribuido por closer.',
       rows: data.cashResumen,
       sortKey: 'cash_collected_total',
       metrics: [
         { key: 'cash_collected_total', label: 'CC USD' },
         { key: 'cash_collected_ars_total', label: 'CC ARS' },
         { key: 'cash_collected_conciliado', label: 'CCC' },
-        { key: 'cash_collected_pct', label: '% CC' }
+        { key: 'cash_collected_pct', label: '% CC' },
+        { key: 'cash_collected_premio', label: 'Premio' }
       ],
-      formatter: cashFormatter
+      formatter: cashFormatter,
+      footerHtml: buildCashPremioFooter(
+        data.cashPremioConfig,
+        data.canEditReportesPremio,
+        data.cashResumen
+      )
     }),
     buildTableBlock({
       title: 'Comprobantes',
@@ -410,7 +499,7 @@ async function loadVentasData(range) {
   }));
 }
 
-async function loadCashData(range) {
+async function fetchCashRows(range) {
   const response = await window.metricasApi.fetchCashCollectedDiarioCloser({
     limit: 1000,
     from: range.from,
@@ -418,7 +507,13 @@ async function loadCashData(range) {
     dateField: 'fecha_acreditacion'
   });
 
-  const grouped = groupByCloser(response.rows || [], (row) => {
+  return response.rows || [];
+}
+
+function buildCashData(rows, premioPct) {
+  const normalizedPremioPct = normalizeCashPremioPct(premioPct);
+  const premioFactor = normalizedPremioPct / 100;
+  const grouped = groupByCloser(rows || [], (row) => {
     const total = Number(row.cash_collected_total || 0);
     const conciliado = Number(row.cash_collected_conciliado || 0);
 
@@ -435,7 +530,8 @@ async function loadCashData(range) {
     ...row,
     cash_collected_pct: totalConciliado > 0
       ? (Number(row.cash_collected_conciliado || 0) / totalConciliado) * 100
-      : 0
+      : 0,
+    cash_collected_premio: Number(row.cash_collected_conciliado || 0) * premioFactor
   }));
 }
 
@@ -486,6 +582,83 @@ async function loadComprobantesData(range) {
   };
 }
 
+function bindReportInfoButtons(container) {
+  container.querySelectorAll('.metric-label').forEach((button) => {
+    button.addEventListener('click', () => {
+      const key = `${button.dataset.blockTitle}|${button.dataset.metricLabel}`;
+      if (button.dataset.blockTitle === 'Comprobantes') {
+        showMetricInfo({
+          title: `Comprobantes · ${button.dataset.metricLabel}`,
+          viewLabel: '"comprobantes"',
+          dateLabel: '"f_acreditacion"',
+          logic: `Cuenta comprobantes donde "estado" = "${button.dataset.metricLabel}" y los agrupa por "creado_por" dentro del rango filtrado por "f_acreditacion". En este bloque no se incluyen filas cuyo "producto_format" contiene "Club".`
+        });
+        return;
+      }
+      showMetricInfo(REPORTES_METRIC_INFO[key] || {
+        title: `${button.dataset.blockTitle} · ${button.dataset.metricLabel}`,
+        viewLabel: 'Depende del bloque',
+        dateLabel: 'Depende del bloque',
+        logic: `Esta métrica se calcula dentro del bloque "${button.dataset.blockTitle}" usando la vista diaria correspondiente.`
+      });
+    });
+  });
+
+  container.querySelectorAll('.report-block-title').forEach((button) => {
+    button.addEventListener('click', () => {
+      showMetricInfo(REPORTES_BLOCK_INFO[button.dataset.blockKey] || {
+        title: button.dataset.blockKey,
+        viewLabel: 'Depende del bloque',
+        dateLabel: 'Depende del bloque',
+        logic: `Este bloque agrupa métricas diarias del reporte "${button.dataset.blockKey}" usando la vista correspondiente.`
+      });
+    });
+  });
+}
+
+function bindCashPremioForm() {
+  const form = document.getElementById('cashPremioForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const status = document.getElementById('status');
+    const permissions = await loadAuthPermissions();
+
+    if (permissions.canEditReportesPremio !== true) {
+      status.textContent = 'Solo los usuarios con acceso total pueden editar el premio.';
+      return;
+    }
+
+    const input = document.getElementById('cashPremioPct');
+    const saveButton = form.querySelector('button[type="submit"]');
+    const premioPct = Number(input?.value);
+
+    if (!Number.isFinite(premioPct) || premioPct < 0 || premioPct > 100) {
+      status.textContent = 'El premio debe ser un porcentaje entre 0 y 100.';
+      input?.focus();
+      return;
+    }
+
+    if (saveButton) saveButton.disabled = true;
+    status.textContent = 'Guardando premio de Cash Collected...';
+
+    try {
+      await window.metricasApi.saveReportesPremioConfig({
+        cash_collected_premio_pct: premioPct
+      });
+      await loadReportes();
+      const range = getRange();
+      status.textContent = `Rango cargado: ${range.from} a ${range.to} | Premio actualizado a ${formatPercent(premioPct)}.`;
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      if (saveButton) saveButton.disabled = false;
+    }
+  });
+}
+
 async function loadReportes() {
   const status = document.getElementById('status');
   const container = document.getElementById('reportesContainer');
@@ -506,52 +679,30 @@ async function loadReportes() {
   status.textContent = 'Cargando reportes...';
 
   try {
-    const [agendaResumen, ventasResumen, cashResumen, comprobantesData] = await Promise.all([
+    const [permissions, cashPremioResponse, agendaResumen, ventasResumen, cashRows, comprobantesData] = await Promise.all([
+      loadAuthPermissions(),
+      window.metricasApi.fetchReportesPremioConfig(),
       loadAgendaData(range),
       loadVentasData(range),
-      loadCashData(range),
+      fetchCashRows(range),
       loadComprobantesData(range)
     ]);
+
+    const cashPremioConfig = cashPremioResponse?.config || { cash_collected_premio_pct: DEFAULT_CASH_PREMIO_PCT };
+    const cashResumen = buildCashData(cashRows, cashPremioConfig.cash_collected_premio_pct);
 
     container.innerHTML = buildReportMarkup({
       agendaResumen,
       ventasResumen,
       cashResumen,
+      cashPremioConfig,
+      canEditReportesPremio: permissions.canEditReportesPremio === true,
       comprobantesResumen: comprobantesData.rows,
       comprobantesStates: comprobantesData.states
     });
 
-    container.querySelectorAll('.metric-label').forEach((button) => {
-      button.addEventListener('click', () => {
-        const key = `${button.dataset.blockTitle}|${button.dataset.metricLabel}`;
-        if (button.dataset.blockTitle === 'Comprobantes') {
-          showMetricInfo({
-            title: `Comprobantes · ${button.dataset.metricLabel}`,
-            viewLabel: '"comprobantes"',
-            dateLabel: '"f_acreditacion"',
-            logic: `Cuenta comprobantes donde "estado" = "${button.dataset.metricLabel}" y los agrupa por "creado_por" dentro del rango filtrado por "f_acreditacion". En este bloque no se incluyen filas cuyo "producto_format" contiene "Club".`
-          });
-          return;
-        }
-        showMetricInfo(REPORTES_METRIC_INFO[key] || {
-          title: `${button.dataset.blockTitle} · ${button.dataset.metricLabel}`,
-          viewLabel: 'Depende del bloque',
-          dateLabel: 'Depende del bloque',
-          logic: `Esta métrica se calcula dentro del bloque "${button.dataset.blockTitle}" usando la vista diaria correspondiente.`
-        });
-      });
-    });
-
-    container.querySelectorAll('.report-block-title').forEach((button) => {
-      button.addEventListener('click', () => {
-        showMetricInfo(REPORTES_BLOCK_INFO[button.dataset.blockKey] || {
-          title: button.dataset.blockKey,
-          viewLabel: 'Depende del bloque',
-          dateLabel: 'Depende del bloque',
-          logic: `Este bloque agrupa métricas diarias del reporte "${button.dataset.blockKey}" usando la vista correspondiente.`
-        });
-      });
-    });
+    bindReportInfoButtons(container);
+    bindCashPremioForm();
 
     status.textContent = `Rango cargado: ${range.from} a ${range.to}`;
   } catch (error) {

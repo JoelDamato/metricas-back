@@ -25,6 +25,14 @@ async function fetchCashCollectedDiarioCloser(options = {}) {
   return fetchRows('cash_collected_diario_closer', options);
 }
 
+async function fetchReportesPremioConfig() {
+  return window.http.getJson('/api/metricas/reportes/premio');
+}
+
+async function saveReportesPremioConfig(payload = {}) {
+  return window.http.postJson('/api/metricas/reportes/premio', payload);
+}
+
 async function fetchComprobantes(options = {}) {
   return fetchRows('comprobantes', options);
 }
@@ -113,6 +121,8 @@ window.metricasApi = {
   fetchAgendaDetalleDiarioCloser,
   fetchVentasDiarioCloser,
   fetchCashCollectedDiarioCloser,
+  fetchReportesPremioConfig,
+  saveReportesPremioConfig,
   fetchComprobantes,
   fetchLeadsRaw,
   fetchKpiMarketingDiario,

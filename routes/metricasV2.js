@@ -12,6 +12,8 @@ router.get('/views', controller.getResources);
 router.get('/views/:resource', controller.getResourceRows);
 router.get('/kpi-closers/rules', controller.getKpiCloserRules);
 router.post('/kpi-closers/rules', controller.saveKpiCloserRules);
+router.get('/reportes/premio', controller.getReportesPremioConfig);
+router.post('/reportes/premio', controller.saveReportesPremioConfig);
 router.get('/marketing/inversion', controller.getMarketingInvestment);
 router.post('/marketing/inversion', controller.saveMarketingInvestment);
 router.get('/marketing/inversiones', controller.listMarketingInvestments);

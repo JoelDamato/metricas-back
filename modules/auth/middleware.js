@@ -72,6 +72,13 @@ function metricasApiGuard(req, res, next) {
     return next();
   }
 
+  if (reqPath === '/reportes/premio') {
+    if (!access.canAccessFeatureForUser(req.authUser, 'reportes_premio', { method: req.method })) {
+      return res.status(403).json({ ok: false, message: 'Sin permiso para premio de reportes' });
+    }
+    return next();
+  }
+
   if (reqPath === '/marketing/inversion' || reqPath === '/marketing/inversiones') {
     if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para inversión marketing' });

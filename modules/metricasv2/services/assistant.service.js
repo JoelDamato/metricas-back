@@ -107,12 +107,30 @@ Contexto del sistema:
 - Si el usuario pregunta "dónde veo" una métrica, indicá la ruta o la hoja más adecuada dentro de Central de Métricas
 `;
 
+function getAssistantProvider() {
+  return String(env.assistantProvider || 'ollama').trim().toLowerCase();
+}
+
 function requireOpenRouter() {
   if (!env.openRouterApiKey) {
-    const error = new Error('Falta OPENROUTER_API_KEY para usar Scalito');
+    const error = new Error('Falta OPENROUTER_API_KEY para usar Scalito con OpenRouter');
     error.statusCode = 500;
     throw error;
   }
+}
+
+function requireOllama() {
+  if (!env.ollamaBaseUrl) {
+    const error = new Error('Falta OLLAMA_BASE_URL para usar Scalito con Ollama');
+    error.statusCode = 500;
+    throw error;
+  }
+}
+
+function buildOllamaChatUrl() {
+  const baseUrl = String(env.ollamaBaseUrl || '').trim().replace(/\/$/, '');
+  if (!baseUrl) return '';
+  return baseUrl.endsWith('/api') ? `${baseUrl}/chat` : `${baseUrl}/api/chat`;
 }
 
 function extractTextContent(content) {
@@ -143,8 +161,6 @@ function extractTextContent(content) {
 }
 
 async function askMetricAssistant(question) {
-  requireOpenRouter();
-
   const prompt = String(question || '').trim();
   if (!prompt) {
     const error = new Error('Escribí una pregunta para Scalito');
@@ -164,14 +180,8 @@ async function askMetricAssistant(question) {
     ? `\nHoja actual del usuario:\n${contextLines.join('\n')}\nPriorizá siempre responder según esta hoja actual. Solo si la pregunta menciona explícitamente otra vista, compará o salí de esta hoja.\n`
     : '\nPriorizá siempre responder según la hoja actual del usuario si está disponible.\n';
 
-  const response = await axios.post(
-    'https://openrouter.ai/api/v1/chat/completions',
-    {
-      model: env.openRouterModel,
-      messages: [
-        {
-          role: 'system',
-          content: `${METRICAS_KB}
+  const provider = getAssistantProvider();
+  const systemPrompt = `${METRICAS_KB}
 
 Guía de respuesta:
 - Primero identificá la hoja actual.
@@ -181,41 +191,95 @@ Guía de respuesta:
 - Si conocés la lógica por la base interna, respondela directo y no digas que tenés que salir a buscar.
 - Si la métrica existe en varias vistas, aclará la diferencia.
 - Si la pregunta es ambigua, asumí que habla de la hoja actual y respondé con esa base.
-${pagePrompt}`
-        },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.2,
-      max_tokens: 400
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${env.openRouterApiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost:3000/metricas',
-        'X-Title': 'Central de Metricas Scalito'
-      },
-      timeout: 30000
-    }
-  );
 
-  const firstChoice = response.data?.choices?.[0];
-  const answer =
-    extractTextContent(firstChoice?.message?.content) ||
-    extractTextContent(firstChoice?.text) ||
-    extractTextContent(response.data?.message?.content) ||
-    '';
+${pagePrompt}`;
+
+  let response;
+  let answer = '';
+  let model = '';
+
+  if (provider === 'openrouter') {
+    requireOpenRouter();
+
+    response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: env.openRouterModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 400
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${env.openRouterApiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost:3000/metricas',
+          'X-Title': 'Central de Metricas Scalito'
+        },
+        timeout: 30000
+      }
+    );
+
+    const firstChoice = response.data?.choices?.[0];
+    answer =
+      extractTextContent(firstChoice?.message?.content) ||
+      extractTextContent(firstChoice?.text) ||
+      extractTextContent(response.data?.message?.content) ||
+      '';
+    model = response.data?.model || env.openRouterModel;
+  } else {
+    requireOllama();
+
+    try {
+      response = await axios.post(
+        buildOllamaChatUrl(),
+        {
+          model: env.ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt }
+          ],
+          stream: false,
+          options: {
+            temperature: 0.2
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+    } catch (error) {
+      if (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED') {
+        const connectionError = new Error('No pude conectar con Ollama. Verificá que esté instalado y corriendo en OLLAMA_BASE_URL.');
+        connectionError.statusCode = 500;
+        throw connectionError;
+      }
+      throw error;
+    }
+
+    answer =
+      extractTextContent(response.data?.message?.content) ||
+      extractTextContent(response.data?.response) ||
+      '';
+    model = response.data?.model || env.ollamaModel;
+  }
 
   if (!answer) {
     return {
       answer: 'No pude responder esa consulta con claridad. Probá nombrando la vista y la métrica exacta.',
-      model: response.data?.model || env.openRouterModel
+      model: model || env.ollamaModel || env.openRouterModel
     };
   }
 
   return {
     answer,
-    model: response.data?.model || env.openRouterModel
+    model: model || env.ollamaModel || env.openRouterModel
   };
 }
 

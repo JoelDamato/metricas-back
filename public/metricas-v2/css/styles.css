@@ -1003,6 +1003,13 @@ th {
   gap: 10px;
 }
 
+.report-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .report-block-head h3 {
   margin: 0;
   color: #0f2f57;
@@ -1083,6 +1090,98 @@ th {
   padding: 24px;
   color: #35507b;
   text-align: center;
+}
+
+.report-premio-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(225, 238, 255, 0.92));
+  border: 1px solid rgba(74, 126, 202, 0.2);
+  box-shadow: 0 10px 24px rgba(10, 63, 126, 0.1);
+}
+
+.report-premio-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.report-premio-summary strong {
+  color: #0f2f57;
+  font-size: 1.2rem;
+}
+
+.report-premio-summary p {
+  margin: 0;
+  color: #274a79;
+  font-weight: 500;
+}
+
+.report-premio-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(54, 112, 190, 0.12);
+  color: #1b4c8f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.report-premio-meta {
+  font-size: 0.82rem;
+  color: #4b6488;
+}
+
+.report-premio-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.report-premio-form label {
+  color: #274a79;
+  font-weight: 700;
+}
+
+.report-premio-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(76, 125, 197, 0.22);
+}
+
+.report-premio-input-wrap input {
+  width: 88px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #163a69;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.report-premio-input-wrap span {
+  color: #2a5389;
+  font-weight: 800;
+}
+
+.report-premio-readonly {
+  color: #4b6488;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .leads-actions input {
@@ -1586,6 +1685,15 @@ th {
 }
 
 @media (max-width: 720px) {
+  .report-premio-panel,
+  .report-premio-form {
+    align-items: flex-start;
+  }
+
+  .report-premio-form {
+    justify-content: flex-start;
+  }
+
   .login-page .auth-container {
     width: min(100vw - 24px, 460px);
     padding: 20px 0;

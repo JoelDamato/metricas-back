@@ -47,6 +47,11 @@ function normalizeResourceName(name) {
   return String(name || '').replace(/[^a-zA-Z0-9_]/g, '');
 }
 
+function normalizePercentNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function isDateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
 }
@@ -251,6 +256,88 @@ async function upsertKpiCloserRules(payload) {
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error guardando reglas KPI: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function getReportesPremioConfig() {
+  const url = `${env.supabaseUrl}/rest/v1/reportes_config`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'id,cash_collected_premio_pct,updated_at,updated_by_email',
+        id: 'eq.1',
+        limit: 1
+      }
+    });
+
+    const row = response.data?.[0] || null;
+    return {
+      id: 1,
+      cash_collected_premio_pct: normalizePercentNumber(row?.cash_collected_premio_pct, 1),
+      updated_at: row?.updated_at || null,
+      updated_by_email: row?.updated_by_email || null
+    };
+  } catch (err) {
+    if (err.response?.status === 404) {
+      return {
+        id: 1,
+        cash_collected_premio_pct: 1,
+        updated_at: null,
+        updated_by_email: null
+      };
+    }
+
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error leyendo premio de reportes: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function upsertReportesPremioConfig(payload, user) {
+  const premioPct = normalizePercentNumber(payload.cash_collected_premio_pct, Number.NaN);
+
+  if (!Number.isFinite(premioPct) || premioPct < 0 || premioPct > 100) {
+    const error = new Error('El porcentaje de premio debe estar entre 0 y 100');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const body = {
+    id: 1,
+    cash_collected_premio_pct: premioPct,
+    updated_at: new Date().toISOString(),
+    updated_by_email: String(user?.email || '').trim().toLowerCase() || null
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/reportes_config`;
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'id'
+      }
+    });
+
+    const row = response.data?.[0] || body;
+    return {
+      id: 1,
+      cash_collected_premio_pct: normalizePercentNumber(row.cash_collected_premio_pct, premioPct),
+      updated_at: row.updated_at || body.updated_at,
+      updated_by_email: row.updated_by_email || body.updated_by_email
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando premio de reportes: ${message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;
     throw error;
@@ -679,6 +766,8 @@ module.exports = {
   listRows,
   getKpiCloserRules,
   upsertKpiCloserRules,
+  getReportesPremioConfig,
+  upsertReportesPremioConfig,
   getMarketingInvestment,
   upsertMarketingInvestment,
   listMarketingInvestments,
