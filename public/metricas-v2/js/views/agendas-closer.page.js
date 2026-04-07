@@ -17,8 +17,8 @@ const MONTHS = [
 
 const ORIGIN_WHITELIST = ['VSL', 'ORG', 'CLASES', 'APSET'];
 const CLOSER_ALIAS_MAP = {
-  'pablo butera': 'Pablo Butera Vie',
-  'pablo butera vie': 'Pablo Butera Vie'
+  'pablo butera': 'Pablo Butera',
+  'pablo butera vie': 'Pablo Butera'
 };
 const AGENDA_CLOSER_KPI_INFO = {
   total_leads: {
