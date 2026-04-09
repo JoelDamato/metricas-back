@@ -1,6 +1,10 @@
 const RESOURCE = 'kpi_closers_mensual';
 const EXCLUDED_CLOSERS = ['nahuel', 'shirlet', 'shirley'];
 const ALL_CLOSERS_VALUE = '__ALL__';
+const CLOSER_ALIAS_MAP = {
+  'pablo butera': 'Pablo Butera',
+  'pablo butera vie': 'Pablo Butera'
+};
 
 const MONTHS = [
   { value: 1, label: 'Enero' },
@@ -324,6 +328,74 @@ function setOptions(selectId, options, selectedValue) {
   if (selectedValue !== undefined && selectedValue !== null && selectedValue !== '') {
     select.value = String(selectedValue);
   }
+}
+
+function normalizeCloserName(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return raw;
+
+  const key = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return CLOSER_ALIAS_MAP[key] || raw;
+}
+
+function normalizeKpiRows(rows) {
+  const grouped = new Map();
+
+  (rows || []).forEach((row) => {
+    const closer = normalizeCloserName(row.closer);
+    const key = String(closer || '').trim().toLowerCase();
+    const ventasAgenda = Number(row.tasa_cierre || 0) * Number(row.efectuadas_agenda || 0);
+    const current = grouped.get(key) || {
+      ...row,
+      closer,
+      efectuadas: 0,
+      aplica: 0,
+      ventas_llamada: 0,
+      efectuadas_agenda: 0,
+      aplica_agenda: 0,
+      cash_collected: 0,
+      cash_collected_3m: 0,
+      facturacion: 0,
+      facturacion_3m: 0,
+      __ventas_agenda: 0
+    };
+
+    current.closer = closer;
+    current.efectuadas += Number(row.efectuadas || 0);
+    current.aplica += Number(row.aplica || 0);
+    current.ventas_llamada += Number(row.ventas_llamada || 0);
+    current.efectuadas_agenda += Number(row.efectuadas_agenda || 0);
+    current.aplica_agenda += Number(row.aplica_agenda || 0);
+    current.cash_collected += Number(row.cash_collected || 0);
+    current.cash_collected_3m += Number(row.cash_collected_3m || 0);
+    current.facturacion += Number(row.facturacion || 0);
+    current.facturacion_3m += Number(row.facturacion_3m || 0);
+    current.__ventas_agenda += ventasAgenda;
+
+    grouped.set(key, current);
+  });
+
+  return [...grouped.values()].map((row) => {
+    const merged = { ...row };
+    merged.cierre_segun_llamada = Number(merged.efectuadas || 0) > 0
+      ? Number(merged.ventas_llamada || 0) / Number(merged.efectuadas || 0)
+      : 0;
+    merged.asistencia_segun_llamada = Number(merged.aplica || 0) > 0
+      ? Number(merged.efectuadas || 0) / Number(merged.aplica || 0)
+      : 0;
+    merged.tasa_asistencia = Number(merged.aplica_agenda || 0) > 0
+      ? Number(merged.efectuadas_agenda || 0) / Number(merged.aplica_agenda || 0)
+      : 0;
+    merged.tasa_cierre = Number(merged.efectuadas_agenda || 0) > 0
+      ? Number(merged.__ventas_agenda || 0) / Number(merged.efectuadas_agenda || 0)
+      : 0;
+    delete merged.__ventas_agenda;
+    return merged;
+  });
 }
 
 function computeFlags(row, rules) {
@@ -698,7 +770,10 @@ async function loadKpiTable() {
   const status = document.getElementById('status');
   const year = Number(document.getElementById('anio').value);
   const monthValue = Number(document.getElementById('mes').value);
-  const selectedCloser = document.getElementById('closer').value || ALL_CLOSERS_VALUE;
+  const rawSelectedCloser = document.getElementById('closer').value || ALL_CLOSERS_VALUE;
+  const selectedCloser = rawSelectedCloser === ALL_CLOSERS_VALUE
+    ? ALL_CLOSERS_VALUE
+    : normalizeCloserName(rawSelectedCloser);
   status.textContent = 'Cargando kpi_closers_mensual...';
 
   try {
@@ -713,11 +788,11 @@ async function loadKpiTable() {
       orderDir: 'asc'
     });
 
-    const rows = (response.rows || []).filter((r) => {
+    const rows = normalizeKpiRows((response.rows || []).filter((r) => {
       const sameYear = Number(r.anio) === year;
       const sameMonth = Number(r.mes) === monthValue;
       return sameYear && sameMonth;
-    });
+    }));
     const effectiveCloser = populateCloserFilter(rows, selectedCloser);
     const filteredRows = effectiveCloser === ALL_CLOSERS_VALUE
       ? rows

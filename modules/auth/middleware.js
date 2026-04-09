@@ -30,7 +30,7 @@ function metricasPageGuard(req, res, next) {
 
   const pageName = resolvePageName(req.path);
   if (!access.canAccessPageForUser(req.authUser, pageName)) {
-    if (pageName === 'index.html') {
+    if (pageName === 'index.html' && !access.isMarketingOnlyUser(req.authUser)) {
       return next();
     }
     return res.redirect('/metricas/unauthorized.html');
@@ -51,7 +51,7 @@ function metricasApiGuard(req, res, next) {
   }
 
   if (reqPath === '/views') {
-    if (!access.canAccessFeature(req.authUser.role, 'views')) {
+    if (!access.canAccessFeatureForUser(req.authUser, 'views', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para ver vistas' });
     }
     return next();
@@ -86,7 +86,7 @@ function metricasApiGuard(req, res, next) {
     return next();
   }
 
-  if (reqPath === '/marketing/aov-dia-1') {
+  if (reqPath === '/marketing/aov-dia-1' || reqPath === '/marketing/ventas-totales') {
     if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para KPI marketing' });
     }
@@ -94,7 +94,7 @@ function metricasApiGuard(req, res, next) {
   }
 
   if (reqPath === '/assistant/ask') {
-    if (!access.canAccessFeature(req.authUser.role, 'assistant')) {
+    if (!access.canAccessFeatureForUser(req.authUser, 'assistant', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para usar Scalito' });
     }
     return next();

@@ -11,7 +11,7 @@ const PAGE_ROLE_ACCESS = {
   'marketing.html': ['total', 'comercial', 'csm'],
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
-  'csm-renovaciones.html': ['total', 'csm'],
+  'csm-renovaciones.html': ['total', 'comercial'],
   'view.html': ['total']
 };
 
@@ -27,7 +27,7 @@ const RESOURCE_ROLE_ACCESS = {
   cash_collected_diario_closer: ['total', 'comercial'],
   comprobantes: ['total', 'comercial'],
   leads_raw: ['total', 'comercial', 'csm'],
-  csm: ['total', 'csm'],
+  csm: ['total', 'comercial', 'csm'],
   kpi_marketing_diario: ['total', 'comercial', 'csm'],
   kpi_marketing_inversiones: ['total', 'comercial', 'csm']
 };
@@ -40,6 +40,12 @@ const FEATURE_ROLE_ACCESS = {
   auth_session: ['total', 'comercial', 'csm'],
   assistant: ['total', 'comercial', 'csm']
 };
+
+const MARKETING_ONLY_EMAILS = new Set([
+  'juanma@romsconsultora.com',
+  'fran@romsconsultora.com',
+  'tomas@romsconsultora.com'
+]);
 
 const RESTRICTED_COMMERCIAL_EMAILS = new Set([
   'walteralegre56@gmail.com',
@@ -62,9 +68,20 @@ const MARKETING_BLOCKED_FEATURES = new Set(['marketing_inversion']);
 const CSM_ONLY_BLOCKED_PAGES = new Set(['marketing.html', 'leads-bdd.html']);
 const CSM_ONLY_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones', 'leads_raw']);
 const CSM_ONLY_BLOCKED_FEATURES = new Set(['marketing_inversion']);
+const MARKETING_ONLY_ALLOWED_PAGES = new Set(['marketing.html']);
+const MARKETING_ONLY_ALLOWED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones']);
+const MARKETING_ONLY_ALLOWED_FEATURES = new Set(['views', 'marketing_inversion']);
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function isMarketingOnlyUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+
+  return MARKETING_ONLY_EMAILS.has(email);
 }
 
 function isRestrictedCommercialUser(userOrEmail) {
@@ -101,7 +118,8 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
-  if (pageName === 'dashboard.html') return Boolean(user);
+  if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
+  if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_PAGES.has(pageName);
   if (!canAccessPage(user?.role, pageName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_PAGES.has(pageName)) return false;
   if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_PAGES.has(pageName)) return false;
@@ -109,6 +127,7 @@ function canAccessPageForUser(user, pageName) {
 }
 
 function canAccessResourceForUser(user, resourceName) {
+  if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_RESOURCES.has(resourceName);
   if (!canAccessResource(user?.role, resourceName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_RESOURCES.has(resourceName)) return false;
   if (isCsmOnlyUser(user) && CSM_ONLY_BLOCKED_RESOURCES.has(resourceName)) return false;
@@ -116,6 +135,10 @@ function canAccessResourceForUser(user, resourceName) {
 }
 
 function canAccessFeatureForUser(user, featureName, options = {}) {
+  if (isMarketingOnlyUser(user) && !MARKETING_ONLY_ALLOWED_FEATURES.has(featureName)) {
+    return false;
+  }
+
   if (!canAccessFeature(user?.role, featureName)) return false;
 
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_FEATURES.has(featureName)) {
@@ -146,6 +169,7 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 
 function getUserPermissions(user) {
   return {
+    onlyMarketingAccess: isMarketingOnlyUser(user),
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
@@ -157,8 +181,10 @@ module.exports = {
   PAGE_ROLE_ACCESS,
   RESOURCE_ROLE_ACCESS,
   FEATURE_ROLE_ACCESS,
+  MARKETING_ONLY_EMAILS,
   RESTRICTED_COMMERCIAL_EMAILS,
   CSM_ONLY_EMAILS,
+  isMarketingOnlyUser,
   isRestrictedCommercialUser,
   isCsmOnlyUser,
   canAccessPage,

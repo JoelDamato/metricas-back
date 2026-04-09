@@ -8,22 +8,25 @@
     const user = data.user;
     if (!user) return;
     const permissions = user.permissions || {};
+    const onlyMarketingAccess = permissions.onlyMarketingAccess === true;
+    const homeHref = onlyMarketingAccess ? '/metricas/views/marketing.html' : '/metricas/dashboard.html';
+    const homeLabel = onlyMarketingAccess ? 'Marketing' : 'Dashboard';
 
     window.metricasAuthUser = user;
     window.metricasAuthPermissions = permissions;
 
     const shell = document.createElement('div');
     shell.className = 'auth-shell';
-    const showDashboardLink = window.location.pathname !== '/metricas/dashboard.html';
+    const showHomeLink = window.location.pathname !== homeHref;
     const displayName = user.nombre || user.email;
-    const accessLabel = String(user.role || '').trim() || 'sin acceso';
+    const accessLabel = onlyMarketingAccess ? 'marketing' : (String(user.role || '').trim() || 'sin acceso');
     shell.innerHTML = `
       <div class="auth-shell-inner">
         <div class="auth-shell-group auth-shell-group--primary">
-          <a class="auth-shell-brand" href="/metricas/dashboard.html" aria-label="Dashboard">
+          <a class="auth-shell-brand" href="${homeHref}" aria-label="${homeLabel}">
             <img src="/metricas-assets/mati-randazzo-logo-web.png" alt="Mati Randazzo" />
           </a>
-          ${showDashboardLink ? '<a class="auth-shell-link" href="/metricas/dashboard.html">Dashboard</a>' : ''}
+          ${showHomeLink ? `<a class="auth-shell-link" href="${homeHref}">${homeLabel}</a>` : ''}
         </div>
         <div class="auth-shell-group auth-shell-group--secondary">
           <div class="auth-shell-account">
