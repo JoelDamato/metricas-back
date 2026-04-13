@@ -77,6 +77,12 @@ const MARKETING_METRIC_INFO = {
     dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
     logic: 'Suma "inversion_realizada" de los registros de "kpi_marketing_inversiones" que entran en el rango seleccionado. Si el origen es "Todos", agrega todos los orígenes.'
   },
+  'SALDO RESTANTE EN LÍNEA DE CRÉDITO': {
+    title: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO',
+    viewLabel: '"kpi_marketing_inversiones"',
+    dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
+    logic: 'Suma "saldo_restante_linea_credito" de los registros de "kpi_marketing_inversiones" que entran en el rango seleccionado. Si el origen es "Todos", agrega todos los orígenes.'
+  },
   'Aplican': {
     title: 'Aplican',
     viewLabel: '"kpi_marketing_diario"',
@@ -672,6 +678,7 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
 function computeMetrics(rows, investment, extras = {}) {
   const inversionPlanificada = Number(investment?.inversion_planificada || 0);
   const inversionRealizada = Number(investment?.inversion_realizada || 0);
+  const saldoRestanteLineaCredito = Number(investment?.saldo_restante_linea_credito || 0);
   const agendas = sumField(rows, 'reuniones_agendadas');
   const aplican = sumField(rows, 'agendas_aplicables');
   const cashCollected = sumField(rows, 'cash_collected');
@@ -690,6 +697,7 @@ function computeMetrics(rows, investment, extras = {}) {
   return {
     inversionPlanificada,
     inversionRealizada,
+    saldoRestanteLineaCredito,
     agendas,
     costoAgenda: safeDiv(inversionRealizada, agendas),
     aplican,
@@ -982,6 +990,7 @@ function renderInvestmentHistoryTable(rows) {
           <th>Origen</th>
           <th>Inversión planificada</th>
           <th>Inversión realizada</th>
+          <th>Saldo restante en línea de crédito</th>
           <th>Última actualización</th>
           <th>Acciones</th>
         </tr>
@@ -1010,6 +1019,15 @@ function renderInvestmentHistoryTable(rows) {
                   step="0.01"
                   class="investment-history-realizada"
                   value="${Number(row.inversion_realizada || 0)}"
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="investment-history-credit-balance"
+                  value="${Number(row.saldo_restante_linea_credito || 0)}"
                 />
               </td>
               <td>${escapeHtml(formatDateTimeLabel(row.updated_at))}</td>
@@ -1061,8 +1079,9 @@ async function saveInvestmentHistoryRow(button) {
 
   const inversionPlanificada = Number(row.querySelector('.investment-history-planificada')?.value || 0);
   const inversionRealizada = Number(row.querySelector('.investment-history-realizada')?.value || 0);
+  const saldoRestanteLineaCredito = Number(row.querySelector('.investment-history-credit-balance')?.value || 0);
 
-  if (inversionPlanificada < 0 || inversionRealizada < 0) {
+  if (inversionPlanificada < 0 || inversionRealizada < 0 || saldoRestanteLineaCredito < 0) {
     setInvestmentHistoryStatus('Los montos editados no pueden ser negativos.');
     return;
   }
@@ -1073,7 +1092,8 @@ async function saveInvestmentHistoryRow(button) {
     await window.metricasApi.updateMarketingInvestmentRecord({
       ...record,
       inversion_planificada: inversionPlanificada,
-      inversion_realizada: inversionRealizada
+      inversion_realizada: inversionRealizada,
+      saldo_restante_linea_credito: saldoRestanteLineaCredito
     });
 
     showPopup('Registro de inversión actualizado.');
@@ -1227,8 +1247,11 @@ function renderDashboard(rows, investment, extras = {}) {
   if (!(rows || []).length) {
     container.innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No hay datos para el rango seleccionado.</div></div>';
     const currentInvestment = Number(investment?.inversion_realizada || 0);
+    const currentCreditBalance = Number(investment?.saldo_restante_linea_credito || 0);
     document.getElementById('investmentEditorHelp').textContent = `Total actual del filtro: ${formatCurrency(currentInvestment)}. El monto que cargues abajo se suma a este total.`;
     document.getElementById('inversionRealizada').value = '';
+    document.getElementById('creditBalanceEditorHelp').textContent = `Total actual del filtro: ${formatCurrency(currentCreditBalance)}. El monto que cargues abajo se suma a este total.`;
+    document.getElementById('saldoRestanteLineaCredito').value = '';
     return;
   }
 
@@ -1236,10 +1259,14 @@ function renderDashboard(rows, investment, extras = {}) {
   const investmentHelp = document.getElementById('investmentEditorHelp');
   investmentHelp.textContent = `Total actual del filtro: ${formatCurrency(m.inversionRealizada)}. El monto que cargues abajo se suma a este total.`;
   document.getElementById('inversionRealizada').value = '';
+  const creditBalanceHelp = document.getElementById('creditBalanceEditorHelp');
+  creditBalanceHelp.textContent = `Total actual del filtro: ${formatCurrency(m.saldoRestanteLineaCredito)}. El monto que cargues abajo se suma a este total.`;
+  document.getElementById('saldoRestanteLineaCredito').value = '';
 
   const leftRows = [
     { label: 'Inversión planificada', value: formatCurrency(m.inversionPlanificada) },
     { label: 'Inversión realizada', value: formatCurrency(m.inversionRealizada) },
+    { label: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO', value: formatCurrency(m.saldoRestanteLineaCredito) },
     { label: 'Agendas', value: formatInteger(m.agendas) },
     { label: 'Costo por Agenda', value: formatCurrency(m.costoAgenda) },
     { label: 'Aplican', value: formatInteger(m.aplican) },
@@ -1261,6 +1288,7 @@ function renderDashboard(rows, investment, extras = {}) {
   const rightRows = [
     { label: 'Inversión planificada', value: formatCurrency(m.inversionPlanificada) },
     { label: 'Inversión realizada', value: formatCurrency(m.inversionRealizada) },
+    { label: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO', value: formatCurrency(m.saldoRestanteLineaCredito) },
     { label: 'Agendas', value: formatInteger(m.agendas) },
     { label: 'Aplican', value: formatInteger(m.aplican) },
     { label: 'Leads contactados CC', value: formatInteger(m.leadsContactados) },
@@ -1412,6 +1440,38 @@ async function saveInvestment() {
   }
 }
 
+async function saveCreditBalance() {
+  const filters = getFilters();
+  const status = document.getElementById('status');
+  const saldoRestanteLineaCredito = Number(document.getElementById('saldoRestanteLineaCredito').value || 0);
+
+  if (!filters.from || !filters.to) {
+    status.textContent = 'Seleccioná primero el período.';
+    return;
+  }
+
+  if (saldoRestanteLineaCredito <= 0) {
+    status.textContent = 'Ingresá un monto mayor a 0 para agregar.';
+    return;
+  }
+
+  showLoading('Guardando saldo restante...');
+
+  try {
+    await window.metricasApi.saveMarketingInvestment({
+      ...filters,
+      saldo_restante_linea_credito: saldoRestanteLineaCredito
+    });
+
+    showPopup(`Se agregaron ${formatCurrency(saldoRestanteLineaCredito)} al saldo restante del filtro seleccionado.`);
+    await loadDashboard();
+  } catch (error) {
+    showPopup(error.message, 'error');
+    status.textContent = error.message;
+    hideLoading();
+  }
+}
+
 async function init() {
   ensureMarketingViewStyles();
   setDefaultDates();
@@ -1420,7 +1480,12 @@ async function init() {
 
   document.getElementById('reload').addEventListener('click', loadDashboard);
   document.getElementById('saveInvestment').addEventListener('click', saveInvestment);
+  document.getElementById('saveCreditBalance').addEventListener('click', saveCreditBalance);
   document.getElementById('openInvestmentHistory').addEventListener('click', (event) => {
+    event.preventDefault();
+    openInvestmentHistoryPopup();
+  });
+  document.getElementById('openCreditBalanceHistory').addEventListener('click', (event) => {
     event.preventDefault();
     openInvestmentHistoryPopup();
   });

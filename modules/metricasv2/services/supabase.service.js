@@ -379,6 +379,31 @@ function validateDateRange(from, to) {
   }
 }
 
+const MARKETING_INVESTMENT_SELECT =
+  'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,saldo_restante_linea_credito,updated_at';
+const MARKETING_INVESTMENT_LEGACY_SELECT =
+  'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,updated_at';
+const MARKETING_INVESTMENT_CURRENT_SELECT =
+  'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,saldo_restante_linea_credito';
+const MARKETING_INVESTMENT_CURRENT_LEGACY_SELECT =
+  'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada';
+
+function isMissingCreditLineBalanceColumnError(err) {
+  const message = String(err.response?.data?.message || err.message || '').toLowerCase();
+  return message.includes('saldo_restante_linea_credito') && (
+    message.includes('does not exist') ||
+    message.includes('schema cache') ||
+    message.includes('could not find')
+  );
+}
+
+function withCreditLineBalanceFallback(rows) {
+  return (rows || []).map((row) => ({
+    saldo_restante_linea_credito: 0,
+    ...row
+  }));
+}
+
 async function getMarketingInvestment({ from, to, origen }) {
   validateDateRange(from, to);
 
@@ -387,7 +412,7 @@ async function getMarketingInvestment({ from, to, origen }) {
   const safeOrigin = normalizeMarketingOrigin(origen);
   const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
   const params = {
-    select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,updated_at',
+    select: MARKETING_INVESTMENT_SELECT,
     and: `(fecha_desde.gte.${from},fecha_hasta.lte.${to})`,
     order: 'fecha_desde.asc,fecha_hasta.asc',
     limit: 1000
@@ -398,12 +423,26 @@ async function getMarketingInvestment({ from, to, origen }) {
   }
 
   try {
-    const response = await axios.get(url, {
-      headers: buildHeaders(),
-      params
-    });
+    let response;
 
-    const rows = response.data || [];
+    try {
+      response = await axios.get(url, {
+        headers: buildHeaders(),
+        params
+      });
+    } catch (err) {
+      if (!isMissingCreditLineBalanceColumnError(err)) throw err;
+
+      response = await axios.get(url, {
+        headers: buildHeaders(),
+        params: {
+          ...params,
+          select: MARKETING_INVESTMENT_LEGACY_SELECT
+        }
+      });
+    }
+
+    const rows = withCreditLineBalanceFallback(response.data || []);
 
     if (!rows.length) {
       return {
@@ -412,6 +451,7 @@ async function getMarketingInvestment({ from, to, origen }) {
         origen: hasOriginFilter ? safeOrigin : '__ALL__',
         inversion_planificada: 0,
         inversion_realizada: 0,
+        saldo_restante_linea_credito: 0,
         cantidad_registros: 0
       };
     }
@@ -422,6 +462,7 @@ async function getMarketingInvestment({ from, to, origen }) {
       origen: hasOriginFilter ? safeOrigin : '__ALL__',
       inversion_planificada: acc.inversion_planificada + Number(row.inversion_planificada || 0),
       inversion_realizada: acc.inversion_realizada + Number(row.inversion_realizada || 0),
+      saldo_restante_linea_credito: acc.saldo_restante_linea_credito + Number(row.saldo_restante_linea_credito || 0),
       cantidad_registros: acc.cantidad_registros + 1,
       updated_at: row.updated_at || acc.updated_at || null
     }), {
@@ -430,6 +471,7 @@ async function getMarketingInvestment({ from, to, origen }) {
       origen: hasOriginFilter ? safeOrigin : '__ALL__',
       inversion_planificada: 0,
       inversion_realizada: 0,
+      saldo_restante_linea_credito: 0,
       cantidad_registros: 0,
       updated_at: null
     });
@@ -453,24 +495,54 @@ async function upsertMarketingInvestment(payload) {
   const addRealizada = payload.inversion_realizada === undefined
     ? null
     : Number(payload.inversion_realizada || 0);
+  const addSaldoRestanteLineaCredito = payload.saldo_restante_linea_credito === undefined
+    ? null
+    : Number(payload.saldo_restante_linea_credito || 0);
 
-  if ((addPlanificada !== null && addPlanificada < 0) || (addRealizada !== null && addRealizada < 0)) {
+  if (
+    (addPlanificada !== null && addPlanificada < 0) ||
+    (addRealizada !== null && addRealizada < 0) ||
+    (addSaldoRestanteLineaCredito !== null && addSaldoRestanteLineaCredito < 0)
+  ) {
     const error = new Error('Solo podés agregar montos positivos o cero');
     error.statusCode = 400;
     throw error;
   }
 
   try {
-    const currentResponse = await axios.get(url, {
-      headers: buildHeaders(),
-      params: {
-        select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada',
-        fecha_desde: `eq.${payload.from}`,
-        fecha_hasta: `eq.${payload.to}`,
-        origen: `eq.${safeOrigin}`,
-        limit: 1
-      }
-    });
+    const currentParams = {
+      select: MARKETING_INVESTMENT_CURRENT_SELECT,
+      fecha_desde: `eq.${payload.from}`,
+      fecha_hasta: `eq.${payload.to}`,
+      origen: `eq.${safeOrigin}`,
+      limit: 1
+    };
+    let hasCreditLineBalanceColumn = true;
+    let currentResponse;
+
+    try {
+      currentResponse = await axios.get(url, {
+        headers: buildHeaders(),
+        params: currentParams
+      });
+    } catch (err) {
+      if (!isMissingCreditLineBalanceColumnError(err)) throw err;
+
+      hasCreditLineBalanceColumn = false;
+      currentResponse = await axios.get(url, {
+        headers: buildHeaders(),
+        params: {
+          ...currentParams,
+          select: MARKETING_INVESTMENT_CURRENT_LEGACY_SELECT
+        }
+      });
+    }
+
+    if (!hasCreditLineBalanceColumn && addSaldoRestanteLineaCredito !== null) {
+      const error = new Error('Para guardar saldo restante en línea de crédito falta aplicar la migración de Supabase.');
+      error.statusCode = 500;
+      throw error;
+    }
 
     const current = currentResponse.data?.[0] || null;
     const body = {
@@ -481,6 +553,11 @@ async function upsertMarketingInvestment(payload) {
       inversion_realizada: Number(current?.inversion_realizada || 0) + Number(addRealizada || 0),
       updated_at: new Date().toISOString()
     };
+
+    if (hasCreditLineBalanceColumn) {
+      body.saldo_restante_linea_credito = Number(current?.saldo_restante_linea_credito || 0) +
+        Number(addSaldoRestanteLineaCredito || 0);
+    }
 
     const response = await axios.post(url, body, {
       headers: buildHeaders({
@@ -504,7 +581,7 @@ async function upsertMarketingInvestment(payload) {
 async function listMarketingInvestments({ from, to }) {
   const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
   const params = {
-    select: 'fecha_desde,fecha_hasta,origen,inversion_planificada,inversion_realizada,updated_at',
+    select: MARKETING_INVESTMENT_SELECT,
     order: 'fecha_desde.desc,fecha_hasta.desc,origen.asc',
     limit: 1000
   };
@@ -529,12 +606,26 @@ async function listMarketingInvestments({ from, to }) {
   }
 
   try {
-    const response = await axios.get(url, {
-      headers: buildHeaders(),
-      params
-    });
+    let response;
 
-    return response.data || [];
+    try {
+      response = await axios.get(url, {
+        headers: buildHeaders(),
+        params
+      });
+    } catch (err) {
+      if (!isMissingCreditLineBalanceColumnError(err)) throw err;
+
+      response = await axios.get(url, {
+        headers: buildHeaders(),
+        params: {
+          ...params,
+          select: MARKETING_INVESTMENT_LEGACY_SELECT
+        }
+      });
+    }
+
+    return withCreditLineBalanceFallback(response.data || []);
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error listando inversiones MKT: ${message}`);
@@ -553,17 +644,26 @@ async function updateMarketingInvestmentRecord(payload) {
     inversion_realizada: Number(payload.inversion_realizada || 0),
     updated_at: new Date().toISOString()
   };
+  const saldoRestanteLineaCredito = Number(payload.saldo_restante_linea_credito || 0);
 
-  if (body.inversion_planificada < 0 || body.inversion_realizada < 0) {
+  if (
+    body.inversion_planificada < 0 ||
+    body.inversion_realizada < 0 ||
+    saldoRestanteLineaCredito < 0
+  ) {
     const error = new Error('Los montos no pueden ser negativos');
     error.statusCode = 400;
     throw error;
   }
 
+  if (payload.saldo_restante_linea_credito !== undefined) {
+    body.saldo_restante_linea_credito = saldoRestanteLineaCredito;
+  }
+
   const url = `${env.supabaseUrl}/rest/v1/kpi_marketing_inversiones`;
 
   try {
-    const response = await axios.patch(url, body, {
+    const patchOptions = {
       headers: buildHeaders({
         Prefer: 'return=representation'
       }),
@@ -572,7 +672,23 @@ async function updateMarketingInvestmentRecord(payload) {
         fecha_hasta: `eq.${payload.fecha_hasta}`,
         origen: `eq.${safeOrigin}`
       }
-    });
+    };
+    let response;
+
+    try {
+      response = await axios.patch(url, body, patchOptions);
+    } catch (err) {
+      if (!isMissingCreditLineBalanceColumnError(err)) throw err;
+
+      if (payload.saldo_restante_linea_credito !== undefined && saldoRestanteLineaCredito > 0) {
+        const error = new Error('Para guardar saldo restante en línea de crédito falta aplicar la migración de Supabase.');
+        error.statusCode = 500;
+        throw error;
+      }
+
+      const { saldo_restante_linea_credito: _unused, ...legacyBody } = body;
+      response = await axios.patch(url, legacyBody, patchOptions);
+    }
 
     return response.data?.[0] || null;
   } catch (err) {

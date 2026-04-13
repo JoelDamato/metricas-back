@@ -56,7 +56,7 @@ const AGENDA_KPI_INFO = {
     title: 'AOV día 1',
     viewLabel: 'Endpoint "marketing/aov-dia-1" sobre "comprobantes"',
     dateLabel: '"fecha_de_agendamiento"',
-    logic: 'Calcula el promedio de "cash_collected" por venta para comprobantes tipo="Venta", con "producto_format" válido y no Club, donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día. En Agendas Totales se filtra por año, "origen" y también por "estrategia_a" cuando el filtro de estrategia está seleccionado.'
+    logic: 'Calcula el promedio de "cash_collected" por venta para comprobantes tipo="Venta", con "producto_format" válido y no Club, donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día. En Agendas Totales se filtra por año, uno o más orígenes y también por "estrategia_a" cuando el filtro de estrategia está seleccionado.'
   }
 };
 
@@ -435,6 +435,51 @@ function setOptions(selectId, options, selectedValue, includeAll = false) {
   }
 }
 
+function setOriginOptions(options) {
+  const container = document.getElementById('origen');
+  const allOption = `
+    <label class="agenda-origin-option">
+      <input type="checkbox" value="" data-origin-all checked />
+      <span>Todos</span>
+    </label>
+  `;
+
+  container.innerHTML = allOption + options
+    .map((option) => `
+      <label class="agenda-origin-option">
+        <input type="checkbox" value="${option}" />
+        <span>${option}</span>
+      </label>
+    `)
+    .join('');
+
+  attachOriginFilterHandlers();
+}
+
+function attachOriginFilterHandlers() {
+  const container = document.getElementById('origen');
+  const allCheckbox = container.querySelector('[data-origin-all]');
+  const originCheckboxes = Array.from(container.querySelectorAll('input:not([data-origin-all])'));
+
+  allCheckbox.addEventListener('change', () => {
+    if (!allCheckbox.checked) {
+      allCheckbox.checked = !originCheckboxes.some((input) => input.checked);
+      return;
+    }
+
+    originCheckboxes.forEach((input) => {
+      input.checked = false;
+    });
+  });
+
+  originCheckboxes.forEach((input) => {
+    input.addEventListener('change', () => {
+      const hasSelectedOrigin = originCheckboxes.some((checkbox) => checkbox.checked);
+      allCheckbox.checked = !hasSelectedOrigin;
+    });
+  });
+}
+
 function uniqueValues(rows, key) {
   return [...new Set(rows.map((row) => row[key]).filter((v) => v !== null && v !== undefined && v !== ''))].sort((a, b) => String(a).localeCompare(String(b)));
 }
@@ -451,9 +496,13 @@ function disableEstrategiaFilter() {
 }
 
 function getFilters() {
+  const selectedOrigins = Array.from(document.querySelectorAll('#origen input:not([data-origin-all]):checked'))
+    .map((input) => input.value)
+    .filter(Boolean);
+
   return {
     anio: document.getElementById('anio').value,
-    origen: document.getElementById('origen').value,
+    origenes: selectedOrigins,
     estrategia: document.getElementById('estrategia').value
   };
 }
@@ -463,9 +512,13 @@ function normalizeText(value) {
 }
 
 function applyLocalFilters(rows, filters) {
+  const selectedOrigins = filters.origenes || [];
+
   return (rows || []).filter((row) => {
-    if (filters.origen) {
-      if (normalizeText(row.origen) !== normalizeText(filters.origen)) return false;
+    if (selectedOrigins.length) {
+      const rowOrigin = normalizeText(row.origen);
+      const matchesOrigin = selectedOrigins.some((origin) => normalizeText(origin) === rowOrigin);
+      if (!matchesOrigin) return false;
     }
     if (filters.estrategia && estrategiaField) {
       if (normalizeText(row[estrategiaField]) !== normalizeText(filters.estrategia)) return false;
@@ -480,6 +533,58 @@ function sanitizeRowsForYear(rows, year) {
     const m = Number(row.mes);
     return y === year && Number.isInteger(m) && m >= 1 && m <= 12;
   });
+}
+
+function combineAovDia1Responses(responses) {
+  const totals = (responses || []).reduce((acc, response) => {
+    acc.ventasDia1 += Number(response?.ventasDia1 || 0);
+    acc.facturacionDia1 += Number(response?.facturacionDia1 || 0);
+    acc.cashCollectedDia1 += Number(response?.cashCollectedDia1 || 0);
+    return acc;
+  }, {
+    ventasDia1: 0,
+    facturacionDia1: 0,
+    cashCollectedDia1: 0
+  });
+
+  return {
+    ...totals,
+    aovDia1: totals.ventasDia1 > 0 ? totals.cashCollectedDia1 / totals.ventasDia1 : 0
+  };
+}
+
+async function fetchAovDia1ForFilters(range, filters) {
+  const selectedOrigins = filters.origenes || [];
+  const baseOptions = {
+    from: range.from,
+    to: range.to,
+    estrategia: filters.estrategia || undefined
+  };
+
+  if (!selectedOrigins.length) {
+    return window.metricasApi.fetchMarketingAovDia1(baseOptions);
+  }
+
+  if (selectedOrigins.length === 1) {
+    return window.metricasApi.fetchMarketingAovDia1({
+      ...baseOptions,
+      origen: selectedOrigins[0]
+    });
+  }
+
+  const responses = await Promise.all(selectedOrigins.map((origin) => (
+    window.metricasApi.fetchMarketingAovDia1({
+      ...baseOptions,
+      origen
+    })
+  )));
+
+  return combineAovDia1Responses(responses);
+}
+
+function formatOriginFilterLabel(filters) {
+  const selectedOrigins = filters.origenes || [];
+  return selectedOrigins.length ? selectedOrigins.join(', ') : 'Todos';
 }
 
 function emptyAccumulator() {
@@ -865,7 +970,7 @@ async function initFilters() {
 
   const defaultYear = years.includes(current.year) ? current.year : years[0];
   setOptions('anio', years, defaultYear);
-  setOptions('origen', origenes, '', true);
+  setOriginOptions(origenes);
 
   if (estrategiaField) {
     const estrategias = uniqueValues(rows, estrategiaField);
@@ -895,7 +1000,6 @@ async function loadAgendaTotales() {
       eq_anio: selectedYear
     };
 
-    if (filters.origen) query.eq_origen = filters.origen;
     if (filters.estrategia && estrategiaField) {
       query[`eq_${estrategiaField}`] = filters.estrategia;
     }
@@ -903,22 +1007,12 @@ async function loadAgendaTotales() {
     const yearRange = getYearRange(selectedYear);
     const aovRequests = MONTHS.map((month) => {
       const range = getMonthRange(selectedYear, month.value);
-      return window.metricasApi.fetchMarketingAovDia1({
-        from: range.from,
-        to: range.to,
-        origen: filters.origen || undefined,
-        estrategia: filters.estrategia || undefined
-      });
+      return fetchAovDia1ForFilters(range, filters);
     });
 
     const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
       window.metricasApi.fetchRows('agenda_totales', query),
-      window.metricasApi.fetchMarketingAovDia1({
-        from: yearRange.from,
-        to: yearRange.to,
-        origen: filters.origen || undefined,
-        estrategia: filters.estrategia || undefined
-      }),
+      fetchAovDia1ForFilters(yearRange, filters),
       ...aovRequests
     ]);
     const rows = applyLocalFilters(sanitizeRowsForYear(response.rows, selectedYear), filters);
@@ -932,7 +1026,7 @@ async function loadAgendaTotales() {
 
     buildKpis(rows);
     buildMatrixTable(rows, filters, aovDia1Data);
-    status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ''}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
+    status.textContent = `Filas: ${rows.length} | año ${selectedYear} | origen ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
   } catch (error) {
     status.textContent = error.message;
   }

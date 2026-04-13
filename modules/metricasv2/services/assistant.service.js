@@ -47,6 +47,7 @@ Contexto del sistema:
   - CCNE efectuadas: agendo='Agendo' AND aplica='Aplica' AND call_confirm no es 'Exitoso' AND cc_whatsapp no es 'Exitoso' AND llamada_meg='Efectuada'
 - Ventas totales: ventas_cce + ventas_ccne
 - Tasa de cierre: ventas totales / reuniones totales * 100
+- Saldo restante en línea de crédito: suma saldo_restante_linea_credito desde kpi_marketing_inversiones, con el mismo rango y origen que inversión realizada
 - ROAS sobre CC: cash_collected / inversion_realizada
 - ROAS sobre facturación total: facturacion / inversion_realizada
 - AOV día 1: promedio de cash_collected por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento
