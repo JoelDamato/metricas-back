@@ -36,6 +36,7 @@ const FEATURE_ROLE_ACCESS = {
   views: ['total', 'comercial', 'csm'],
   kpi_closers_rules: ['total', 'comercial'],
   reportes_premio: ['total', 'comercial'],
+  reportes_comentarios: ['total', 'comercial'],
   marketing_inversion: ['total', 'comercial', 'csm'],
   auth_session: ['total', 'comercial', 'csm'],
   assistant: ['total', 'comercial', 'csm']
@@ -164,6 +165,13 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
     return user?.role === 'total';
   }
 
+  if (
+    featureName === 'reportes_comentarios'
+    && String(options.method || 'GET').toUpperCase() === 'POST'
+  ) {
+    return user?.role === 'total';
+  }
+
   return true;
 }
 
@@ -173,7 +181,8 @@ function getUserPermissions(user) {
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
-    canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' })
+    canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
+    canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' })
   };
 }
 

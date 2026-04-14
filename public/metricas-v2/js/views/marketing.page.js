@@ -77,8 +77,8 @@ const MARKETING_METRIC_INFO = {
     dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
     logic: 'Suma "inversion_realizada" de los registros de "kpi_marketing_inversiones" que entran en el rango seleccionado. Si el origen es "Todos", agrega todos los orígenes.'
   },
-  'SALDO RESTANTE EN LÍNEA DE CRÉDITO': {
-    title: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO',
+  'Saldo restante en línea de crédito': {
+    title: 'Saldo restante en línea de crédito',
     viewLabel: '"kpi_marketing_inversiones"',
     dateLabel: 'Rango guardado en "fecha_desde" y "fecha_hasta"',
     logic: 'Suma "saldo_restante_linea_credito" de los registros de "kpi_marketing_inversiones" que entran en el rango seleccionado. Si el origen es "Todos", agrega todos los orígenes.'
@@ -151,15 +151,15 @@ const MARKETING_METRIC_INFO = {
   },
   'Reuniones TOTALES': {
     title: 'Reuniones TOTALES',
-    viewLabel: '"kpi_marketing_diario"',
+    viewLabel: 'Cálculo frontend sobre "leads_raw"',
     dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
-    logic: 'Se calcula como "llamadas_venta_asistidas_cce" + "llamadas_venta_asistidas_ccne". Ambas columnas se agrupan sobre date("leads_raw"."fecha_agenda") y ya vienen filtradas por "agendo"=\'Agendo\', "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\'.'
+    logic: 'Se calcula con la misma lógica que Agendas Totales: "agendo"=\'Agendo\', "aplica"=\'Aplica\' y "llamada_meg"=\'Efectuada\', filtrado por fecha_agenda y origen normalizado.'
   },
   'Llamadas ventas asistidas CCE': {
     title: 'Llamadas ventas asistidas CCE',
-    viewLabel: '"kpi_marketing_diario"',
+    viewLabel: 'Cálculo frontend sobre "leads_raw"',
     dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
-    logic: 'Suma "llamadas_venta_asistidas_cce". En la vista solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\', call confirmer exitoso y "llamada_meg"=\'Efectuada\', agrupadas por date("leads_raw"."fecha_agenda").'
+    logic: 'Cuenta reuniones efectuadas con éxito en "call_confirm", "llamada_cc" o "cc_whatsapp", usando la misma cohorte de fecha_agenda que Agendas Totales.'
   },
   'Ventas CCE': {
     title: 'Ventas CCE',
@@ -175,15 +175,15 @@ const MARKETING_METRIC_INFO = {
   },
   'Llamadas venta asistidas CCNE': {
     title: 'Llamadas venta asistidas CCNE',
-    viewLabel: '"kpi_marketing_diario"',
+    viewLabel: 'Cálculo frontend sobre "leads_raw"',
     dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
-    logic: 'Suma "llamadas_venta_asistidas_ccne". La vista solo cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\', sin call confirmer exitoso y "llamada_meg"=\'Efectuada\', agrupadas por date("leads_raw"."fecha_agenda").'
+    logic: 'Cuenta reuniones efectuadas sin éxito en "call_confirm", "llamada_cc" ni "cc_whatsapp", usando la misma cohorte de fecha_agenda que Agendas Totales.'
   },
   'Call Confirmer NO EXITOSOS': {
     title: 'Call Confirmer NO EXITOSOS',
-    viewLabel: '"kpi_marketing_diario"',
+    viewLabel: 'Cálculo frontend sobre "leads_raw"',
     dateLabel: 'La columna "fecha" de la vista sale de date("leads_raw"."fecha_agenda")',
-    logic: 'Suma "aplicaciones_no_calificaban_cc". En la vista cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y sin éxito en "call_confirm" ni "cc_whatsapp", agrupadas por date("leads_raw"."fecha_agenda").'
+    logic: 'Cuenta filas con "agendo"=\'Agendo\', "aplica"=\'Aplica\' y sin éxito en "call_confirm", "llamada_cc" ni "cc_whatsapp", agrupadas por date("leads_raw"."fecha_agenda").'
   },
   'Ventas CCNE': {
     title: 'Ventas CCNE',
@@ -675,6 +675,59 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
   });
 }
 
+function isMarketingLeadInSelectedOrigin(row, filters) {
+  return !filters.origen || normalizeOriginGroup(row.origen) === filters.origen;
+}
+
+function isAgendaCompletedLead(row) {
+  return normalizeText(row.agendo) === 'agendo' &&
+    normalizeText(row.aplica) === 'aplica' &&
+    normalizeText(row.llamada_meg) === 'efectuada';
+}
+
+function isCcSuccess(row) {
+  return normalizeText(row.call_confirm) === 'exitoso' ||
+    normalizeText(row.llamada_cc) === 'exitoso' ||
+    normalizeText(row.cc_whatsapp) === 'exitoso';
+}
+
+function aggregateAgendaAlignedMeetings(rows, filters) {
+  return (rows || []).reduce((acc, row) => {
+    if (!isMarketingLeadInSelectedOrigin(row, filters)) return acc;
+
+    const isApplicableAgenda = normalizeText(row.agendo) === 'agendo' && normalizeText(row.aplica) === 'aplica';
+    const isSuccess = isCcSuccess(row);
+
+    if (isApplicableAgenda && isSuccess) {
+      acc.leadsContactados += 1;
+      acc.ccExitosos += 1;
+    }
+
+    if (isApplicableAgenda && !isSuccess) {
+      acc.ccNoExitosos += 1;
+    }
+
+    if (!isAgendaCompletedLead(row)) return acc;
+
+    acc.reunionesTotales += 1;
+
+    if (isSuccess) {
+      acc.llamadasCce += 1;
+    } else {
+      acc.llamadasCcne += 1;
+    }
+
+    return acc;
+  }, {
+    leadsContactados: 0,
+    ccExitosos: 0,
+    ccNoExitosos: 0,
+    llamadasCce: 0,
+    llamadasCcne: 0,
+    reunionesTotales: 0
+  });
+}
+
 function computeMetrics(rows, investment, extras = {}) {
   const inversionPlanificada = Number(investment?.inversion_planificada || 0);
   const inversionRealizada = Number(investment?.inversion_realizada || 0);
@@ -683,14 +736,14 @@ function computeMetrics(rows, investment, extras = {}) {
   const aplican = sumField(rows, 'agendas_aplicables');
   const cashCollected = sumField(rows, 'cash_collected');
   const facturacion = sumField(rows, 'facturacion');
-  const leadsContactados = sumField(rows, 'leads_contactados_cc');
-  const ccExitosos = sumField(rows, 'call_confirmer_exitosos');
-  const llamadasCce = sumField(rows, 'llamadas_venta_asistidas_cce');
+  const leadsContactados = Number(extras.leadsContactados ?? sumField(rows, 'leads_contactados_cc'));
+  const ccExitosos = Number(extras.ccExitosos ?? sumField(rows, 'call_confirmer_exitosos'));
+  const llamadasCce = Number(extras.llamadasCce ?? sumField(rows, 'llamadas_venta_asistidas_cce'));
   const ventasCce = sumField(rows, 'ventas_cce');
-  const ccNoExitosos = sumField(rows, 'aplicaciones_no_calificaban_cc');
-  const llamadasCcne = sumField(rows, 'llamadas_venta_asistidas_ccne');
+  const ccNoExitosos = Number(extras.ccNoExitosos ?? sumField(rows, 'aplicaciones_no_calificaban_cc'));
+  const llamadasCcne = Number(extras.llamadasCcne ?? sumField(rows, 'llamadas_venta_asistidas_ccne'));
   const ventasCcne = sumField(rows, 'ventas_ccne');
-  const reunionesTotales = llamadasCce + llamadasCcne;
+  const reunionesTotales = Number(extras.reunionesTotales ?? (llamadasCce + llamadasCcne));
   const ventasTotales = Number(extras.ventasTotales ?? (ventasCce + ventasCcne));
   const aovDia1 = Number(extras.aovDia1 || 0);
 
@@ -742,6 +795,21 @@ function renderMetricTable(title, rows) {
           `).join('')}
         </tbody>
       </table>
+    </section>
+  `;
+}
+
+function renderCreditBalanceSummary(value) {
+  const container = document.getElementById('creditBalanceSummary');
+  if (!container) return;
+
+  container.innerHTML = `
+    <section class="credit-balance-summary">
+      <div>
+        <h3>Saldo restante en línea de crédito</h3>
+        <p>Total actual del filtro</p>
+      </div>
+      <strong>${formatCurrency(value)}</strong>
     </section>
   `;
 }
@@ -1248,6 +1316,7 @@ function renderDashboard(rows, investment, extras = {}) {
     container.innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No hay datos para el rango seleccionado.</div></div>';
     const currentInvestment = Number(investment?.inversion_realizada || 0);
     const currentCreditBalance = Number(investment?.saldo_restante_linea_credito || 0);
+    renderCreditBalanceSummary(currentCreditBalance);
     document.getElementById('investmentEditorHelp').textContent = `Total actual del filtro: ${formatCurrency(currentInvestment)}. El monto que cargues abajo se suma a este total.`;
     document.getElementById('inversionRealizada').value = '';
     document.getElementById('creditBalanceEditorHelp').textContent = `Total actual del filtro: ${formatCurrency(currentCreditBalance)}. El monto que cargues abajo se suma a este total.`;
@@ -1262,11 +1331,11 @@ function renderDashboard(rows, investment, extras = {}) {
   const creditBalanceHelp = document.getElementById('creditBalanceEditorHelp');
   creditBalanceHelp.textContent = `Total actual del filtro: ${formatCurrency(m.saldoRestanteLineaCredito)}. El monto que cargues abajo se suma a este total.`;
   document.getElementById('saldoRestanteLineaCredito').value = '';
+  renderCreditBalanceSummary(m.saldoRestanteLineaCredito);
 
   const leftRows = [
     { label: 'Inversión planificada', value: formatCurrency(m.inversionPlanificada) },
     { label: 'Inversión realizada', value: formatCurrency(m.inversionRealizada) },
-    { label: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO', value: formatCurrency(m.saldoRestanteLineaCredito) },
     { label: 'Agendas', value: formatInteger(m.agendas) },
     { label: 'Costo por Agenda', value: formatCurrency(m.costoAgenda) },
     { label: 'Aplican', value: formatInteger(m.aplican) },
@@ -1288,7 +1357,6 @@ function renderDashboard(rows, investment, extras = {}) {
   const rightRows = [
     { label: 'Inversión planificada', value: formatCurrency(m.inversionPlanificada) },
     { label: 'Inversión realizada', value: formatCurrency(m.inversionRealizada) },
-    { label: 'SALDO RESTANTE EN LÍNEA DE CRÉDITO', value: formatCurrency(m.saldoRestanteLineaCredito) },
     { label: 'Agendas', value: formatInteger(m.agendas) },
     { label: 'Aplican', value: formatInteger(m.aplican) },
     { label: 'Leads contactados CC', value: formatInteger(m.leadsContactados) },
@@ -1381,6 +1449,7 @@ async function loadDashboard() {
 
     const rows = rowsResponse.rows || [];
     const leadRows = leadsResponse.rows || [];
+    const agendaAlignedMeetings = aggregateAgendaAlignedMeetings(leadRows, filters);
     const adRows = aggregateAdsMetrics(leadRows, filters);
     const qualityRows = aggregateQualityMetrics(leadRows, filters);
     const traceabilityRows = (traceabilityResponse.rows || []).filter((row) => {
@@ -1391,7 +1460,8 @@ async function loadDashboard() {
     });
     renderDashboard(rows, investmentResponse.investment || null, {
       ...(aovDia1Response || {}),
-      ...(ventasTotalesResponse || {})
+      ...(ventasTotalesResponse || {}),
+      ...agendaAlignedMeetings
     });
     renderAdsMetricsTable(adRows);
     renderQualityMetricsTable(qualityRows);
@@ -1399,6 +1469,7 @@ async function loadDashboard() {
     status.textContent = `${rows.length} registros KPI, ${adRows.length} anuncios y ${traceabilityRows.length} leads de trazabilidad procesados.`;
   } catch (error) {
     status.textContent = error.message;
+    document.getElementById('creditBalanceSummary').innerHTML = '';
     document.getElementById('marketingContainer').innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No se pudo cargar el KPI de marketing.</div></div>';
     document.getElementById('adsMetricsContainer').innerHTML = '';
     document.getElementById('qualityMetricsContainer').innerHTML = '';

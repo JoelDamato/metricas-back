@@ -108,6 +108,15 @@ function normalizeText(value) {
     .trim();
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function normalizeComprobanteState(value) {
   const text = String(value || '').trim();
   return text || 'Sin estado';
@@ -169,7 +178,7 @@ async function loadAuthPermissions() {
     window.metricasAuthPermissions = user?.permissions || {};
     return window.metricasAuthPermissions;
   } catch (error) {
-    return { canEditReportesPremio: false };
+    return { canEditReportesPremio: false, canCommentReportes: false };
   }
 }
 
@@ -199,11 +208,18 @@ function showMetricInfo(info) {
 }
 
 function setupFilters() {
+  const params = new URLSearchParams(window.location.search);
+  const queryFrom = params.get('desde') || params.get('from');
+  const queryTo = params.get('hasta') || params.get('to');
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  document.getElementById('desde').value = from.toISOString().slice(0, 10);
-  document.getElementById('hasta').value = to.toISOString().slice(0, 10);
+  document.getElementById('desde').value = /^\d{4}-\d{2}-\d{2}$/.test(queryFrom || '')
+    ? queryFrom
+    : from.toISOString().slice(0, 10);
+  document.getElementById('hasta').value = /^\d{4}-\d{2}-\d{2}$/.test(queryTo || '')
+    ? queryTo
+    : to.toISOString().slice(0, 10);
 }
 
 function getRange() {
@@ -270,7 +286,7 @@ function buildTableBlock({ title, subtitle, rows, metrics, sortKey, formatter = 
   const head = `
     <tr>
       <th>${metrics[0].leftLabel || 'Closer'}</th>
-      ${ordered.map((row) => `<th>${row.closer}</th>`).join('')}
+      ${ordered.map((row) => `<th>${escapeHtml(row.closer)}</th>`).join('')}
       <th class="total-col">Total</th>
     </tr>
   `;
@@ -367,6 +383,103 @@ function buildCashPremioFooter(config = {}, canEdit = false, cashResumen = []) {
   `;
 }
 
+function collectReportClosers(data = {}) {
+  const names = new Set();
+
+  [
+    data.agendaResumen,
+    data.ventasResumen,
+    data.cashResumen,
+    data.comprobantesResumen
+  ].forEach((rows) => {
+    (rows || []).forEach((row) => {
+      const closer = String(row.closer || '').trim();
+      if (shouldIncludeCloser(closer)) names.add(closer);
+    });
+  });
+
+  return [...names].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+function isUnreadForUser(comment, user) {
+  const userEmail = normalizeText(user?.email);
+  return Boolean(
+    userEmail
+    && normalizeText(comment.recipient_email) === userEmail
+    && !comment.read_at
+  );
+}
+
+function buildReportCommentsList(comments = [], user = null) {
+  if (!comments.length) {
+    return '<div class="report-comments-empty">No hay comentarios para este rango.</div>';
+  }
+
+  return comments
+    .map((comment) => {
+      const createdAt = formatDateTime(comment.created_at);
+      const author = String(comment.created_by_name || comment.created_by_email || 'Admin').trim();
+      const unread = isUnreadForUser(comment, user);
+      const readAt = formatDateTime(comment.read_at);
+
+      return `
+        <article class="report-comment-card ${unread ? 'is-unread' : ''}">
+          <div class="report-comment-head">
+            <div>
+              <strong>${escapeHtml(comment.closer || 'Sin closer')}</strong>
+              <span>${escapeHtml(author)}${createdAt ? ` · ${escapeHtml(createdAt)}` : ''}</span>
+            </div>
+            ${unread ? '<span class="report-comment-badge">Nuevo</span>' : ''}
+          </div>
+          <p>${escapeHtml(comment.comment_text || '')}</p>
+          <div class="report-comment-foot">
+            ${readAt ? `<span>Leído: ${escapeHtml(readAt)}</span>` : '<span>Pendiente de lectura</span>'}
+            ${unread ? `<button type="button" class="report-comment-read" data-comment-id="${escapeHtml(comment.id)}">Marcar como leído</button>` : ''}
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function buildReportCommentsPanel(data = {}) {
+  const comments = data.comments || [];
+  const closers = collectReportClosers(data);
+  const user = data.user || null;
+  const unreadCount = comments.filter((comment) => isUnreadForUser(comment, user)).length;
+  const canComment = data.canCommentReportes === true;
+
+  return `
+    <section class="report-comments-panel">
+      <div class="report-comments-head">
+        <div>
+          <span class="report-comments-kicker">Comentarios del reporte</span>
+          <h3>Notas de administración${unreadCount ? ` (${formatInteger(unreadCount)} nuevo${unreadCount === 1 ? '' : 's'})` : ''}</h3>
+        </div>
+        ${unreadCount ? `<span class="report-comments-alert">${formatInteger(unreadCount)} sin leer</span>` : ''}
+      </div>
+
+      ${canComment ? `
+        <form id="reportCommentForm" class="report-comments-form">
+          <label for="reportCommentCloser">Closer</label>
+          <select id="reportCommentCloser" name="closer" ${closers.length ? '' : 'disabled'}>
+            ${closers.length
+              ? closers.map((closer) => `<option value="${escapeHtml(closer)}">${escapeHtml(closer)}</option>`).join('')
+              : '<option value="">Sin closers en el rango</option>'}
+          </select>
+          <label for="reportCommentText">Comentario</label>
+          <textarea id="reportCommentText" name="comment_text" rows="3" maxlength="2000" placeholder="Escribí una nota para este reporte"></textarea>
+          <button type="submit" ${closers.length ? '' : 'disabled'}>Comentar</button>
+        </form>
+      ` : ''}
+
+      <div class="report-comments-list">
+        ${buildReportCommentsList(comments, user)}
+      </div>
+    </section>
+  `;
+}
+
 function buildReportMarkup(data) {
   const comprobantesMetrics = (data.comprobantesStates || []).map((state) => ({
     key: buildComprobanteStateKey(state),
@@ -374,6 +487,7 @@ function buildReportMarkup(data) {
   }));
 
   return [
+    buildReportCommentsPanel(data),
     buildTableBlock({
       title: 'Reporte de Llamadas',
       subtitle: 'Agendadas, asistidas y vendidas por closer.',
@@ -659,6 +773,67 @@ function bindCashPremioForm() {
   });
 }
 
+function bindReportComments(container, range) {
+  const form = container.querySelector('#reportCommentForm');
+
+  if (form) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const status = document.getElementById('status');
+      const closer = form.elements.closer?.value || '';
+      const commentText = form.elements.comment_text?.value || '';
+      const saveButton = form.querySelector('button[type="submit"]');
+
+      if (!closer) {
+        status.textContent = 'Elegí un closer para comentar.';
+        return;
+      }
+
+      if (!commentText.trim()) {
+        status.textContent = 'Escribí un comentario antes de guardarlo.';
+        form.elements.comment_text?.focus();
+        return;
+      }
+
+      if (saveButton) saveButton.disabled = true;
+      status.textContent = 'Guardando comentario...';
+
+      try {
+        await window.metricasApi.saveReportComment({
+          from: range.from,
+          to: range.to,
+          closer,
+          comment_text: commentText
+        });
+        await loadReportes();
+        status.textContent = `Rango cargado: ${range.from} a ${range.to} | Comentario guardado.`;
+      } catch (error) {
+        status.textContent = error.message;
+      } finally {
+        if (saveButton) saveButton.disabled = false;
+      }
+    });
+  }
+
+  container.querySelectorAll('.report-comment-read').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      button.disabled = true;
+      status.textContent = 'Marcando comentario como leído...';
+
+      try {
+        await window.metricasApi.markReportCommentRead(button.dataset.commentId);
+        await loadReportes();
+        status.textContent = `Rango cargado: ${range.from} a ${range.to} | Comentario marcado como leído.`;
+      } catch (error) {
+        status.textContent = error.message;
+        button.disabled = false;
+      }
+    });
+  });
+}
+
 async function loadReportes() {
   const status = document.getElementById('status');
   const container = document.getElementById('reportesContainer');
@@ -679,9 +854,10 @@ async function loadReportes() {
   status.textContent = 'Cargando reportes...';
 
   try {
-    const [permissions, cashPremioResponse, agendaResumen, ventasResumen, cashRows, comprobantesData] = await Promise.all([
+    const [permissions, cashPremioResponse, commentsResponse, agendaResumen, ventasResumen, cashRows, comprobantesData] = await Promise.all([
       loadAuthPermissions(),
       window.metricasApi.fetchReportesPremioConfig(),
+      window.metricasApi.fetchReportComments(range),
       loadAgendaData(range),
       loadVentasData(range),
       fetchCashRows(range),
@@ -697,12 +873,16 @@ async function loadReportes() {
       cashResumen,
       cashPremioConfig,
       canEditReportesPremio: permissions.canEditReportesPremio === true,
+      canCommentReportes: permissions.canCommentReportes === true,
+      comments: commentsResponse?.comments || [],
+      user: window.metricasAuthUser || null,
       comprobantesResumen: comprobantesData.rows,
       comprobantesStates: comprobantesData.states
     });
 
     bindReportInfoButtons(container);
     bindCashPremioForm();
+    bindReportComments(container, range);
 
     status.textContent = `Rango cargado: ${range.from} a ${range.to}`;
   } catch (error) {

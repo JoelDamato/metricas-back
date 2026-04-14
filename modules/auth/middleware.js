@@ -79,6 +79,13 @@ function metricasApiGuard(req, res, next) {
     return next();
   }
 
+  if (reqPath === '/reportes/comentarios' || reqPath.startsWith('/reportes/comentarios/')) {
+    if (!access.canAccessFeatureForUser(req.authUser, 'reportes_comentarios', { method: req.method })) {
+      return res.status(403).json({ ok: false, message: 'Sin permiso para comentarios de reportes' });
+    }
+    return next();
+  }
+
   if (reqPath === '/marketing/inversion' || reqPath === '/marketing/inversiones') {
     if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para inversión marketing' });

@@ -39,6 +39,32 @@
     `;
     document.body.prepend(shell);
 
+    if (user.role !== 'total' && !onlyMarketingAccess) {
+      try {
+        const commentsResponse = await fetch('/api/metricas/reportes/comentarios?unread=1', {
+          credentials: 'same-origin'
+        });
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          const unreadComments = commentsData.comments || [];
+          const firstComment = unreadComments[0] || {};
+          if (unreadComments.length) {
+            const notice = document.createElement('a');
+            const params = new URLSearchParams({
+              desde: firstComment.fecha_desde || '',
+              hasta: firstComment.fecha_hasta || ''
+            });
+            notice.className = 'auth-shell-notice';
+            notice.href = `/metricas/views/reportes.html?${params.toString()}`;
+            notice.textContent = `${unreadComments.length} comentario${unreadComments.length === 1 ? '' : 's'} nuevo${unreadComments.length === 1 ? '' : 's'}`;
+            shell.querySelector('.auth-shell-group--secondary')?.prepend(notice);
+          }
+        }
+      } catch (error) {
+        // noop
+      }
+    }
+
     document.querySelectorAll('[data-roles]').forEach((node) => {
       const allowedRoles = String(node.dataset.roles || '')
         .split(',')

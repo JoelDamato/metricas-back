@@ -33,6 +33,20 @@ async function saveReportesPremioConfig(payload = {}) {
   return window.http.postJson('/api/metricas/reportes/premio', payload);
 }
 
+async function fetchReportComments(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/reportes/comentarios${suffix}`);
+}
+
+async function saveReportComment(payload = {}) {
+  return window.http.postJson('/api/metricas/reportes/comentarios', payload);
+}
+
+async function markReportCommentRead(id) {
+  return window.http.patchJson(`/api/metricas/reportes/comentarios/${encodeURIComponent(id)}/read`, {});
+}
+
 async function fetchComprobantes(options = {}) {
   return fetchRows('comprobantes', options);
 }
@@ -123,6 +137,9 @@ window.metricasApi = {
   fetchCashCollectedDiarioCloser,
   fetchReportesPremioConfig,
   saveReportesPremioConfig,
+  fetchReportComments,
+  saveReportComment,
+  markReportCommentRead,
   fetchComprobantes,
   fetchLeadsRaw,
   fetchKpiMarketingDiario,

@@ -344,6 +344,297 @@ async function upsertReportesPremioConfig(payload, user) {
   }
 }
 
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizeNameForMatch(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function nameTokens(value) {
+  return normalizeNameForMatch(value)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function tokensMatch(closerToken, userToken) {
+  if (!closerToken || !userToken) return false;
+  if (closerToken === userToken) return true;
+  if (closerToken.length >= 3 && userToken.startsWith(closerToken)) return true;
+  return userToken.length >= 3 && closerToken.startsWith(userToken);
+}
+
+function scoreReportRecipientMatch(closer, userName) {
+  const closerName = normalizeNameForMatch(closer);
+  const normalizedUserName = normalizeNameForMatch(userName);
+  if (!closerName || !normalizedUserName) return 0;
+  if (closerName === normalizedUserName) return 1000;
+  if (normalizedUserName.includes(closerName)) return 850 + closerName.length;
+  if (closerName.includes(normalizedUserName)) return 800 + normalizedUserName.length;
+
+  const closerTokens = nameTokens(closer);
+  const userTokens = nameTokens(userName);
+  if (!closerTokens.length || !userTokens.length) return 0;
+
+  let score = 0;
+  const allCloserTokensMatched = closerTokens.every((closerToken) => {
+    const matchedToken = userTokens.find((userToken) => tokensMatch(closerToken, userToken));
+    if (!matchedToken) return false;
+    score += closerToken === matchedToken ? 20 : 12;
+    return true;
+  });
+
+  return allCloserTokensMatched ? 300 + score : 0;
+}
+
+function isMissingReportCommentsTableError(err) {
+  const message = String(err.response?.data?.message || err.message || '').toLowerCase();
+  return message.includes('reportes_comentarios') && (
+    message.includes('schema cache') ||
+    message.includes('does not exist') ||
+    message.includes('could not find') ||
+    message.includes('relation')
+  );
+}
+
+function isTruthyFlag(value) {
+  return value === true || ['1', 'true', 'si', 'sí'].includes(String(value || '').trim().toLowerCase());
+}
+
+async function findReportRecipientEmail(closer) {
+  const url = `${env.supabaseUrl}/rest/v1/metricas_usuarios`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'email,nombre,role,activo',
+        activo: 'eq.true',
+        limit: 1000
+      }
+    });
+
+    const matches = (response.data || [])
+      .map((user) => ({
+        email: normalizeEmail(user.email),
+        score: scoreReportRecipientMatch(closer, user.nombre || user.email)
+      }))
+      .filter((user) => user.email && user.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return matches[0]?.email || null;
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error resolviendo destinatario del comentario: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+function normalizeReportCommentPayload(payload = {}) {
+  const from = String(payload.from || payload.fecha_desde || '').trim();
+  const to = String(payload.to || payload.fecha_hasta || '').trim();
+  const closer = String(payload.closer || '').trim();
+  const commentText = String(payload.comment_text || payload.comentario || '').trim();
+
+  validateDateRange(from, to);
+
+  if (to < from) {
+    const error = new Error('La fecha hasta no puede ser menor a la fecha desde');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!closer) {
+    const error = new Error('Debés elegir un closer para comentar el reporte');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!commentText) {
+    const error = new Error('El comentario no puede estar vacío');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (commentText.length > 2000) {
+    const error = new Error('El comentario no puede superar 2000 caracteres');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return { from, to, closer, commentText };
+}
+
+async function listReportComments({ from, to, unread }, user) {
+  const unreadOnly = isTruthyFlag(unread);
+  const params = {
+    select: 'id,fecha_desde,fecha_hasta,closer,recipient_email,comment_text,created_by_email,created_by_name,created_at,read_at,read_by_email',
+    order: 'created_at.desc',
+    limit: 1000
+  };
+
+  if (from || to) {
+    validateDateRange(from, to);
+
+    if (to < from) {
+      const error = new Error('La fecha hasta no puede ser menor a la fecha desde');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    params.fecha_desde = `eq.${from}`;
+    params.fecha_hasta = `eq.${to}`;
+  } else if (!unreadOnly) {
+    validateDateRange(from, to);
+  }
+
+  if (unreadOnly) {
+    params.read_at = 'is.null';
+  }
+
+  if (user?.role !== 'total') {
+    const email = normalizeEmail(user?.email);
+    if (!email) return [];
+    params.recipient_email = `eq.${email}`;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/reportes_comentarios`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params
+    });
+
+    return response.data || [];
+  } catch (err) {
+    if (isMissingReportCommentsTableError(err)) return [];
+
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error leyendo comentarios de reportes: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function createReportComment(payload, user) {
+  if (user?.role !== 'total') {
+    const error = new Error('Solo los usuarios admin pueden comentar reportes');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const normalized = normalizeReportCommentPayload(payload);
+  const recipientEmail = normalizeEmail(payload.recipient_email) ||
+    await findReportRecipientEmail(normalized.closer);
+  const body = {
+    fecha_desde: normalized.from,
+    fecha_hasta: normalized.to,
+    closer: normalized.closer,
+    recipient_email: recipientEmail || null,
+    comment_text: normalized.commentText,
+    created_by_email: normalizeEmail(user?.email),
+    created_by_name: String(user?.nombre || user?.email || '').trim() || null
+  };
+  const url = `${env.supabaseUrl}/rest/v1/reportes_comentarios`;
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'return=representation'
+      })
+    });
+
+    return response.data?.[0] || body;
+  } catch (err) {
+    if (isMissingReportCommentsTableError(err)) {
+      const error = new Error('Para guardar comentarios de reportes falta aplicar la migración de Supabase.');
+      error.statusCode = 500;
+      throw error;
+    }
+
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando comentario de reporte: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function markReportCommentRead(id, user) {
+  const commentId = Number(id);
+  if (!Number.isInteger(commentId) || commentId <= 0) {
+    const error = new Error('Comentario inválido');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/reportes_comentarios`;
+
+  try {
+    const currentResponse = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'id,recipient_email,read_at',
+        id: `eq.${commentId}`,
+        limit: 1
+      }
+    });
+
+    const current = currentResponse.data?.[0] || null;
+    if (!current) {
+      const error = new Error('Comentario no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const userEmail = normalizeEmail(user?.email);
+    if (user?.role !== 'total' && normalizeEmail(current.recipient_email) !== userEmail) {
+      const error = new Error('Sin permiso para marcar este comentario');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const response = await axios.patch(url, {
+      read_at: current.read_at || new Date().toISOString(),
+      read_by_email: current.read_at ? undefined : userEmail
+    }, {
+      headers: buildHeaders({
+        Prefer: 'return=representation'
+      }),
+      params: {
+        id: `eq.${commentId}`
+      }
+    });
+
+    return response.data?.[0] || null;
+  } catch (err) {
+    if (err.statusCode) throw err;
+
+    if (isMissingReportCommentsTableError(err)) {
+      const error = new Error('Para leer comentarios de reportes falta aplicar la migración de Supabase.');
+      error.statusCode = 500;
+      throw error;
+    }
+
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error marcando comentario de reporte: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
 function normalizeMarketingOrigin(value) {
   const origin = String(value || '').trim();
   return origin || '__ALL__';
@@ -884,6 +1175,9 @@ module.exports = {
   upsertKpiCloserRules,
   getReportesPremioConfig,
   upsertReportesPremioConfig,
+  listReportComments,
+  createReportComment,
+  markReportCommentRead,
   getMarketingInvestment,
   upsertMarketingInvestment,
   listMarketingInvestments,

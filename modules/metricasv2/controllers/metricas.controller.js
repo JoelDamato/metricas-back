@@ -111,6 +111,50 @@ async function saveReportesPremioConfig(req, res, next) {
   }
 }
 
+async function listReportComments(req, res, next) {
+  try {
+    const comments = await supabaseService.listReportComments({
+      from: req.query.from,
+      to: req.query.to,
+      unread: req.query.unread
+    }, req.authUser);
+
+    res.json({
+      ok: true,
+      count: comments.length,
+      comments
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createReportComment(req, res, next) {
+  try {
+    const comment = await supabaseService.createReportComment(req.body || {}, req.authUser);
+
+    res.json({
+      ok: true,
+      comment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function markReportCommentRead(req, res, next) {
+  try {
+    const comment = await supabaseService.markReportCommentRead(req.params.id, req.authUser);
+
+    res.json({
+      ok: true,
+      comment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMarketingInvestment(req, res, next) {
   try {
     const investment = await supabaseService.getMarketingInvestment({
@@ -239,6 +283,9 @@ module.exports = {
   saveKpiCloserRules,
   getReportesPremioConfig,
   saveReportesPremioConfig,
+  listReportComments,
+  createReportComment,
+  markReportCommentRead,
   getMarketingInvestment,
   saveMarketingInvestment,
   listMarketingInvestments,
