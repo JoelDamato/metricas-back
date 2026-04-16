@@ -14,6 +14,10 @@ const MONTHS = [
 ];
 
 const ORIGIN_WHITELIST = ['VSL', 'ORG', 'CLASES', 'APSET'];
+const AGENDA_RESOURCE = document.body?.dataset.agendaResource || 'agenda_totales';
+const AGENDA_VIEW_LABEL = `"${AGENDA_RESOURCE}"`;
+const AGENDA_ORIGIN_LABEL = document.body?.dataset.agendaOriginLabel || 'Origen';
+const AGENDA_ORIGIN_WHITELIST_MODE = document.body?.dataset.agendaOriginWhitelist || 'default';
 let estrategiaField = null;
 const AGENDA_KPI_INFO = {
   total_agendados: {
@@ -315,13 +319,17 @@ function showMetricInfo(info) {
   const existing = document.getElementById('metricInfoPopup');
   if (existing) existing.remove();
 
+  const viewLabel = info.viewLabel === '"agenda_totales"'
+    ? AGENDA_VIEW_LABEL
+    : (info.viewLabel || AGENDA_VIEW_LABEL);
+
   const popup = document.createElement('div');
   popup.id = 'metricInfoPopup';
   popup.className = 'kpi-popup metric-info-popup';
   popup.innerHTML = `
     <div class="kpi-popup-card metric-info-card">
       <h3>${info.title}</h3>
-      <p><strong>Vista que usa:</strong> ${info.viewLabel || '"agenda_totales"'}</p>
+      <p><strong>Vista que usa:</strong> ${viewLabel}</p>
       <p><strong>Fecha que usa:</strong> ${info.dateLabel}</p>
       <p><strong>Lógica:</strong> ${info.logic}</p>
       <button id="metricInfoPopupClose" type="button">Cerrar</button>
@@ -951,7 +959,7 @@ async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones de filtros...';
 
-  const response = await window.metricasApi.fetchRows('agenda_totales', {
+  const response = await window.metricasApi.fetchRows(AGENDA_RESOURCE, {
     limit: 2000,
     orderBy: 'anio',
     orderDir: 'desc'
@@ -964,7 +972,13 @@ async function initFilters() {
     .map((y) => Number(y))
     .filter((y) => Number.isInteger(y) && y >= 2000)
     .sort((a, b) => b - a);
-  const origenes = uniqueValues(rows, 'origen').filter((origin) => ORIGIN_WHITELIST.includes(origin));
+  const originLegend = document.querySelector('.agenda-origin-filter legend');
+  const originOptions = document.getElementById('origen');
+  if (originLegend) originLegend.textContent = AGENDA_ORIGIN_LABEL;
+  if (originOptions) originOptions.setAttribute('aria-label', AGENDA_ORIGIN_LABEL);
+
+  const origenes = uniqueValues(rows, 'origen')
+    .filter((origin) => AGENDA_ORIGIN_WHITELIST_MODE === 'all' || ORIGIN_WHITELIST.includes(origin));
 
   estrategiaField = detectEstrategiaField(rows);
 
@@ -984,7 +998,7 @@ async function initFilters() {
 async function loadAgendaTotales() {
   const status = document.getElementById('status');
   const filters = getFilters();
-  status.textContent = 'Cargando agenda_totales...';
+  status.textContent = `Cargando ${AGENDA_RESOURCE}...`;
 
   try {
     const selectedYear = Number(filters.anio);
@@ -1011,7 +1025,7 @@ async function loadAgendaTotales() {
     });
 
     const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
-      window.metricasApi.fetchRows('agenda_totales', query),
+      window.metricasApi.fetchRows(AGENDA_RESOURCE, query),
       fetchAovDia1ForFilters(yearRange, filters),
       ...aovRequests
     ]);
@@ -1026,7 +1040,7 @@ async function loadAgendaTotales() {
 
     buildKpis(rows);
     buildMatrixTable(rows, filters, aovDia1Data);
-    status.textContent = `Filas: ${rows.length} | año ${selectedYear} | origen ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
+    status.textContent = `Filas: ${rows.length} | año ${selectedYear} | ${AGENDA_ORIGIN_LABEL.toLowerCase()} ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
   } catch (error) {
     status.textContent = error.message;
   }

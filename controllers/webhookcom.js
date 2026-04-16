@@ -229,6 +229,7 @@ function mapToSupabase(payload) {
     monto_pesos: getValue(p['Monto Pesos']),
     monto_incobrable: toNumber(getValue(p['Monto incobrable'])),
     origen: getValue(p['Origen']),
+    ultimo_origen: getValue(p['Ultimo origen']) ?? getValue(p['Último origen']) ?? getValue(p['Ultimo Origen']) ?? getValue(p['Último Origen']),
     producto_format: getValue(p['Producto Format']),
     productos: getValue(p['Productos']),
     rebotar_pago: getValue(p['Rebotar pago']),

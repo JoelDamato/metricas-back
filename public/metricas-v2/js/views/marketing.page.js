@@ -28,6 +28,11 @@ function safeDiv(a, b) {
 }
 
 const MARKETING_SORT_STATE = {
+  campaign: {
+    sortKey: 'agendas',
+    direction: 'desc',
+    rows: []
+  },
   ads: {
     sortKey: 'agendas',
     direction: 'desc',
@@ -47,9 +52,14 @@ const MARKETING_SORT_STATE = {
 
 const MARKETING_NUMERIC_SORT_KEYS = new Set([
   'agendas',
+  'aplican',
   'cce',
+  'ccExitosos',
   'llamadas',
-  'ventas'
+  'reuniones',
+  'ventas',
+  'facturacion',
+  'tasaCierre'
 ]);
 
 const MARKETING_DATE_SORT_KEYS = new Set([
@@ -109,9 +119,9 @@ const MARKETING_METRIC_INFO = {
   },
   'Facturación': {
     title: 'Facturación',
-    viewLabel: '"kpi_marketing_diario"',
-    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero la facturación se cruza en la vista con comprobantes donde date("f_acreditacion") = "fecha"',
-    logic: 'Muestra "facturacion" desde "kpi_marketing_diario". Hoy ese valor no entra por "f_venta": la vista lo pega al día usando comprobantes agrupados por date("f_acreditacion").'
+    viewLabel: 'Endpoint "marketing/ventas-totales" sobre "comprobantes"',
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Suma "facturacion" de comprobantes de "Venta" con producto válido y no Club, usando el rango por "fecha_de_agendamiento". Es la misma base de ventas totales y queda alineada con "Facturación por agenda" de Agendas Totales.'
   },
   'Costo por Call Confirmer Exitoso': {
     title: 'Costo por Call Confirmer Exitoso',
@@ -140,8 +150,8 @@ const MARKETING_METRIC_INFO = {
   'AOV': {
     title: 'AOV',
     viewLabel: 'Cálculo frontend sobre "kpi_marketing_diario" + endpoint de ventas',
-    dateLabel: 'Mixta: la facturación se lee sobre "kpi_marketing_diario"."fecha" y ese alias hoy se cruza por date("f_acreditacion"); las ventas salen por "fecha_de_agendamiento"',
-    logic: 'Se calcula en frontend como "facturacion" dividido "ventasTotales". Ojo: hoy mezcla facturación diaria pegada por date("f_acreditacion") en "kpi_marketing_diario" con ventas traídas desde comprobantes por "fecha_de_agendamiento".'
+    dateLabel: '"fecha_de_agendamiento"',
+    logic: 'Se calcula en frontend como "facturacion" dividido "ventasTotales". Ambos valores salen de comprobantes filtrados por "fecha_de_agendamiento".'
   },
   'AOV día 1': {
     title: 'AOV día 1',
@@ -217,9 +227,9 @@ const MARKETING_METRIC_INFO = {
   },
   'ROAS sobre facturación total': {
     title: 'ROAS sobre facturación total',
-    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
-    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + facturación diaria pegada sobre "kpi_marketing_diario"."fecha", donde hoy se cruza por date("f_acreditacion")',
-    logic: 'Se calcula como "facturacion" dividido "inversion_realizada". La inversión sale de "kpi_marketing_inversiones" y la facturación del valor diario de "kpi_marketing_diario", que hoy se asigna por date("f_acreditacion").'
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + endpoint "marketing/ventas-totales"',
+    dateLabel: 'Inversiones por "fecha_desde"/"fecha_hasta" + facturación por "fecha_de_agendamiento"',
+    logic: 'Se calcula como "facturacion" dividido "inversion_realizada". La facturación sale del endpoint de ventas totales para quedar alineada con el rango de agenda.'
   },
   'ROAS sobre CC': {
     title: 'ROAS sobre CC',
@@ -337,6 +347,50 @@ function ensureMarketingViewStyles() {
       font-weight: 600;
       text-decoration: none;
       cursor: pointer;
+    }
+
+    #campaignTotalsContainer {
+      margin-top: 20px;
+    }
+
+    .campaign-totals-panel {
+      max-height: 540px;
+      overflow: auto;
+    }
+
+    .campaign-marker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .campaign-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 3px rgba(29, 91, 176, 0.08);
+    }
+
+    .campaign-dot.red {
+      background: #dc2626;
+    }
+
+    .campaign-dot.blue {
+      background: #2563eb;
+    }
+
+    .campaign-totals-table th:first-child,
+    .campaign-totals-table td:first-child {
+      width: 140px;
+    }
+
+    .campaign-totals-table th:nth-child(2),
+    .campaign-totals-table td:nth-child(2) {
+      min-width: 260px;
+      text-align: left;
     }
 
     .investment-history-card {
@@ -735,7 +789,7 @@ function computeMetrics(rows, investment, extras = {}) {
   const agendas = sumField(rows, 'reuniones_agendadas');
   const aplican = sumField(rows, 'agendas_aplicables');
   const cashCollected = sumField(rows, 'cash_collected');
-  const facturacion = sumField(rows, 'facturacion');
+  const facturacion = Number(extras.facturacionVentasTotales ?? sumField(rows, 'facturacion'));
   const leadsContactados = Number(extras.leadsContactados ?? sumField(rows, 'leads_contactados_cc'));
   const ccExitosos = Number(extras.ccExitosos ?? sumField(rows, 'call_confirmer_exitosos'));
   const llamadasCce = Number(extras.llamadasCce ?? sumField(rows, 'llamadas_venta_asistidas_cce'));
@@ -812,6 +866,101 @@ function renderCreditBalanceSummary(value) {
       <strong>${formatCurrency(value)}</strong>
     </section>
   `;
+}
+
+function renderCampaignMarker(row) {
+  const marker = row.marker === 'blue' ? 'blue' : 'red';
+  return `
+    <span class="campaign-marker">
+      <span class="campaign-dot ${marker}" aria-hidden="true"></span>
+      <span>${escapeHtml(row.markerLabel || (marker === 'blue' ? 'Circulito azul' : 'Circulito rojo'))}</span>
+    </span>
+  `;
+}
+
+function renderCampaignTotalsTable(rows) {
+  const container = document.getElementById('campaignTotalsContainer');
+  if (!container) return;
+
+  const existingDetails = container.querySelector('.ads-collapse');
+  const wasOpen = existingDetails ? existingDetails.open : true;
+
+  MARKETING_SORT_STATE.campaign.rows = [...(rows || [])];
+  const orderedRows = sortMarketingRows(MARKETING_SORT_STATE.campaign.rows, 'campaign', 'agendas', 'campaign');
+
+  if (!rows.length) {
+    container.innerHTML = `
+      <details class="ads-collapse" open>
+        <summary>Totales por Campaign</summary>
+        <div class="table-wrap marketing-panel">
+          <div class="report-empty">No hay campaigns con circulito rojo o azul para este rango.</div>
+        </div>
+      </details>
+    `;
+    return;
+  }
+
+  const total = rows.reduce((acc, row) => ({
+    agendas: acc.agendas + Number(row.agendas || 0),
+    aplican: acc.aplican + Number(row.aplican || 0),
+    ccExitosos: acc.ccExitosos + Number(row.ccExitosos || 0),
+    reuniones: acc.reuniones + Number(row.reuniones || 0),
+    ventas: acc.ventas + Number(row.ventas || 0),
+    facturacion: acc.facturacion + Number(row.facturacion || 0)
+  }), { agendas: 0, aplican: 0, ccExitosos: 0, reuniones: 0, ventas: 0, facturacion: 0 });
+  total.tasaCierre = safeDiv(total.ventas * 100, total.reuniones);
+
+  const body = orderedRows.map((row) => `
+    <tr>
+      <td>${renderCampaignMarker(row)}</td>
+      <td title="${escapeHtml(row.campaign)}">${escapeHtml(row.campaign)}</td>
+      <td>${formatInteger(row.agendas)}</td>
+      <td>${formatInteger(row.aplican)}</td>
+      <td>${formatInteger(row.ccExitosos)}</td>
+      <td>${formatInteger(row.reuniones)}</td>
+      <td>${formatInteger(row.ventas)}</td>
+      <td>${formatCurrency(row.facturacion)}</td>
+      <td>${formatPercent(row.tasaCierre)}</td>
+    </tr>
+  `).join('');
+
+  container.innerHTML = `
+    <details class="ads-collapse"${wasOpen ? ' open' : ''}>
+      <summary>Totales por Campaign</summary>
+      <div class="table-wrap marketing-panel ads-panel campaign-totals-panel">
+        <table class="marketing-table ads-table campaign-totals-table">
+          <thead>
+            <tr>
+              <th>${renderMarketingSortHeader('campaign', 'markerLabel', 'Marcador')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'campaign', 'Campaign')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'agendas', 'Agendas')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'aplican', 'Aplican')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'ccExitosos', 'CCE')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'reuniones', 'Reuniones')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'ventas', 'Ventas')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'facturacion', 'Facturación')}</th>
+              <th>${renderMarketingSortHeader('campaign', 'tasaCierre', 'Cierre')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${body}
+            <tr>
+              <td colspan="2"><strong>Total</strong></td>
+              <td><strong>${formatInteger(total.agendas)}</strong></td>
+              <td><strong>${formatInteger(total.aplican)}</strong></td>
+              <td><strong>${formatInteger(total.ccExitosos)}</strong></td>
+              <td><strong>${formatInteger(total.reuniones)}</strong></td>
+              <td><strong>${formatInteger(total.ventas)}</strong></td>
+              <td><strong>${formatCurrency(total.facturacion)}</strong></td>
+              <td><strong>${formatPercent(total.tasaCierre)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  `;
+
+  attachMarketingSortHandlers(container, 'campaign', () => renderCampaignTotalsTable(MARKETING_SORT_STATE.campaign.rows));
 }
 
 function aggregateAdsMetrics(rows, filters) {
@@ -1428,11 +1577,12 @@ async function loadDashboard() {
       rowOptions.eq_origen = filters.origen;
     }
 
-    const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, leadsResponse, traceabilityResponse] = await Promise.all([
+    const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, campaignTotalsResponse, leadsResponse, traceabilityResponse] = await Promise.all([
       window.metricasApi.fetchAllRows('kpi_marketing_diario', rowOptions),
       window.metricasApi.fetchMarketingInvestment(filters),
       window.metricasApi.fetchMarketingAovDia1(filters),
       window.metricasApi.fetchMarketingVentasTotales(filters),
+      window.metricasApi.fetchMarketingCampaignTotals(filters),
       window.metricasApi.fetchAllRows('leads_raw', {
         limit: 1000,
         from: filters.from,
@@ -1463,14 +1613,16 @@ async function loadDashboard() {
       ...(ventasTotalesResponse || {}),
       ...agendaAlignedMeetings
     });
+    renderCampaignTotalsTable(campaignTotalsResponse.rows || []);
     renderAdsMetricsTable(adRows);
     renderQualityMetricsTable(qualityRows);
     renderTraceabilityTable(traceabilityRows);
-    status.textContent = `${rows.length} registros KPI, ${adRows.length} anuncios y ${traceabilityRows.length} leads de trazabilidad procesados.`;
+    status.textContent = `${rows.length} registros KPI, ${(campaignTotalsResponse.rows || []).length} campaigns, ${adRows.length} anuncios y ${traceabilityRows.length} leads de trazabilidad procesados.`;
   } catch (error) {
     status.textContent = error.message;
     document.getElementById('creditBalanceSummary').innerHTML = '';
     document.getElementById('marketingContainer').innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No se pudo cargar el KPI de marketing.</div></div>';
+    document.getElementById('campaignTotalsContainer').innerHTML = '';
     document.getElementById('adsMetricsContainer').innerHTML = '';
     document.getElementById('qualityMetricsContainer').innerHTML = '';
     document.getElementById('traceabilityContainer').innerHTML = '';

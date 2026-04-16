@@ -191,6 +191,7 @@ function mapToSupabase(payload) {
     // Clasificación
     origen: getValue(p['Origen']),
     primer_origen: getValue(p['Primer origen']),
+    ultimo_origen: getValue(p['Ultimo origen']) ?? getValue(p['Último origen']) ?? getValue(p['Ultimo Origen']) ?? getValue(p['Último Origen']),
     etapa: getValue(p['Etapa']),
     temperatura: getValue(p['Temperatura']),
     calidad_lead: getValue(p['Calidad del lead']),

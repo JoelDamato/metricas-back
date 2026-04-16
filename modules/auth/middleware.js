@@ -93,7 +93,11 @@ function metricasApiGuard(req, res, next) {
     return next();
   }
 
-  if (reqPath === '/marketing/aov-dia-1' || reqPath === '/marketing/ventas-totales') {
+  if (
+    reqPath === '/marketing/aov-dia-1' ||
+    reqPath === '/marketing/ventas-totales' ||
+    reqPath === '/marketing/campaign-totales'
+  ) {
     if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {
       return res.status(403).json({ ok: false, message: 'Sin permiso para KPI marketing' });
     }

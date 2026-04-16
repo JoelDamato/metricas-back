@@ -776,7 +776,7 @@ function buildRenewalsPage(rows) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .slice(-8);
 
-  const metrics = [
+  const operationalMetrics = [
     buildMetricRow({
       key: 'renewable_30d',
       label: 'Clientes proximos a entrar a etapa de renovacion 30 dias',
@@ -796,36 +796,6 @@ function buildRenewalsPage(rows) {
       dateLabel: 'Snapshot actual de "csm"',
       fieldsLabel: '"proximo_renovar_15d"',
       logic: 'Cuenta filas donde "proximo_renovar_15d" viene marcado como verdadero, normalmente con valor "1".'
-    }),
-    buildMetricRow({
-      key: 'renewal_facturacion',
-      label: 'Facturacion de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'La base operativa ya existe, falta cerrar el mapping monetario final.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final", "fecha_final_renovacion"',
-      logic: 'La tabla "csm" hoy permite identificar el universo renovable, pero no trae un monto explícito de facturación de renovación para consolidar este KPI con precisión.'
-    }),
-    buildMetricRow({
-      key: 'renewal_cash',
-      label: 'Cash collected de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'La ventana operativa está; el cash todavía no está materializado en esta tabla.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final_renovacion"',
-      logic: 'Puedo identificar clientes renovables y renovados, pero hoy no hay un campo de cash cobrado de renovación dentro de "csm".'
-    }),
-    buildMetricRow({
-      key: 'renewal_pending',
-      label: 'Pagos pendientes de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'Se puede construir cuando definamos el estado pendiente o el cruce monetario.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final"',
-      logic: 'La parte operativa de quién debe renovar ya está, pero no existe todavía una marca monetaria de saldo pendiente dentro de "csm".'
     }),
     buildMetricRow({
       key: 'renewals_completed',
@@ -859,7 +829,53 @@ function buildRenewalsPage(rows) {
     })
   ];
 
+  const definitionMetrics = [
+    buildMetricRow({
+      key: 'renewal_facturacion',
+      label: 'Facturacion de renovaciones',
+      value: 'En definicion',
+      base: 'Sin campo monetario directo en "csm"',
+      note: 'La base operativa ya existe, falta cerrar el mapping monetario final.',
+      dateLabel: 'Pendiente de definicion monetaria',
+      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final", "fecha_final_renovacion"',
+      logic: 'La tabla "csm" hoy permite identificar el universo renovable, pero no trae un monto explícito de facturación de renovación para consolidar este KPI con precisión.'
+    }),
+    buildMetricRow({
+      key: 'renewal_cash',
+      label: 'Cash collected de renovaciones',
+      value: 'En definicion',
+      base: 'Sin campo monetario directo en "csm"',
+      note: 'La ventana operativa está; el cash todavía no está materializado en esta tabla.',
+      dateLabel: 'Pendiente de definicion monetaria',
+      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final_renovacion"',
+      logic: 'Puedo identificar clientes renovables y renovados, pero hoy no hay un campo de cash cobrado de renovación dentro de "csm".'
+    }),
+    buildMetricRow({
+      key: 'renewal_pending',
+      label: 'Pagos pendientes de renovaciones',
+      value: 'En definicion',
+      base: 'Sin campo monetario directo en "csm"',
+      note: 'Se puede construir cuando definamos el estado pendiente o el cruce monetario.',
+      dateLabel: 'Pendiente de definicion monetaria',
+      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final"',
+      logic: 'La parte operativa de quién debe renovar ya está, pero no existe todavía una marca monetaria de saldo pendiente dentro de "csm".'
+    })
+  ];
+
+  const metrics = [...operationalMetrics, ...definitionMetrics];
+
   const sections = [
+    {
+      title: 'Indicadores Monetarios Pendientes',
+      description: 'Quedan separados porque "csm" todavía no trae montos directos para consolidarlos.',
+      columns: ['Indicador', 'Estado', 'Base actual', 'Qué falta'],
+      rows: definitionMetrics.map((metric) => [
+        metric.label,
+        metric.value,
+        metric.base,
+        metric.note
+      ])
+    },
     {
       title: 'Calendario Operativo de Renovaciones',
       description: 'Distribución por mes final del programa, usando "fecha_final" como eje.',
@@ -875,6 +891,7 @@ function buildRenewalsPage(rows) {
 
   return {
     metrics,
+    tableMetrics: operationalMetrics,
     kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewal_rate'],
     chart: {
       title: 'Embudo de Renovación',
@@ -921,7 +938,7 @@ async function initCsmPage() {
 
     renderKpiCards(page.metrics, page.kpiKeys, infoMap);
     renderChart(page.chart);
-    renderMetricsTable(page.metrics, infoMap);
+    renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
     renderSections(page.sections);
 
     status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm". El panel prioriza campos directos de Notion y usa fallback operativo cuando todavía falta completar alguno.`;

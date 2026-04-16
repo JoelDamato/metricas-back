@@ -3,6 +3,7 @@ const PAGE_ROLE_ACCESS = {
   'index.html': ['total', 'comercial', 'csm'],
   'ranking.html': ['total', 'comercial'],
   'agendas-totales.html': ['total', 'comercial'],
+  'agendas-ultimo-origen.html': ['total', 'comercial'],
   'agendas-detalle-closer.html': ['total', 'comercial'],
   'kpi-closers.html': ['total', 'comercial'],
   'setting.html': ['total', 'comercial'],
@@ -18,6 +19,7 @@ const PAGE_ROLE_ACCESS = {
 const RESOURCE_ROLE_ACCESS = {
   ranking_closers_mensual: ['total', 'comercial'],
   agenda_totales: ['total', 'comercial'],
+  agenda_totales_ultimo_origen: ['total', 'comercial'],
   agenda_detalle_por_origen_closer: ['total', 'comercial'],
   kpi_closers_mensual: ['total', 'comercial'],
   setters: ['total', 'comercial'],

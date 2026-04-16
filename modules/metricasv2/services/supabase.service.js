@@ -656,6 +656,45 @@ function normalizeStrategyGroup(value) {
   return text;
 }
 
+function normalizeMarketingText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function includesMarketingWord(text, word) {
+  return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text);
+}
+
+function getMarketingCampaignCircle(value) {
+  const raw = String(value || '');
+  const text = normalizeMarketingText(raw);
+
+  if (
+    raw.includes('\u{1F534}') ||
+    text.includes('circulo rojo') ||
+    text.includes('circulito rojo') ||
+    includesMarketingWord(text, 'rojo') ||
+    includesMarketingWord(text, 'red')
+  ) {
+    return { key: 'red', label: 'Circulito rojo', sortOrder: 1 };
+  }
+
+  if (
+    raw.includes('\u{1F535}') ||
+    text.includes('circulo azul') ||
+    text.includes('circulito azul') ||
+    includesMarketingWord(text, 'azul') ||
+    includesMarketingWord(text, 'blue')
+  ) {
+    return { key: 'blue', label: 'Circulito azul', sortOrder: 2 };
+  }
+
+  return null;
+}
+
 function validateDateRange(from, to) {
   if (!from || !to) {
     const error = new Error('Debés enviar desde y hasta');
@@ -1092,6 +1131,60 @@ function sameDay(dateA, dateB) {
   return a.year === b.year && a.month === b.month && a.day === b.day;
 }
 
+function isMarketingApplicableAgenda(row) {
+  return normalizeMarketingText(row.agendo) === 'agendo' &&
+    normalizeMarketingText(row.aplica) === 'aplica';
+}
+
+function isMarketingCompletedMeeting(row) {
+  return isMarketingApplicableAgenda(row) &&
+    normalizeMarketingText(row.llamada_meg) === 'efectuada';
+}
+
+function isMarketingCcSuccess(row) {
+  return normalizeMarketingText(row.call_confirm) === 'exitoso' ||
+    normalizeMarketingText(row.llamada_cc) === 'exitoso' ||
+    normalizeMarketingText(row.cc_whatsapp) === 'exitoso';
+}
+
+function emptyMarketingCampaignTotal(circle, campaign) {
+  return {
+    marker: circle.key,
+    markerLabel: circle.label,
+    sortOrder: circle.sortOrder,
+    campaign,
+    agendas: 0,
+    aplican: 0,
+    ccExitosos: 0,
+    ccNoExitosos: 0,
+    reuniones: 0,
+    reunionesCce: 0,
+    reunionesCcne: 0,
+    ventas: 0,
+    ventasCce: 0,
+    ventasCcne: 0,
+    facturacion: 0,
+    cashCollected: 0,
+    tasaCierre: 0,
+    aov: 0
+  };
+}
+
+function getMarketingCampaignTotal(acc, campaign) {
+  const circle = getMarketingCampaignCircle(campaign);
+  if (!circle) return null;
+
+  const cleanCampaign = String(campaign || '').trim();
+  if (!cleanCampaign) return null;
+
+  const key = `${circle.key}::${cleanCampaign}`;
+  if (!acc.has(key)) {
+    acc.set(key, emptyMarketingCampaignTotal(circle, cleanCampaign));
+  }
+
+  return acc.get(key);
+}
+
 async function getMarketingAovDia1({ from, to, origen, estrategia }) {
   validateDateRange(from, to);
 
@@ -1168,6 +1261,100 @@ async function getMarketingVentasTotales({ from, to, origen }) {
   };
 }
 
+async function getMarketingCampaignTotals({ from, to, origen }) {
+  validateDateRange(from, to);
+
+  const [leadRows, comprobanteRows] = await Promise.all([
+    listAllRows('leads_raw', {
+      limit: 1000,
+      from,
+      to,
+      dateField: 'fecha_agenda',
+      orderBy: 'fecha_agenda',
+      orderDir: 'desc'
+    }),
+    listAllRows('comprobantes', {
+      limit: 1000,
+      from,
+      to,
+      dateField: 'fecha_de_agendamiento',
+      orderBy: 'fecha_de_agendamiento',
+      orderDir: 'desc'
+    })
+  ]);
+
+  const byCampaign = new Map();
+
+  leadRows.forEach((row) => {
+    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) return;
+
+    const current = getMarketingCampaignTotal(byCampaign, row.campaign);
+    if (!current) return;
+
+    current.agendas += 1;
+
+    const applicableAgenda = isMarketingApplicableAgenda(row);
+    const ccSuccess = isMarketingCcSuccess(row);
+
+    if (applicableAgenda) {
+      current.aplican += 1;
+
+      if (ccSuccess) {
+        current.ccExitosos += 1;
+      } else {
+        current.ccNoExitosos += 1;
+      }
+    }
+
+    if (isMarketingCompletedMeeting(row)) {
+      current.reuniones += 1;
+
+      if (ccSuccess) {
+        current.reunionesCce += 1;
+      } else {
+        current.reunionesCcne += 1;
+      }
+    }
+  });
+
+  comprobanteRows.forEach((row) => {
+    if (String(row.tipo || '').trim().toLowerCase() !== 'venta') return;
+
+    const producto = String(row.producto_format || '').trim();
+    if (!producto || producto.toLowerCase() === 'empty') return;
+    if (producto.toLowerCase().includes('club')) return;
+
+    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) return;
+
+    const current = getMarketingCampaignTotal(byCampaign, row.campaign);
+    if (!current) return;
+
+    current.ventas += 1;
+    current.facturacion += Number(row.facturacion || 0);
+    current.cashCollected += Number(row.cash_collected || 0);
+
+    const estadoCc = normalizeMarketingText(row.estado_cc);
+    if (estadoCc === 'exitoso') {
+      current.ventasCce += 1;
+    } else if (estadoCc === 'no exitoso') {
+      current.ventasCcne += 1;
+    }
+  });
+
+  return [...byCampaign.values()]
+    .map((row) => ({
+      ...row,
+      tasaCierre: row.reuniones > 0 ? (row.ventas * 100) / row.reuniones : 0,
+      aov: row.ventas > 0 ? row.facturacion / row.ventas : 0
+    }))
+    .sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      const agendasDiff = b.agendas - a.agendas;
+      if (agendasDiff !== 0) return agendasDiff;
+      return a.campaign.localeCompare(b.campaign);
+    });
+}
+
 module.exports = {
   listResources,
   listRows,
@@ -1185,6 +1372,7 @@ module.exports = {
   deleteMarketingInvestmentRecord,
   getMarketingAovDia1,
   getMarketingVentasTotales,
+  getMarketingCampaignTotals,
   normalizeResourceName,
   parseLimit,
   parseOffset

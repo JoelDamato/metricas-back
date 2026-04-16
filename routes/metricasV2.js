@@ -24,6 +24,7 @@ router.patch('/marketing/inversiones', controller.updateMarketingInvestmentRecor
 router.delete('/marketing/inversiones', controller.deleteMarketingInvestmentRecord);
 router.get('/marketing/aov-dia-1', controller.getMarketingAovDia1);
 router.get('/marketing/ventas-totales', controller.getMarketingVentasTotales);
+router.get('/marketing/campaign-totales', controller.getMarketingCampaignTotals);
 router.post('/assistant/ask', controller.askAssistant);
 
 module.exports = router;

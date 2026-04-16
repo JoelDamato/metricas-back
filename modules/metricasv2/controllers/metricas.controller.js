@@ -275,6 +275,24 @@ async function getMarketingVentasTotales(req, res, next) {
   }
 }
 
+async function getMarketingCampaignTotals(req, res, next) {
+  try {
+    const rows = await supabaseService.getMarketingCampaignTotals({
+      from: req.query.from,
+      to: req.query.to,
+      origen: req.query.origen
+    });
+
+    res.json({
+      ok: true,
+      count: rows.length,
+      rows
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
   getResources,
@@ -293,5 +311,6 @@ module.exports = {
   deleteMarketingInvestmentRecord,
   getMarketingAovDia1,
   getMarketingVentasTotales,
+  getMarketingCampaignTotals,
   askAssistant
 };
