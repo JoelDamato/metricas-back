@@ -203,6 +203,7 @@ function mapToSupabase(payload) {
     proximo_renovar_30d: getValue(p['Proximo a renovar 30D']),
     f_acceso: getValue(p['F. acceso']),
     activos: getValue(p['Activos']),
+    abandono: getValue(p['Abandono']),
     f_abandono: getValue(p['F. abandono']),
     modelo_negocio: getValue(p['Modelo de negocio']),
     nps_1: getValue(p['Nps 1']),

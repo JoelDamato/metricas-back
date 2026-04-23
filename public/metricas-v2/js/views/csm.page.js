@@ -120,6 +120,11 @@ function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function isAbandonmentActivity(row) {
+  const abandono = normalizeText(row?.abandono);
+  return abandono.includes('abandono');
+}
+
 function hasText(value) {
   return String(value || '').trim() !== '';
 }
@@ -267,14 +272,6 @@ function attachMetricInfo(root, infoMap) {
   });
 }
 
-function getFirstResultDate(moduleDates) {
-  return moduleDates.slice(1).find(Boolean) || null;
-}
-
-function getDiagnosisDate(moduleDates, onboardingDate) {
-  return moduleDates[0] || onboardingDate || null;
-}
-
 function getLatestDate(...dates) {
   const valid = dates.filter(Boolean);
   if (!valid.length) return null;
@@ -286,24 +283,16 @@ function enrichRows(rows) {
     const moduleDates = Array.from({ length: 10 }, (_, index) => parseDate(row[`modulo_${index + 1}`]));
     const onboardingDate = parseDate(row.f_onboarding);
     const accessDate = parseDate(row.f_acceso);
-    const firstResultDirectDate = parseDate(row.f_primer_resultado);
+    const firstResultDate = parseDate(row.f_primer_resultado);
     const successDate = parseDate(row.caso_de_exito);
     const abandonDate = parseDate(row.f_abandono);
     const finalDate = parseDate(row.fecha_final);
     const renewalCompletedDate = parseDate(row.fecha_final_renovacion);
     const advanceDate = parseDate(row.ultima_fecha_de_avance);
     const responseDate = parseDate(row.ultima_respuesta);
-    const firstResultDerivedDate = getFirstResultDate(moduleDates);
-    const firstResultDate = firstResultDirectDate || firstResultDerivedDate;
-    const diagnosisDate = getDiagnosisDate(moduleDates, onboardingDate);
-    const payToOnboardingDirect = normalizeDayMetric(parseMetricNumber(row.pago_a_onbo));
-    const payToOnboardingDerived = normalizeDayMetric(daysBetween(accessDate, onboardingDate));
-    const payToOnboardingMetric = payToOnboardingDirect ?? payToOnboardingDerived;
-    const payToDiagnosisDirect = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
-    const payToDiagnosisDerived = normalizeDayMetric(daysBetween(accessDate, diagnosisDate));
-    const payToDiagnosisMetric = payToDiagnosisDirect ?? payToDiagnosisDerived;
-    const diagnosisUnder7Direct = parseUnderSevenMetric(row.diagnostico_7dias);
-    const diagnosisUnder7Flag = diagnosisUnder7Direct ?? (payToDiagnosisMetric !== null ? payToDiagnosisMetric <= 7 : null);
+    const payToOnboardingMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_onbo));
+    const payToDiagnosisMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
+    const diagnosisUnder7Flag = parseUnderSevenMetric(row.diagnostico_7dias);
     const npsValues = Array.from({ length: 10 }, (_, index) => {
       const value = Number(row[`nps_${index + 1}`]);
       return Number.isFinite(value) ? value : null;
@@ -314,18 +303,9 @@ function enrichRows(rows) {
       modelBucket: normalizeModel(row.modelo_negocio),
       accessDate,
       onboardingDate,
-      diagnosisDate,
-      payToOnboardingDirect,
-      payToOnboardingDerived,
       payToOnboardingMetric,
-      payToOnboardingUsesFallback: payToOnboardingDirect === null && payToOnboardingDerived !== null,
-      payToDiagnosisDirect,
-      payToDiagnosisDerived,
       payToDiagnosisMetric,
-      payToDiagnosisUsesFallback: payToDiagnosisDirect === null && payToDiagnosisDerived !== null,
-      diagnosisUnder7Direct,
       diagnosisUnder7Flag,
-      diagnosisUnder7UsesFallback: diagnosisUnder7Direct === null && payToDiagnosisMetric !== null,
       successDate,
       abandonDate,
       finalDate,
@@ -333,19 +313,17 @@ function enrichRows(rows) {
       advanceDate,
       responseDate,
       firstResultDate,
-      firstResultDirectDate,
-      firstResultDerivedDate,
-      firstResultUsesFallback: !firstResultDirectDate && !!firstResultDerivedDate,
       moduleDates,
       npsValues,
       isActive: row.activos === true,
+      abandono: row.abandono,
       hasInsatisfaction: hasText(row.insatisfecho),
       hasRefundRequest: hasText(row.solicito_devolucion),
       hasFarewell: hasText(row.despedida),
       isRenewable15: asTruthy(row.proximo_renovar_15d),
       isRenewable30: asTruthy(row.proximo_renovar_30d),
       engagementDate: getLatestDate(advanceDate, responseDate),
-      programStartDate: onboardingDate || accessDate || null
+      programStartDate: onboardingDate
     };
   });
 }
@@ -456,6 +434,7 @@ function renderChart(config) {
 
 function buildTimePage(rows) {
   const payToOnboarding = rows
+    .filter((row) => !isAbandonmentActivity(row))
     .map((row) => row.payToOnboardingMetric)
     .filter((value) => value !== null && Number.isFinite(value));
   const payToDiagnosis = rows
@@ -463,14 +442,6 @@ function buildTimePage(rows) {
     .filter((value) => value !== null && Number.isFinite(value));
   const onboardingToFirstResult = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.firstResultDate);
   const onboardingToSuccess = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.successDate);
-  const directPayToOnboardingCount = rows.filter((row) => row.payToOnboardingDirect !== null).length;
-  const fallbackPayToOnboardingCount = rows.filter((row) => row.payToOnboardingUsesFallback).length;
-  const directPayToDiagnosisCount = rows.filter((row) => row.payToDiagnosisDirect !== null).length;
-  const fallbackPayToDiagnosisCount = rows.filter((row) => row.payToDiagnosisUsesFallback).length;
-  const directDiagnosisUnder7Count = rows.filter((row) => row.diagnosisUnder7Direct !== null).length;
-  const fallbackDiagnosisUnder7Count = rows.filter((row) => row.diagnosisUnder7UsesFallback).length;
-  const directFirstResultCount = rows.filter((row) => row.firstResultDirectDate).length;
-  const fallbackFirstResultCount = rows.filter((row) => row.firstResultUsesFallback).length;
 
   const unitStats = Array.from({ length: 10 }, (_, index) => {
     const diffs = rows
@@ -498,41 +469,41 @@ function buildTimePage(rows) {
       key: 'pay_to_onboarding',
       label: 'Tiempo promedio desde pago a ver onboarding',
       value: formatDays(average(payToOnboarding)),
-      base: `${formatInteger(payToOnboarding.length)} clientes con base calculable (${formatInteger(directPayToOnboardingCount)} desde "pago_a_onbo"${fallbackPayToOnboardingCount ? `, ${formatInteger(fallbackPayToOnboardingCount)} fallback` : ''})`,
-      note: 'Prioriza el campo calculado y usa respaldo por fechas si todavía falta.',
-      dateLabel: 'Campo calculado "pago_a_onbo" (fallback "f_acceso" -> "f_onboarding")',
-      fieldsLabel: '"pago_a_onbo" (fallback "f_acceso", "f_onboarding")',
-      logic: 'Promedia "pago_a_onbo" cuando ya llegó calculado desde Notion. Si ese campo todavía está vacío, cae al cálculo por diferencia entre "f_acceso" y "f_onboarding".'
+      base: `${formatInteger(payToOnboarding.length)} clientes con "pago_a_onbo" y sin "abandono" en CSM`,
+      note: 'Usa solo el campo cargado en CSM y excluye filas donde "abandono" contiene "abandono".',
+      dateLabel: 'Campo calculado "pago_a_onbo"',
+      fieldsLabel: '"pago_a_onbo", "abandono"',
+      logic: 'Promedia el valor del campo "pago_a_onbo" solo para filas donde "abandono" no contiene "abandono".'
     }),
     buildMetricRow({
       key: 'pay_to_diagnosis',
       label: 'Tiempo promedio desde pago a sesión diagnóstico',
       value: formatDays(average(payToDiagnosis)),
-      base: `${formatInteger(payToDiagnosis.length)} clientes con base calculable (${formatInteger(directPayToDiagnosisCount)} desde "pago_a_diagnostico"${fallbackPayToDiagnosisCount ? `, ${formatInteger(fallbackPayToDiagnosisCount)} fallback` : ''})`,
-      note: 'Prioriza el campo específico de diagnóstico y conserva respaldo temporal.',
-      dateLabel: 'Campo calculado "pago_a_diagnostico" (fallback "f_acceso" -> "modulo_1"/"f_onboarding")',
-      fieldsLabel: '"pago_a_diagnostico" (fallback "f_acceso", "modulo_1", "f_onboarding")',
-      logic: 'Promedia "pago_a_diagnostico" cuando el valor llega desde Notion. Si aún no está cargado, usa el cálculo por diferencia entre "f_acceso" y la fecha de diagnóstico operativa del panel.'
+      base: `${formatInteger(payToDiagnosis.length)} clientes con "pago_a_diagnostico"`,
+      note: 'Usa solo el campo cargado en CSM.',
+      dateLabel: 'Campo calculado "pago_a_diagnostico"',
+      fieldsLabel: '"pago_a_diagnostico"',
+      logic: 'Promedia el valor del campo "pago_a_diagnostico".'
     }),
     buildMetricRow({
       key: 'diagnosis_under_7',
       label: 'Cantidad de sesiones diagnóstico menor a 7 días',
       value: formatInteger(diagnosticUnder7),
-      base: `${formatInteger(diagnosticUnder7Base)} clientes con base calculable (${formatInteger(directDiagnosisUnder7Count)} desde "diagnostico_7dias"${fallbackDiagnosisUnder7Count ? `, ${formatInteger(fallbackDiagnosisUnder7Count)} fallback` : ''})`,
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con "diagnostico_7dias"`,
       note: 'Cuenta los casos que entran dentro de la ventana de 7 días.',
-      dateLabel: 'Campo calculado "diagnostico_7dias" (fallback sobre "pago_a_diagnostico")',
-      fieldsLabel: '"diagnostico_7dias" (fallback "pago_a_diagnostico")',
-      logic: 'Cuenta como positivo el campo "diagnostico_7dias" cuando llega calculado desde Notion. Si falta, usa el tiempo a diagnóstico resuelto por el panel y marca positivo cuando es menor o igual a 7 días.'
+      dateLabel: 'Campo calculado "diagnostico_7dias"',
+      fieldsLabel: '"diagnostico_7dias"',
+      logic: 'Cuenta como positivo solo el campo "diagnostico_7dias" cuando llega marcado en CSM.'
     }),
     buildMetricRow({
       key: 'onboarding_to_first_result',
       label: 'Tiempo promedio a primer resultado',
       value: formatDays(average(onboardingToFirstResult)),
-      base: `${formatInteger(onboardingToFirstResult.length)} clientes con onboarding y primer resultado (${formatInteger(directFirstResultCount)} desde "f_primer_resultado"${fallbackFirstResultCount ? `, ${formatInteger(fallbackFirstResultCount)} fallback` : ''})`,
-      note: 'Prioriza la fecha específica de primer resultado y mantiene respaldo operativo.',
-      dateLabel: '"f_onboarding" -> "f_primer_resultado" (fallback primera fecha entre "modulo_2" y "modulo_10")',
-      fieldsLabel: '"f_onboarding", "f_primer_resultado" (fallback "modulo_2" a "modulo_10")',
-      logic: 'Calcula el promedio de días entre "f_onboarding" y "f_primer_resultado". Si ese campo todavía no está cargado, usa como respaldo la primera fecha completada desde "modulo_2" en adelante.'
+      base: `${formatInteger(onboardingToFirstResult.length)} clientes con onboarding y "f_primer_resultado"`,
+      note: 'Usa solo la fecha de primer resultado cargada.',
+      dateLabel: '"f_onboarding" -> "f_primer_resultado"',
+      fieldsLabel: '"f_onboarding", "f_primer_resultado"',
+      logic: 'Calcula el promedio de días entre "f_onboarding" y "f_primer_resultado" sin apoyarse en otras fechas.'
     }),
     buildMetricRow({
       key: 'onboarding_to_success',
@@ -677,11 +648,11 @@ function buildSituationPage(rows) {
       key: 'avg_days_to_abandon',
       label: 'Dias promedio hasta abandono',
       value: formatDays(average(abandonDiffs)),
-      base: `${formatInteger(abandonDiffs.length)} clientes con inicio y abandono`,
-      note: 'El inicio toma primero onboarding y, si falta, acceso.',
-      dateLabel: '"f_onboarding" / "f_acceso" -> "f_abandono"',
-      fieldsLabel: '"f_onboarding", "f_acceso", "f_abandono"',
-      logic: 'Promedio de días desde el inicio operativo del programa hasta la fecha de abandono.'
+      base: `${formatInteger(abandonDiffs.length)} clientes con onboarding y abandono`,
+      note: 'Usa solo onboarding y fecha de abandono cargados.',
+      dateLabel: '"f_onboarding" -> "f_abandono"',
+      fieldsLabel: '"f_onboarding", "f_abandono"',
+      logic: 'Promedio de días entre "f_onboarding" y "f_abandono".'
     }),
     buildMetricRow({
       key: 'engagement',
@@ -718,10 +689,10 @@ function buildSituationPage(rows) {
       label: 'Clientes con primer resultado',
       value: formatCountWithPercent(firstResultRows.length, rows.length),
       base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'El primer resultado se deriva de la primera unidad posterior al onboarding.',
-      dateLabel: 'Primera fecha entre "modulo_2" y "modulo_10"',
-      fieldsLabel: '"modulo_2" a "modulo_10"',
-      logic: 'Cuenta clientes con al menos una fecha válida desde "modulo_2" en adelante.'
+      note: 'Usa solo la fecha explícita de primer resultado cargada.',
+      dateLabel: '"f_primer_resultado"',
+      fieldsLabel: '"f_primer_resultado"',
+      logic: 'Cuenta clientes con fecha no nula en "f_primer_resultado".'
     }),
     buildMetricRow({
       key: 'insatisfied_clients',
