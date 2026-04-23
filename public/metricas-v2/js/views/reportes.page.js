@@ -487,7 +487,6 @@ function buildReportMarkup(data) {
   }));
 
   return [
-    buildReportCommentsPanel(data),
     buildTableBlock({
       title: 'Reporte de Llamadas',
       subtitle: 'Agendadas, asistidas y vendidas por closer.',
@@ -854,10 +853,9 @@ async function loadReportes() {
   status.textContent = 'Cargando reportes...';
 
   try {
-    const [permissions, cashPremioResponse, commentsResponse, agendaResumen, ventasResumen, cashRows, comprobantesData] = await Promise.all([
+    const [permissions, cashPremioResponse, agendaResumen, ventasResumen, cashRows, comprobantesData] = await Promise.all([
       loadAuthPermissions(),
       window.metricasApi.fetchReportesPremioConfig(),
-      window.metricasApi.fetchReportComments(range),
       loadAgendaData(range),
       loadVentasData(range),
       fetchCashRows(range),
@@ -873,8 +871,6 @@ async function loadReportes() {
       cashResumen,
       cashPremioConfig,
       canEditReportesPremio: permissions.canEditReportesPremio === true,
-      canCommentReportes: permissions.canCommentReportes === true,
-      comments: commentsResponse?.comments || [],
       user: window.metricasAuthUser || null,
       comprobantesResumen: comprobantesData.rows,
       comprobantesStates: comprobantesData.states
@@ -882,7 +878,6 @@ async function loadReportes() {
 
     bindReportInfoButtons(container);
     bindCashPremioForm();
-    bindReportComments(container, range);
 
     status.textContent = `Rango cargado: ${range.from} a ${range.to}`;
   } catch (error) {

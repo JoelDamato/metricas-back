@@ -518,6 +518,142 @@ th {
   text-align: left;
 }
 
+.sales-analysis-page .container {
+  width: min(1360px, 97vw);
+}
+
+.sales-analysis-page #tableContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sales-analysis-page .table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(241, 247, 255, 0.96));
+  border: 1px solid rgba(44, 97, 165, 0.18);
+  box-shadow: 0 10px 24px rgba(21, 54, 97, 0.08);
+}
+
+.sales-analysis-panel {
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid rgba(32, 79, 143, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(237, 244, 255, 0.84));
+  box-shadow: 0 10px 24px rgba(21, 54, 97, 0.08);
+}
+
+.sales-analysis-panel h3 {
+  margin: 0 0 4px;
+  color: #16355f;
+}
+
+.sales-analysis-panel p {
+  margin: 0 0 12px;
+  color: #536986;
+}
+
+.sales-analysis-page table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.sales-analysis-page th,
+.sales-analysis-page td {
+  font-size: 0.75rem;
+  padding: 7px 8px;
+  line-height: 1.2;
+  text-align: center;
+  word-break: break-word;
+}
+
+.sales-analysis-page th:first-child,
+.sales-analysis-page td:first-child {
+  width: 180px;
+  text-align: left;
+}
+
+.sales-analysis-page td:last-child,
+.sales-analysis-page th:last-child {
+  background: rgba(9, 87, 173, 0.14);
+  font-weight: 800;
+}
+
+.sales-analysis-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sales-analysis-row-label small {
+  color: #5a6d89;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.sales-analysis-cell-btn {
+  min-width: 40px;
+  padding: 4px 8px;
+  border: 1px solid rgba(34, 88, 160, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #16355f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sales-analysis-cell-btn:hover {
+  background: rgba(219, 234, 255, 0.9);
+}
+
+.sales-analysis-detail-card {
+  width: min(760px, 100%);
+  text-align: left;
+}
+
+.sales-analysis-detail-card h3 {
+  margin: 0 0 6px;
+  color: #16355f;
+}
+
+.sales-analysis-detail-card p {
+  margin: 0 0 12px;
+  color: #536986;
+}
+
+.sales-analysis-detail-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.sales-analysis-detail-list li {
+  color: #243a5a;
+}
+
+.sales-analysis-detail-list strong {
+  color: #16355f;
+}
+
+.sales-analysis-detail-meta {
+  display: block;
+  margin-top: 2px;
+  color: #5a6d89;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .sales-analysis-page th:first-child,
+  .sales-analysis-page td:first-child {
+    width: 150px;
+  }
+}
+
 .agenda-page .agenda-separator-row td {
   padding: 12px 0 10px;
   border-bottom: 0;

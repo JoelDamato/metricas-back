@@ -5,6 +5,7 @@ const PAGE_ROLE_ACCESS = {
   'agendas-totales.html': ['total', 'comercial'],
   'agendas-ultimo-origen.html': ['total', 'comercial'],
   'agendas-detalle-closer.html': ['total', 'comercial'],
+  'analisis-ventas.html': ['total', 'comercial'],
   'kpi-closers.html': ['total', 'comercial'],
   'setting.html': ['total', 'comercial'],
   'reportes.html': ['total', 'comercial'],
@@ -65,6 +66,10 @@ const CSM_ONLY_EMAILS = new Set([
   'glcosta.gc11@gmail.com'
 ]);
 
+const REPORTES_PREMIO_EDITOR_EMAILS = new Set([
+  'leonardoalaniz19@gmail.com'
+]);
+
 const MARKETING_BLOCKED_PAGES = new Set(['marketing.html']);
 const MARKETING_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones']);
 const MARKETING_BLOCKED_FEATURES = new Set(['marketing_inversion']);
@@ -101,6 +106,11 @@ function isCsmOnlyUser(userOrEmail) {
     : normalizeEmail(userOrEmail?.email);
 
   return CSM_ONLY_EMAILS.has(email);
+}
+
+function canEditReportesPremioForUser(user) {
+  const email = normalizeEmail(user?.email);
+  return user?.role === 'total' || REPORTES_PREMIO_EDITOR_EMAILS.has(email);
 }
 
 function hasRoleAccess(allowedRoles, role) {
@@ -164,7 +174,7 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
     featureName === 'reportes_premio'
     && String(options.method || 'GET').toUpperCase() !== 'GET'
   ) {
-    return user?.role === 'total';
+    return canEditReportesPremioForUser(user);
   }
 
   if (
@@ -198,6 +208,7 @@ module.exports = {
   isMarketingOnlyUser,
   isRestrictedCommercialUser,
   isCsmOnlyUser,
+  canEditReportesPremioForUser,
   canAccessPage,
   canAccessResource,
   canAccessFeature,

@@ -26,6 +26,11 @@ function formatCountWithPercent(count, base) {
   return `${formatInteger(count)} (${formatPercent((Number(count || 0) / Number(base || 0)) * 100)})`;
 }
 
+function toDateOnly(value) {
+  if (!value) return '';
+  return String(value).slice(0, 10);
+}
+
 function safeDiv(a, b) {
   if (!Number(b)) return 0;
   return Number(a || 0) / Number(b || 0);
@@ -47,6 +52,72 @@ function parseDate(value) {
 function daysBetween(start, end) {
   if (!(start instanceof Date) || !(end instanceof Date)) return null;
   return (end.getTime() - start.getTime()) / 86400000;
+}
+
+function startOfLocalDay(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseDateAsLocalDay(value) {
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return startOfLocalDay(parsed);
+}
+
+function calendarDaysUntil(date, today = new Date()) {
+  const target = parseDateAsLocalDay(date);
+  const current = startOfLocalDay(today);
+  if (!target || !current) return null;
+  return Math.round((target.getTime() - current.getTime()) / 86400000);
+}
+
+function getDefaultRenewalRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: now.toISOString().slice(0, 10)
+  };
+}
+
+function setupRenewalFilters() {
+  const desde = document.getElementById('desde');
+  const hasta = document.getElementById('hasta');
+  if (!desde || !hasta) return;
+
+  const defaults = getDefaultRenewalRange();
+  const params = new URLSearchParams(window.location.search);
+  const from = params.get('desde') || defaults.from;
+  const to = params.get('hasta') || defaults.to;
+
+  desde.value = from;
+  hasta.value = to;
+}
+
+function getRenewalFilters() {
+  return {
+    from: document.getElementById('desde')?.value || '',
+    to: document.getElementById('hasta')?.value || ''
+  };
+}
+
+function isDateInRange(value, filters) {
+  const date = toDateOnly(value);
+  if (!date) return false;
+  if (filters.from && date < filters.from) return false;
+  if (filters.to && date > filters.to) return false;
+  return true;
+}
+
+function normalizeText(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function hasText(value) {
@@ -116,6 +187,10 @@ function normalizeModel(value) {
   return 'Etc';
 }
 
+function isRenewalProduct(value) {
+  return normalizeText(value).includes('renovac');
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -123,6 +198,15 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(value || 0));
 }
 
 function buildMetricRow({ key, label, value, base, note, dateLabel, fieldsLabel, logic }) {
@@ -746,13 +830,105 @@ function buildSituationPage(rows) {
   };
 }
 
-function buildRenewalsPage(rows) {
-  const renewable30Rows = rows.filter((row) => row.isRenewable30);
-  const renewable15Rows = rows.filter((row) => row.isRenewable15);
+function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
+  const renewalSales = (comprobanteRows || []).filter((row) => (
+    normalizeText(row.tipo) === 'venta'
+    && isRenewalProduct(row.producto_format)
+  ));
+  const renewalSaleGhlids = new Set(renewalSales.map((row) => String(row.ghlid || '').trim()).filter(Boolean));
+  const renewalCashRows = (comprobanteRows || []).filter((row) => {
+    const rowType = normalizeText(row.tipo);
+    if (rowType === 'venta') {
+      return isRenewalProduct(row.producto_format);
+    }
+    if (rowType !== 'cobranza') return false;
+    const ghlid = String(row.ghlid || '').trim();
+    return Boolean(ghlid) && renewalSaleGhlids.has(ghlid);
+  });
+
+  const facturacionRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
+  const cashRows = renewalCashRows.filter((row) => isDateInRange(row.f_acreditacion, filters));
+  const pendingRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
+  const countRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
+
+  const totals = {
+    facturacion: facturacionRows.reduce((sum, row) => sum + Number(row.facturacion || 0), 0),
+    cashCollected: cashRows.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0),
+    pendiente: pendingRows.reduce((sum, row) => {
+      const facturacion = Number(row.facturacion || 0);
+      const cashCollected = Number(row.cash_collected_total || row.cash_collected || 0);
+      return sum + Math.max(facturacion - cashCollected, 0);
+    }, 0),
+    cantidad: countRows.length
+  };
+
+  const metrics = [
+    buildMetricRow({
+      key: 'renewal_facturacion',
+      label: 'Facturacion de renovaciones',
+      value: formatCurrency(totals.facturacion),
+      base: `${formatInteger(facturacionRows.length)} comprobantes de venta con producto de renovacion dentro del rango`,
+      note: 'Base comprobantes. Ubico la venta por fecha de venta.',
+      dateLabel: '"f_venta"',
+      fieldsLabel: '"tipo", "producto_format", "facturacion", "f_venta"',
+      logic: 'Suma "facturacion" de comprobantes donde "tipo" = "Venta" y "producto_format" contiene "renovac". La métrica se interpreta con base de fecha de venta.'
+    }),
+    buildMetricRow({
+      key: 'renewal_cash',
+      label: 'Cash collected de renovaciones',
+      value: formatCurrency(totals.cashCollected),
+      base: `${formatInteger(cashRows.length)} acreditaciones de ventas de renovacion dentro del rango`,
+      note: 'Base comprobantes. Sumo acreditaciones reales de ventas y cobranzas ligadas a renovaciones.',
+      dateLabel: '"f_acreditacion"',
+      fieldsLabel: '"tipo", "producto_format", "cash_collected_total", "cash_collected", "f_acreditacion"',
+      logic: 'Suma "cash_collected" de comprobantes acreditados dentro del rango. Entra la venta de renovación y también cualquier cobranza vinculada por "ghlid" a una venta cuyo "producto_format" contiene "renovac".'
+    }),
+    buildMetricRow({
+      key: 'renewal_pending',
+      label: 'Lo pendiente de renovaciones',
+      value: formatCurrency(totals.pendiente),
+      base: `${formatInteger(pendingRows.length)} ventas de renovacion dentro del rango`,
+      note: 'Lo calculo como facturacion menos cash total acumulado, nunca por debajo de cero, sobre ventas filtradas por fecha de venta.',
+      dateLabel: '"f_venta" para ubicar la venta + saldo pendiente actual',
+      fieldsLabel: '"facturacion", "cash_collected_total", "cash_collected", "f_venta"',
+      logic: 'Calcula "lo pendiente" como max("facturacion" - cash total acumulado, 0) para cada venta de renovación y suma ese saldo sobre las ventas cuya "f_venta" cae dentro del rango.'
+    }),
+    buildMetricRow({
+      key: 'renewal_count_money',
+      label: 'Cantidad de renovaciones monetizadas',
+      value: formatInteger(totals.cantidad),
+      base: `${formatInteger(countRows.length)} ventas de renovacion dentro del rango`,
+      note: 'Cuenta ventas de renovación detectadas por producto y filtradas por fecha de venta.',
+      dateLabel: '"f_venta"',
+      fieldsLabel: '"tipo", "producto_format", "f_venta"',
+      logic: 'Cuenta comprobantes donde "tipo" = "Venta", "producto_format" contiene "renovac" y "f_venta" cae dentro del rango.'
+    })
+  ];
+
+  return {
+    metrics,
+    totals
+  };
+}
+
+function buildRenewalsPage(rows, context = {}) {
+  const renewable30Rows = rows.filter((row) => {
+    if (row.renewalCompletedDate) return false;
+    const daysToRenewal = calendarDaysUntil(row.fecha_final);
+    return daysToRenewal !== null && daysToRenewal >= 0 && daysToRenewal <= 30;
+  });
+  const renewable15Rows = rows.filter((row) => {
+    if (row.renewalCompletedDate) return false;
+    const daysToRenewal = calendarDaysUntil(row.fecha_final);
+    return daysToRenewal !== null && daysToRenewal >= 0 && daysToRenewal <= 15;
+  });
   const renewedRows = rows.filter((row) => row.renewalCompletedDate);
   const renewalBase = renewable15Rows.length || renewable30Rows.length;
   const renewalRate = safeDiv(renewedRows.length * 100, renewalBase);
   const projectedRenewals = (renewalRate / 100) * renewable30Rows.length;
+  const renewable30Ids = new Set(renewable30Rows.map((row) => row.id));
+  const renewable15Ids = new Set(renewable15Rows.map((row) => row.id));
+  const renewalFinancials = buildRenewalFinancialMetrics(context.comprobanteRows || [], context.filters || {});
 
   const monthBuckets = new Map();
   rows.forEach((row) => {
@@ -767,8 +943,8 @@ function buildRenewalsPage(rows) {
       });
     }
     const bucket = monthBuckets.get(monthKey);
-    if (row.isRenewable30) bucket.renewable30 += 1;
-    if (row.isRenewable15) bucket.renewable15 += 1;
+    if (renewable30Ids.has(row.id)) bucket.renewable30 += 1;
+    if (renewable15Ids.has(row.id)) bucket.renewable15 += 1;
     if (row.renewalCompletedDate) bucket.renewed += 1;
   });
 
@@ -782,20 +958,20 @@ function buildRenewalsPage(rows) {
       label: 'Clientes proximos a entrar a etapa de renovacion 30 dias',
       value: formatInteger(renewable30Rows.length),
       base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'Lee el flag operativo de ventana 30D.',
-      dateLabel: 'Snapshot actual de "csm"',
-      fieldsLabel: '"proximo_renovar_30d"',
-      logic: 'Cuenta filas donde "proximo_renovar_30d" viene marcado como verdadero, normalmente con valor "1".'
+      note: 'La ventana 30D se reconstruye por fecha final para no depender de flags desactualizados.',
+      dateLabel: '"fecha_final" comparada contra hoy',
+      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 30 días inclusive.'
     }),
     buildMetricRow({
       key: 'renewable_15d',
       label: 'Clientes en etapa de renovacion 15 dias',
       value: formatInteger(renewable15Rows.length),
       base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'Lee el flag operativo de ventana 15D.',
-      dateLabel: 'Snapshot actual de "csm"',
-      fieldsLabel: '"proximo_renovar_15d"',
-      logic: 'Cuenta filas donde "proximo_renovar_15d" viene marcado como verdadero, normalmente con valor "1".'
+      note: 'La ventana 15D se reconstruye por fecha final para seguir la misma base que Notion.',
+      dateLabel: '"fecha_final" comparada contra hoy',
+      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 15 días inclusive.'
     }),
     buildMetricRow({
       key: 'renewals_completed',
@@ -813,9 +989,9 @@ function buildRenewalsPage(rows) {
       value: formatPercent(renewalRate),
       base: `${formatInteger(renewalBase)} clientes en base renovable`,
       note: 'Uso primero la base 15D; si está vacía, tomo la 30D.',
-      dateLabel: 'Snapshot actual y cierre de renovación',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final_renovacion"',
-      logic: 'Calculo renovaciones concretadas sobre la base renovable más cercana a cierre: primero "proximo_renovar_15d" y, si no hay base, "proximo_renovar_30d".'
+      dateLabel: 'Ventanas recalculadas por "fecha_final" y cierre de renovación',
+      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
+      logic: 'Calculo renovaciones concretadas sobre la base renovable más cercana a cierre: primero la ventana recalculada de 15 días y, si no hay base, la de 30 días.'
     }),
     buildMetricRow({
       key: 'renewal_projection',
@@ -823,68 +999,26 @@ function buildRenewalsPage(rows) {
       value: formatInteger(Math.round(projectedRenewals)),
       base: `${formatInteger(renewable30Rows.length)} clientes en 30D`,
       note: 'Aplico la tasa de renovación actual sobre la ventana 30D.',
-      dateLabel: 'Snapshot actual de renovables',
-      fieldsLabel: '"proximo_renovar_30d", "proximo_renovar_15d", "fecha_final_renovacion"',
-      logic: 'Multiplico la tasa actual de renovación por la cantidad de clientes marcados en "proximo_renovar_30d".'
+      dateLabel: 'Ventana 30D recalculada por "fecha_final"',
+      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
+      logic: 'Multiplico la tasa actual de renovación por la cantidad de clientes no renovados cuya "fecha_final" cae dentro de los próximos 30 días.'
     })
   ];
 
-  const definitionMetrics = [
-    buildMetricRow({
-      key: 'renewal_facturacion',
-      label: 'Facturacion de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'La base operativa ya existe, falta cerrar el mapping monetario final.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final", "fecha_final_renovacion"',
-      logic: 'La tabla "csm" hoy permite identificar el universo renovable, pero no trae un monto explícito de facturación de renovación para consolidar este KPI con precisión.'
-    }),
-    buildMetricRow({
-      key: 'renewal_cash',
-      label: 'Cash collected de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'La ventana operativa está; el cash todavía no está materializado en esta tabla.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final_renovacion"',
-      logic: 'Puedo identificar clientes renovables y renovados, pero hoy no hay un campo de cash cobrado de renovación dentro de "csm".'
-    }),
-    buildMetricRow({
-      key: 'renewal_pending',
-      label: 'Pagos pendientes de renovaciones',
-      value: 'En definicion',
-      base: 'Sin campo monetario directo en "csm"',
-      note: 'Se puede construir cuando definamos el estado pendiente o el cruce monetario.',
-      dateLabel: 'Pendiente de definicion monetaria',
-      fieldsLabel: '"proximo_renovar_15d", "proximo_renovar_30d", "fecha_final"',
-      logic: 'La parte operativa de quién debe renovar ya está, pero no existe todavía una marca monetaria de saldo pendiente dentro de "csm".'
-    })
-  ];
+  const definitionMetrics = renewalFinancials.metrics;
 
   const metrics = [...operationalMetrics, ...definitionMetrics];
 
   const sections = [
     {
-      title: 'Indicadores Monetarios Pendientes',
-      description: 'Quedan separados porque "csm" todavía no trae montos directos para consolidarlos.',
-      columns: ['Indicador', 'Estado', 'Base actual', 'Qué falta'],
+      title: 'Indicadores Monetarios de Renovaciones',
+      description: 'Base comprobantes para productos cuyo "producto_format" contiene "renovac".',
+      columns: ['Indicador', 'Valor', 'Base actual', 'Lectura'],
       rows: definitionMetrics.map((metric) => [
         metric.label,
         metric.value,
         metric.base,
         metric.note
-      ])
-    },
-    {
-      title: 'Calendario Operativo de Renovaciones',
-      description: 'Distribución por mes final del programa, usando "fecha_final" como eje.',
-      columns: ['Mes', 'Base 30D', 'Base 15D', 'Renovadas'],
-      rows: sortedMonths.map(([, bucket]) => [
-        bucket.label,
-        formatInteger(bucket.renewable30),
-        formatInteger(bucket.renewable15),
-        formatInteger(bucket.renewed)
       ])
     }
   ];
@@ -928,26 +1062,63 @@ async function initCsmPage() {
 
   if (!builder) return;
 
-  status.textContent = 'Cargando metricas de CSM...';
-
-  try {
-    const response = await window.metricasApi.fetchAllRows('csm', { limit: 1000 });
-    const rows = enrichRows(response.rows || []);
-    const page = builder(rows);
-    const infoMap = Object.fromEntries(page.metrics.map((metric) => [metric.key, metric.info]));
-
-    renderKpiCards(page.metrics, page.kpiKeys, infoMap);
-    renderChart(page.chart);
-    renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
-    renderSections(page.sections);
-
-    status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm". El panel prioriza campos directos de Notion y usa fallback operativo cuando todavía falta completar alguno.`;
-  } catch (error) {
-    document.getElementById('kpiContainer').innerHTML = '';
-    document.getElementById('tableContainer').innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No se pudieron cargar las metricas de CSM.</div></div>';
-    document.getElementById('detailContainer').innerHTML = '';
-    status.textContent = error.message || 'No se pudieron cargar las metricas de CSM.';
+  if (pageKey === 'renovaciones') {
+    setupRenewalFilters();
   }
+
+  async function loadPage() {
+    status.textContent = 'Cargando metricas de CSM...';
+
+    try {
+      const filters = pageKey === 'renovaciones' ? getRenewalFilters() : {};
+
+      if (pageKey === 'renovaciones' && filters.from && filters.to && filters.from > filters.to) {
+        status.textContent = 'La fecha desde no puede ser mayor a la fecha hasta.';
+        return;
+      }
+
+      const [csmResponse, comprobantesResponse] = await Promise.all([
+        window.metricasApi.fetchAllRows('csm', { limit: 1000 }),
+        pageKey === 'renovaciones'
+          ? window.metricasApi.fetchAllRows('comprobantes', { limit: 1000 })
+          : Promise.resolve({ rows: [] })
+      ]);
+      const rows = enrichRows(csmResponse.rows || []);
+      const page = builder(rows, {
+        comprobanteRows: comprobantesResponse.rows || [],
+        filters
+      });
+      const infoMap = Object.fromEntries(page.metrics.map((metric) => [metric.key, metric.info]));
+
+      renderKpiCards(page.metrics, page.kpiKeys, infoMap);
+      renderChart(page.chart);
+      renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
+      renderSections(page.sections);
+
+      if (pageKey === 'renovaciones') {
+        const params = new URLSearchParams(window.location.search);
+        params.set('desde', filters.from || '');
+        params.set('hasta', filters.to || '');
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm" | rango monetario ${filters.from || 'sin desde'} a ${filters.to || 'sin hasta'}. Facturacion, pendiente y cantidad usan fecha de venta; cash usa fecha de acreditacion.`;
+      } else {
+        status.textContent = '';
+      }
+    } catch (error) {
+      document.getElementById('kpiContainer').innerHTML = '';
+      document.getElementById('tableContainer').innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No se pudieron cargar las metricas de CSM.</div></div>';
+      document.getElementById('detailContainer').innerHTML = '';
+      status.textContent = error.message || 'No se pudieron cargar las metricas de CSM.';
+    }
+  }
+
+  if (pageKey === 'renovaciones') {
+    document.getElementById('reload')?.addEventListener('click', loadPage);
+    document.getElementById('desde')?.addEventListener('change', loadPage);
+    document.getElementById('hasta')?.addEventListener('change', loadPage);
+  }
+
+  await loadPage();
 }
 
 initCsmPage();
