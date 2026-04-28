@@ -70,6 +70,39 @@ const REPORTES_PREMIO_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com'
 ]);
 
+const USER_ACCESS_OVERRIDES = {
+  'iascinahuel@gmail.com': {
+    homePath: '/metricas/views/setting.html',
+    allowedPages: new Set(['setting.html']),
+    allowedResources: new Set(['setters']),
+    allowedFeatures: {}
+  },
+  'robertoboero83@gmail.com': {
+    homePath: '/metricas',
+    allowedPages: new Set([
+      'index.html',
+      'ranking.html',
+      'agendas-totales.html',
+      'analisis-ventas.html',
+      'setting.html',
+      'leads-bdd.html',
+      'marketing.html'
+    ]),
+    allowedResources: new Set([
+      'ranking_closers_mensual',
+      'agenda_totales',
+      'setters',
+      'leads_raw',
+      'kpi_marketing_diario',
+      'kpi_marketing_inversiones',
+      'comprobantes'
+    ]),
+    allowedFeatures: {
+      marketing_inversion: ['GET']
+    }
+  }
+};
+
 const MARKETING_BLOCKED_PAGES = new Set(['marketing.html']);
 const MARKETING_BLOCKED_RESOURCES = new Set(['kpi_marketing_diario', 'kpi_marketing_inversiones']);
 const MARKETING_BLOCKED_FEATURES = new Set(['marketing_inversion']);
@@ -82,6 +115,14 @@ const MARKETING_ONLY_ALLOWED_FEATURES = new Set(['views', 'marketing_inversion']
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function getUserAccessOverride(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+
+  return USER_ACCESS_OVERRIDES[email] || null;
 }
 
 function isMarketingOnlyUser(userOrEmail) {
@@ -131,6 +172,8 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  const override = getUserAccessOverride(user);
+  if (override) return override.allowedPages.has(pageName);
   if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
   if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_PAGES.has(pageName);
   if (!canAccessPage(user?.role, pageName)) return false;
@@ -140,6 +183,8 @@ function canAccessPageForUser(user, pageName) {
 }
 
 function canAccessResourceForUser(user, resourceName) {
+  const override = getUserAccessOverride(user);
+  if (override) return override.allowedResources.has(resourceName);
   if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_RESOURCES.has(resourceName);
   if (!canAccessResource(user?.role, resourceName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_RESOURCES.has(resourceName)) return false;
@@ -148,6 +193,13 @@ function canAccessResourceForUser(user, resourceName) {
 }
 
 function canAccessFeatureForUser(user, featureName, options = {}) {
+  const override = getUserAccessOverride(user);
+  if (override) {
+    const allowedMethods = override.allowedFeatures[featureName];
+    if (!allowedMethods) return false;
+    return allowedMethods.includes(String(options.method || 'GET').toUpperCase());
+  }
+
   if (isMarketingOnlyUser(user) && !MARKETING_ONLY_ALLOWED_FEATURES.has(featureName)) {
     return false;
   }
@@ -188,8 +240,11 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 }
 
 function getUserPermissions(user) {
+  const override = getUserAccessOverride(user);
   return {
     onlyMarketingAccess: isMarketingOnlyUser(user),
+    homePath: override?.homePath || null,
+    allowedPages: override ? Array.from(override.allowedPages) : null,
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
@@ -205,6 +260,8 @@ module.exports = {
   MARKETING_ONLY_EMAILS,
   RESTRICTED_COMMERCIAL_EMAILS,
   CSM_ONLY_EMAILS,
+  USER_ACCESS_OVERRIDES,
+  getUserAccessOverride,
   isMarketingOnlyUser,
   isRestrictedCommercialUser,
   isCsmOnlyUser,

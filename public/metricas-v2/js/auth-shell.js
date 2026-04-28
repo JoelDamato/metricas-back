@@ -9,8 +9,14 @@
     if (!user) return;
     const permissions = user.permissions || {};
     const onlyMarketingAccess = permissions.onlyMarketingAccess === true;
-    const homeHref = onlyMarketingAccess ? '/metricas/views/marketing.html' : '/metricas/dashboard.html';
-    const homeLabel = onlyMarketingAccess ? 'Marketing' : 'Dashboard';
+    const allowedPages = Array.isArray(permissions.allowedPages) ? permissions.allowedPages : null;
+    const homeHref = permissions.homePath
+      || (onlyMarketingAccess ? '/metricas/views/marketing.html' : '/metricas/dashboard.html');
+    const homeLabel = homeHref.includes('/views/setting.html')
+      ? 'Setting'
+      : (homeHref === '/metricas'
+        ? 'Central'
+        : (onlyMarketingAccess ? 'Marketing' : 'Dashboard'));
 
     window.metricasAuthUser = user;
     window.metricasAuthPermissions = permissions;
@@ -75,6 +81,17 @@
         node.remove();
       }
     });
+
+    if (allowedPages) {
+      document.querySelectorAll('a[href^="/metricas"]').forEach((node) => {
+        const href = node.getAttribute('href') || '';
+        const pageName = href.split('/').pop()?.split('?')[0] || '';
+        if (!pageName || !pageName.endsWith('.html')) return;
+        if (!allowedPages.includes(pageName)) {
+          node.remove();
+        }
+      });
+    }
 
     if (permissions.canAccessLeadsBdd === false) {
       document.querySelectorAll('a[href="/metricas/views/leads-bdd.html"]').forEach((node) => node.remove());

@@ -2,6 +2,8 @@ const DEFAULT_HOME_PATH = '/metricas/dashboard.html';
 const MARKETING_HOME_PATH = '/metricas/views/marketing.html';
 
 function resolveHomePath(response) {
+  const explicitHomePath = response?.user?.permissions?.homePath;
+  if (explicitHomePath) return explicitHomePath;
   return response?.user?.permissions?.onlyMarketingAccess === true
     ? MARKETING_HOME_PATH
     : DEFAULT_HOME_PATH;
