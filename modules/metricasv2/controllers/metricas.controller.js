@@ -234,7 +234,8 @@ async function getMarketingAovDia1(req, res, next) {
       from: req.query.from,
       to: req.query.to,
       origen: req.query.origen,
-      estrategia: req.query.estrategia
+      estrategia: req.query.estrategia,
+      closer: req.query.closer
     });
 
     res.json({

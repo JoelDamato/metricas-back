@@ -19,6 +19,10 @@ function formatIsoNoMillis(date) {
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
+function shiftDateToArgentinaWallClock(date) {
+  return new Date(date.getTime() - 3 * 60 * 60 * 1000);
+}
+
 // Función para normalizar fechas al formato de Supabase (timestamp)
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
@@ -37,13 +41,16 @@ function normalizeDate(dateValue) {
 
       const parsed = new Date(trimmed);
       if (isNaN(parsed.getTime())) return null;
-      return formatIsoNoMillis(parsed);
+
+      // Para fechas con hora que llegan desde Notion en UTC,
+      // guardamos la misma hora visual que ve el equipo en Argentina.
+      return formatIsoNoMillis(shiftDateToArgentinaWallClock(parsed));
     }
 
     const date = new Date(dateValue);
     if (isNaN(date.getTime())) return null;
 
-    return formatIsoNoMillis(date);
+    return formatIsoNoMillis(shiftDateToArgentinaWallClock(date));
   } catch (error) {
     console.warn('⚠️ Error normalizando fecha:', dateValue, error.message);
     return null;

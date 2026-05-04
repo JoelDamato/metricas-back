@@ -656,6 +656,14 @@ function normalizeStrategyGroup(value) {
   return text;
 }
 
+function normalizeCloserGroup(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return 'Sin closer';
+  if (text === 'pablo butera vie' || text === 'pablo butera') return 'Pablo Butera';
+  if (text === 'nahuel iasci') return 'Nahuel Iasci';
+  return String(value || '').trim();
+}
+
 function normalizeMarketingText(value) {
   return String(value || '')
     .toLowerCase()
@@ -1185,7 +1193,7 @@ function getMarketingCampaignTotal(acc, campaign) {
   return acc.get(key);
 }
 
-async function getMarketingAovDia1({ from, to, origen, estrategia }) {
+async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
   validateDateRange(from, to);
 
   const rows = await listAllRows('comprobantes', {
@@ -1211,6 +1219,10 @@ async function getMarketingAovDia1({ from, to, origen, estrategia }) {
     }
 
     if (estrategia && normalizeStrategyGroup(row.estrategia_a || row.estrategia) !== normalizeStrategyGroup(estrategia)) {
+      return false;
+    }
+
+    if (closer && normalizeCloserGroup(row.creado_por) !== normalizeCloserGroup(closer)) {
       return false;
     }
 
