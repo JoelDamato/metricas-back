@@ -59,7 +59,7 @@ const KPI_CLOSERS_INFO = {
     title: 'Tasa cierre',
     viewLabel: '"kpi_closers_mensual"',
     dateLabel: 'Mes de "fecha_agenda" en "leads_raw" + mes de "fecha_de_agendamiento" en "comprobantes"',
-    logic: 'Calcula "ventas_agenda" / "efectuadas_agenda". "ventas_agenda" sale de "comprobantes" tipo "Venta" agrupado por mes de "fecha_de_agendamiento" y "creado_por", pero solo cuenta ventas donde "cash_collected_total" es al menos el 30% de "facturacion", para excluir señas. "efectuadas_agenda" sale de "leads_raw" por mes de "fecha_agenda".'
+    logic: 'Calcula "ventas_agenda" / "efectuadas_agenda". "ventas_agenda" sale de "comprobantes" tipo "Venta" agrupado por mes de "fecha_de_agendamiento" y "creado_por". Desde abril de 2026 solo cuenta ventas donde "cash_collected_total" es al menos el 30% de "facturacion", para excluir señas; antes de abril 2026 mantiene la lógica histórica. "efectuadas_agenda" sale de "leads_raw" por mes de "fecha_agenda".'
   },
   'Cash collected': {
     title: 'Cash collected',
