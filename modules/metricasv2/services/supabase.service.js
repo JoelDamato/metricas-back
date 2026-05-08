@@ -1211,8 +1211,10 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     const producto = String(row.producto_format || '').trim();
     if (!producto || producto.toLowerCase() === 'empty') return false;
     if (producto.toLowerCase().includes('club')) return false;
-
-    if (!sameDay(row.fecha_correspondiente, row.fecha_de_llamada)) return false;
+    const facturacion = Number(row.facturacion || 0);
+    const primerPago = Number(row.cash_collected || 0);
+    if (!(facturacion > 0)) return false;
+    if (!(primerPago > facturacion * 0.3)) return false;
 
     if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
       return false;
@@ -1270,6 +1272,70 @@ async function getMarketingVentasTotales({ from, to, origen }) {
   return {
     ventasTotales: filtered.length,
     facturacionVentasTotales: filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0)
+  };
+}
+
+function isNonClubProductForCash(row) {
+  const producto = String(row?.producto_format || '').trim().toLowerCase();
+  return !producto || !producto.includes('club');
+}
+
+function isTodayOrPastInArgentina(dateValue) {
+  const parts = parseFlexibleDateParts(dateValue);
+  if (!parts) return false;
+
+  const today = new Date();
+  const todayAr = {
+    year: today.getFullYear(),
+    month: today.getMonth() + 1,
+    day: today.getDate()
+  };
+
+  if (parts.year !== todayAr.year || parts.month !== todayAr.month) {
+    return true;
+  }
+
+  return parts.day <= todayAr.day;
+}
+
+async function getMarketingCashCollectedAgenda({ from, to, origen }) {
+  validateDateRange(from, to);
+
+  const rows = await listAllRows('comprobantes', {
+    limit: 1000,
+    from,
+    to,
+    dateField: 'fecha_de_agendamiento',
+    orderBy: 'fecha_de_agendamiento',
+    orderDir: 'desc'
+  });
+
+  const cashCollectedAgenda = rows.reduce((sum, row) => {
+    const tipo = String(row.tipo || '').trim().toLowerCase();
+    if (tipo !== 'venta' && tipo !== 'cobranza') return sum;
+    if (!isNonClubProductForCash(row)) return sum;
+
+    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+      return sum;
+    }
+
+    const agenda = parseFlexibleDateParts(row.fecha_de_agendamiento);
+    const acreditacion = parseFlexibleDateParts(row.f_acreditacion);
+    if (!agenda || !acreditacion) return sum;
+
+    if (agenda.year !== acreditacion.year || agenda.month !== acreditacion.month) {
+      return sum;
+    }
+
+    if (!isTodayOrPastInArgentina(row.f_acreditacion)) {
+      return sum;
+    }
+
+    return sum + Number(row.cash_collected || 0);
+  }, 0);
+
+  return {
+    cashCollectedAgenda
   };
 }
 
@@ -1384,6 +1450,7 @@ module.exports = {
   deleteMarketingInvestmentRecord,
   getMarketingAovDia1,
   getMarketingVentasTotales,
+  getMarketingCashCollectedAgenda,
   getMarketingCampaignTotals,
   normalizeResourceName,
   parseLimit,

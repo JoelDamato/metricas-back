@@ -96,6 +96,7 @@ function metricasApiGuard(req, res, next) {
   if (
     reqPath === '/marketing/aov-dia-1' ||
     reqPath === '/marketing/ventas-totales' ||
+    reqPath === '/marketing/cash-collected-agenda' ||
     reqPath === '/marketing/campaign-totales'
   ) {
     if (!access.canAccessFeatureForUser(req.authUser, 'marketing_inversion', { method: req.method })) {

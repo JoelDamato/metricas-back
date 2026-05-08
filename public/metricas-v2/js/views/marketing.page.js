@@ -113,9 +113,9 @@ const MARKETING_METRIC_INFO = {
   },
   'Cash collected': {
     title: 'Cash collected',
-    viewLabel: '"kpi_marketing_diario"',
-    dateLabel: 'La fila usa "kpi_marketing_diario"."fecha"; esa columna nace de date("leads_raw"."fecha_agenda"), pero para esta métrica se completa con comprobantes donde date("f_acreditacion") = "fecha"',
-    logic: 'Suma "cash_collected" desde "kpi_marketing_diario". Internamente la vista hace un join diario contra comprobantes acreditados por "f_acreditacion", y vuelca ese total sobre la fila cuyo alias "fecha" coincide con esa acreditación.'
+    viewLabel: 'Endpoint "marketing/cash-collected-agenda" sobre "comprobantes"',
+    dateLabel: '"fecha_de_agendamiento", validando que el mes de "f_acreditacion" coincida con el mes de agenda',
+    logic: 'Suma "cash_collected" de comprobantes tipo "Venta" y "Cobranza", excluyendo Club, filtrados por "fecha_de_agendamiento". Solo cuenta el cash cuyo mes de "f_acreditacion" coincide con el mes de agenda y en el mes actual corta hasta hoy Argentina. Queda alineado con "Cash Collected Agendas Mes" de Agendas Totales.'
   },
   'Facturación': {
     title: 'Facturación',
@@ -157,7 +157,7 @@ const MARKETING_METRIC_INFO = {
     title: 'AOV día 1',
     viewLabel: 'Endpoint "marketing/aov-dia-1" sobre "comprobantes"',
     dateLabel: '"fecha_de_agendamiento"',
-    logic: 'Promedio de "cash_collected" por venta del día 1, filtrando comprobantes donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día.'
+    logic: 'Promedio del primer "cash_collected" por venta, filtrando comprobantes tipo "Venta" con producto válido y no Club, y contando solo ventas donde ese primer pago supera el 30% de la "facturacion". No depende de que el pago y la llamada caigan el mismo día.'
   },
   'Reuniones TOTALES': {
     title: 'Reuniones TOTALES',
@@ -233,9 +233,9 @@ const MARKETING_METRIC_INFO = {
   },
   'ROAS sobre CC': {
     title: 'ROAS sobre CC',
-    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + "kpi_marketing_diario"',
-    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + cash diario pegado sobre "kpi_marketing_diario"."fecha", donde hoy se cruza por date("f_acreditacion")',
-    logic: 'Se calcula como "cash_collected" dividido "inversion_realizada". El cash sale de "kpi_marketing_diario" y se asigna al día por date("f_acreditacion"), mientras que la inversión sale del acumulado filtrado en "kpi_marketing_inversiones".'
+    viewLabel: 'Cálculo frontend sobre "kpi_marketing_inversiones" + endpoint "marketing/cash-collected-agenda"',
+    dateLabel: 'Mixta: inversiones por "fecha_desde"/"fecha_hasta" + cash por "fecha_de_agendamiento" con validación de mes de acreditación',
+    logic: 'Se calcula como "cash_collected" dividido "inversion_realizada". El cash sale del endpoint alineado con Agendas Totales por "fecha_de_agendamiento" y la inversión sale del acumulado filtrado en "kpi_marketing_inversiones".'
   }
 };
 
@@ -788,7 +788,7 @@ function computeMetrics(rows, investment, extras = {}) {
   const saldoRestanteLineaCredito = Number(investment?.saldo_restante_linea_credito || 0);
   const agendas = sumField(rows, 'reuniones_agendadas');
   const aplican = sumField(rows, 'agendas_aplicables');
-  const cashCollected = sumField(rows, 'cash_collected');
+  const cashCollected = Number(extras.cashCollected ?? sumField(rows, 'cash_collected'));
   const facturacion = Number(extras.facturacionVentasTotales ?? sumField(rows, 'facturacion'));
   const leadsContactados = Number(extras.leadsContactados ?? sumField(rows, 'leads_contactados_cc'));
   const ccExitosos = Number(extras.ccExitosos ?? sumField(rows, 'call_confirmer_exitosos'));
@@ -1577,11 +1577,12 @@ async function loadDashboard() {
       rowOptions.eq_origen = filters.origen;
     }
 
-    const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, campaignTotalsResponse, leadsResponse, traceabilityResponse] = await Promise.all([
+    const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, cashCollectedResponse, campaignTotalsResponse, leadsResponse, traceabilityResponse] = await Promise.all([
       window.metricasApi.fetchAllRows('kpi_marketing_diario', rowOptions),
       window.metricasApi.fetchMarketingInvestment(filters),
       window.metricasApi.fetchMarketingAovDia1(filters),
       window.metricasApi.fetchMarketingVentasTotales(filters),
+      window.metricasApi.fetchMarketingCashCollectedAgenda(filters),
       window.metricasApi.fetchMarketingCampaignTotals(filters),
       window.metricasApi.fetchAllRows('leads_raw', {
         limit: 1000,
@@ -1611,6 +1612,7 @@ async function loadDashboard() {
     renderDashboard(rows, investmentResponse.investment || null, {
       ...(aovDia1Response || {}),
       ...(ventasTotalesResponse || {}),
+      cashCollected: Number(cashCollectedResponse.cashCollectedAgenda || 0),
       ...agendaAlignedMeetings
     });
     renderCampaignTotalsTable(campaignTotalsResponse.rows || []);

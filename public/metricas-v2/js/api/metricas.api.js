@@ -99,6 +99,12 @@ async function fetchMarketingVentasTotales(options = {}) {
   return window.http.getJson(`/api/metricas/marketing/ventas-totales${suffix}`);
 }
 
+async function fetchMarketingCashCollectedAgenda(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/marketing/cash-collected-agenda${suffix}`);
+}
+
 async function fetchMarketingCampaignTotals(options = {}) {
   const qs = queryString(options);
   const suffix = qs ? `?${qs}` : '';
@@ -153,6 +159,7 @@ window.metricasApi = {
   fetchMarketingInvestments,
   fetchMarketingAovDia1,
   fetchMarketingVentasTotales,
+  fetchMarketingCashCollectedAgenda,
   fetchMarketingCampaignTotals,
   askScalito,
   saveMarketingInvestment,

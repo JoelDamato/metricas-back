@@ -60,7 +60,7 @@ const AGENDA_KPI_INFO = {
     title: 'AOV día 1',
     viewLabel: 'Endpoint "marketing/aov-dia-1" sobre "comprobantes"',
     dateLabel: '"fecha_de_agendamiento"',
-    logic: 'Calcula el promedio de "cash_collected" por venta para comprobantes tipo="Venta", con "producto_format" válido y no Club, donde "fecha_correspondiente" y "fecha_de_llamada" caen el mismo día. En Agendas Totales se filtra por año, uno o más orígenes y también por "estrategia_a" cuando el filtro de estrategia está seleccionado.'
+    logic: 'Calcula el promedio del primer "cash_collected" por venta para comprobantes tipo="Venta", con "producto_format" válido y no Club. Solo cuenta ventas donde ese primer pago supera el 30% de la "facturacion". En Agendas Totales se filtra por año, uno o más orígenes y también por "estrategia_a" cuando el filtro de estrategia está seleccionado.'
   }
 };
 
