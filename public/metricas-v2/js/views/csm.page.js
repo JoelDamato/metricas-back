@@ -261,14 +261,17 @@ function showMetricInfo(info) {
   const popup = document.createElement('div');
   popup.id = 'csmMetricPopup';
   popup.className = 'kpi-popup metric-info-popup';
+  const cardClass = (info.detailColumns || []).length >= 8 ? 'kpi-popup-card metric-info-card metric-info-card-wide' : 'kpi-popup-card metric-info-card';
   popup.innerHTML = `
-    <div class="kpi-popup-card metric-info-card">
+    <div class="${cardClass}">
       <h3>${escapeHtml(info.title)}</h3>
       <p><strong>Base que contabiliza:</strong> ${escapeHtml(info.base || 'Sin base informada')}</p>
       <p><strong>Campo que toma:</strong> ${escapeHtml(info.fieldsLabel || 'Sin campo')}</p>
       <p><strong>Muestra:</strong> ${escapeHtml(info.logic || 'Sin descripcion')}</p>
       ${detailTable}
-      <button id="csmMetricPopupClose" type="button">Cerrar</button>
+      <div class="metric-info-actions">
+        <button id="csmMetricPopupClose" type="button">Cerrar</button>
+      </div>
     </div>
   `;
 
