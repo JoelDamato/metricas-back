@@ -214,18 +214,19 @@ function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
-function buildMetricRow({ key, label, value, base, note, dateLabel, fieldsLabel, logic }) {
+function buildMetricRow({ key, label, value, base, fieldsLabel, logic, detailColumns, detailRows }) {
   return {
     key,
     label,
     value,
     base,
-    note,
     info: {
       title: label,
-      dateLabel,
+      base,
       fieldsLabel,
-      logic
+      logic,
+      detailColumns: detailColumns || [],
+      detailRows: detailRows || []
     }
   };
 }
@@ -236,16 +237,37 @@ function showMetricInfo(info) {
   const existing = document.getElementById('csmMetricPopup');
   if (existing) existing.remove();
 
+  const detailTable = Array.isArray(info.detailRows) && info.detailRows.length
+    ? `
+      <div class="metric-info-detail">
+        <p><strong>Detalle:</strong></p>
+        <input id="csmMetricSearch" class="metric-info-search" type="search" placeholder="Buscar cliente..." autocomplete="off" />
+        <div class="table-wrap csm-table-wrap">
+          <table class="csm-table csm-detail-table">
+            <thead>
+              <tr>${(info.detailColumns || []).map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${info.detailRows.map((row) => `
+                <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    : '';
+
   const popup = document.createElement('div');
   popup.id = 'csmMetricPopup';
   popup.className = 'kpi-popup metric-info-popup';
   popup.innerHTML = `
     <div class="kpi-popup-card metric-info-card">
       <h3>${escapeHtml(info.title)}</h3>
-      <p><strong>Vista que usa:</strong> ${escapeHtml(info.viewLabel || '"csm"')}</p>
-      <p><strong>Fecha que usa:</strong> ${escapeHtml(info.dateLabel)}</p>
-      <p><strong>Campos principales:</strong> ${escapeHtml(info.fieldsLabel)}</p>
-      <p><strong>Lógica:</strong> ${escapeHtml(info.logic)}</p>
+      <p><strong>Base que contabiliza:</strong> ${escapeHtml(info.base || 'Sin base informada')}</p>
+      <p><strong>Campo que toma:</strong> ${escapeHtml(info.fieldsLabel || 'Sin campo')}</p>
+      <p><strong>Muestra:</strong> ${escapeHtml(info.logic || 'Sin descripcion')}</p>
+      ${detailTable}
       <button id="csmMetricPopupClose" type="button">Cerrar</button>
     </div>
   `;
@@ -257,6 +279,19 @@ function showMetricInfo(info) {
     if (event.target === popup) close();
   });
   document.getElementById('csmMetricPopupClose').addEventListener('click', close);
+
+  const searchInput = document.getElementById('csmMetricSearch');
+  if (searchInput) {
+    const rows = Array.from(popup.querySelectorAll('.csm-detail-table tbody tr'));
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = !query || text.includes(query) ? '' : 'none';
+      });
+    });
+    searchInput.focus();
+  }
 }
 
 function attachMetricInfo(root, infoMap) {
@@ -283,6 +318,7 @@ function enrichRows(rows) {
     const moduleDates = Array.from({ length: 10 }, (_, index) => parseDate(row[`modulo_${index + 1}`]));
     const onboardingDate = parseDate(row.f_onboarding);
     const accessDate = parseDate(row.f_acceso);
+    const payAccessDate = parseDate(row.f_pago_con_acceso);
     const firstResultDate = parseDate(row.f_primer_resultado);
     const successDate = parseDate(row.caso_de_exito);
     const abandonDate = parseDate(row.f_abandono);
@@ -290,6 +326,7 @@ function enrichRows(rows) {
     const renewalCompletedDate = parseDate(row.fecha_final_renovacion);
     const advanceDate = parseDate(row.ultima_fecha_de_avance);
     const responseDate = parseDate(row.ultima_respuesta);
+    const payReferenceDate = payAccessDate || accessDate;
     const payToOnboardingMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_onbo));
     const payToDiagnosisMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
     const diagnosisUnder7Flag = parseUnderSevenMetric(row.diagnostico_7dias);
@@ -302,8 +339,11 @@ function enrichRows(rows) {
       ...row,
       modelBucket: normalizeModel(row.modelo_negocio),
       accessDate,
+      payAccessDate,
+      payReferenceDate,
       onboardingDate,
       payToOnboardingMetric,
+      payToOnboardingSource: 'pago_a_onbo',
       payToDiagnosisMetric,
       diagnosisUnder7Flag,
       successDate,
@@ -433,18 +473,64 @@ function renderChart(config) {
 }
 
 function buildTimePage(rows) {
-  const payToOnboarding = rows
-    .filter((row) => !isAbandonmentActivity(row))
-    .map((row) => row.payToOnboardingMetric)
+  const activeProgramRows = rows.filter((row) => !isAbandonmentActivity(row));
+  const payToOnboardingRows = activeProgramRows
+    .filter((row) => row.payToOnboardingMetric !== null && Number.isFinite(row.payToOnboardingMetric))
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: row.payToOnboardingMetric,
+      payDate: toDateOnly(row.payReferenceDate),
+      onboardingDate: toDateOnly(row.f_onboarding || ''),
+      source: row.payToOnboardingSource
+    }))
+    .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
+  const payToOnboarding = payToOnboardingRows
+    .map((row) => row.value)
     .filter((value) => value !== null && Number.isFinite(value));
-  const payToDiagnosis = rows
-    .map((row) => row.payToDiagnosisMetric)
+  const payToDiagnosisRows = activeProgramRows
+    .filter((row) => row.payToDiagnosisMetric !== null && Number.isFinite(row.payToDiagnosisMetric))
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: row.payToDiagnosisMetric,
+      payDate: toDateOnly(row.payReferenceDate),
+      diagnosisDate: toDateOnly(row.modulo_1 || row.f_onboarding || ''),
+      source: row.payAccessDate ? 'f_pago_con_acceso' : row.accessDate ? 'f_acceso' : 'notion_field'
+    }))
+    .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
+  const payToDiagnosis = payToDiagnosisRows
+    .map((row) => row.value)
     .filter((value) => value !== null && Number.isFinite(value));
-  const onboardingToFirstResult = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.firstResultDate);
-  const onboardingToSuccess = collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.successDate);
+  const diagnosisUnder7Rows = activeProgramRows
+    .filter((row) => row.diagnosisUnder7Flag === true)
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: 'Si',
+      diagnosisDays: row.payToDiagnosisMetric,
+      payDate: toDateOnly(row.payReferenceDate),
+      diagnosisDate: toDateOnly(row.modulo_1 || row.f_onboarding || '')
+    }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const onboardingToFirstResultRows = activeProgramRows
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: daysBetween(row.onboardingDate, row.firstResultDate),
+      onboardingDate: toDateOnly(row.f_onboarding || ''),
+      firstResultDate: toDateOnly(row.f_primer_resultado || '')
+    }))
+    .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0);
+  const onboardingToFirstResult = onboardingToFirstResultRows.map((row) => row.value);
+  const onboardingToSuccessRows = activeProgramRows
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: daysBetween(row.onboardingDate, row.successDate),
+      onboardingDate: toDateOnly(row.f_onboarding || ''),
+      successDate: toDateOnly(row.caso_de_exito || '')
+    }))
+    .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0);
+  const onboardingToSuccess = onboardingToSuccessRows.map((row) => row.value);
 
   const unitStats = Array.from({ length: 10 }, (_, index) => {
-    const diffs = rows
+    const diffs = activeProgramRows
       .map((row) => {
         const current = row.moduleDates[index];
         const previous = index === 0 ? row.onboardingDate : row.moduleDates[index - 1];
@@ -452,16 +538,27 @@ function buildTimePage(rows) {
       })
       .filter((value) => value !== null && Number.isFinite(value) && value >= 0);
 
-    const completed = rows.filter((row) => row.moduleDates[index]).length;
+    const completed = activeProgramRows.filter((row) => row.moduleDates[index]).length;
     return {
       unit: `Unidad ${index + 1}`,
       avgDays: average(diffs),
       completed
     };
   });
+  const unitClientRows = activeProgramRows
+    .map((row) => {
+      const unitValues = Array.from({ length: 10 }, (_, index) => {
+        const current = row.moduleDates[index];
+        const previous = index === 0 ? row.onboardingDate : row.moduleDates[index - 1];
+        const value = daysBetween(previous, current);
+        return value !== null && Number.isFinite(value) && value >= 0 ? formatDays(value) : '-';
+      });
+      return [row.nombre || 'Sin nombre', ...unitValues];
+    })
+    .sort((a, b) => a[0].localeCompare(b[0]));
 
-  const diagnosticUnder7 = rows.filter((row) => row.diagnosisUnder7Flag === true).length;
-  const diagnosticUnder7Base = rows.filter((row) => row.diagnosisUnder7Flag !== null).length;
+  const diagnosticUnder7 = activeProgramRows.filter((row) => row.diagnosisUnder7Flag === true).length;
+  const diagnosticUnder7Base = activeProgramRows.filter((row) => row.diagnosisUnder7Flag !== null).length;
   const averageUnit = average(unitStats.map((row) => row.avgDays).filter((value) => value !== null));
 
   const metrics = [
@@ -470,60 +567,76 @@ function buildTimePage(rows) {
       label: 'Tiempo promedio desde pago a ver onboarding',
       value: formatDays(average(payToOnboarding)),
       base: `${formatInteger(payToOnboarding.length)} clientes con "pago_a_onbo" y sin "abandono" en CSM`,
-      note: 'Usa solo el campo cargado en CSM y excluye filas donde "abandono" contiene "abandono".',
-      dateLabel: 'Campo calculado "pago_a_onbo"',
-      fieldsLabel: '"pago_a_onbo", "abandono"',
-      logic: 'Promedia el valor del campo "pago_a_onbo" solo para filas donde "abandono" no contiene "abandono".'
+      fieldsLabel: '"pago_a_onbo"',
+      logic: 'Promedio del campo "pago_a_onbo".',
+      detailColumns: ['Cliente', 'Pago a onbo'],
+      detailRows: payToOnboardingRows.map((row) => [
+        row.nombre,
+        formatDays(row.value)
+      ])
     }),
     buildMetricRow({
       key: 'pay_to_diagnosis',
       label: 'Tiempo promedio desde pago a sesión diagnóstico',
       value: formatDays(average(payToDiagnosis)),
-      base: `${formatInteger(payToDiagnosis.length)} clientes con "pago_a_diagnostico"`,
-      note: 'Usa solo el campo cargado en CSM.',
-      dateLabel: 'Campo calculado "pago_a_diagnostico"',
+      base: `${formatInteger(payToDiagnosis.length)} clientes con "pago_a_diagnostico" y sin "abandono" en CSM`,
       fieldsLabel: '"pago_a_diagnostico"',
-      logic: 'Promedia el valor del campo "pago_a_diagnostico".'
+      logic: 'Promedio del campo "pago_a_diagnostico".',
+      detailColumns: ['Cliente', 'Pago a diagnóstico'],
+      detailRows: payToDiagnosisRows.map((row) => [
+        row.nombre,
+        formatDays(row.value)
+      ])
     }),
     buildMetricRow({
       key: 'diagnosis_under_7',
       label: 'Cantidad de sesiones diagnóstico menor a 7 días',
       value: formatInteger(diagnosticUnder7),
-      base: `${formatInteger(diagnosticUnder7Base)} clientes con "diagnostico_7dias"`,
-      note: 'Cuenta los casos que entran dentro de la ventana de 7 días.',
-      dateLabel: 'Campo calculado "diagnostico_7dias"',
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con "diagnostico_7dias" y sin "abandono" en CSM`,
       fieldsLabel: '"diagnostico_7dias"',
-      logic: 'Cuenta como positivo solo el campo "diagnostico_7dias" cuando llega marcado en CSM.'
+      logic: 'Cantidad de clientes con el campo "diagnostico_7dias" positivo.',
+      detailColumns: ['Cliente', 'Diagnóstico < 7 días', 'Pago a diagnóstico'],
+      detailRows: diagnosisUnder7Rows.map((row) => [
+        row.nombre,
+        row.value,
+        formatDays(row.diagnosisDays)
+      ])
     }),
     buildMetricRow({
       key: 'onboarding_to_first_result',
       label: 'Tiempo promedio a primer resultado',
       value: formatDays(average(onboardingToFirstResult)),
-      base: `${formatInteger(onboardingToFirstResult.length)} clientes con onboarding y "f_primer_resultado"`,
-      note: 'Usa solo la fecha de primer resultado cargada.',
-      dateLabel: '"f_onboarding" -> "f_primer_resultado"',
+      base: `${formatInteger(onboardingToFirstResult.length)} clientes activos con onboarding y "f_primer_resultado"`,
       fieldsLabel: '"f_onboarding", "f_primer_resultado"',
-      logic: 'Calcula el promedio de días entre "f_onboarding" y "f_primer_resultado" sin apoyarse en otras fechas.'
+      logic: 'Promedio de días entre onboarding y primer resultado.',
+      detailColumns: ['Cliente', 'Tiempo a primer resultado'],
+      detailRows: onboardingToFirstResultRows.map((row) => [
+        row.nombre,
+        formatDays(row.value)
+      ])
     }),
     buildMetricRow({
       key: 'onboarding_to_success',
       label: 'Tiempo promedio a caso de éxito',
       value: formatDays(average(onboardingToSuccess)),
-      base: `${formatInteger(onboardingToSuccess.length)} clientes con onboarding y caso de éxito`,
-      note: 'Solo entra la base con fecha cargada de éxito.',
-      dateLabel: '"f_onboarding" -> "caso_de_exito"',
+      base: `${formatInteger(onboardingToSuccess.length)} clientes activos con onboarding y caso de éxito`,
       fieldsLabel: '"f_onboarding", "caso_de_exito"',
-      logic: 'Promedio de días entre el onboarding y la fecha registrada en "caso_de_exito".'
+      logic: 'Promedio de días entre onboarding y caso de éxito.',
+      detailColumns: ['Cliente', 'Tiempo a caso de éxito'],
+      detailRows: onboardingToSuccessRows.map((row) => [
+        row.nombre,
+        formatDays(row.value)
+      ])
     }),
     buildMetricRow({
       key: 'unit_average_time',
       label: 'Tiempo promedio en cada unidad',
       value: formatDays(averageUnit),
-      base: `${formatInteger(unitStats.filter((row) => row.avgDays !== null).length)} unidades con base calculable`,
-      note: 'El detalle por unidad está en la tabla inferior.',
-      dateLabel: '"f_onboarding" y "modulo_1" a "modulo_10"',
+      base: `${formatInteger(unitStats.filter((row) => row.avgDays !== null).length)} unidades con base calculable sobre clientes sin "abandono"`,
       fieldsLabel: '"f_onboarding", "modulo_1" a "modulo_10"',
-      logic: 'Para cada unidad calculo el tiempo respecto del hito anterior. Unidad 1 usa "f_onboarding" -> "modulo_1"; luego voy comparando módulo contra módulo.'
+      logic: 'Promedio de días por unidad.',
+      detailColumns: ['Cliente', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9', 'U10'],
+      detailRows: unitClientRows
     })
   ];
 
@@ -536,7 +649,7 @@ function buildTimePage(rows) {
         row.unit,
         formatDays(row.avgDays),
         formatInteger(row.completed),
-        formatPercent(safeDiv(row.completed * 100, rows.length))
+        formatPercent(safeDiv(row.completed * 100, activeProgramRows.length))
       ])
     }
   ];

@@ -3,11 +3,11 @@
     tiempo: {
       title: 'CSM · Por Tiempo',
       viewLabel: '"csm"',
-      dateLabel: 'Prioriza campos calculados directos y, si faltan, cae a fechas base como "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito" y "modulo_1" a "modulo_10".',
-      fieldsLabel: '"pago_a_onbo", "pago_a_diagnostico", "diagnostico_7dias", "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito", "modulo_1" a "modulo_10", "ultima_fecha_de_avance".',
+      dateLabel: 'Prioriza campos calculados directos y, si faltan, cae a fechas base como "f_pago_con_acceso", "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito" y "modulo_1" a "modulo_10".',
+      fieldsLabel: '"pago_a_onbo", "pago_a_diagnostico", "diagnostico_7dias", "f_pago_con_acceso", "f_acceso", "f_onboarding", "f_primer_resultado", "caso_de_exito", "modulo_1" a "modulo_10", "ultima_fecha_de_avance".',
       logic: [
         'Este panel concentra tiempos entre hitos del programa. Cuando la tabla "csm" ya trae el indicador calculado, ese valor tiene prioridad; si todavía está vacío, el panel cae a la diferencia entre fechas base.',
-        'Para "Tiempo promedio desde pago a ver onboarding" prioriza "pago_a_onbo" y, si falta, calcula la diferencia entre "f_acceso" y "f_onboarding".',
+        'Para "Tiempo promedio desde pago a ver onboarding" prioriza la diferencia entre "f_pago_con_acceso" y "f_onboarding". Si en una fila vieja todavía no existe "f_pago_con_acceso", usa "f_acceso"; si faltan ambas fechas, recién ahí cae a "pago_a_onbo".',
         'Para "Tiempo promedio desde pago a sesión diagnóstico" prioriza "pago_a_diagnostico". Si falta, toma "f_acceso" y la compara contra la fecha operativa de diagnóstico, que sale de "modulo_1" y, si no existe, de "f_onboarding".',
         'Para "Cantidad de sesiones diagnóstico menor a 7 días" prioriza el flag "diagnostico_7dias". Si todavía no llegó desde Notion, usa el tiempo a diagnóstico resuelto por el panel y marca positivo cuando es menor o igual a 7.',
         'Para "Tiempo promedio a primer resultado" usa "f_primer_resultado" y calcula el promedio contra "f_onboarding". Si esa fecha todavía no está cargada, usa como respaldo la primera fecha completada entre "modulo_2" y "modulo_10".',
