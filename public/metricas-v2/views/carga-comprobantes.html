@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carga de Comprobantes | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+    <script defer src="/metricas/js/api/http.js"></script>
+    <script defer src="/metricas/js/api/metricas.api.js"></script>
+    <script defer src="/metricas/js/auth-shell.js"></script>
+    <script defer src="/metricas/js/views/carga-comprobantes.page.js"></script>
+  </head>
+  <body class="carga-comprobantes-page">
+    <main class="container carga-comprobantes-layout">
+      <section class="metric-page-hero carga-comprobantes-hero">
+        <div class="metric-page-hero-copy">
+          <span class="metric-page-eyebrow">Operación Comercial</span>
+          <h1>Carga de Comprobantes</h1>
+          <p>
+            Cargá ventas, cobranzas y devoluciones para crear el registro en Notion, asociarlo al cliente por GHL ID
+            y dejar listo el flujo que después replica a Supabase.
+          </p>
+          <div class="metric-page-hero-meta">
+            <span class="metric-chip">Relaciona por "Identificador"</span>
+            <span class="metric-chip">Responsable venta nuevo</span>
+            <span class="metric-chip">Sincroniza por webhook</span>
+          </div>
+        </div>
+        <div class="carga-comprobantes-hero-card">
+          <div class="carga-comprobantes-hero-icon">↗</div>
+          <h2>Flujo</h2>
+          <ol>
+            <li>Buscás el cliente con la URL o GHL ID.</li>
+            <li>Elegís el tipo de comprobante.</li>
+            <li>Validás cash, TC y campos operativos.</li>
+            <li>Se crea en Notion y después baja solo al resto.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="carga-comprobantes-panel">
+        <div class="carga-comprobantes-toolbar">
+          <div class="carga-comprobantes-toolbar-copy">
+            <strong>Estado del formulario</strong>
+            <p id="comprobanteLoaderHint">Cargando opciones y usuario responsable...</p>
+          </div>
+          <button id="reloadComprobanteLoader" type="button" class="metricas-secondary-button">Recargar</button>
+        </div>
+
+        <div id="comprobanteLoaderStatus" class="carga-comprobantes-status is-loading">
+          <div class="carga-loader-spinner" aria-hidden="true"></div>
+          <span>Preparando formulario...</span>
+        </div>
+
+        <form id="comprobanteForm" class="carga-comprobantes-form" hidden>
+          <section class="carga-section">
+            <div class="carga-section-head">
+              <h2>Cliente y relación</h2>
+              <p>Pegá la URL de GHL o el GHL ID para encontrar al cliente y dejar lista la relación.</p>
+            </div>
+            <div class="carga-grid carga-grid--two">
+              <label class="carga-field carga-field--full">
+                <span>URL de GHL o GHL ID</span>
+                <div class="carga-field-row">
+                  <input id="ghlInput" name="ghlInput" type="text" placeholder="Pegá la URL del contacto o el GHL ID" />
+                  <button id="searchClientBtn" type="button" class="metricas-secondary-button">Buscar cliente</button>
+                </div>
+              </label>
+              <label class="carga-field">
+                <span>Cliente</span>
+                <input id="clientName" name="clientName" type="text" placeholder="Se completa con la búsqueda" readonly />
+              </label>
+              <label class="carga-field">
+                <span>GHL ID</span>
+                <input id="ghlId" name="ghlId" type="text" readonly />
+              </label>
+              <label class="carga-field">
+                <span>Page ID CRM 2.0</span>
+                <input id="clientPageId" name="clientPageId" type="text" readonly />
+              </label>
+              <label class="carga-field">
+                <span>Identificador</span>
+                <input id="identificador" name="identificador" type="text" readonly />
+              </label>
+              <label class="carga-field">
+                <span>Responsable venta</span>
+                <input id="responsableVenta" name="responsableVenta" type="text" placeholder="Nombre del closer" readonly />
+              </label>
+              <div id="clientSummary" class="carga-client-summary carga-field--full">
+                <strong>Sin cliente cargado todavía.</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="carga-section">
+            <div class="carga-section-head">
+              <h2>Tipo y base</h2>
+              <p>La fecha se toma automáticamente con el día de creación del comprobante.</p>
+            </div>
+            <div class="carga-grid carga-grid--three">
+              <label class="carga-field">
+                <span>Tipo</span>
+                <select id="tipo" name="tipo"></select>
+              </label>
+              <label class="carga-field">
+                <span>Fecha automática</span>
+                <input id="fechaCreacionAutoView" type="text" readonly />
+              </label>
+              <label class="carga-field">
+                <span>DNI / CUIT</span>
+                <input id="dniCuit" name="dniCuit" type="text" placeholder="Ej: 20-12345678-9" />
+              </label>
+              <label class="carga-field">
+                <span>Medio de pago</span>
+                <select id="medioPago" name="medioPago"></select>
+              </label>
+              <label class="carga-field">
+                <span>Tasa de cambio</span>
+                <input id="tc" name="tc" type="text" inputmode="decimal" placeholder="Ej: 1.185" />
+              </label>
+            </div>
+            <input id="fechaVenta" name="fechaVenta" type="hidden" />
+            <input id="fechaAcreditacion" name="fechaAcreditacion" type="hidden" />
+          </section>
+
+          <section id="ventaFields" class="carga-section">
+            <div class="carga-section-head">
+              <h2>Datos de venta</h2>
+              <p>Solo aparece cuando el tipo es venta.</p>
+            </div>
+            <div class="carga-grid carga-grid--three">
+              <label class="carga-field carga-field--full">
+                <span>Producto adquirido</span>
+                <select id="productName" name="productName"></select>
+                <small id="productsSourceText" class="carga-field-help"></small>
+              </label>
+              <label class="carga-field">
+                <span>Facturación USD</span>
+                <input id="facturacionUsd" name="facturacionUsd" type="text" inputmode="decimal" placeholder="Ej: 2.500" />
+              </label>
+              <label class="carga-field">
+                <span>Cantidad de pagos</span>
+                <select id="cantidadPagos" name="cantidadPagos"></select>
+              </label>
+            </div>
+          </section>
+
+          <section class="carga-section">
+            <div class="carga-section-head">
+              <h2>Cash y validación</h2>
+              <p>El cash ARS es obligatorio y se controla contra la facturación USD cargada manualmente.</p>
+            </div>
+            <div class="carga-grid carga-grid--three">
+              <label class="carga-field">
+                <span>Cash collected ARS</span>
+                <input id="cashCollectedArs" name="cashCollectedArs" type="text" inputmode="decimal" placeholder="Ej: 780.000" />
+              </label>
+              <label class="carga-field">
+                <span>Cash collected USD</span>
+                <input id="cashCollectedUsd" name="cashCollectedUsd" type="text" readonly />
+              </label>
+              <div id="cashValidationCard" class="carga-validation-card">
+                <strong>Validación</strong>
+                <p>Completá TC, cash ARS y facturación USD para validar el margen.</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="chequeFields" class="carga-section" hidden>
+            <div class="carga-section-head">
+              <h2>Cheques</h2>
+              <p>Si cargás más de un cheque, el primero se toma como venta y los siguientes se preparan como cobranzas.</p>
+            </div>
+            <div class="carga-grid carga-grid--three">
+              <label class="carga-field">
+                <span>Cantidad de cheques</span>
+                <input id="chequeCount" name="chequeCount" type="number" min="1" max="12" step="1" />
+              </label>
+            </div>
+            <div id="chequeRows" class="carga-cheque-list"></div>
+          </section>
+
+          <section class="carga-section">
+            <div class="carga-section-head">
+              <h2>Adjuntos e info</h2>
+              <p>Podés subir imágenes o PDF del comprobante para que queden adjuntos en Notion.</p>
+            </div>
+            <div class="carga-grid carga-grid--two">
+              <label class="carga-field carga-field--full">
+                <span>Comprobante</span>
+                <div id="attachmentsDropzone" class="carga-dropzone" tabindex="0">
+                  <strong>Arrastrá archivos acá</strong>
+                  <p>JPG, PNG, WEBP o PDF. También podés hacer click para elegir.</p>
+                  <input id="attachments" name="attachments" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple />
+                </div>
+                <ul id="attachmentsList" class="carga-attachments-list"></ul>
+              </label>
+              <label class="carga-field">
+                <span>Meses de soporte</span>
+                <input id="mesesSoporte" name="mesesSoporte" type="number" min="0" step="1" placeholder="Ej: 3" />
+              </label>
+              <label class="carga-field">
+                <span>Sesiones</span>
+                <input id="sesiones" name="sesiones" type="number" min="0" step="1" placeholder="Ej: 8" />
+              </label>
+              <label class="carga-field carga-checkbox-field">
+                <input id="bonusMati" name="bonusMati" type="checkbox" />
+                <span>Bonus Mati</span>
+              </label>
+              <label class="carga-field carga-field--full">
+                <span>Info Comprobantes</span>
+                <textarea id="infoComprobantes" name="infoComprobantes" rows="4" placeholder="Observaciones, notas internas o datos útiles para el registro"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section id="cobranzaLinkSection" class="carga-section">
+            <div class="carga-section-head">
+              <h2>Venta relacionada</h2>
+              <p>Para cobranzas se busca automáticamente la última venta del cliente.</p>
+            </div>
+            <div class="carga-grid carga-grid--two">
+              <label class="carga-field">
+                <span>Venta relacionada (Notion ID)</span>
+                <input id="latestSaleId" name="latestSaleId" type="text" readonly />
+              </label>
+              <div id="latestSaleSummary" class="carga-client-summary">
+                <strong>Todavía no encontré una venta previa.</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="carga-submit">
+            <div id="submitStatus" class="carga-submit-status">Todavía no se envió nada.</div>
+            <button id="submitComprobanteBtn" type="submit" class="metricas-primary-button">Revisar antes de enviar</button>
+          </section>
+
+          <section id="previewSection" class="carga-section carga-preview-section" hidden>
+            <div class="carga-section-head">
+              <h2>Revisión previa</h2>
+              <p>Chequeá el detalle antes de crear el comprobante en Notion.</p>
+            </div>
+            <div id="previewAlerts" class="carga-preview-alerts" hidden></div>
+            <div id="previewGrid" class="carga-preview-grid"></div>
+            <div class="carga-preview-actions">
+              <button id="editPreviewBtn" type="button" class="metricas-secondary-button">Seguir editando</button>
+              <button id="confirmSubmitBtn" type="button" class="metricas-primary-button">Confirmar y enviar</button>
+            </div>
+          </section>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

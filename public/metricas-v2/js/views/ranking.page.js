@@ -130,6 +130,15 @@ function isExcludedCloser(name) {
   return EXCLUDED_CLOSERS.some((excluded) => normalized.includes(excluded));
 }
 
+function hasRankingData(row) {
+  return (
+    Number(row?.total_ventas || 0) > 0
+    || Number(row?.facturacion_total || 0) > 0
+    || Number(row?.cash_collected_total || 0) > 0
+    || Number(row?.monto_incobrable_total || 0) > 0
+  );
+}
+
 function getFilters() {
   const monthValue = document.getElementById('mes').value || ALL_MONTHS_VALUE;
   return {
@@ -146,7 +155,10 @@ function getMonthLabel(month) {
 }
 
 function populateCloserFilter(rows, selectedCloser = ALL_CLOSERS_VALUE) {
-  const closers = [...new Set((rows || []).map((row) => String(row.closer || '').trim()).filter(Boolean))]
+  const closers = [...new Set((rows || [])
+    .filter((row) => hasRankingData(row))
+    .map((row) => String(row.closer || '').trim())
+    .filter(Boolean))]
     .filter((name) => !isExcludedCloser(name))
     .sort((a, b) => a.localeCompare(b, 'es'));
   const select = document.getElementById('closer');
@@ -162,6 +174,7 @@ function populateCloserFilter(rows, selectedCloser = ALL_CLOSERS_VALUE) {
 function filterRows(rows, anio, mes, closer = ALL_CLOSERS_VALUE) {
   return rows.filter((row) => {
     if (isExcludedCloser(row.closer)) return false;
+    if (!hasRankingData(row)) return false;
 
     const okAnio = anio ? Number(row.anio) === Number(anio) : true;
     const okMes = mes === ALL_MONTHS_VALUE ? true : (mes ? Number(row.mes) === Number(mes) : true);

@@ -26,6 +26,12 @@ router.get('/marketing/aov-dia-1', controller.getMarketingAovDia1);
 router.get('/marketing/ventas-totales', controller.getMarketingVentasTotales);
 router.get('/marketing/cash-collected-agenda', controller.getMarketingCashCollectedAgenda);
 router.get('/marketing/campaign-totales', controller.getMarketingCampaignTotals);
+router.get('/reportes-personales/pdf', controller.getCloserPersonalPdf);
+router.post('/reportes-personales/pdf', express.raw({ type: ['application/pdf', 'application/octet-stream'], limit: '20mb' }), controller.uploadCloserPersonalPdf);
+router.get('/dolar-hoy', controller.getDollarQuotes);
+router.get('/comprobantes-loader/bootstrap', controller.getComprobantesLoaderBootstrap);
+router.get('/comprobantes-loader/cliente', controller.lookupComprobantesLoaderClient);
+router.post('/comprobantes-loader', controller.createComprobanteManual);
 router.post('/assistant/ask', controller.askAssistant);
 
 module.exports = router;

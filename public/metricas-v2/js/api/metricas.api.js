@@ -111,6 +111,32 @@ async function fetchMarketingCampaignTotals(options = {}) {
   return window.http.getJson(`/api/metricas/marketing/campaign-totales${suffix}`);
 }
 
+async function fetchCloserPersonalPdf(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/reportes-personales/pdf${suffix}`);
+}
+
+async function uploadCloserPersonalPdf({ closer, month, filename, file }) {
+  const qs = queryString({ closer, month, filename });
+  const suffix = qs ? `?${qs}` : '';
+  const response = await fetch(`/api/metricas/reportes-personales/pdf${suffix}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': file?.type || 'application/pdf'
+    },
+    body: file
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || `Error HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
 async function fetchAllRows(resource, options = {}) {
   const pageSize = Math.min(Number(options.limit || 1000), 1000);
   const rows = [];
@@ -141,6 +167,19 @@ async function fetchAllRows(resource, options = {}) {
   };
 }
 
+async function fetchComprobantesLoaderBootstrap() {
+  return window.http.getJson('/api/metricas/comprobantes-loader/bootstrap');
+}
+
+async function lookupComprobantesLoaderClient(ghlId) {
+  const qs = queryString({ ghlId });
+  return window.http.getJson(`/api/metricas/comprobantes-loader/cliente?${qs}`);
+}
+
+async function createComprobanteManual(payload = {}) {
+  return window.http.postJson('/api/metricas/comprobantes-loader', payload);
+}
+
 window.metricasApi = {
   fetchViews,
   fetchRows,
@@ -161,9 +200,14 @@ window.metricasApi = {
   fetchMarketingVentasTotales,
   fetchMarketingCashCollectedAgenda,
   fetchMarketingCampaignTotals,
+  fetchCloserPersonalPdf,
+  uploadCloserPersonalPdf,
   askScalito,
   saveMarketingInvestment,
   updateMarketingInvestmentRecord,
   deleteMarketingInvestmentRecord,
-  fetchAllRows
+  fetchAllRows,
+  fetchComprobantesLoaderBootstrap,
+  lookupComprobantesLoaderClient,
+  createComprobanteManual
 };

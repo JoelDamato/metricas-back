@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pantalla Dividida | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page split-screen-page">
+    <main class="split-screen-layout">
+      <header class="split-screen-toolbar">
+        <div class="split-screen-toolbar-group">
+          <a class="auth-shell-link" href="/metricas/dashboard.html">Dashboard</a>
+          <label>
+            Izquierda
+            <select id="splitLeftSelect"></select>
+          </label>
+          <label>
+            Derecha
+            <select id="splitRightSelect"></select>
+          </label>
+        </div>
+        <div class="split-screen-toolbar-group">
+          <button id="swapSplitScreens" type="button">Invertir</button>
+        </div>
+      </header>
+
+      <section id="splitScreenWorkspace" class="split-screen-workspace" style="--split-left: 50%;">
+        <div class="split-screen-pane split-screen-pane-left">
+          <iframe id="splitLeftFrame" title="Panel izquierdo"></iframe>
+        </div>
+        <div id="splitScreenDivider" class="split-screen-divider" role="separator" aria-orientation="vertical" tabindex="0"></div>
+        <div class="split-screen-pane split-screen-pane-right">
+          <iframe id="splitRightFrame" title="Panel derecho"></iframe>
+        </div>
+      </section>
+    </main>
+
+    <script src="/metricas/js/auth-shell.js"></script>
+    <script src="/metricas/js/views/split-screen.page.js"></script>
+  </body>
+</html>

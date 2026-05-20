@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual del Sistema de Agendas</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#F7F8FC;--white:#FFFFFF;--text:#1A1D2E;--muted:#7B82A0;--border:#E4E7F2;
+      --blue:#3B7FF5;--blue-light:#EEF3FE;--green:#18B87A;--green-light:#E6F9F2;
+      --amber:#E8950A;--amber-light:#FEF6E6;--red:#E8504A;--red-light:#FEF0EF;
+      --purple:#8B6CF5;--purple-light:#F0EDFE;
+      --cat-a:#E8950A;--cat-a-bg:#FEF6E6;
+      --cat-b:#18B87A;--cat-b-bg:#E6F9F2;
+      --cat-c:#3B7FF5;--cat-c-bg:#EEF3FE;
+      --cat-d:#8B6CF5;--cat-d-bg:#F0EDFE;
+      --cat-e:#7B82A0;--cat-e-bg:#F2F3F8;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+
+    /* ── HERO ── */
+    .hero{background:linear-gradient(135deg,#1A1D2E 0%,#242848 50%,#1E2E4A 100%);padding:60px 40px;text-align:center;position:relative;overflow:hidden;}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(59,127,245,.15),transparent 60%),radial-gradient(ellipse at 70% 50%,rgba(24,184,122,.1),transparent 60%);}
+    .hero-inner{position:relative;max-width:700px;margin:0 auto;}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.7);text-transform:uppercase;margin-bottom:24px;}
+    .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
+    .hero h1{font-size:40px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.15;margin-bottom:16px;}
+    .hero h1 span{background:linear-gradient(90deg,#3B7FF5,#18B87A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .hero p{font-size:16px;color:rgba(255,255,255,.6);max-width:500px;margin:0 auto 32px;}
+    .hero-chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+    .hero-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;color:rgba(255,255,255,.7);}
+
+    /* ── LAYOUT ── */
+    .container{max-width:780px;margin:0 auto;padding:48px 24px;}
+    .section{margin-bottom:52px;}
+    .section-eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:10px;}
+    .section-title{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px;}
+    .section-sub{font-size:15px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+
+    /* ── CARDS ── */
+    .card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:14px;}
+    .card-title{font-size:14px;font-weight:700;margin-bottom:6px;}
+    .card-body{font-size:13px;color:var(--muted);line-height:1.7;}
+    .card-body strong{color:var(--text);}
+    .card.blue{border-color:#BDD0FD;background:var(--blue-light);}
+    .card.green{border-color:#A8E8CE;background:var(--green-light);}
+    .card.amber{border-color:#FAD98A;background:var(--amber-light);}
+    .card.red{border-color:#F5B4B2;background:var(--red-light);}
+    .card.purple{border-color:#D4C9FD;background:var(--purple-light);}
+    .card.dark{background:var(--text);border-color:var(--text);}
+    .card.dark .card-title{color:#fff;}
+    .card.dark .card-body{color:rgba(255,255,255,.65);}
+    .card.dark .card-body strong{color:#fff;}
+
+    /* ── CATEGORY PILLS ── */
+    .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:8px;}
+    .cat-card{border-radius:12px;padding:16px 18px;border:1px solid;}
+    .cat-card.A{background:var(--cat-a-bg);border-color:#FAD98A;}
+    .cat-card.B{background:var(--cat-b-bg);border-color:#A8E8CE;}
+    .cat-card.C{background:var(--cat-c-bg);border-color:#BDD0FD;}
+    .cat-card.D{background:var(--cat-d-bg);border-color:#D4C9FD;}
+    .cat-card.E{background:var(--cat-e-bg);border-color:#CDD0E0;}
+    .cat-letter{font-size:22px;font-weight:800;margin-bottom:4px;}
+    .cat-card.A .cat-letter{color:var(--cat-a);}
+    .cat-card.B .cat-letter{color:var(--cat-b);}
+    .cat-card.C .cat-letter{color:var(--cat-c);}
+    .cat-card.D .cat-letter{color:var(--cat-d);}
+    .cat-card.E .cat-letter{color:var(--cat-e);}
+    .cat-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+    .cat-desc strong{color:var(--text);}
+
+    /* ── PHASE TIMELINE ── */
+    .timeline{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    @media(max-width:600px){.timeline{grid-template-columns:1fr;}}
+    .tl-card{border-radius:14px;padding:20px;border:1px solid;}
+    .tl-card.libre{background:var(--green-light);border-color:#A8E8CE;}
+    .tl-card.rank{background:var(--blue-light);border-color:#BDD0FD;}
+    .tl-week{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+    .tl-card.libre .tl-week{color:var(--green);}
+    .tl-card.rank .tl-week{color:var(--blue);}
+    .tl-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+    .tl-body{font-size:13px;color:var(--muted);line-height:1.6;}
+    .tl-body strong{color:var(--text);}
+
+    /* ── FLOW DIAGRAM ── */
+    .flow{display:flex;flex-direction:column;gap:8px;margin:20px 0;}
+    .flow-step{display:flex;align-items:flex-start;gap:14px;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+    .flow-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;color:#fff;}
+    .flow-num.blue{background:var(--blue);}
+    .flow-num.green{background:var(--green);}
+    .flow-num.amber{background:var(--amber);}
+    .flow-num.red{background:var(--red);}
+    .flow-text{font-size:13px;color:var(--muted);line-height:1.6;padding-top:4px;}
+    .flow-text strong{color:var(--text);}
+    .flow-arrow{text-align:center;font-size:18px;color:var(--border);}
+
+    /* ── RULES TABLE ── */
+    .rule-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+    .rule-table th{background:#F0F2FA;padding:10px 16px;font-size:11px;font-weight:600;color:var(--muted);text-align:left;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;}
+    .rule-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);}
+    .rule-table tr:last-child td{border-bottom:none;}
+    .rule-table tr:hover td{background:#FAFBFF;}
+    .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-block;}
+    .tag.green{background:var(--green-light);color:var(--green);}
+    .tag.red{background:var(--red-light);color:var(--red);}
+    .tag.amber{background:var(--amber-light);color:var(--amber);}
+    .tag.blue{background:var(--blue-light);color:var(--blue);}
+    .mono{font-family:'DM Mono',monospace;}
+
+    /* ── EXAMPLE BOX ── */
+    .example-box{background:#1A1D2E;border-radius:14px;padding:24px;margin:20px 0;}
+    .ex-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:16px;}
+    .ex-table{width:100%;border-collapse:collapse;}
+    .ex-table th{font-size:10px;color:rgba(255,255,255,.4);font-weight:500;text-align:left;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.08);text-transform:uppercase;letter-spacing:.05em;}
+    .ex-table td{padding:8px 10px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.06);color:rgba(255,255,255,.7);}
+    .ex-table tr:last-child td{border-bottom:none;}
+    .ex-table .hi{color:#fff;font-weight:600;}
+    .ex-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;display:inline-block;}
+    .ex-badge.ok{background:rgba(24,184,122,.2);color:#18B87A;}
+    .ex-badge.no{background:rgba(232,80,74,.2);color:#F87171;}
+    .ex-badge.na{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);}
+    .ex-badge.abc{background:rgba(24,184,122,.15);color:#18B87A;}
+    .ex-badge.de{background:rgba(139,108,245,.15);color:#A78BFA;}
+    .ex-badge.none{background:rgba(232,80,74,.15);color:#F87171;}
+
+    /* ── BONUS TABLE ── */
+    .bonus-scale{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;}
+    @media(max-width:500px){.bonus-scale{grid-template-columns:1fr;}}
+    .bs-card{border-radius:10px;padding:14px 16px;border:1px solid var(--border);background:var(--white);display:flex;justify-content:space-between;align-items:center;}
+    .bs-range{font-size:12px;color:var(--muted);}
+    .bs-pct{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;}
+    .bs-card.hit{border-color:#A8E8CE;background:var(--green-light);}
+    .bs-card.hit .bs-pct{color:var(--green);}
+    .bs-card.miss{border-color:#CDD0E0;background:var(--cat-e-bg);}
+    .bs-card.miss .bs-pct{color:var(--muted);}
+
+    /* ── FAQ ── */
+    .faq-item{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+    .faq-q{padding:16px 20px;font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--white);}
+    .faq-q::after{content:'▾';font-size:12px;color:var(--muted);}
+    .faq-a{padding:0 20px 16px;font-size:13px;color:var(--muted);line-height:1.7;background:var(--white);}
+    .faq-a strong{color:var(--text);}
+
+    /* ── DIVIDER ── */
+    .divider{height:1px;background:var(--border);margin:40px 0;}
+
+    /* ── HIGHLIGHT BOX ── */
+    .highlight{background:linear-gradient(135deg,#1A1D2E,#242848);border-radius:16px;padding:28px 32px;margin:24px 0;text-align:center;}
+    .highlight h3{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:-.01em;}
+    .highlight p{font-size:14px;color:rgba(255,255,255,.55);line-height:1.7;}
+    .highlight p strong{color:rgba(255,255,255,.85);}
+
+    /* ── FOOTER ── */
+    .footer{text-align:center;padding:32px 24px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);}
+    .footer strong{color:var(--text);}
+
+    @media print{
+      .hero{padding:40px 24px;}
+      .hero h1{font-size:30px;}
+      body{background:#fff;}
+    }
+  </style>
+  <link rel="stylesheet" href="/metricas/css/styles.css">
+  <link rel="stylesheet" href="/metricas/css/mag-theme.css">
+</head>
+<body class="mag-view">
+<div class="mag-theme-shell">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><span class="hero-badge-dot"></span>Método Acelerador de Ganancias</div>
+    <h1>Sistema de <span>Agendas & Bonus</span></h1>
+    <p>Todo lo que necesitás saber sobre cómo funcionan las categorías de leads, el bonus semanal y cómo maximizar tus resultados mes a mes.</p>
+    <div class="hero-chips">
+      <span class="hero-chip">📋 Categorías A → E</span>
+      <span class="hero-chip">📅 Ciclo mensual</span>
+      <span class="hero-chip">💰 Bonus semanal</span>
+      <span class="hero-chip">⬆️ Sube por rendimiento</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ═══ 1. QUÉ SON LAS CATEGORÍAS ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">01 — Lo básico</div>
+    <div class="section-title">¿Qué son las categorías de leads?</div>
+    <div class="section-sub">Cada agenda que recibís tiene una calificación según qué tan preparado está el lead para tomar una decisión. Las categorías van de A (el más calificado) a E (el menos calificado).</div>
+
+    <div class="cat-grid">
+      <div class="cat-card A">
+        <div class="cat-letter">A</div>
+        <div class="cat-desc"><strong>Muy calificado.</strong> Alta intención de compra, perfil ideal. El lead está listo para tomar una decisión.</div>
+      </div>
+      <div class="cat-card B">
+        <div class="cat-letter">B</div>
+        <div class="cat-desc"><strong>Calificado.</strong> Buenas señales de compra. Requiere trabajo pero tiene alto potencial de cierre.</div>
+      </div>
+      <div class="cat-card C">
+        <div class="cat-letter">C</div>
+        <div class="cat-desc"><strong>Intermedio.</strong> Requiere más trabajo de venta. El fit es bueno pero la urgencia o el dinero son un tema.</div>
+      </div>
+      <div class="cat-card D">
+        <div class="cat-letter">D</div>
+        <div class="cat-desc"><strong>Bajo.</strong> Poca calificación declarada. Puede cerrar, pero requiere mucho trabajo de diagnóstico.</div>
+      </div>
+      <div class="cat-card E">
+        <div class="cat-letter">E</div>
+        <div class="cat-desc"><strong>Mínimo.</strong> Casi no califica, pero a veces sale una venta porque el lead no fue honesto en el formulario.</div>
+      </div>
+    </div>
+
+    <div class="card blue">
+      <div class="card-title">💡 La idea central</div>
+      <div class="card-body">Acceder a categorías A, B y C es un <strong>privilegio que se gana con rendimiento</strong>. El sistema garantiza que quien genera más cash tiene acceso a los mejores leads. El que más produce, mejores herramientas recibe para seguir produciendo.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 2. LAS DOS FASES ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">02 — El ciclo mensual</div>
+    <div class="section-title">Las dos fases del mes</div>
+    <div class="section-sub">Cada mes se divide en dos etapas. En la primera, todos arrancan en igualdad de condiciones. En la segunda, el rendimiento define quién recibe qué.</div>
+
+    <div class="timeline">
+      <div class="tl-card libre">
+        <div class="tl-week">⬤ Semanas 1 y 2</div>
+        <div class="tl-title">Fase Libre</div>
+        <div class="tl-body">Todos los closers reciben agendas de <strong>todas las categorías</strong> (A, B, C, D y E). Cada uno elige su franja horaria libremente. Sin ranking, sin restricciones.</div>
+      </div>
+      <div class="tl-card rank">
+        <div class="tl-week">⬤ Semanas 3 y 4</div>
+        <div class="tl-title">Fase Rankeada</div>
+        <div class="tl-body">Las categorías se asignan según el rendimiento del mes anterior. <strong>Top 3 → A, B, C.</strong> El resto → D y E únicamente.</div>
+      </div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-title">📌 Importante</div>
+      <div class="card-body">El ranking que determina las categorías de las semanas 3 y 4 se basa en el <strong>mes anterior cerrado</strong>, no en el mes en curso. Eso significa que el trabajo que hacés este mes define las categorías que vas a recibir el mes que viene.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 3. EL RANKING ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">03 — Cómo se rankea</div>
+    <div class="section-title">¿Cómo se determina quién está en el top 3?</div>
+    <div class="section-sub">No se mide el número absoluto de cash — se mide tu <strong>porcentaje de aporte</strong> al cash total del equipo durante el mes. Eso garantiza igualdad de condiciones aunque el volumen de agendas varíe.</div>
+
+    <div class="example-box">
+      <div class="ex-title">Ejemplo — Cierre de Abril 2026</div>
+      <table class="ex-table">
+        <thead>
+          <tr>
+            <th>Closer</th>
+            <th>Cash del mes</th>
+            <th>% del total</th>
+            <th>Ranking</th>
+            <th>Categorías Mayo S3–S4</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="hi">Carlos Tu</td>
+            <td class="mono">$8.188</td>
+            <td class="mono hi">31,5%</td>
+            <td><span class="ex-badge ok">#1</span></td>
+            <td><span class="ex-badge abc">A · B · C</span></td>
+          </tr>
+          <tr>
+            <td class="hi">Claudio Nicolini</td>
+            <td class="mono">$6.833</td>
+            <td class="mono hi">26,3%</td>
+            <td><span class="ex-badge ok">#2</span></td>
+            <td><span class="ex-badge abc">A · B · C</span></td>
+          </tr>
+          <tr>
+            <td class="hi">Mauro Gaitan</td>
+            <td class="mono">$5.267</td>
+            <td class="mono hi">20,3%</td>
+            <td><span class="ex-badge ok">#3</span></td>
+            <td><span class="ex-badge abc">A · B · C</span></td>
+          </tr>
+          <tr>
+            <td>Pablo Butera</td>
+            <td class="mono">$1.834</td>
+            <td class="mono">7,1%</td>
+            <td><span class="ex-badge no">#4</span></td>
+            <td><span class="ex-badge de">D · E</span></td>
+          </tr>
+          <tr>
+            <td>Patricia Conti</td>
+            <td class="mono">$6.961</td>
+            <td class="mono">26,8%</td>
+            <td><span class="ex-badge na">Base libre*</span></td>
+            <td><span class="ex-badge abc">A · B · C · D · E</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;font-size:10px;color:rgba(255,255,255,.3)">* Patricia estaba en su primer mes activo → base libre automáticamente.</div>
+    </div>
+
+    <div class="highlight">
+      <h3>El ranking solo sube al cierre del mes</h3>
+      <p>No existe forma de subir de categoría a mitad de mes. Si hoy estás en D, E — el trabajo de este mes te pone en A, B, C el mes que viene. <strong>La consistencia mensual es lo que mueve para arriba.</strong></p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 4. EL MÍNIMO SEMANAL ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">04 — Protección de categoría</div>
+    <div class="section-title">El mínimo semanal individual</div>
+    <div class="section-sub">Tener buenas categorías no es un derecho permanente. Hay que mantener un aporte mínimo semanal para conservarlas. El sistema protege a quien está produciendo y activa una señal cuando alguien afloja.</div>
+
+    <div class="card">
+      <div class="card-title">La regla del 10%</div>
+      <div class="card-body">Cada semana, tu cash debe representar al menos el <strong>10% del cash total generado por el equipo</strong> esa semana. Si el equipo hizo $15.000 y vos aportaste $1.800 → estás en 12% → cumpliste. Si aportaste $900 → estás en 6% → no cumpliste.</div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num blue">1</div>
+        <div class="flow-text">El equipo cierra la semana con un total de cash colectado.</div>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">
+        <div class="flow-num blue">2</div>
+        <div class="flow-text">Se calcula el aporte porcentual de cada closer: <strong>tu cash ÷ cash del equipo × 100</strong>.</div>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-step">
+        <div class="flow-num green">3</div>
+        <div class="flow-text"><strong>Si llegaste al 10%:</strong> mantenés tus categorías actuales para la semana siguiente. Sin cambios.</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num red">3</div>
+        <div class="flow-text"><strong>Si no llegaste al 10%:</strong> bajás una categoría la semana siguiente. Si tenías A,B,C → pasás a D,E. Si ya estabas en D,E → quedás sin agendas esa semana.</div>
+      </div>
+    </div>
+
+    <div class="card green">
+      <div class="card-title">⬆️ La recuperación es automática</div>
+      <div class="card-body">Si bajaste de categoría pero la semana siguiente cumplís el 10% → <strong>recuperás tu categoría anterior automáticamente</strong>. No hay que esperar al cierre del mes. El sistema castiga rápido y perdona rápido.</div>
+    </div>
+
+    <div class="example-box">
+      <div class="ex-title">Ejemplo — Semana 3 · Equipo generó $16.000</div>
+      <table class="ex-table">
+        <thead>
+          <tr><th>Closer</th><th>Cash aportado</th><th>% del equipo</th><th>Mínimo (10%)</th><th>Semana siguiente</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="hi">Carlos</td><td class="mono">$7.000</td><td class="mono hi">43,8%</td>
+            <td><span class="ex-badge ok">✅ Cumplió</span></td>
+            <td><span class="ex-badge abc">Mantiene A,B,C</span></td>
+          </tr>
+          <tr>
+            <td class="hi">Claudio</td><td class="mono">$5.200</td><td class="mono hi">32,5%</td>
+            <td><span class="ex-badge ok">✅ Cumplió</span></td>
+            <td><span class="ex-badge abc">Mantiene A,B,C</span></td>
+          </tr>
+          <tr>
+            <td class="hi">Mauro</td><td class="mono">$1.100</td><td class="mono">6,9%</td>
+            <td><span class="ex-badge no">❌ No cumplió</span></td>
+            <td><span class="ex-badge de">Baja a D,E ⬇️</span></td>
+          </tr>
+          <tr>
+            <td class="hi">Pablo</td><td class="mono">$2.000</td><td class="mono hi">12,5%</td>
+            <td><span class="ex-badge ok">✅ Cumplió</span></td>
+            <td><span class="ex-badge de">Mantiene D,E</span></td>
+          </tr>
+          <tr>
+            <td>Patricia</td><td class="mono">$700</td><td class="mono">4,4%</td>
+            <td><span class="ex-badge no">❌ No cumplió</span></td>
+            <td><span class="ex-badge none">⛔ Sin agendas</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:10px;color:rgba(255,255,255,.3)">Mínimo individual esa semana: $16.000 × 10% = $1.600</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 5. EL BONUS ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">05 — Premio semanal</div>
+    <div class="section-title">El bonus semanal del equipo</div>
+    <div class="section-sub">Además de las categorías, existe un bonus en efectivo que se activa cuando el equipo supera el objetivo semanal. El sistema nunca descuenta — solo premia cuando se llega.</div>
+
+    <div class="card dark">
+      <div class="card-title">Cómo funciona</div>
+      <div class="card-body">Hay una <strong>meta semanal</strong> para el equipo. Si se supera, se genera un pool del porcentaje correspondiente y se distribuye entre todos según cuánto aportó cada uno. Si una semana no se llega → no hay bonus, pero tampoco se descuenta nada de semanas anteriores.</div>
+    </div>
+
+    <div class="bonus-scale">
+      <div class="bs-card miss"><span class="bs-range">Piso — sin bonus aún<br><span class="mono" style="font-size:11px">Menos de $16.500</span></span><span class="bs-pct" style="color:var(--muted)">—</span></div>
+      <div class="bs-card miss"><span class="bs-range">Entre piso y meta<br><span class="mono" style="font-size:11px">$16.500 – $19.999</span></span><span class="bs-pct" style="color:var(--muted)">—</span></div>
+      <div class="bs-card hit"><span class="bs-range">Meta base<br><span class="mono" style="font-size:11px">$20.000</span></span><span class="bs-pct">1,0%</span></div>
+      <div class="bs-card hit"><span class="bs-range">Siguiente nivel<br><span class="mono" style="font-size:11px">$25.000</span></span><span class="bs-pct">1,5%</span></div>
+      <div class="bs-card hit"><span class="bs-range">Nivel alto<br><span class="mono" style="font-size:11px">$30.000</span></span><span class="bs-pct">2,0%</span></div>
+      <div class="bs-card hit"><span class="bs-range">Nivel máximo<br><span class="mono" style="font-size:11px">$35.000+</span></span><span class="bs-pct">2,5%+</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Distribución proporcional</div>
+      <div class="card-body">Si el equipo llega a $22.000 (pool = $220), y vos aportaste el <strong>30% del cash</strong> esa semana → recibís <strong>$66</strong>. Cuanto más aportás, más del pool te llevás. La distribución es 100% automática y proporcional.</div>
+    </div>
+
+    <div class="card amber">
+      <div class="card-title">📅 Semanas parciales</div>
+      <div class="card-body">Si el mes arranca un miércoles, la primera semana tiene solo 5 días. En ese caso, la meta también es proporcional: <strong>$20.000 × (5 ÷ 7) = $14.286</strong>. Lo mismo aplica al piso y a todos los escalones. Es automático — no hay que calcular nada.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 6. STATUS ESPECIALES ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">06 — Casos especiales</div>
+    <div class="section-title">Status especiales</div>
+
+    <div class="card purple">
+      <div class="card-title">★ Walter Alegre — Status Especial</div>
+      <div class="card-body">Walter está en transición al área de Marketing. Toma entre 2 y 3 agendas por semana, <strong>siempre de categoría A y B</strong>, sin participar del ranking ni del mínimo semanal. Su volumen reducido es intencional y no afecta el cálculo del resto del equipo.</div>
+    </div>
+
+    <div class="card amber" style="margin-top:12px">
+      <div class="card-title">✦ Closers nuevos — Base libre</div>
+      <div class="card-body">Durante los primeros 2 meses activos, los closers nuevos reciben <strong>agendas de todas las categorías</strong> (A, B, C, D y E) sin importar el ranking. Esto es para que puedan arrancar y acumular historial sin ser penalizados por el bajo cash inicial (que generalmente se debe a cuotas que todavía no ingresaron). A partir del tercer mes, entran al ranking general.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 7. RESUMEN ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">07 — Todo junto</div>
+    <div class="section-title">El sistema en una tabla</div>
+
+    <table class="rule-table">
+      <thead>
+        <tr><th>Qué</th><th>Cuándo</th><th>Resultado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Semanas 1–2</strong></td>
+          <td>Inicio de cada mes</td>
+          <td><span class="tag green">Todas las categorías para todos</span></td>
+        </tr>
+        <tr>
+          <td><strong>Semanas 3–4</strong></td>
+          <td>Segunda mitad del mes</td>
+          <td>Top 3 del mes anterior → A,B,C · Resto → D,E</td>
+        </tr>
+        <tr>
+          <td><strong>Mínimo 10% semanal</strong></td>
+          <td>Cada semana</td>
+          <td>No cumplís → bajás una categoría la semana siguiente</td>
+        </tr>
+        <tr>
+          <td><strong>Recuperación</strong></td>
+          <td>Semana siguiente a la baja</td>
+          <td><span class="tag green">Si cumplís el 10% → recuperás categoría anterior</span></td>
+        </tr>
+        <tr>
+          <td><strong>Subir de categoría</strong></td>
+          <td>Solo al cierre del mes</td>
+          <td>Ranking mensual por % de cash acumulado</td>
+        </tr>
+        <tr>
+          <td><strong>Bonus semanal</strong></td>
+          <td>Cada semana que supera $20k</td>
+          <td><span class="tag blue">1% del cash (+ 0,5% por cada $5k extra) distribuido por aporte</span></td>
+        </tr>
+        <tr>
+          <td><strong>Sin penalidades</strong></td>
+          <td>Siempre</td>
+          <td><span class="tag green">El sistema solo premia, nunca descuenta</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══ 8. FAQ ═══ -->
+  <div class="section">
+    <div class="section-eyebrow">08 — Preguntas frecuentes</div>
+    <div class="section-title">Dudas comunes</div>
+
+    <div class="faq-item">
+      <div class="faq-q">¿El cash de las cuotas que cobro cuenta para el ranking?</div>
+      <div class="faq-a">Sí. El cash collected incluye tanto las ventas nuevas como las cuotas de ventas anteriores que cobraste. Si cerraste una venta en 3 cuotas, cada cuota que ingrese te suma cash y te ayuda a mantener o subir en el ranking.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">¿Qué pasa si el equipo no llega al objetivo varias semanas seguidas?</div>
+      <div class="faq-a">No pasa nada extra. No hay bonus esas semanas, pero tampoco se descuenta nada. El sistema no genera deudas ni penalidades — simplemente no se activa el premio. El piso ($16.500) es un indicador de referencia, no una penalidad.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">¿Qué categorías recibo durante las semanas 1 y 2 si el mes pasado estuve en D,E?</div>
+      <div class="faq-a">En las semanas 1 y 2 todos reciben todas las categorías sin excepción. No importa cómo terminaste el mes anterior. Es un arranque limpio para todos.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">Si bajo a D,E esta semana, ¿tengo que esperar todo el mes para recuperarme?</div>
+      <div class="faq-a">No. Si la semana siguiente cumplís el 10% del mínimo individual, recuperás automáticamente tu categoría anterior. No hay que esperar al cierre del mes. La recuperación es inmediata.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">¿Cómo sé si cumplí el 10% mínimo?</div>
+      <div class="faq-a">El sistema lo calcula automáticamente. En el dashboard interno podés ver tu porcentaje de aporte en tiempo real cada semana, y si estás en verde (✅) o en rojo (❌). También muestra cuál será tu categoría para la semana siguiente.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">¿El mínimo del 10% aplica aunque el equipo haya tenido una semana mala?</div>
+      <div class="faq-a">El 10% se mide sobre lo que el equipo realmente generó esa semana, no sobre el objetivo. Si el equipo hizo $10.000 y vos aportaste $1.200 (12%), cumpliste el mínimo aunque el equipo no haya llegado al objetivo. La evaluación es justa y relativa al contexto real de la semana.</div>
+    </div>
+  </div>
+
+  <div class="highlight">
+    <h3>La lógica es simple</h3>
+    <p>Las mejores agendas van a quien más genera. <strong>Las semanas 1 y 2 son tu oportunidad de arrancar fuerte.</strong> Las semanas 3 y 4 son la consecuencia de lo que construiste el mes anterior. El sistema es predecible, justo y siempre transparente.</p>
+  </div>
+
+</div>
+
+<div class="footer">
+  <strong>Método Acelerador de Ganancias</strong> · Documento interno para el equipo de closers · 2026
+</div>
+
+<script src="/metricas/js/api/http.js"></script>
+<script src="/metricas/js/auth-shell.js"></script>
+<script src="/metricas/js/mag-theme.js"></script>
+</div>
+</body>
+</html>

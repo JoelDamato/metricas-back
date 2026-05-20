@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Agendas & Bonus</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0C0F18;--s1:#131720;--s2:#181D2C;--s3:#1E2438;--s4:#252D42;
+      --border:#252D42;--text:#E2E6F4;--muted:#5E6788;--faint:#161B26;
+      --blue:#4B8EF5;--green:#2DD4A0;--amber:#F59E0B;--red:#F87171;--purple:#A78BFA;
+      --cat-a:#FBBF24;--cat-b:#2DD4A0;--cat-c:#60A5FA;--cat-d:#A78BFA;--cat-e:#94A3B8;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+
+.hdr{background:var(--s1);border-bottom:1px solid var(--border);padding:15px 28px;display:flex;align-items:center;gap:12px;}
+    .mag{background:linear-gradient(135deg,var(--blue),var(--green));border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;letter-spacing:.1em;color:#fff;}
+    .hdr h1{font-size:15px;font-weight:600;}
+    .hdr p{font-size:11px;color:var(--muted);margin-top:1px;}
+
+    .tabs{display:flex;padding:0 28px;background:var(--s1);border-bottom:1px solid var(--border);}
+    .tb{padding:11px 16px;border:none;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;}
+    .tb.active{color:var(--blue);border-bottom-color:var(--blue);}
+    .tb:hover:not(.active){color:var(--text);}
+    .tab-content{display:none;padding:22px 28px;}
+    .tab-content.active{display:block;}
+    .manual-frame-wrap{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+    .manual-frame-head{padding:14px 18px;border-bottom:1px solid var(--border);}
+    .manual-frame-head h3{font-size:14px;font-weight:600;margin-bottom:4px;}
+    .manual-frame-head p{font-size:12px;color:var(--muted);}
+    .manual-frame{display:block;width:100%;height:78vh;min-height:860px;border:0;background:transparent;}
+
+    /* CONTROLS */
+    .ctrl-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+    .sel{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer;}
+    .phase-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.05em;}
+    .phase-badge.libre{background:#082018;color:var(--green);border:1px solid rgba(45,212,160,.3);}
+    .phase-badge.rank{background:#08101E;color:var(--blue);border:1px solid rgba(75,142,245,.3);}
+    .phase-badge.out{background:var(--s2);color:var(--muted);border:1px solid var(--border);}
+    .today-lbl{font-size:11px;color:var(--muted);margin-left:auto;}
+    .today-lbl b{color:var(--text);}
+
+    /* MILESTONE BAR */
+    .mbar{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:18px;}
+    .mbar-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+    .mbar-left{}
+    .mbar-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;}
+    .mbar-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;}
+    .mbar-right{text-align:right;}
+    .mpill{font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;}
+    .mpill.none{background:#200808;color:var(--red);}
+    .mpill.floor{background:#201400;color:var(--amber);}
+    .mpill.bonus{background:#082018;color:var(--green);}
+    .mbar-hint{font-size:10px;color:var(--muted);margin-top:3px;}
+    .scale-outer{position:relative;padding:42px 0 16px;}
+    .scale-track{position:relative;height:9px;border-radius:5px;}
+    .scale-bg{position:absolute;inset:0;border-radius:5px;background:var(--s3);}
+    .scale-red{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;background:linear-gradient(90deg,#3D1010,#5A1A1A);}
+    .scale-amber{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#3A2800,#5A3A00);}
+    .scale-fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transition:width .5s ease;}
+    .scale-cursor{position:absolute;top:-4px;bottom:-4px;width:3px;background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .5s;box-shadow:0 0 8px rgba(255,255,255,.3);}
+    .scale-cursor-lbl{position:absolute;top:calc(100%+4px);left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap;}
+    .smk{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;}
+    .smk-above{position:absolute;bottom:calc(100% + 5px);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;}
+    .smk-pct-lbl{font-size:9px;font-weight:700;white-space:nowrap;}
+    .smk-val-lbl{font-size:8px;white-space:nowrap;font-family:'DM Mono',monospace;}
+    .smk-line{width:1px;height:9px;background:rgba(255,255,255,.2);}
+
+    /* WEEK PILLS */
+    .wk-pills{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;}
+    .wkp{flex:1;min-width:100px;border-radius:10px;border:1px solid var(--border);background:var(--s1);padding:9px 11px;}
+    .wkp.cur{border-color:var(--blue);background:linear-gradient(135deg,rgba(75,142,245,.07),var(--s1));}
+    .wkp.past{opacity:.55;}
+    .wkp-num{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;}
+    .wkp.cur .wkp-num{color:var(--blue);}
+    .wkp:not(.cur) .wkp-num{color:var(--muted);}
+    .wkp-dates{font-size:11px;font-weight:600;}
+    .wkp-days{font-size:9px;color:var(--muted);margin-top:1px;}
+    .wkp-meta{font-size:9px;font-family:'DM Mono',monospace;margin-top:5px;}
+    .wkp-meta.full{color:var(--green);}
+    .wkp-meta.part{color:var(--amber);}
+    .wkp-ph{font-size:8px;font-weight:700;margin-top:3px;padding:1px 5px;border-radius:8px;display:inline-block;}
+    .wkp-ph.libre{background:#082018;color:var(--green);}
+    .wkp-ph.rank{background:#08101E;color:var(--blue);}
+    .cur-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--blue);margin-left:4px;vertical-align:middle;}
+
+    /* NEXT WEEK PANEL */
+    .nw-panel{margin-bottom:20px;}
+    .nw-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .nw-title::after{content:'';flex:1;height:1px;background:var(--border);}
+    .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;}
+    .nw-card{border-radius:11px;padding:12px 14px;border:1px solid var(--border);background:var(--s1);}
+    .nw-card.ok{border-color:rgba(45,212,160,.3);background:linear-gradient(135deg,rgba(45,212,160,.05),var(--s1));}
+    .nw-card.drop{border-color:rgba(248,113,113,.3);background:linear-gradient(135deg,rgba(248,113,113,.05),var(--s1));}
+    .nw-card.none{border-color:rgba(248,113,113,.5);background:linear-gradient(135deg,#160808,var(--s1));}
+    .nw-card.special{border-color:rgba(167,139,250,.3);background:linear-gradient(135deg,rgba(167,139,250,.05),var(--s1));}
+    .nw-card.libre-card{border-color:rgba(45,212,160,.2);background:var(--s1);}
+    .nw-name{font-size:12px;font-weight:600;margin-bottom:3px;}
+    .nw-sub{font-size:10px;color:var(--muted);margin-bottom:7px;}
+    .nw-cats{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px;}
+    .cc{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
+    .cc.A{background:#3B2700;color:var(--cat-a);}
+    .cc.B{background:#0A2E20;color:var(--cat-b);}
+    .cc.C{background:#0F244A;color:var(--cat-c);}
+    .cc.D{background:#251A47;color:var(--cat-d);}
+    .cc.E{background:#1C2030;color:var(--cat-e);}
+    .nw-status{font-size:10px;font-weight:600;}
+    .nw-status.ok{color:var(--green);}
+    .nw-status.drop{color:var(--red);}
+    .nw-status.warn{color:var(--amber);}
+    .nw-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px;}
+
+    /* MAIN TABLE */
+    .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-bottom:20px;}
+    .mtbl{width:100%;border-collapse:collapse;min-width:500px;}
+    .mtbl th{background:var(--s1);padding:9px 12px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+    .mtbl th.lft{text-align:left;min-width:180px;}
+    .wth{min-width:110px;}
+    .wth-in{display:flex;flex-direction:column;align-items:center;gap:2px;}
+    .wth-n{font-size:11px;font-weight:600;color:var(--text);}
+    .wth-d{font-size:9px;color:var(--muted);}
+    .wth-t{font-family:'DM Mono',monospace;font-size:9px;}
+    .wth-t.f{color:var(--green);}
+    .wth-t.p{color:var(--amber);}
+    .wth-chip{font-size:8px;font-weight:700;padding:1px 6px;border-radius:8px;margin-top:1px;}
+    .wth-chip.hit{background:#082018;color:var(--green);}
+    .wth-chip.mid{background:#201400;color:var(--amber);}
+    .wth-chip.miss{background:#200808;color:var(--red);}
+    .wth-chip.idle{background:var(--s2);color:var(--muted);}
+    .mtbl td{padding:7px 12px;font-size:13px;border-bottom:1px solid rgba(37,45,66,.4);text-align:center;vertical-align:top;}
+    .mtbl td.lft{text-align:left;}
+    .mtbl tr:last-child td{border-bottom:none;}
+    .mtbl tr.tr-team td{background:var(--s2);border-top:1px solid var(--border);border-bottom:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;}
+    .mtbl tr.tr-bonus td{background:var(--s1);font-family:'DM Mono',monospace;font-size:10px;border-top:none;padding-top:4px;padding-bottom:9px;}
+    .mtbl tr.tr-team td.col-hit{color:var(--green);}
+    .mtbl tr.tr-team td.col-mid{color:var(--amber);}
+    .mtbl tr.tr-team td.col-low{color:var(--muted);}
+    .closer-cell{display:flex;flex-direction:column;gap:4px;}
+    .cn-row{display:flex;align-items:center;gap:6px;}
+    .cdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+    .cn{font-size:12px;font-weight:600;}
+    .cbadge{font-size:8px;font-weight:700;padding:1px 5px;border-radius:7px;}
+    .cbadge.w{background:#1A1040;color:var(--purple);}
+    .cbadge.nv{background:#201400;color:var(--amber);}
+    .sc-row{display:flex;align-items:center;gap:4px;}
+    .sc-lbl{font-size:9px;color:var(--muted);}
+    .sc-btn{font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid var(--border);background:var(--s3);color:var(--muted);cursor:pointer;transition:all .15s;}
+    .sc-btn.ac{background:#0A2018;border-color:var(--green);color:var(--green);}
+    .sc-btn.ad{background:#1A1040;border-color:var(--purple);color:var(--purple);}
+    .st-row{display:flex;gap:3px;}
+    .st-btn{font-size:8px;font-weight:600;padding:1px 5px;border-radius:4px;border:1px solid var(--border);background:var(--s3);color:var(--muted);cursor:pointer;}
+    .st-btn.aw{background:#1A1040;border-color:var(--purple);color:var(--purple);}
+    .st-btn.anv{background:#201400;border-color:var(--amber);color:var(--amber);}
+    .st-btn.ano{background:#081530;border-color:var(--blue);color:var(--blue);}
+    .cell-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;}
+    .wi{min-width:88px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:0;padding:0;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;text-align:center;box-shadow:none;}
+    .wi.met{color:var(--green);}
+    .wi.fail{color:var(--text);}
+    .wi.empty{color:var(--muted);}
+    .cell-pct{font-size:9px;font-family:'DM Mono',monospace;}
+    .cell-pct.ok{color:var(--green);}
+    .cell-pct.no{color:var(--red);}
+    .cell-pct.na{color:var(--muted);}
+    .mono{font-family:'DM Mono',monospace;}
+
+    /* CAT CHAIN */
+    .chain-section{margin-bottom:20px;}
+    .chain-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .chain-title::after{content:'';flex:1;height:1px;background:var(--border);}
+    .chain-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+    .chain-table th{background:var(--s1);padding:7px 12px;font-size:9px;font-weight:600;color:var(--muted);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;}
+    .chain-table th.lft{text-align:left;}
+    .chain-table td{padding:7px 12px;font-size:12px;border-bottom:1px solid rgba(37,45,66,.4);text-align:center;}
+    .chain-table td.lft{text-align:left;font-weight:600;}
+    .chain-table tr:last-child td{border-bottom:none;}
+    .cat-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-block;}
+    .cat-badge.ABC{background:#0A2E20;color:var(--green);}
+    .cat-badge.DE{background:#1A1040;color:var(--cat-d);}
+    .cat-badge.NONE{background:#200808;color:var(--red);}
+    .cat-badge.ALL{background:#201E00;color:var(--amber);}
+    .cat-badge.LIB{background:var(--s2);color:var(--muted);}
+    .cat-badge.SP{background:#1A1040;color:var(--purple);}
+    .chain-cell{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:92px;}
+    .chain-proj{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted);}
+    .chain-proj b{font-weight:700;color:var(--text);}
+    .chain-meta{font-size:9px;color:var(--muted);}
+    .chain-arrow{opacity:.8;}
+
+    /* TWO COL */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
+    .panel{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+    .ph{padding:12px 16px;border-bottom:1px solid var(--border);}
+    .ph h3{font-size:13px;font-weight:600;}
+    .ph p{font-size:11px;color:var(--muted);margin-top:2px;}
+    .rank-row{display:flex;align-items:center;gap:9px;padding:9px 16px;border-bottom:1px solid rgba(37,45,66,.4);}
+    .rank-row:last-child{border-bottom:none;}
+    .rn{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;width:20px;text-align:center;flex-shrink:0;}
+    .rn.top{color:var(--green);}
+    .rn.bot{color:var(--muted);}
+    .rn.sp{color:var(--purple);}
+    .rn.nw{color:var(--amber);}
+    .rname{font-size:12px;font-weight:600;min-width:120px;}
+    .rbar-w{flex:1;display:flex;align-items:center;gap:6px;}
+    .rtrack{flex:1;height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+    .rfill{height:100%;border-radius:3px;transition:width .5s;}
+    .rpct{font-family:'DM Mono',monospace;font-size:11px;min-width:36px;text-align:right;}
+    .rcats{display:flex;gap:3px;flex-shrink:0;}
+    .div-lbl{padding:5px 16px;background:rgba(37,45,66,.4);font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;}
+    .cut-line{padding:6px 16px;display:flex;align-items:center;gap:7px;font-size:9px;color:var(--red);}
+    .cut-line::before,.cut-line::after{content:'';flex:1;height:1px;background:rgba(248,113,113,.2);}
+    .bonus-wk{padding:10px 16px;border-bottom:1px solid rgba(37,45,66,.4);}
+    .bonus-wk:last-of-type{border-bottom:none;}
+    .bwh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+    .bwt{font-size:11px;font-weight:600;}
+    .bwp{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;}
+    .bwpool{font-size:10px;color:var(--muted);margin-bottom:5px;}
+    .bwdist{display:flex;flex-direction:column;gap:2px;}
+    .bwd-row{display:flex;justify-content:space-between;font-size:10px;}
+    .bwd-name{color:var(--muted);}
+    .bwd-val{font-family:'DM Mono',monospace;color:var(--green);}
+    .no-bonus-wk{padding:8px 16px;font-size:10px;color:var(--muted);}
+    .panel-total{padding:12px 16px;background:var(--s2);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+    .panel-total-lbl{font-size:11px;color:var(--muted);}
+    .panel-total-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--green);}
+    .empty{padding:24px;text-align:center;font-size:12px;color:var(--muted);}
+
+    /* RULES */
+    .rg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media(max-width:700px){.rg{grid-template-columns:1fr;}}
+    .rc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;}
+    .rc h3{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:11px;text-transform:uppercase;letter-spacing:.06em;}
+    .il{list-style:none;}
+    .il li{font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:7px;line-height:1.6;}
+    .il li:last-child{border-bottom:none;}
+    .dot{color:var(--blue);font-weight:700;flex-shrink:0;}
+    .bsr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;}
+    .bsr:last-child{border-bottom:none;}
+    .bsr-l{color:var(--muted);}
+    .bsr-r{font-family:'DM Mono',monospace;font-weight:700;}
+  </style>
+  <link rel="stylesheet" href="/metricas/css/styles.css">
+  <link rel="stylesheet" href="/metricas/css/mag-theme.css">
+</head>
+<body class="mag-view">
+<div class="mag-theme-shell">
+
+<div class="hdr">
+  <div><h1>Sistema de Agendas & Bonus</h1><p>Interno — Equipo de Closers · 2026</p></div>
+</div>
+
+<div class="tabs">
+  <button class="tb active" onclick="showTab('mes',this)">Mes en Curso</button>
+  <button class="tb" onclick="showTab('reg',this)">Reglas del Sistema</button>
+  <button class="tb" onclick="showTab('manual',this)">Manual Closers</button>
+</div>
+
+<div id="tab-mes" class="tab-content active">
+  <div class="ctrl-bar">
+    <span style="font-size:12px;color:var(--muted)">Mes:</span>
+    <select class="sel" id="sel-mes" onchange="boot()">
+      <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+      <option value="4">Abril</option><option value="5" selected>Mayo</option><option value="6">Junio</option>
+      <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+      <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+    </select>
+    <select class="sel" id="sel-yr" onchange="boot()">
+      <option value="2026" selected>2026</option><option value="2027">2027</option>
+    </select>
+    <span style="font-size:12px;color:var(--muted)">Barra:</span>
+    <select class="sel" id="sel-week-progress" onchange="renderAll()"></select>
+    <span class="phase-badge" id="phase-badge">—</span>
+    <span class="today-lbl" id="today-lbl"></span>
+  </div>
+
+  <div class="wk-pills" id="wk-pills"></div>
+
+  <!-- Milestone bar -->
+  <div class="mbar">
+    <div class="mbar-head">
+      <div class="mbar-left">
+        <div class="mbar-lbl">Cash Total Acumulado de la Semana</div>
+        <div class="mbar-val mono" id="mbar-val">US$ 0,00</div>
+      </div>
+      <div class="mbar-right">
+        <span class="mpill none" id="mbar-pill">Sin datos</span>
+        <div class="mbar-hint" id="mbar-hint"></div>
+      </div>
+    </div>
+    <div id="mbar-scale"></div>
+  </div>
+
+  <!-- Next week categories -->
+  <div class="nw-panel">
+    <div class="nw-title">Categorías próxima semana</div>
+    <div class="nw-grid" id="nw-grid"></div>
+  </div>
+
+  <!-- Main cash table -->
+  <div class="tbl-wrap">
+    <table class="mtbl" id="main-tbl"></table>
+  </div>
+
+  <!-- Category chain -->
+  <div class="chain-section">
+    <div class="chain-title">Progresión de categorías por semana</div>
+    <div style="overflow-x:auto"><table class="chain-table" id="chain-tbl"></table></div>
+  </div>
+
+  <!-- Ranking + Bonus -->
+  <div class="two-col">
+    <div class="panel">
+      <div class="ph"><h3>Ranking Mensual en Vivo</h3><p>Acumulado del mes → define categorías del mes siguiente</p></div>
+      <div id="rank-body"><div class="empty">Ingresá cash para ver el ranking.</div></div>
+    </div>
+    <div class="panel" id="bonus-panel">
+      <div class="ph"><h3>Resumen de Bonus</h3></div>
+      <div id="bonus-body"><div class="empty">Sin datos de bonus aún.</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-reg" class="tab-content">
+  <div style="font-size:14px;font-weight:600;margin-bottom:5px">Reglas del Sistema</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Documento interno.</div>
+  <div class="rg">
+    <div class="rc">
+      <h3>Categorías — Lógica Completa</h3>
+      <ul class="il">
+        <li><span class="dot">→</span><strong style="color:var(--text)">S1–S2 (fase libre):</strong> todos reciben todas las categorías. Sin ranking, eligen franja horaria.</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">S3+ (fase rankeada):</strong> top 3 en cash collected del mes anterior → A,B,C · resto → D,E</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Mínimo semanal individual:</strong> 10% del cash total del equipo esa semana</li>
+        <li><span class="dot">→</span>Si un closer no llega al 10% → baja o mantiene en D,E la semana siguiente (ABC→DE / DE→DE)</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">La base del mes</strong> se define una vez, al arrancar el mes, con el ranking del mes anterior.</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Durante el mes</strong> la categoría solo puede mantenerse o bajar según el cash semanal. No recupera ni sube hasta el cierre mensual.</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Todos siguen con agendas:</strong> el sistema no deja más estados de “sin agendas”; la base mínima es D,E.</li>
+      </ul>
+    </div>
+    <div class="rc">
+      <h3>Escala de Bonus Semanal</h3>
+      <div class="bsr"><span class="bsr-l">Bajo el piso (proporcional a días)</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Piso – Meta</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">$20k base (7 días)</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
+      <div class="bsr"><span class="bsr-l">$25k (7 días)</span><span class="bsr-r" style="color:var(--green)">1,5%</span></div>
+      <div class="bsr"><span class="bsr-l">$30k (7 días)</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Semana parcial (N días)</span><span class="bsr-r" style="color:var(--amber)">Todo × N÷7</span></div>
+      <div class="bsr"><span class="bsr-l">Distribución</span><span class="bsr-r" style="color:var(--blue)">Por % de aporte</span></div>
+    </div>
+    <div class="rc">
+      <h3>Calificación de Leads</h3>
+      <ul class="il">
+        <li><span class="dot" style="color:var(--cat-a)">A</span> Muy calificado — alta intención, perfil ideal</li>
+        <li><span class="dot" style="color:var(--cat-b)">B</span> Calificado — buena señal de compra</li>
+        <li><span class="dot" style="color:var(--cat-c)">C</span> Intermedio — requiere trabajo de venta</li>
+        <li><span class="dot" style="color:var(--cat-d)">D</span> Bajo — poca calificación declarada</li>
+        <li><span class="dot" style="color:var(--cat-e)">E</span> Mínimo — casi no califica, puede cerrar</li>
+      </ul>
+    </div>
+    <div class="rc">
+      <h3>Semanas Automáticas</h3>
+      <ul class="il">
+        <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
+        <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
+        <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
+        <li><span class="dot">→</span> Piso ($16.500) y meta ($20.000) se ajustan: ej. 4 días → meta $11.428</li>
+        <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div id="tab-manual" class="tab-content">
+  <div class="manual-frame-wrap">
+    <div class="manual-frame-head">
+      <h3>Manual de Closers</h3>
+      <p>Guía visual del sistema de agendas, categorías, ranking y bonus.</p>
+    </div>
+    <iframe
+      class="manual-frame"
+      src="/metricas/views/mag-manual-closers.html?embed=1"
+      title="Manual de Closers"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<script src="/metricas/js/api/http.js"></script>
+<script src="/metricas/js/api/metricas.api.js"></script>
+<script src="/metricas/js/auth-shell.js"></script>
+<script src="/metricas/js/mag-theme.js"></script>
+<script>
+/* ═══ CONSTANTS ═══ */
+const TARGET=20000,FLOOR=16500,STEP=5000;
+const COLORS=['#4B8EF5','#2DD4A0','#F59E0B','#A78BFA','#F472B6','#34D399'];
+const MS=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MIN_PCT=10; // individual minimum % of team weekly cash
+const CLOSER_ALIAS_MAP={
+  'pablo butera vie':'Pablo Butera',
+  'pablo butera':'Pablo Butera',
+  'patricia conti':'Patricia Conti',
+  'carlos tu':'Carlos Tu',
+  'claudio nicolini':'Claudio Nicolini',
+  'mauro gaitan':'Mauro Gaitan',
+  'walter alegre':'Walter Alegre'
+};
+
+/* ═══ STATE ═══ */
+let weeks=[];
+let selectedProgressWeekIndex=null;
+let closers=[
+  {id:1,name:'Walter Alegre',   status:'walter',startCat:'ABC',weeks:[]},
+  {id:2,name:'Carlos Tu',       status:'normal',startCat:'ABC',weeks:[]},
+  {id:3,name:'Claudio Nicolini',status:'normal',startCat:'ABC',weeks:[]},
+  {id:4,name:'Mauro Gaitan',    status:'normal',startCat:'ABC',weeks:[]},
+  {id:5,name:'Pablo Butera',    status:'nuevo', startCat:'DE', weeks:[]},
+  {id:6,name:'Patricia Conti',  status:'nuevo', startCat:'DE', weeks:[]},
+];
+
+function previousMonthOf(year,month){
+  const date=new Date(year,month-2,1);
+  return { year: date.getFullYear(), month: date.getMonth()+1 };
+}
+
+/* ═══ WEEK CALC ═══ */
+function calcWeeks(yr,mo){
+  const first=new Date(yr,mo-1,1),last=new Date(yr,mo,0);
+  const res=[];let cur=new Date(first);
+  while(cur<=last){
+    const dow=cur.getDay();
+    const toMon=dow===0?-6:1-dow;
+    const mon=new Date(cur); mon.setDate(cur.getDate()+toMon);
+    const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+    const ws=mon<first?new Date(first):new Date(mon);
+    const we=sun>last?new Date(last):new Date(sun);
+    const days=Math.round((we-ws)/86400000)+1;
+    res.push({
+      startDate:new Date(ws),
+      endDate:new Date(we),
+      startKey:toDateKey(ws),
+      endKey:toDateKey(we),
+      days,
+      label:fmtRange(ws,we)
+    });
+    cur=new Date(sun); cur.setDate(sun.getDate()+1);
+  }
+  return res;
+}
+function fmtRange(s,e){
+  if(s.getMonth()===e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MS[s.getMonth()+1]}`;
+  return `${s.getDate()} ${MS[s.getMonth()+1]}–${e.getDate()} ${MS[e.getMonth()+1]}`;
+}
+function curWeekIdx(){
+  const todayKey=toDateKey(new Date());
+  for(let i=0;i<weeks.length;i++) if(todayKey>=weeks[i].startKey && todayKey<=weeks[i].endKey) return i;
+  return todayKey<(weeks[0]?.startKey||todayKey)?-1:weeks.length;
+}
+
+function getProgressWeekIndex(){
+  const select=document.getElementById('sel-week-progress');
+  if(select && select.value!=='') return Number(select.value);
+  if(selectedProgressWeekIndex!==null && selectedProgressWeekIndex>=0) return selectedProgressWeekIndex;
+  const currentIndex=curWeekIdx();
+  if(currentIndex>=0 && currentIndex<weeks.length) return currentIndex;
+  return weeks.length ? Math.max(0, weeks.length-1) : -1;
+}
+
+function syncWeekProgressSelect(){
+  const select=document.getElementById('sel-week-progress');
+  if(!select) return;
+  const preferred=getProgressWeekIndex();
+  select.innerHTML=weeks.map((week,index)=>(
+    `<option value="${index}">Semana ${index+1} · ${week.label}</option>`
+  )).join('');
+  if(preferred>=0 && preferred<weeks.length){
+    select.value=String(preferred);
+    selectedProgressWeekIndex=preferred;
+  }
+}
+
+function normalizeText(value){
+  return String(value||'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .trim()
+    .toLowerCase();
+}
+
+function toDateKey(value){
+  if(value instanceof Date){
+    const year=value.getFullYear();
+    const month=String(value.getMonth()+1).padStart(2,'0');
+    const day=String(value.getDate()).padStart(2,'0');
+    return `${year}-${month}-${day}`;
+  }
+  const raw=String(value||'').trim();
+  const match=raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if(match) return match[1];
+  const parsed=new Date(raw);
+  if(Number.isNaN(parsed.getTime())) return '';
+  return toDateKey(parsed);
+}
+
+function canonicalCloserName(value){
+  const normalized=normalizeText(value);
+  return CLOSER_ALIAS_MAP[normalized] || String(value||'').trim();
+}
+
+function monthRange(year,month){
+  const from=`${year}-${String(month).padStart(2,'0')}-01`;
+  const toDate=new Date(year,month,0);
+  const to=`${year}-${String(month).padStart(2,'0')}-${String(toDate.getDate()).padStart(2,'0')}`;
+  return { from, to };
+}
+
+function effectiveMonthRange(year,month){
+  const base=monthRange(year,month);
+  const now=new Date();
+  const isCurrentMonth=Number(year)===now.getFullYear() && Number(month)===(now.getMonth()+1);
+  if(!isCurrentMonth) return base;
+  return {
+    from: base.from,
+    to: now.toISOString().slice(0,10)
+  };
+}
+
+function resetCloserWeeks(){
+  closers.forEach((closer)=>{ closer.weeks=weeks.map(()=>0); });
+}
+
+function parseRowDate(value){
+  if(!value) return null;
+  const date=new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getWeekIndexForValue(value){
+  const dateKey=toDateKey(value);
+  if(!dateKey) return -1;
+  return weeks.findIndex((week)=>dateKey>=week.startKey && dateKey<=week.endKey);
+}
+
+function getConciliadoAmount(row){
+  const conciliado=Number(row?.cash_collected_conciliado || 0);
+  if(Number.isFinite(conciliado) && conciliado>0) return conciliado;
+  const total=Number(row?.cash_collected_total || 0);
+  return Number.isFinite(total) && total>0 ? total : 0;
+}
+
+function isEligibleCashRow(row){
+  if(!toDateKey(row?.fecha_acreditacion)) return false;
+  return getConciliadoAmount(row)>0;
+}
+
+async function loadRealCashByAcreditacion(year,month){
+  if(!window.metricasApi?.fetchAllRows){
+    throw new Error('No se pudo cargar la API de métricas');
+  }
+
+  resetCloserWeeks();
+  const { from, to } = effectiveMonthRange(year,month);
+  const response = await window.metricasApi.fetchAllRows('cash_collected_diario_closer',{
+    from,
+    to,
+    dateField:'fecha_acreditacion',
+    orderBy:'fecha_acreditacion',
+    orderDir:'asc',
+    limit:1000
+  });
+
+  const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
+  (response.rows || []).forEach((row)=>{
+    if(!isEligibleCashRow(row)) return;
+    const closerName=canonicalCloserName(row.closer);
+    const closer=closerMap.get(normalizeText(closerName));
+    if(!closer) return;
+    const weekIndex=getWeekIndexForValue(row.fecha_acreditacion);
+    if(weekIndex<0) return;
+    closer.weeks[weekIndex]=(closer.weeks[weekIndex]||0)+getConciliadoAmount(row);
+  });
+}
+
+async function loadMonthlyBaseCategories(year,month){
+  if(!window.metricasApi?.fetchAllRows){
+    throw new Error('No se pudo cargar la API de métricas');
+  }
+
+  const prev=previousMonthOf(year,month);
+  const { from, to } = monthRange(prev.year,prev.month);
+  const response = await window.metricasApi.fetchAllRows('cash_collected_diario_closer',{
+    from,
+    to,
+    dateField:'fecha_acreditacion',
+    orderBy:'fecha_acreditacion',
+    orderDir:'asc',
+    limit:1000
+  });
+
+  const totalsByCloser=new Map();
+  (response.rows || []).forEach((row)=>{
+    if(!isEligibleCashRow(row)) return;
+    const closerName=canonicalCloserName(row.closer);
+    const key=normalizeText(closerName);
+    totalsByCloser.set(key,(totalsByCloser.get(key)||0)+getConciliadoAmount(row));
+  });
+
+  const rankedClosers=closers
+    .map((closer)=>({
+      closer,
+      total: totalsByCloser.get(normalizeText(closer.name)) || 0
+    }))
+    .sort((a,b)=>b.total-a.total);
+
+  rankedClosers.forEach(({ closer },index)=>{
+    closer.startCat=index<3?'ABC':'DE';
+  });
+}
+
+/* ═══ BONUS MATH ═══ */
+function adj(days){const f=days/7;return{floor:FLOOR*f,target:TARGET*f,step:STEP*f};}
+function bonusPct(cash,days){const{target,step}=adj(days);if(cash<target)return 0;return 0.01+Math.floor((cash-target)/step)*0.005;}
+function wkStatus(cash,days){const{floor,target}=adj(days);if(!cash)return'idle';if(cash<floor)return'miss';if(cash<target)return'mid';return'hit';}
+
+/* ═══ CATEGORY CHAIN ═══ */
+// Returns array per week: {type:'libre'|'ranked'|'special', cat:'ABC'|'DE'|'NONE'|'ALL'|'SP', met:bool|null, pct:number|null}
+function catChain(c, wkTotals){
+  let cat=c.startCat||'ABC';
+  const chain=[];
+
+  for(let w=0;w<weeks.length;w++){
+    if(w<2){chain.push({type:'libre',cat:'LIB',met:null,pct:null});continue;}
+
+    // Check performance in week w-1
+    const teamT=wkTotals[w-1]||0;
+    const myT=c.weeks[w-1]||0;
+    const pct=teamT>0?myT/teamT*100:null;
+    const met=pct===null?null:pct>=MIN_PCT;
+
+    if(met===null){
+      // No data for previous week, don't change
+      chain.push({type:'ranked',cat,met:null,pct:null});
+      continue;
+    }
+
+    if(!met){
+      cat='DE';
+    }
+    chain.push({type:'ranked',cat,met,pct});
+  }
+  return chain;
+}
+
+// Project category for NEXT week based on current week's performance so far
+function nextWeekCat(c, wkTotals, curIdx){
+  const nextIdx=curIdx+1;
+  if(nextIdx>=0&&nextIdx<2) return{cat:'LIB',met:null,pct:null}; // next is still libre
+  if(nextIdx<0) return{cat:'LIB',met:null,pct:null};
+
+  // Current week status
+  const teamT=wkTotals[curIdx]||0;
+  const myT=curIdx>=0?(c.weeks[curIdx]||0):0;
+  const pct=teamT>0?myT/teamT*100:null;
+  const met=pct===null?null:pct>=MIN_PCT;
+
+  // Get current category from chain
+  const chain=catChain(c,wkTotals);
+  let currentCat=c.startCat||'ABC';
+  if(curIdx>=0&&curIdx<chain.length){
+    const cur=chain[curIdx];
+    if(cur.type==='ranked') currentCat=cur.cat;
+    else currentCat=c.startCat||'ABC';
+  }
+
+  const todayKey=toDateKey(new Date());
+  const currentWeek=curIdx>=0&&curIdx<weeks.length?weeks[curIdx]:null;
+  const weekStillOpen=!!currentWeek && todayKey>=currentWeek.startKey && todayKey<=currentWeek.endKey;
+
+  if(met===null) return{cat:currentCat,met:null,pct:null};
+  if(weekStillOpen) return{cat:currentCat,met:null,pct};
+  if(met) return{cat:currentCat,met:true,pct};
+  const next='DE';
+  return{cat:next,met:false,pct};
+}
+
+function projectFromWeek(c, wkTotals, weekIdx){
+  if(weekIdx<0) return{cat:'LIB',met:null,pct:null};
+  if(weekIdx===0) return{cat:'LIB',met:null,pct:null};
+  if(weekIdx===1) return{cat:c.startCat||'ABC',met:null,pct:null};
+
+  const chain=catChain(c,wkTotals);
+  const current=chain[weekIdx];
+  const currentCat=current?.type==='ranked'?current.cat:(c.startCat||'ABC');
+  const teamT=wkTotals[weekIdx]||0;
+  const myT=c.weeks[weekIdx]||0;
+  const pct=teamT>0?myT/teamT*100:null;
+  const met=pct===null?null:pct>=MIN_PCT;
+
+  if(met===null) return{cat:currentCat,met:null,pct:null};
+  if(met) return{cat:currentCat,met:true,pct};
+  return{cat:'DE',met:false,pct};
+}
+
+/* ═══ HELPERS ═══ */
+function fmt(n){return'US$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtK(n){if(n>=1000)return'$'+(n/1000).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:1})+'k';return'$'+Math.round(n);}
+function wkTotals(){return weeks.map((_,w)=>closers.reduce((s,c)=>s+(c.weeks[w]||0),0));}
+function monthTotal(c){return c.weeks.slice(0,weeks.length).reduce((s,v)=>s+(v||0),0);}
+
+/* ═══ RENDER ALL ═══ */
+function renderAll(){
+  const ci=curWeekIdx();
+  const phase=ci<0?'out':ci<2?'libre':'rank';
+  const pb=document.getElementById('phase-badge');
+  const wLabel=ci>=0&&ci<weeks.length?`Semana ${ci+1}`:ci<0?'Antes del mes':'Mes cerrado';
+  pb.className='phase-badge '+(phase==='libre'?'libre':phase==='rank'?'rank':'out');
+  pb.textContent=`${wLabel} · ${phase==='libre'?'Fase Libre':phase==='rank'?'Fase Rankeada':'—'}`;
+  const t=new Date();
+  document.getElementById('today-lbl').innerHTML=`Hoy: <b>${t.getDate()}/${t.getMonth()+1}/${t.getFullYear()}</b>`;
+  renderPills(ci);
+  renderMilestoneBar();
+  renderNextWeek(ci);
+  renderMainTable(ci);
+  renderChain(ci);
+  renderRanking();
+  renderBonus();
+}
+
+/* ═══ MILESTONE BAR ═══ */
+function renderMilestoneBar(){
+  const SCALE_MAX=40000;
+  const tots=wkTotals();
+  const currentIndex=curWeekIdx();
+  const activeIndex=getProgressWeekIndex();
+  const activeWeek=activeIndex>=0?weeks[activeIndex]:null;
+  const weeklyTotal=activeIndex>=0?(tots[activeIndex]||0):0;
+  const activeDays=activeWeek?.days || 7;
+  const { floor, target } = adj(activeDays);
+
+  document.getElementById('mbar-val').textContent=fmt(weeklyTotal);
+
+  const pill=document.getElementById('mbar-pill');
+  const hint=document.getElementById('mbar-hint');
+
+  if(activeWeek){
+    hint.textContent=`Semana ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
+  }else{
+    hint.textContent='';
+  }
+
+  if(!weeklyTotal){
+    pill.className='mpill none';pill.textContent='Sin datos';hint.textContent='';
+    if(activeWeek){
+      hint.textContent=`Semana ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
+    }
+  }else if(weeklyTotal<floor){
+    pill.className='mpill none';pill.textContent='Bajo el piso';
+    hint.textContent=`${hint.textContent} · Faltan ${fmt(floor-weeklyTotal)} para el piso`;
+  }else if(weeklyTotal<target){
+    pill.className='mpill floor';pill.textContent='Sobre el piso';
+    hint.textContent=`${hint.textContent} · Faltan ${fmt(target-weeklyTotal)} para bonus 1%`;
+  }else{
+    const pct=bonusPct(weeklyTotal,activeDays);
+    const steps=Math.floor((weeklyTotal-target)/STEP);
+    const nextVal=target+(steps+1)*STEP;
+    pill.className='mpill bonus';pill.textContent=`Bonus acumulado ${(pct*100).toFixed(1)}%`;
+    hint.textContent=`${hint.textContent} · ${fmt(nextVal-weeklyTotal)} más → ${((pct+0.005)*100).toFixed(1)}%`;
+  }
+
+  const capVal=Math.min(weeklyTotal,SCALE_MAX);
+  const fillPct=(capVal/SCALE_MAX)*100;
+  const floorPct=(floor/SCALE_MAX)*100;
+  const targetPct=(target/SCALE_MAX)*100;
+  let fillColor=!weeklyTotal?'transparent':weeklyTotal<floor?'linear-gradient(90deg,#4D1212,#7A2020)':weeklyTotal<target?'linear-gradient(90deg,#4D3200,#7A5000)':'linear-gradient(90deg,#0A4A30,#2DD4A0)';
+
+  const milestones=[
+    {val:floor,       label:`${fmtK(floor)} · Piso`, color:'#F59E0B',pct:null},
+    {val:target,      label:`${fmtK(target)} · Meta`,color:'#2DD4A0',pct:'1%'},
+    {val:target+STEP, label:fmtK(target+STEP),       color:'#2DD4A0',pct:'1.5%'},
+    {val:target+STEP*2,label:fmtK(target+STEP*2),    color:'#2DD4A0',pct:'2%'},
+    {val:target+STEP*3,label:fmtK(target+STEP*3),    color:'#2DD4A0',pct:'2.5%'},
+  ];
+  const marksHTML=milestones.map(m=>{
+    const mp=(m.val/SCALE_MAX)*100;
+    return`<div class="smk" style="left:${mp}%">
+      <div class="smk-above">
+        ${m.pct?`<span class="smk-pct-lbl" style="color:${m.color}">${m.pct}</span>`:''}
+        <span class="smk-val-lbl" style="color:${m.color}">${m.label}</span>
+      </div>
+      <div class="smk-line"></div>
+    </div>`;
+  }).join('');
+  const cursorHTML=weeklyTotal>0?`<div class="scale-cursor" style="left:${Math.min(fillPct,97)}%"><div class="scale-cursor-lbl">${fmtK(weeklyTotal)}</div></div>`:'';
+
+  document.getElementById('mbar-scale').innerHTML=`
+    <div class="scale-outer">
+      <div class="scale-track">
+        <div class="scale-bg"></div>
+        <div class="scale-red" style="width:${floorPct}%"></div>
+        <div class="scale-amber" style="left:${floorPct}%;width:${targetPct-floorPct}%"></div>
+        <div class="scale-fill" style="width:${fillPct}%;background:${fillColor}"></div>
+        ${marksHTML}${cursorHTML}
+      </div>
+    </div>`;
+}
+
+/* ═══ PILLS ═══ */
+function renderPills(ci){
+  const el=document.getElementById('wk-pills'); el.innerHTML='';
+  const totals=wkTotals();
+  const selectedIndex=getProgressWeekIndex();
+  weeks.forEach((wk,i)=>{
+    const{target,floor}=adj(wk.days);const full=wk.days===7;
+    const state=i<ci?'past':i===ci?'cur':'future';
+    const ph=i<2?'libre':'rank';
+    const weekTotal=totals[i]||0;
+    const poolPct=bonusPct(weekTotal,wk.days);
+    const poolValue=weekTotal*poolPct;
+    const d=document.createElement('div');
+    d.className=`wkp ${state}${i===selectedIndex?' cur':''}`;
+    d.onclick=()=>{
+      const select=document.getElementById('sel-week-progress');
+      if(select){
+        select.value=String(i);
+        selectedProgressWeekIndex=i;
+      }
+      renderAll();
+    };
+    d.innerHTML=`<div class="wkp-num">Semana ${i+1}${i===ci?'<span class="cur-dot"></span>':''}</div>
+      <div class="wkp-dates">${wk.label}</div>
+      <div class="wkp-days">${wk.days} día${wk.days>1?'s':''}</div>
+      <div class="wkp-meta ${full?'full':'part'}">Meta: ${fmtK(target)}</div>
+      <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">Piso: ${fmtK(floor)}</div>
+      ${poolPct>0?`<div class="wkp-meta full" style="color:var(--green)">Pool: ${fmt(poolValue)}</div>`:''}
+      <div class="wkp-ph ${ph}">${ph==='libre'?'Libre':'Rankeada'}</div>`;
+    el.appendChild(d);
+  });
+}
+
+/* ═══ NEXT WEEK ═══ */
+function renderNextWeek(ci){
+  const g=document.getElementById('nw-grid'); g.innerHTML='';
+  const tots=wkTotals();
+  closers.forEach((c,idx)=>{
+    const nw=nextWeekCat(c,tots,ci);
+    const nextW=ci+1;
+    const wLabel=nextW>=0&&nextW<weeks.length?`Semana ${nextW+1}`:nextW<0?'Semana 1':'Mes terminado';
+
+    let cardCls='nw-card',cats=[],statusTxt='',statusCls='',pctTxt='';
+    if(nw.cat==='LIB'){
+      cardCls='nw-card libre-card';cats=['A','B','C','D','E'];statusTxt='Fase libre';statusCls='warn';
+    }else if(nw.cat==='ABC'){
+      cardCls='nw-card ok';cats=['A','B','C'];
+      statusTxt=nw.met===null?'—':nw.met?'✅ Cumplió mínimo':'⬆️ Recuperación';
+      statusCls=nw.met===false?'drop':'ok';
+    }else if(nw.cat==='DE'){
+      cardCls=`nw-card ${nw.met===false?'drop':''}`;cats=['D','E'];
+      statusTxt=nw.met===null?'—':nw.met?'✅ Cumplió mínimo':'⬇️ No cumplió mínimo';
+      statusCls=nw.met===false?'drop':'ok';
+    }
+    if(nw.pct!==null) pctTxt=`${nw.pct.toFixed(1)}% del equipo (mín. ${MIN_PCT}%)`;
+
+    const catChips=cats.map(x=>`<span class="cc ${x}">${x}</span>`).join('');
+    const d=document.createElement('div'); d.className=cardCls;
+    d.innerHTML=`<div class="nw-name">${c.name}</div>
+      <div class="nw-sub">${wLabel}</div>
+      <div class="nw-cats">${catChips}</div>
+      <div class="nw-status ${statusCls}">${statusTxt}</div>
+      ${pctTxt?`<div class="nw-pct">${pctTxt}</div>`:''}`;
+    g.appendChild(d);
+  });
+}
+
+/* ═══ MAIN TABLE ═══ */
+function renderMainTable(ci){
+  const tots=wkTotals();
+  const tbl=document.getElementById('main-tbl');
+
+  // THEAD
+  let th=`<thead><tr><th class="lft">Closer</th>`;
+  weeks.forEach((wk,i)=>{
+    const t=tots[i];const st=wkStatus(t,wk.days);const full=wk.days===7;
+    const{target}=adj(wk.days);const isCur=i===ci;
+    const pct=bonusPct(t,wk.days);
+    let cc,ct;
+    if(st==='idle'){cc='idle';ct='Sin datos';}
+    else if(st==='miss'){cc='miss';ct='Bajo piso';}
+    else if(st==='mid'){cc='mid';ct='Sin bonus';}
+    else{cc='hit';ct=`✓ ${(pct*100).toFixed(1)}%`;}
+    th+=`<th class="wth" ${isCur?'style="background:rgba(75,142,245,.05)"':''}><div class="wth-in">
+      <span class="wth-n">S${i+1}${isCur?'<span class="cur-dot" style="margin-left:3px"></span>':''}</span>
+      <span class="wth-d">${wk.label} · ${wk.days}d</span>
+      <span class="wth-t ${full?'f':'p'}">Meta ${fmtK(target)}</span>
+      <span class="wth-chip ${cc}">${ct}</span>
+    </div></th>`;
+  });
+  th+=`<th>Total Mes</th></tr></thead>`;
+
+  // TBODY
+  let tb='<tbody>';
+  closers.forEach((c,idx)=>{
+    const mt=monthTotal(c);
+    const badge=c.status==='walter'?'<span class="cbadge w">ESP</span>':c.status==='nuevo'?'<span class="cbadge nv">NUEVO</span>':'';
+    const stBtns=['normal','nuevo','walter'].map(s=>{
+      const L={normal:'N',nuevo:'NV',walter:'W'}[s];
+      const A=c.status===s?{normal:'ano',nuevo:'anv',walter:'aw'}[s]:'';
+      return `<button class="st-btn ${A}" onclick="setStatus(${c.id},'${s}')" title="${{normal:'Normal',nuevo:'Nuevo',walter:'Walter'}[s]}">${L}</button>`;
+    }).join('');
+    const scBtns=['ABC','DE'].map(cat=>{
+      const A=c.startCat===cat?(cat==='ABC'?'ac':'ad'):'';
+      return `<span class="sc-btn ${A}">${cat}</span>`;
+    }).join('');
+
+    tb+=`<tr><td class="lft"><div class="closer-cell">
+      <div class="cn-row"><div class="cdot" style="background:${COLORS[idx%COLORS.length]}"></div><span class="cn">${c.name}</span>${badge}</div>
+      <div class="sc-row"><span class="sc-lbl">Base mes:</span>${scBtns}</div>
+      <div class="st-row">${stBtns}</div>
+    </div></td>`;
+
+    weeks.forEach((_,w)=>{
+      const teamT=tots[w]||0;const myT=c.weeks[w]||0;
+      const pct=teamT>0?myT/teamT*100:null;
+      const met=pct===null?null:pct>=MIN_PCT;
+      const isCur=w===ci;
+      let pctTxt='',pctCls='na',wiCls='';
+      if(pct!==null){pctTxt=`${pct.toFixed(1)}%`;pctCls=met?'ok':'no';wiCls=met?'met':'fail';}
+      tb+=`<td ${isCur?'style="background:rgba(75,142,245,.03)"':''}><div class="cell-wrap">
+        <span class="wi ${wiCls} ${c.weeks[w] ? '' : 'empty'}">${c.weeks[w] ? fmt(c.weeks[w]) : '—'}</span>
+        <span class="cell-pct ${pctCls}">${pct!==null?pctTxt+'  '+(met?'✅':'❌'):'—'}</span>
+      </div></td>`;
+    });
+    tb+=`<td class="mono" style="font-weight:600;font-size:12px">${fmt(mt)}</td></tr>`;
+  });
+  tb+='</tbody>';
+
+  // TFOOT
+  let tf='<tfoot>';
+  tf+=`<tr class="tr-team"><td class="lft" style="text-align:left">Total Equipo</td>`;
+  weeks.forEach((wk,i)=>{
+    const t=tots[i];const st=wkStatus(t,wk.days);
+    const cls=st==='hit'?'col-hit':st==='mid'?'col-mid':'col-low';
+    tf+=`<td class="${cls}">${fmt(t)}</td>`;
+  });
+  tf+=`<td>${fmt(tots.reduce((s,t)=>s+t,0))}</td></tr>`;
+
+  tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">Mín. individual (10%)</td>`;
+  weeks.forEach((wk,i)=>{
+    const t=tots[i];const min=t*0.1;
+    tf+=`<td style="color:var(--muted)">${t>0?fmtK(min):'—'}</td>`;
+  });
+  tf+=`<td></td></tr>`;
+
+  tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">Pool bonus</td>`;
+  let totalPool=0;
+  weeks.forEach((wk,i)=>{
+    const t=tots[i];const p=bonusPct(t,wk.days);const pool=t*p;totalPool+=pool;
+    tf+=`<td style="color:${p>0?'var(--green)':'var(--muted)'}">${p>0?fmt(pool)+` (${(p*100).toFixed(1)}%)`:'—'}</td>`;
+  });
+  tf+=`<td style="color:var(--green);font-weight:600">${fmt(totalPool)}</td></tr></tfoot>`;
+
+  tbl.innerHTML=th+tb+tf;
+}
+
+/* ═══ CATEGORY CHAIN TABLE ═══ */
+function renderChain(ci){
+  const tots=wkTotals();
+  const tbl=document.getElementById('chain-tbl');
+  let th=`<thead><tr><th class="lft">Closer</th>`;
+  weeks.forEach((_,i)=>th+=`<th>Semana ${i+1}</th>`);
+  th+=`</tr></thead>`;
+
+  let tb='<tbody>';
+  closers.forEach((c,idx)=>{
+    const chain=catChain(c,tots);
+    tb+=`<tr><td class="lft"><span style="display:flex;align-items:center;gap:6px"><span class="cdot" style="background:${COLORS[idx%COLORS.length]}"></span>${c.name}</span></td>`;
+    chain.forEach((entry,w)=>{
+      const isCur=w===ci;
+      let badge,label;
+      if(entry.type==='special'){badge='SP';label='A,B ★';}
+      else if(entry.cat==='LIB'||entry.cat==='ALL'){badge='ALL';label=entry.cat==='ALL'?'Base libre':'Libre';}
+      else if(entry.cat==='ABC'){badge='ABC';label='A,B,C';}
+      else if(entry.cat==='DE'){badge='DE';label='D,E';}
+      else{badge='DE';label='D,E';}
+
+      const projected=projectFromWeek(c,tots,w);
+      let projectedBadge,labelProjected;
+      if(projected.cat==='ALL'||projected.cat==='LIB'){projectedBadge='ALL';labelProjected=projected.cat==='ALL'?'Base libre':'Libre';}
+      else if(projected.cat==='ABC'){projectedBadge='ABC';labelProjected='A,B,C';}
+      else if(projected.cat==='DE'){projectedBadge='DE';labelProjected='D,E';}
+      else{projectedBadge='DE';labelProjected='D,E';}
+
+      const projMeta=projected.pct!==null?`${projected.pct.toFixed(1)}% / mín ${MIN_PCT}%`:w<2?'Regla libre':'Sin base';
+      tb+=`<td ${isCur?'style="background:rgba(75,142,245,.05)"':''}>
+        <div class="chain-cell">
+          <span class="cat-badge ${badge}">${label}</span>
+          <div class="chain-proj">
+            <span class="chain-arrow">→</span>
+            <span class="cat-badge ${projectedBadge}">${labelProjected}</span>
+          </div>
+          <div class="chain-meta">${projMeta}</div>
+        </div>
+      </td>`;
+    });
+    tb+=`</tr>`;
+  });
+  tb+='</tbody>';
+  tbl.innerHTML=th+tb;
+}
+
+/* ═══ RANKING ═══ */
+function renderRanking(){
+  const tots=wkTotals();
+  const total=closers.reduce((s,c)=>s+monthTotal(c),0);
+  const body=document.getElementById('rank-body');
+  if(!total){body.innerHTML='<div class="empty">Sin cash conciliado para el período.</div>';return;}
+
+  const ranked=closers
+    .map(c=>({...c,mt:monthTotal(c),pct:total>0?monthTotal(c)/total*100:0}))
+    .sort((a,b)=>b.mt-a.mt)
+    .map((c,i)=>({...c,rank:i+1,cats:i<3?['A','B','C']:['D','E']}));
+
+  const maxCash=Math.max(...closers.map(c=>monthTotal(c)),1);
+  let html='';
+
+  const top=ranked.filter(c=>c.rank<=3),bot=ranked.filter(c=>c.rank>3);
+  if(top.length){
+    html+=`<div class="div-lbl">Top ${Math.min(3,ranked.length)} cash collected → A, B, C</div>`;
+    top.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'top','var(--green)',maxCash,['A','B','C'],null));
+  }
+  if(bot.length){
+    html+=`<div class="cut-line">Corte</div>`;
+    html+=`<div class="div-lbl">Resto → D, E</div>`;
+    bot.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'bot','var(--muted)',maxCash,['D','E'],null));
+  }
+  body.innerHTML=html;
+}
+function rrHTML(c,num,numCls,barColor,maxCash,cats,specialType){
+  const w=maxCash>0?Math.max((c.mt/maxCash)*100,0):0;
+  const chips=specialType==='SP'
+    ?`<span class="cc A">A</span><span class="cc B">B</span><span style="font-size:9px;color:var(--purple);margin-left:2px">★ limitado</span>`
+    :cats?cats.map(x=>`<span class="cc ${x}">${x}</span>`).join(''):'';
+  return`<div class="rank-row">
+    <span class="rn ${numCls}">${num}</span>
+    <span class="rname">${c.name}</span>
+    <div class="rbar-w"><div class="rtrack"><div class="rfill" style="width:${w}%;background:${barColor}"></div></div>
+    <span class="rpct" style="color:${barColor}">${c.pct.toFixed(1)}%</span></div>
+    <div class="rcats">${chips}</div>
+  </div>`;
+}
+
+/* ═══ BONUS ═══ */
+function renderBonus(){
+  const tots=wkTotals();
+  const body=document.getElementById('bonus-body');
+  const panel=document.getElementById('bonus-panel');
+  // Remove old total bar if any
+  const old=panel.querySelector('.panel-total');if(old)old.remove();
+
+  if(!tots.some(t=>t>0)){body.innerHTML='<div class="empty">Sin datos de bonus aún.</div>';return;}
+  let totalPool=0,html='';
+
+  weeks.forEach((wk,i)=>{
+    const t=tots[i];const pct=bonusPct(t,wk.days);const pool=t*pct;
+    const{target}=adj(wk.days);totalPool+=pool;
+    if(pct>0){
+      const dist=closers.filter(c=>(c.weeks[i]||0)>0).map(c=>({name:c.name,cash:c.weeks[i]||0,bonus:((c.weeks[i]||0)/t)*pool}));
+      html+=`<div class="bonus-wk">
+        <div class="bwh"><span class="bwt">Semana ${i+1} — ${wk.label} (${wk.days}d)</span><span class="bwp" style="color:var(--green)">${(pct*100).toFixed(1)}%</span></div>
+        <div class="bwpool">Pool: ${fmt(pool)} · Equipo: ${fmt(t)}</div>
+        <div class="bwdist">${dist.map(r=>`<div class="bwd-row"><span class="bwd-name">${r.name}</span><span class="bwd-val">${fmt(r.bonus)}</span></div>`).join('')}</div>
+      </div>`;
+    }else{
+      const st=wkStatus(t,wk.days);
+      const{floor}=adj(wk.days);
+      const msg=!t?'Sin datos':st==='miss'?`${fmt(t)} — bajo piso (${fmtK(floor)})`:`${fmt(t)} — faltan ${fmtK(target-t)} para meta`;
+      html+=`<div class="no-bonus-wk">S${i+1} ${wk.label} · ${msg}</div>`;
+    }
+  });
+
+  body.innerHTML=html;
+  const totalEl=document.createElement('div');
+  totalEl.className='panel-total';
+  totalEl.innerHTML=`<span class="panel-total-lbl">Total bonus del mes</span><span class="panel-total-val">${fmt(totalPool)}</span>`;
+  panel.appendChild(totalEl);
+}
+
+/* ═══ EVENTS ═══ */
+function setStatus(id,s){
+  const c=closers.find(x=>x.id===id);
+  if(c){c.status=s;renderAll();}
+}
+function showTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tb').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ═══ BOOT ═══ */
+async function boot(){
+  const mo=parseInt(document.getElementById('sel-mes').value);
+  const yr=parseInt(document.getElementById('sel-yr').value);
+  weeks=calcWeeks(yr,mo);
+  const currentIndex=curWeekIdx();
+  if(selectedProgressWeekIndex===null){
+    selectedProgressWeekIndex=currentIndex>=0&&currentIndex<weeks.length?currentIndex:(weeks.length?Math.max(0,weeks.length-1):null);
+  }else if(selectedProgressWeekIndex>=weeks.length){
+    selectedProgressWeekIndex=weeks.length?weeks.length-1:null;
+  }
+  syncWeekProgressSelect();
+  resetCloserWeeks();
+
+  const today=document.getElementById('today-lbl');
+  const phase=document.getElementById('phase-badge');
+
+  if(today) today.innerHTML='Cargando cash conciliado por <b>fecha_acreditacion</b>...';
+  if(phase){
+    phase.className='phase-badge out';
+    phase.textContent='Actualizando';
+  }
+
+  try{
+    await Promise.all([
+      loadMonthlyBaseCategories(yr,mo),
+      loadRealCashByAcreditacion(yr,mo)
+    ]);
+  }catch(error){
+    console.error(error);
+    if(today) today.innerHTML='No se pudo cargar el cash conciliado real.';
+  }
+
+  renderAll();
+}
+boot();
+</script>
+</div>
+</body>
+</html>

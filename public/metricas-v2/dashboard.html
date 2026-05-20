@@ -16,16 +16,39 @@
       </section>
 
       <section class="cards central-cards dashboard-home-cards">
-        <a class="card" href="/metricas" data-roles="total,comercial,csm">
+        <a class="card dashboard-home-card-metricas" href="/metricas" data-roles="total,comercial,csm">
+          <div class="dashboard-home-visual" aria-hidden="true"></div>
           <span class="dashboard-home-badge">Interno</span>
           <h3>Central de Métricas</h3>
           <p>Entrá a los tableros operativos, vistas comerciales y paneles de seguimiento.</p>
         </a>
 
-        <a class="card" href="/contacto-estado/" data-roles="total,comercial,csm">
+        <a class="card dashboard-home-card-contacto" href="/contacto-estado/" data-roles="total,comercial,csm">
+          <div class="dashboard-home-visual" aria-hidden="true"></div>
           <span class="dashboard-home-badge dashboard-home-badge-secondary">Cliente</span>
           <h3>Estado de Contacto</h3>
           <p>Buscá o abrí una ficha por "GHL ID" para ver estado, mail, teléfono, facturación y cash collected.</p>
+        </a>
+
+        <a class="card dashboard-home-card-alertas" href="/metricas/views/alertas-operativas.html" data-roles="total,comercial">
+          <div class="dashboard-home-visual" aria-hidden="true"></div>
+          <span class="dashboard-home-badge dashboard-home-badge-warning">Atención</span>
+          <h3>Alertas Operativas</h3>
+          <p>Clientes, closers y comprobantes que requieren seguimiento o revisión hoy.</p>
+        </a>
+
+        <a class="card card-soon dashboard-home-card-comisiones" href="/metricas/views/comisiones.html" data-roles="total,comercial,csm">
+          <div class="dashboard-home-visual" aria-hidden="true"></div>
+          <span class="dashboard-home-badge">En construcción</span>
+          <h3>Comisiones</h3>
+          <p>Vista reservada para seguimiento y lectura de comisiones.</p>
+        </a>
+
+        <a class="card card-soon dashboard-home-card-comprobantes" href="/metricas/views/carga-comprobantes.html" data-roles="total,comercial,csm">
+          <div class="dashboard-home-visual" aria-hidden="true"></div>
+          <span class="dashboard-home-badge">En construcción</span>
+          <h3>Carga de Comprobantes</h3>
+          <p>Espacio reservado para la carga, organización y control de comprobantes.</p>
         </a>
       </section>
     </main>

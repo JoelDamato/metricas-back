@@ -17,14 +17,26 @@
         <p>Hitos de tiempo del programa, avance por unidades y lectura rápida desde "csm".</p>
       </section>
 
+      <section class="ranking-actions csm-filter-bar">
+        <label>
+          Año
+          <select id="csmYear"></select>
+        </label>
+        <label>
+          Mes
+          <select id="csmMonth"></select>
+        </label>
+        <button id="reload" type="button">Aplicar</button>
+      </section>
+
       <p id="status"></p>
       <section id="kpiContainer" class="cards"></section>
+      <section id="tableContainer"></section>
       <section class="chart-panel">
         <h3 id="chartTitle">Tiempo Promedio por Unidad</h3>
         <p id="chartDescription">Promedio de días entre hitos consecutivos del programa.</p>
         <canvas id="csmChart" height="120"></canvas>
       </section>
-      <section id="tableContainer"></section>
       <section id="detailContainer" class="csm-detail-grid"></section>
     </main>
 

@@ -1,5 +1,6 @@
 const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
+const comprobantesLoaderService = require('../services/comprobantes-loader.service');
 
 async function health(req, res) {
   res.json({
@@ -37,6 +38,7 @@ async function getResourceRows(req, res, next) {
     const rows = await supabaseService.listRows(resource, {
       limit: req.query.limit,
       offset: req.query.offset,
+      select: req.query.select,
       orderBy: req.query.orderBy,
       orderDir: req.query.orderDir,
       from: req.query.from,
@@ -311,6 +313,118 @@ async function getMarketingCampaignTotals(req, res, next) {
   }
 }
 
+async function getCloserPersonalPdf(req, res, next) {
+  try {
+    const pdf = await supabaseService.getCloserPersonalPdf({
+      closer: req.query.closer,
+      month: req.query.month,
+      filename: req.query.filename
+    });
+
+    res.json({
+      ok: true,
+      pdf
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function uploadCloserPersonalPdf(req, res, next) {
+  try {
+    const pdf = await supabaseService.uploadCloserPersonalPdf({
+      closer: req.query.closer,
+      month: req.query.month,
+      filename: req.query.filename
+    }, Buffer.from(req.body || []), req.authUser);
+
+    res.json({
+      ok: true,
+      pdf
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getDollarQuotes(req, res, next) {
+  try {
+    const response = await fetch('https://dolarapi.com/v1/dolares');
+    if (!response.ok) {
+      throw new Error(`No se pudo obtener cotizaciones (${response.status})`);
+    }
+
+    const rows = await response.json();
+    const byCasa = new Map((rows || []).map((row) => [String(row.casa || '').toLowerCase(), row]));
+    const pick = (casa) => byCasa.get(casa) || null;
+    const oficial = pick('oficial');
+    const blue = pick('blue');
+    const mep = pick('bolsa');
+
+    res.json({
+      ok: true,
+      quotes: {
+        oficial: oficial ? {
+          nombre: 'Dólar Oficial',
+          compra: Number(oficial.compra || 0),
+          venta: Number(oficial.venta || 0),
+          fechaActualizacion: oficial.fechaActualizacion || null
+        } : null,
+        blue: blue ? {
+          nombre: 'Dólar Blue',
+          compra: Number(blue.compra || 0),
+          venta: Number(blue.venta || 0),
+          fechaActualizacion: blue.fechaActualizacion || null
+        } : null,
+        mep: mep ? {
+          nombre: 'Dólar MEP',
+          compra: Number(mep.compra || 0),
+          venta: Number(mep.venta || 0),
+          fechaActualizacion: mep.fechaActualizacion || null
+        } : null
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getComprobantesLoaderBootstrap(req, res, next) {
+  try {
+    const bootstrap = await comprobantesLoaderService.getBootstrap(req.authUser);
+    res.json({
+      ok: true,
+      bootstrap
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function lookupComprobantesLoaderClient(req, res, next) {
+  try {
+    const client = await comprobantesLoaderService.lookupClientByGhlId(req.query.ghlId || req.query.url || '');
+    res.json({
+      ok: true,
+      client
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createComprobanteManual(req, res, next) {
+  try {
+    const result = await comprobantesLoaderService.createComprobante(req.body || {}, req.authUser);
+    res.json({
+      ok: true,
+      ...result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
   getResources,
@@ -331,5 +445,11 @@ module.exports = {
   getMarketingVentasTotales,
   getMarketingCashCollectedAgenda,
   getMarketingCampaignTotals,
-  askAssistant
+  getCloserPersonalPdf,
+  uploadCloserPersonalPdf,
+  getDollarQuotes,
+  askAssistant,
+  getComprobantesLoaderBootstrap,
+  lookupComprobantesLoaderClient,
+  createComprobanteManual
 };

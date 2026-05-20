@@ -19,6 +19,11 @@ const AGENDA_VIEW_LABEL = `"${AGENDA_RESOURCE}"`;
 const AGENDA_ORIGIN_LABEL = document.body?.dataset.agendaOriginLabel || 'Origen';
 const AGENDA_ORIGIN_WHITELIST_MODE = document.body?.dataset.agendaOriginWhitelist || 'default';
 let estrategiaField = null;
+const CASH_FIELDS = [
+  'cash_collected_real_mes',
+  'cash_collected_otros_meses',
+  'cash_collected_agendas_mes'
+];
 const AGENDA_KPI_INFO = {
   total_agendados: {
     title: 'Total Agendados',
@@ -603,7 +608,31 @@ function emptyAccumulator() {
   return acc;
 }
 
-function aggregateByMonth(rows) {
+function shouldHideFutureCash(year, month) {
+  const safeYear = Number(year);
+  const safeMonth = Number(month);
+  if (!Number.isInteger(safeYear) || !Number.isInteger(safeMonth)) return false;
+
+  const current = getCurrentPeriod();
+  if (safeYear > current.year) return true;
+  if (safeYear < current.year) return false;
+  return safeMonth > current.month;
+}
+
+function applyCashCutoffToAccumulators(byMonth, totals, year) {
+  byMonth.forEach((monthAcc, month) => {
+    if (!shouldHideFutureCash(year, month)) return;
+
+    CASH_FIELDS.forEach((field) => {
+      const value = Number(monthAcc[field] || 0);
+      if (!value) return;
+      monthAcc[field] = 0;
+      totals[field] -= value;
+    });
+  });
+}
+
+function aggregateByMonth(rows, year) {
   const byMonth = new Map();
   const totals = emptyAccumulator();
 
@@ -622,6 +651,8 @@ function aggregateByMonth(rows) {
       totals[field] += value;
     });
   });
+
+  applyCashCutoffToAccumulators(byMonth, totals, year);
 
   return { byMonth, totals };
 }
@@ -743,13 +774,14 @@ function buildExecutionMetricGroups(metrics) {
 function buildMatrixTable(rows, filters, aovDia1Data = {}) {
   const container = document.getElementById('tableContainer');
   const currentMonth = new Date().getMonth() + 1;
+  const selectedYear = Number(filters?.anio);
 
   if (!rows.length) {
     container.innerHTML = '<p>No hay datos para el filtro seleccionado.</p>';
     return;
   }
 
-  const { byMonth, totals } = aggregateByMonth(rows);
+  const { byMonth, totals } = aggregateByMonth(rows, selectedYear);
   const months = MONTHS.map((m) => m.value);
   const totalMetrics = metricRowsFor(totals);
   totalMetrics.aovDia1 = Number(aovDia1Data.total || 0);
@@ -932,7 +964,8 @@ function buildKpis(rows) {
     return;
   }
 
-  const { totals } = aggregateByMonth(rows);
+  const selectedYear = Number(document.getElementById('anio')?.value);
+  const { totals } = aggregateByMonth(rows, selectedYear);
   const metrics = metricRowsFor(totals);
 
   wrap.innerHTML = `

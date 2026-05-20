@@ -19,6 +19,15 @@ function buildHeaders(extra = {}) {
   };
 }
 
+function buildStorageHeaders(extra = {}) {
+  requiredEnv();
+  return {
+    apikey: env.supabaseKey,
+    Authorization: `Bearer ${env.supabaseKey}`,
+    ...extra
+  };
+}
+
 function parseLimit(rawLimit) {
   const limit = Number(rawLimit || 100);
   if (Number.isNaN(limit) || limit <= 0 || limit > 1000) {
@@ -47,9 +56,72 @@ function normalizeResourceName(name) {
   return String(name || '').replace(/[^a-zA-Z0-9_]/g, '');
 }
 
+function normalizeSelect(value) {
+  const fields = parseList(value)
+    .map((field) => normalizeResourceName(field))
+    .filter(Boolean);
+
+  return fields.length ? fields.join(',') : '*';
+}
+
 function normalizePercentNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function slugifyStorageSegment(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120);
+}
+
+function validateMonthKey(value) {
+  return /^\d{4}-\d{2}$/.test(String(value || '').trim());
+}
+
+function encodeStoragePath(pathValue) {
+  return String(pathValue || '')
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function normalizeReportePersonalPdfParams(params = {}) {
+  const closer = String(params.closer || '').trim();
+  const month = String(params.month || '').trim();
+  const filename = String(params.filename || '').trim();
+
+  if (!closer) {
+    const error = new Error('Falta el closer para el PDF personal');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!validateMonthKey(month)) {
+    const error = new Error('El mes debe venir en formato YYYY-MM');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const closerSlug = slugifyStorageSegment(closer);
+  if (!closerSlug) {
+    const error = new Error('Closer inválido para guardar el PDF');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    bucket: env.reportesPersonalesBucket,
+    closer,
+    month,
+    closerSlug,
+    safeFilename: filename || `reporte-personal-${closerSlug}-${month}.pdf`,
+    objectPath: `closers/${month}/${closerSlug}.pdf`
+  };
 }
 
 function isDateOnly(value) {
@@ -137,7 +209,7 @@ async function listRows(resourceName, options = {}) {
   const limit = parseLimit(options.limit);
   const offset = parseOffset(options.offset);
   const params = {
-    select: '*',
+    select: normalizeSelect(options.select),
     limit,
     offset
   };
@@ -1433,6 +1505,121 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
     });
 }
 
+async function ensureReportesPersonalesBucket() {
+  const bucketId = env.reportesPersonalesBucket;
+  const url = `${env.supabaseUrl}/storage/v1/bucket`;
+
+  try {
+    await axios.post(url, {
+      id: bucketId,
+      name: bucketId,
+      public: false,
+      file_size_limit: 20971520,
+      allowed_mime_types: ['application/pdf']
+    }, {
+      headers: buildStorageHeaders({ 'Content-Type': 'application/json' })
+    });
+  } catch (err) {
+    const message = String(err.response?.data?.message || err.message || '').toLowerCase();
+    if (
+      err.response?.status === 409
+      || message.includes('already exists')
+      || message.includes('duplicate')
+    ) {
+      return;
+    }
+
+    const error = new Error(`Error asegurando bucket de reportes personales: ${err.response?.data?.message || err.message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function getCloserPersonalPdf(params = {}) {
+  const normalized = normalizeReportePersonalPdfParams(params);
+  const signUrl = `${env.supabaseUrl}/storage/v1/object/sign/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+
+  try {
+    const response = await axios.post(signUrl, {
+      expiresIn: 60 * 60 * 24
+    }, {
+      headers: buildStorageHeaders({ 'Content-Type': 'application/json' })
+    });
+
+    const signedUrl = response.data?.signedURL || response.data?.signedUrl || null;
+    const absoluteUrl = signedUrl
+      ? (signedUrl.startsWith('http')
+        ? signedUrl
+        : `${env.supabaseUrl}/storage/v1${signedUrl}`)
+      : null;
+
+    return {
+      exists: Boolean(absoluteUrl),
+      closer: normalized.closer,
+      month: normalized.month,
+      filename: normalized.safeFilename,
+      path: normalized.objectPath,
+      downloadUrl: absoluteUrl
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return {
+        exists: false,
+        closer: normalized.closer,
+        month: normalized.month,
+        filename: normalized.safeFilename,
+        path: normalized.objectPath,
+        downloadUrl: null
+      };
+    }
+
+    const error = new Error(`Error consultando PDF personal: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function uploadCloserPersonalPdf(params = {}, fileBuffer, user) {
+  const normalized = normalizeReportePersonalPdfParams(params);
+
+  if (!Buffer.isBuffer(fileBuffer) || !fileBuffer.length) {
+    const error = new Error('No llegó un archivo PDF para subir');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await ensureReportesPersonalesBucket();
+
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+
+  try {
+    await axios.post(uploadUrl, fileBuffer, {
+      headers: buildStorageHeaders({
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true',
+        'cache-control': '3600'
+      }),
+      maxBodyLength: Infinity
+    });
+
+    const pdf = await getCloserPersonalPdf(normalized);
+    return {
+      ...pdf,
+      uploadedBy: String(user?.email || '').trim().toLowerCase() || null
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error subiendo PDF personal: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
 module.exports = {
   listResources,
   listRows,
@@ -1452,6 +1639,8 @@ module.exports = {
   getMarketingVentasTotales,
   getMarketingCashCollectedAgenda,
   getMarketingCampaignTotals,
+  getCloserPersonalPdf,
+  uploadCloserPersonalPdf,
   normalizeResourceName,
   parseLimit,
   parseOffset

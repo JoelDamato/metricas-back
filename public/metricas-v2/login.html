@@ -17,17 +17,30 @@
       <section class="card auth-card">
         <form id="loginForm" class="auth-form">
           <label>
-            Email
-            <input id="email" type="email" autocomplete="username" required />
+            <span class="auth-label-head">
+              <span class="auth-label-icon" aria-hidden="true">✉</span>
+              <span>Email</span>
+            </span>
+            <input id="email" type="email" autocomplete="username" placeholder="Ingresá tu email" required />
           </label>
           <label>
-            Contraseña
-            <input id="password" type="password" autocomplete="current-password" required />
+            <span class="auth-label-head">
+              <span class="auth-label-icon" aria-hidden="true">🔒</span>
+              <span>Contraseña</span>
+            </span>
+            <span class="auth-password-wrap">
+              <input id="password" type="password" autocomplete="current-password" placeholder="Ingresá tu contraseña" required />
+              <span class="auth-password-icon" aria-hidden="true">◔</span>
+            </span>
           </label>
           <button type="submit">Ingresar</button>
         </form>
         <p id="authStatus"></p>
       </section>
+      <p class="auth-login-foot">
+        <span class="auth-login-foot-icon" aria-hidden="true">🛡</span>
+        <span>Acceso seguro y monitoreado</span>
+      </p>
     </main>
     <script src="/metricas/js/api/http.js"></script>
     <script src="/metricas/js/auth/login.page.js"></script>

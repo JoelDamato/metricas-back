@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte Personal</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#F4F6FC;--white:#FFFFFF;--text:#18192A;--muted:#6B7290;--border:#E2E6F4;
+      --blue:#3A7BF5;--blue-l:#EEF3FE;--green:#14B87A;--green-l:#E8F9F2;
+      --amber:#E8950A;--amber-l:#FEF6E6;--red:#E84A4A;--red-l:#FEF0F0;
+      --purple:#8B5CF6;--purple-l:#F0EDFE;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+    /* SELECTOR */
+    .selector-wrap{background:var(--text);padding:20px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+    .mag-badge{background:linear-gradient(135deg,var(--blue),var(--green));border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;letter-spacing:.1em;color:#fff;}
+    .sel-label{font-size:13px;color:rgba(255,255,255,.5);}
+    .closer-sel{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;outline:none;cursor:pointer;min-width:200px;}
+    .closer-sel option{background:#1A1D2E;color:#fff;}
+    .print-btn{margin-left:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 16px;color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+    .print-btn:hover{background:rgba(255,255,255,.15);color:#fff;}
+    .month-input,.pdf-upload-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+    .month-input::-webkit-calendar-picker-indicator{filter:invert(1);}
+    .pdf-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;}
+    .pdf-download-link,.pdf-export-btn,.pdf-upload-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;text-decoration:none;cursor:pointer;transition:all .2s;}
+    .pdf-export-btn,.pdf-upload-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:7px 14px;color:rgba(255,255,255,.78);font-family:'DM Sans',sans-serif;font-size:13px;}
+    .pdf-export-btn:hover,.pdf-upload-btn:hover{background:rgba(255,255,255,.15);color:#fff;}
+    .pdf-download-link{border-radius:8px;padding:7px 14px;background:rgba(20,184,122,.14);border:1px solid rgba(20,184,122,.34);color:#8ef0c6;font-size:13px;font-weight:600;}
+    .pdf-download-link.is-disabled{pointer-events:none;opacity:.6;}
+    .pdf-status{font-size:12px;color:rgba(255,255,255,.58);}
+    .pdf-hidden-input{display:none;}
+
+    /* REPORT CONTAINER */
+    .report{max-width:840px;margin:0 auto;padding:36px 24px 60px;}
+
+    /* HERO */
+    .report-hero{border-radius:20px;padding:36px 40px;margin-bottom:24px;position:relative;overflow:hidden;}
+    .report-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 20%,rgba(255,255,255,.06),transparent 60%);}
+    .rh-inner{position:relative;}
+    .rh-eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px;}
+    .rh-name{font-size:34px;font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:6px;}
+    .rh-period{font-size:14px;color:rgba(255,255,255,.55);margin-bottom:20px;}
+    .rh-chips{display:flex;gap:8px;flex-wrap:wrap;}
+    .rh-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:500;color:rgba(255,255,255,.75);}
+
+    /* KPI GRID */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:24px;}
+    .kpi-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+    .kpi-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+    .kpi-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;margin-bottom:2px;line-height:1.2;}
+    .kpi-sub{font-size:11px;color:var(--muted);}
+    .kpi-card.highlight{border-color:#A8E8CE;background:var(--green-l);}
+    .kpi-card.highlight .kpi-val{color:var(--green);}
+    .kpi-card.warn{border-color:#FAD98A;background:var(--amber-l);}
+    .kpi-card.warn .kpi-val{color:var(--amber);}
+    .kpi-card.danger{border-color:#F5B4B2;background:var(--red-l);}
+    .kpi-card.danger .kpi-val{color:var(--red);}
+
+    /* TWO COL */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+    @media(max-width:640px){.two-col{grid-template-columns:1fr;}}
+
+    /* SECTION CARDS */
+    .section-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:16px;}
+    .sc-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+    .sc-icon{font-size:14px;}
+    .item-list{list-style:none;display:flex;flex-direction:column;gap:10px;}
+    .item-list li{font-size:13px;color:var(--muted);line-height:1.65;display:flex;gap:9px;align-items:flex-start;}
+    .item-list li strong{color:var(--text);}
+    .item-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+    .item-dot.green{background:var(--green);}
+    .item-dot.amber{background:var(--amber);}
+    .item-dot.blue{background:var(--blue);}
+
+    /* COMPARISON BARS */
+    .comp-row{margin-bottom:14px;}
+    .comp-row:last-child{margin-bottom:0;}
+    .comp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+    .comp-lbl{font-size:12px;font-weight:500;}
+    .comp-vals{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;}
+    .comp-track{position:relative;height:8px;background:var(--bg);border-radius:4px;overflow:visible;}
+    .comp-fill{height:100%;border-radius:4px;transition:width .6s ease;}
+    .comp-avg-line{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--muted);opacity:.4;}
+    .comp-avg-lbl{position:absolute;top:-16px;font-size:8px;color:var(--muted);transform:translateX(-50%);white-space:nowrap;}
+
+    /* MESSAGE BOX */
+    .message-box{border-radius:14px;padding:22px 24px;margin-bottom:16px;border:1px solid;}
+    .message-box.personal{background:var(--text);border-color:var(--text);}
+    .mb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+    .message-box.personal .mb-eyebrow{color:rgba(255,255,255,.4);}
+    .mb-text{font-size:14px;line-height:1.75;}
+    .message-box.personal .mb-text{color:rgba(255,255,255,.75);}
+    .message-box.personal .mb-text strong{color:#fff;}
+    .message-box.sistema{background:var(--blue-l);border-color:#BDD0FD;}
+    .message-box.sistema .mb-eyebrow{color:var(--blue);}
+    .message-box.sistema .mb-text{color:#3A4A6A;font-size:13px;}
+    .message-box.sistema .mb-text strong{color:var(--text);}
+
+    /* STEPS */
+    .steps{display:flex;flex-direction:column;gap:8px;}
+    .step{display:flex;align-items:flex-start;gap:12px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+    .step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+    .step-text{font-size:13px;color:var(--muted);line-height:1.6;padding-top:2px;}
+    .step-text strong{color:var(--text);}
+
+    /* EMPTY STATE */
+    .empty{padding:60px 32px;text-align:center;color:var(--muted);}
+    .empty-icon{font-size:40px;margin-bottom:12px;}
+    .empty-text{font-size:14px;}
+
+    /* PRINT */
+    @media print{
+      .selector-wrap{display:none;}
+      .report{padding:20px;max-width:100%;}
+      body{background:#fff;}
+    }
+  </style>
+  <link rel="stylesheet" href="/metricas/css/styles.css">
+  <link rel="stylesheet" href="/metricas/css/mag-theme.css">
+</head>
+<body class="mag-view">
+<div class="mag-theme-shell">
+
+<div class="selector-wrap">
+  <span class="sel-label">Reporte personal de</span>
+  <select class="closer-sel" id="sel" onchange="renderReport()">
+    <option value="">— Seleccioná un closer —</option>
+    <option value="walter">Walter Alegre</option>
+    <option value="carlos">Carlos Tu</option>
+    <option value="claudio">Claudio Nicolini</option>
+    <option value="mauro">Mauro Gaitan</option>
+    <option value="pablo">Pablo Butera</option>
+    <option value="patricia">Patricia Conti</option>
+  </select>
+  <input class="month-input" id="reportMonth" type="month" />
+  <button class="print-btn" onclick="window.print()">🖨 Imprimir / Exportar</button>
+  <div class="pdf-actions">
+    <button id="exportReportData" class="pdf-export-btn" type="button">Descargar base</button>
+    <button id="uploadPdfTrigger" class="pdf-upload-btn" type="button">Subir PDF</button>
+    <input id="pdfFileInput" class="pdf-hidden-input" type="file" accept="application/pdf" />
+    <a id="downloadPdfLink" class="pdf-download-link is-disabled" href="#" target="_blank" rel="noopener noreferrer">Descargar PDF</a>
+    <span id="pdfStatus" class="pdf-status">Elegí closer y mes para gestionar el PDF.</span>
+  </div>
+</div>
+
+<div class="report" id="report">
+  <div class="empty">
+    <div class="empty-icon">📊</div>
+    <div class="empty-text">Seleccioná un closer para ver su reporte personal.</div>
+  </div>
+</div>
+
+<script>
+const PERIOD = 'Enero – Mayo 2026';
+const PERIOD_BY_MONTH = (monthValue) => {
+  const [year, month] = String(monthValue || '').split('-').map(Number);
+  if (!year || !month) return PERIOD;
+  const date = new Date(year, month - 1, 1);
+  return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(date);
+};
+
+const TEAM_AVG = {
+  cashTotal: 64872,
+  tasaCierre: 7.32,
+  pctNoAsistidas: 31.75,
+  pctIncobrable: 9.83,
+  cashPorAgenda: 255,
+};
+
+const DATA = {
+  walter: {
+    nombre: 'Walter Alegre',
+    color: '#3A7BF5',
+    colorDark: '#1A3A8A',
+    meses: 4,
+    status: 'Equipo senior · Transición a Marketing',
+    chips: ['4 meses activos', 'Top cash del equipo', '0% de incobrables'],
+    kpis: [
+      { lbl:'Cash Collected', val:'US$ 89.203', sub:'acumulado del período', cls:'highlight' },
+      { lbl:'Ventas cerradas', val:'23', sub:'en 4 meses', cls:'' },
+      { lbl:'Tasa de cierre', val:'8,27%', sub:'sobre agendas totales', cls:'' },
+      { lbl:'Efectividad cobro', val:'96,7%', sub:'de lo facturado cobrado', cls:'highlight' },
+      { lbl:'Cash / agenda', val:'$321', sub:'por agenda usada', cls:'highlight' },
+      { lbl:'Incobrables', val:'$0', sub:'en todo el período', cls:'highlight' },
+    ],
+    comp: [
+      { lbl:'Cash total', tuVal:89203, teamVal:64872, max:95000, invert:false, unit:'$' },
+      { lbl:'Tasa de cierre', tuVal:8.27, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:29.1, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:0, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Cash por agenda', tuVal:321, teamVal:255, max:350, invert:false, unit:'$' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>Zero incobrables en 4 meses.</strong> Cada peso que facturaste lo cobraste. Eso es excepcional y habla de la calidad de tus ventas — no cerrás a cualquiera.' },
+      { dot:'green', txt:'<strong>El mayor cash del equipo y el mejor retorno por agenda usada ($321/agenda).</strong> Hacés más con cada oportunidad que recibís.' },
+      { dot:'green', txt:'<strong>96,7% de efectividad de cobro.</strong> Prácticamente lo que facturás lo cobrás — eso tiene un impacto directo y tangible en la salud financiera del negocio.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>Irregularidad mensual pronunciada.</strong> Enero $16k, febrero $27k, marzo $7k, abril $17k. Cuando el mes baja mucho, el equipo entero lo siente en el objetivo semanal.' },
+    ],
+    mensaje: 'Walter, sos el estándar de referencia del equipo en rentabilidad real. Cada peso que generás, llegó. Eso es lo más difícil de lograr en ventas y pocas veces se valora como corresponde. El próximo desafío, incluso mientras hacés la transición a Marketing, es suavizar el piso mensual — un mes de $7k cuando podés hacer $17k es una oportunidad perdida que el equipo también siente.',
+    pasos: [
+      { num:'1', color:'#3A7BF5', txt:'Mantené un <strong>piso mensual de $15k de cash</strong> incluso con volumen reducido de agendas — la calidad de tus cierres lo hace posible.' },
+      { num:'2', color:'#14B87A', txt:'Documentá tu proceso de seguimiento post-venta. <strong>Tu tasa de cobro del 97% tiene valor pedagógico</strong> para el equipo.' },
+      { num:'3', color:'#14B87A', txt:'En el nuevo sistema, tu status especial <strong>te garantiza A y B</strong> sin necesidad de competir en el ranking — aprovechalo para cerrar bien.' },
+    ],
+    sistemaMsg: 'En el nuevo sistema de categorías, tenés <strong>status especial</strong>: acceso fijo a categorías A y B sin participar del ranking mensual. Tu aporte al bonus semanal sigue contando según lo que generes cada semana.',
+  },
+
+  carlos: {
+    nombre: 'Carlos Tu',
+    color: '#14B87A',
+    colorDark: '#0A5A3C',
+    meses: 4,
+    status: 'Closer establecido',
+    chips: ['4 meses activos', 'Mayor volumen de agendas', '23 ventas en el período'],
+    kpis: [
+      { lbl:'Cash Collected', val:'US$ 62.346', sub:'acumulado del período', cls:'' },
+      { lbl:'Ventas cerradas', val:'23', sub:'en 4 meses', cls:'' },
+      { lbl:'Tasa de cierre', val:'6,28%', sub:'sobre agendas totales', cls:'' },
+      { lbl:'Efectividad cobro', val:'72,1%', sub:'de lo facturado cobrado', cls:'warn' },
+      { lbl:'Cash / agenda', val:'$170', sub:'por agenda usada', cls:'warn' },
+      { lbl:'No asistidas', val:'37,7%', sub:'de tus agendas', cls:'warn' },
+    ],
+    comp: [
+      { lbl:'Cash total', tuVal:62346, teamVal:64872, max:95000, invert:false, unit:'$' },
+      { lbl:'Tasa de cierre', tuVal:6.28, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:37.7, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:9.4, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Cash por agenda', tuVal:170, teamVal:255, max:350, invert:false, unit:'$' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>Mayor volumen de ventas del equipo — 23 cierres en el período</strong>, igualando al mejor resultado en número de ventas.' },
+      { dot:'green', txt:'<strong>Enero fue tu mejor mes: $27.500 de cash.</strong> Cuando estás en ritmo, sos uno de los generadores más importantes del equipo.' },
+      { dot:'green', txt:'<strong>Capacidad de trabajo alta.</strong> Tomás más agendas que nadie y la mayoría de las semanas mantenés presencia activa.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>37,7% de no asistidas</strong> — más de 1 de cada 3 agendas no llega a la reunión. Eso es energía y agendas de buena calidad que se pierden antes de entrar a la venta.' },
+      { dot:'amber', txt:'<strong>$8.144 en incobrables</strong> — lo que facturaste pero no pudiste cobrar. Eso representa casi el 10% de tu facturación total en pérdida real.' },
+      { dot:'amber', txt:'<strong>$170 de cash por agenda usada</strong> — el más bajo entre los closers establecidos. Hay mucho margen para mejorar la eficiencia sin necesariamente tomar más agendas.' },
+    ],
+    mensaje: 'Carlos, tu volumen habla de constancia y energía. El trabajo ahora es hacer más con cada agenda — la oportunidad más clara que tenés es bajar la tasa de no asistidas y blindar el cobro. Si lográs que 1 de cada 4 agendas no se caiga (en lugar de 1 de cada 3 actual), tu cash sube de forma directa sin necesitar más agendas.',
+    pasos: [
+      { num:'1', color:'#E8950A', txt:'<strong>Trabajar el seguimiento pre-llamada</strong> para bajar no asistidas del 37% actual al 25% o menos — eso solo puede agregar $10k+ de cash mensual.' },
+      { num:'2', color:'#E8950A', txt:'Revisar el <strong>proceso de cobro y seguimiento post-venta</strong>. Los $8k en incobrables son ventas que hiciste pero que no llegaron a convertirse en cash real.' },
+      { num:'3', color:'#3A7BF5', txt:'En el nuevo sistema, tu posición en el ranking depende del <strong>% de aporte al cash total del equipo</strong>. Con los ajustes anteriores, podés estar consistentemente en el top 3.' },
+    ],
+    sistemaMsg: 'En el nuevo sistema de categorías, tu acceso a A,B,C en las semanas 3–4 depende de tu posición en el ranking mensual por <strong>% de cash acumulado</strong>. Tu historial de 4 meses te pone en posición competitiva — la clave es sostener el ritmo y mejorar la eficiencia de cobro.',
+  },
+
+  claudio: {
+    nombre: 'Claudio Nicolini',
+    color: '#E8950A',
+    colorDark: '#7A4500',
+    meses: 4,
+    status: 'Closer establecido',
+    chips: ['4 meses activos', 'Mayor cash por reunión', 'Cobro casi perfecto'],
+    kpis: [
+      { lbl:'Cash Collected', val:'US$ 54.206', sub:'acumulado del período', cls:'' },
+      { lbl:'Ventas cerradas', val:'15', sub:'en 4 meses', cls:'' },
+      { lbl:'Tasa de cierre', val:'6,73%', sub:'sobre agendas totales', cls:'' },
+      { lbl:'Cash / reunión', val:'$1.129', sub:'por reunión efectuada', cls:'highlight' },
+      { lbl:'Conversión', val:'31,3%', sub:'de reuniones → ventas', cls:'highlight' },
+      { lbl:'Efectividad cobro', val:'98,9%', sub:'de lo facturado cobrado', cls:'highlight' },
+    ],
+    comp: [
+      { lbl:'Cash total', tuVal:54206, teamVal:64872, max:95000, invert:false, unit:'$' },
+      { lbl:'Tasa de cierre', tuVal:6.73, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:25.1, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:12.3, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Cash por agenda', tuVal:243, teamVal:255, max:350, invert:false, unit:'$' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>$1.129 de cash por reunión efectuada</strong> — el más alto entre los closers veteranos. Cuando te sentás con alguien, cerrás bien.' },
+      { dot:'green', txt:'<strong>31,3% de conversión en reuniones efectuadas</strong> — cerrás 1 de cada 3 reuniones que concretás. Eso es técnica de venta sólida.' },
+      { dot:'green', txt:'<strong>98,9% de efectividad de cobro en los últimos 2 meses</strong>. Después de un inicio más turbulento, resolviste el problema del cobro casi perfectamente.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>$6.765 en incobrables acumulados</strong>, concentrados en enero y febrero. El buen inicio del año en facturación no se tradujo en cash — ese patrón ya lo revertiste pero queda en el número total.' },
+      { dot:'amber', txt:'<strong>El cash total está por debajo del promedio del equipo</strong> a pesar de tu alta conversión por reunión. El volumen de agendas es menor — más reuniones efectuadas serían directo al resultado.' },
+    ],
+    mensaje: 'Claudio, sos el closer más eficiente del equipo cuando llegás a la reunión — pocas personas en el negocio cierran 1 de cada 3. El número que te limita no es la habilidad sino el volumen: con más agendas efectuadas, tu cash se dispara. Enero y febrero fueron meses donde facturaste pero no cobraste bien — eso ya lo resolviste, y es importante que se mantenga así.',
+    pasos: [
+      { num:'1', color:'#14B87A', txt:'<strong>Sostener la efectividad de cobro del 99%</strong> que lográs desde marzo — ese nivel es tu nueva base mínima.' },
+      { num:'2', color:'#3A7BF5', txt:'<strong>Incrementar el volumen de reuniones efectuadas.</strong> Con tu tasa de conversión del 31%, cada reunión extra vale mucho más que para el promedio del equipo.' },
+      { num:'3', color:'#3A7BF5', txt:'En el nuevo sistema, tu <strong>posición en el top 3 mensual</strong> está a alcance — depende de mantener tu ritmo actual y no ceder en el cobro.' },
+    ],
+    sistemaMsg: 'En el nuevo sistema, tu historial de los últimos 2 meses (alta conversión + cobro casi perfecto) te pone muy bien posicionado. La clave para consolidar tu lugar en el top 3 es <strong>sostener el ritmo</strong> y no perder el foco en el cobro que construiste.',
+  },
+
+  mauro: {
+    nombre: 'Mauro Gaitan',
+    color: '#8B5CF6',
+    colorDark: '#4A1E8A',
+    meses: 4,
+    status: 'Closer establecido',
+    chips: ['4 meses activos', 'Ticket más alto del equipo', 'Buena tasa de cierre'],
+    kpis: [
+      { lbl:'Cash Collected', val:'US$ 53.734', sub:'acumulado del período', cls:'' },
+      { lbl:'Ventas cerradas', val:'15', sub:'en 4 meses', cls:'' },
+      { lbl:'Tasa de cierre', val:'7,98%', sub:'sobre agendas totales', cls:'' },
+      { lbl:'Ticket promedio', val:'$4.335', sub:'por venta cerrada', cls:'highlight' },
+      { lbl:'Cash / reunión', val:'$1.143', sub:'por reunión efectuada', cls:'highlight' },
+      { lbl:'Incobrables', val:'$11.430', sub:'acumulados en el período', cls:'danger' },
+    ],
+    comp: [
+      { lbl:'Cash total', tuVal:53734, teamVal:64872, max:95000, invert:false, unit:'$' },
+      { lbl:'Tasa de cierre', tuVal:7.98, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:35.1, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:17.6, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Cash por agenda', tuVal:286, teamVal:255, max:350, invert:false, unit:'$' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>Ticket promedio de $4.335</strong> — el más alto del equipo. Cerrás ventas grandes, lo que habla de tu capacidad de demostrar valor durante la conversación.' },
+      { dot:'green', txt:'<strong>7,98% de tasa de cierre y 31,9% de conversión en reuniones efectuadas</strong> — cerrás 1 de cada 3 reuniones que concretás, al nivel de Claudio.' },
+      { dot:'green', txt:'<strong>Marzo fue tu mejor mes: $17.507 de cash</strong>. Cuando estás en tu mejor versión, sos uno de los que más aporta al equipo.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>$11.430 en incobrables — el más alto del equipo (17,6% de tu facturación).</strong> Eso es casi el cash de un mes entero que se perdió. El problema no es cerrar sino cobrar.' },
+      { dot:'amber', txt:'<strong>Mayo en $0.</strong> La irregularidad entre meses es marcada: de $17k en marzo a $5k en abril y $0 en mayo. Ese patrón afecta tu posición en el ranking mensual.' },
+      { dot:'amber', txt:'<strong>35,1% de no asistidas</strong> — más de 1 de cada 3 agendas no llega a la reunión, lo que reduce el impacto de tu alto ticket.' },
+    ],
+    mensaje: 'Mauro, el potencial está claro — ticket más alto, buena tasa de cierre, capacidad demostrada. El problema no es la habilidad de vender sino lo que pasa después: los $11.430 en incobrables son ventas que hiciste pero que no llegaron como cash. Eso, sumado a mayo en cero, hace que el número final no refleje tu capacidad real. El trabajo de los próximos meses es resolver el cobro y mantener presencia constante.',
+    pasos: [
+      { num:'1', color:'#E84A4A', txt:'<strong>Priorizar el cobro de los incobrables pendientes</strong> y establecer un protocolo de seguimiento post-venta más riguroso. Es el punto de mayor impacto inmediato.' },
+      { num:'2', color:'#E8950A', txt:'<strong>Trabajar la consistencia mensual</strong>: evitar meses en $0 o muy bajos. Con tu ticket promedio, 2-3 ventas cobradas bien son $8k-13k de cash.' },
+      { num:'3', color:'#8B5CF6', txt:'En el nuevo sistema, tu posición en el ranking mejora directamente con el cash real cobrado. <strong>Resolver los incobrables tiene impacto inmediato en el ranking del mes siguiente.</strong>' },
+    ],
+    sistemaMsg: 'En el nuevo sistema, cada semana que no llegás al <strong>10% mínimo de aporte al equipo</strong> bajás una categoría. Con mayo en $0, es importante que junio arranque fuerte desde las primeras semanas para proteger tu acceso a agendas A,B,C.',
+  },
+
+  pablo: {
+    nombre: 'Pablo Butera',
+    color: '#F472B6',
+    colorDark: '#8A1A50',
+    meses: 3,
+    status: 'Closer nuevo · 3 meses activos',
+    chips: ['En rampa', 'Tasa de cierre #1 del equipo', 'Zero incobrables'],
+    kpis: [
+      { lbl:'Tasa de cierre', val:'10,94%', sub:'la más alta del equipo', cls:'highlight' },
+      { lbl:'Conversión', val:'77,8%', sub:'de reuniones → ventas', cls:'highlight' },
+      { lbl:'No asistidas', val:'4,7%', sub:'la más baja del equipo', cls:'highlight' },
+      { lbl:'Ventas cerradas', val:'7', sub:'en 3 meses activos', cls:'' },
+      { lbl:'Incobrables', val:'$0', sub:'en todo el período', cls:'highlight' },
+      { lbl:'Cash acumulado', val:'US$ 6.615', sub:'cuotas pendientes de ingreso', cls:'warn' },
+    ],
+    comp: [
+      { lbl:'Tasa de cierre', tuVal:10.94, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:4.7, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:0, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Conversión reunión→venta', tuVal:77.8, teamVal:25, max:80, invert:false, unit:'%' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>10,94% de tasa de cierre</strong> — la más alta de todo el equipo, incluyendo a los closers con años de experiencia.' },
+      { dot:'green', txt:'<strong>77,8% de conversión en reuniones efectuadas</strong> — cerrás casi 4 de cada 5 reuniones que concretás. Eso es excepcional.' },
+      { dot:'green', txt:'<strong>4,7% de no asistidas</strong> — prácticamente todos los leads que agendaste llegaron a la reunión. La preparación previa que hacés marca la diferencia.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>El cash acumulado ($6.615) es bajo por ahora</strong>, pero la razón es estructural y temporal: las ventas en cuotas tardan meses en entrar como cash. No es un problema de rendimiento sino de tiempo.' },
+      { dot:'amber', txt:'<strong>El volumen de agendas es bajo (64).</strong> Con tu tasa de conversión, más agendas son directamente más cash. Ese es el número a trabajar.' },
+    ],
+    mensaje: 'Pablo, los números no mienten — sos el closer con la tasa de cierre más alta del equipo. El cash bajo de estos primeros meses es completamente normal para alguien que recién arranca: las cuotas de las ventas que cerraste van a seguir ingresando en los próximos meses. El desafío ahora es volumen: con tu conversión, cada agenda adicional que recibís vale más que para cualquier otro del equipo.',
+    pasos: [
+      { num:'1', color:'#14B87A', txt:'<strong>Maximizar el aprovechamiento de la fase libre (semanas 1–2)</strong> de cada mes — es tu ventana para demostrar resultados y subir en el ranking.' },
+      { num:'2', color:'#3A7BF5', txt:'<strong>Seguimiento activo de todas las cuotas pendientes.</strong> Las ventas que ya cerraste van a ir ingresando — cada cuota cobrada suma al ranking mensual.' },
+      { num:'3', color:'#F472B6', txt:'A partir del tercer mes completo, <strong>entrás al ranking general</strong>. Tu historial de cierre ya te pone en una posición muy competitiva.' },
+    ],
+    sistemaMsg: 'Estás en tu período de <strong>base libre</strong>: recibís todas las categorías (A, B, C, D y E) sin importar el ranking. Esto te da tiempo para acumular historial de cash. Cuando entrés al ranking, tu tasa de cierre alta va a ser tu mayor ventaja para mantenerte en el top 3.',
+  },
+
+  patricia: {
+    nombre: 'Patricia Conti',
+    color: '#34D399',
+    colorDark: '#0A5A3C',
+    meses: 3,
+    status: 'Closer nueva · 3 meses activos',
+    chips: ['En rampa', 'Crecimiento acelerado', 'Tasa de cierre top 2'],
+    kpis: [
+      { lbl:'Tasa de cierre', val:'10,17%', sub:'segunda más alta del equipo', cls:'highlight' },
+      { lbl:'Crecimiento cash', val:'$116 → $4.729', sub:'de marzo a mayo', cls:'highlight' },
+      { lbl:'No asistidas', val:'5,1%', sub:'segunda más baja del equipo', cls:'highlight' },
+      { lbl:'Ventas cerradas', val:'6', sub:'en 3 meses activos', cls:'' },
+      { lbl:'Incobrables', val:'$0', sub:'en todo el período', cls:'highlight' },
+      { lbl:'Cash acumulado', val:'US$ 8.113', sub:'cuotas pendientes de ingreso', cls:'warn' },
+    ],
+    comp: [
+      { lbl:'Tasa de cierre', tuVal:10.17, teamVal:7.32, max:12, invert:false, unit:'%' },
+      { lbl:'No asistidas', tuVal:5.1, teamVal:31.75, max:45, invert:true, unit:'%' },
+      { lbl:'% Incobrable', tuVal:0, teamVal:9.83, max:20, invert:true, unit:'%' },
+      { lbl:'Conversión reunión→venta', tuVal:37.5, teamVal:25, max:80, invert:false, unit:'%' },
+    ],
+    fortalezas: [
+      { dot:'green', txt:'<strong>Crecimiento mes a mes impresionante:</strong> marzo $116, abril $6.961, mayo $4.729 (mes incompleto). La curva va hacia arriba de forma sostenida.' },
+      { dot:'green', txt:'<strong>10,17% de tasa de cierre</strong> — segunda más alta del equipo, por encima de todos los closers con más experiencia.' },
+      { dot:'green', txt:'<strong>5,1% de no asistidas</strong> — casi todos tus leads llegan a la reunión. Esa preparación pre-llamada que hacés es un diferencial claro.' },
+    ],
+    atencion: [
+      { dot:'amber', txt:'<strong>El cash total aún es bajo</strong>, pero es completamente normal en los primeros meses: las cuotas de las ventas cerradas van a seguir ingresando. Abril ya mostró que el número puede llegar a $7k en un mes.' },
+      { dot:'amber', txt:'<strong>Marzo fue casi $0 de cash</strong> a pesar de cerrar una venta. El seguimiento del cobro desde el primer mes es clave para que el cash entre rápido.' },
+    ],
+    mensaje: 'Patricia, la curva de crecimiento que mostrás en 3 meses es de las más pronunciadas que vi en el equipo. Pasaste de $116 a $7k de cash en un mes — eso no es suerte, es ejecución. El trabajo ahora es mantener esa consistencia y no bajar el ritmo. Con tu tasa de cierre y la baja no-asistidas, cuando tengas más volumen de agendas y las cuotas fluyan, vas a ser una de las que más aporte al equipo.',
+    pasos: [
+      { num:'1', color:'#14B87A', txt:'<strong>Seguimiento activo de cobro desde el día 1</strong> de cada venta. Tu marzo mostró que cerrar no alcanza — el cash tiene que entrar.' },
+      { num:'2', color:'#3A7BF5', txt:'<strong>Aprovechar la fase libre de cada mes</strong> para construir volumen de cash temprano — eso da margen si alguna semana baja el ritmo.' },
+      { num:'3', color:'#34D399', txt:'Cuando entrés al <strong>ranking general</strong>, tu proyección es muy fuerte. Mantener el crecimiento de estos meses te pone directamente en el top 3.' },
+    ],
+    sistemaMsg: 'Estás en período de <strong>base libre</strong>: recibís todas las categorías sin importar el ranking. Eso te da el tiempo perfecto para consolidar tu proceso de cobro y acumular historial de cash. La proyección para cuando entrés al ranking es muy positiva.',
+  },
+};
+
+function fmtNum(n, unit) {
+  if (unit === '$') {
+    if (n >= 1000) return '$' + (n/1000).toFixed(0) + 'k';
+    return '$' + n;
+  }
+  return n.toFixed(1) + '%';
+}
+
+function getCurrentMonthValue() {
+  const queryMonth = new URLSearchParams(window.location.search).get('month');
+  if (/^\d{4}-\d{2}$/.test(queryMonth || '')) return queryMonth;
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function buildExportHtml(closerKey, monthValue) {
+  const report = document.getElementById('report').innerHTML;
+  const closerName = DATA[closerKey]?.nombre || 'Closer';
+  const periodLabel = PERIOD_BY_MONTH(monthValue);
+  return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reporte Personal - ${closerName} - ${periodLabel}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    body{font-family:'DM Sans',sans-serif;background:#f4f6fc;color:#18192A;margin:0;padding:24px;}
+    .report{max-width:840px;margin:0 auto;}
+  </style>
+</head>
+<body>
+  <div class="report">${report}</div>
+</body>
+</html>`;
+}
+
+function getSelectedReportContext() {
+  const closerKey = document.getElementById('sel').value;
+  const monthValue = document.getElementById('reportMonth').value;
+  return {
+    closerKey,
+    monthValue,
+    closerName: DATA[closerKey]?.nombre || ''
+  };
+}
+
+function downloadReportBase() {
+  const { closerKey, monthValue, closerName } = getSelectedReportContext();
+  const status = document.getElementById('pdfStatus');
+  if (!closerKey) {
+    status.textContent = 'Primero elegí un closer para exportar la base.';
+    return;
+  }
+
+  const html = buildExportHtml(closerKey, monthValue);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const monthSafe = String(monthValue || 'sin-mes');
+  const filename = `reporte-personal-${closerName.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${monthSafe}.html`;
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+  status.textContent = 'Base descargada para armar el PDF.';
+}
+
+async function refreshPdfState() {
+  const { closerKey, monthValue, closerName } = getSelectedReportContext();
+  const status = document.getElementById('pdfStatus');
+  const link = document.getElementById('downloadPdfLink');
+
+  if (!closerKey || !monthValue) {
+    link.href = '#';
+    link.classList.add('is-disabled');
+    status.textContent = 'Elegí closer y mes para gestionar el PDF.';
+    return;
+  }
+
+  status.textContent = 'Buscando PDF cargado...';
+
+  try {
+    const response = await window.metricasApi.fetchCloserPersonalPdf({
+      closer: closerName,
+      month: monthValue
+    });
+    const pdf = response.pdf || {};
+
+    if (pdf.exists && pdf.downloadUrl) {
+      link.href = pdf.downloadUrl;
+      link.classList.remove('is-disabled');
+      status.textContent = 'Hay un PDF cargado para este closer y mes.';
+    } else {
+      link.href = '#';
+      link.classList.add('is-disabled');
+      status.textContent = 'Todavía no hay PDF cargado para este closer y mes.';
+    }
+  } catch (error) {
+    link.href = '#';
+    link.classList.add('is-disabled');
+    status.textContent = error.message || 'No pude leer el PDF guardado.';
+  }
+}
+
+async function uploadSelectedPdf(file) {
+  const { closerKey, monthValue, closerName } = getSelectedReportContext();
+  const status = document.getElementById('pdfStatus');
+
+  if (!closerKey || !monthValue) {
+    status.textContent = 'Elegí closer y mes antes de subir el PDF.';
+    return;
+  }
+
+  if (!file) return;
+
+  status.textContent = 'Subiendo PDF...';
+
+  try {
+    await window.metricasApi.uploadCloserPersonalPdf({
+      closer: closerName,
+      month: monthValue,
+      filename: file.name,
+      file
+    });
+    status.textContent = 'PDF subido correctamente.';
+    await refreshPdfState();
+  } catch (error) {
+    status.textContent = error.message || 'No pude subir el PDF.';
+  }
+}
+
+function renderReport() {
+  const key = document.getElementById('sel').value;
+  const el  = document.getElementById('report');
+  if (!key) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Seleccioná un closer para ver su reporte personal.</div></div>';
+    refreshPdfState();
+    return;
+  }
+  const d = DATA[key];
+  const monthValue = document.getElementById('reportMonth').value;
+  const c = d.color;
+
+  // KPI cards
+  const kpiHTML = d.kpis.map(k => `
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-lbl">${k.lbl}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Comparison bars
+  const compHTML = d.comp.map(row => {
+    const barW = Math.min((row.tuVal / row.max) * 100, 100);
+    const avgW = Math.min((row.teamVal / row.max) * 100, 100);
+    const isBetter = row.invert ? row.tuVal < row.teamVal : row.tuVal >= row.teamVal;
+    const barColor = isBetter ? 'var(--green)' : 'var(--amber)';
+    return `<div class="comp-row">
+      <div class="comp-header">
+        <span class="comp-lbl">${row.lbl}</span>
+        <span class="comp-vals">Vos: <b>${fmtNum(row.tuVal, row.unit)}</b> · Equipo: ${fmtNum(row.teamVal, row.unit)}</span>
+      </div>
+      <div class="comp-track">
+        <div class="comp-fill" style="width:${barW}%;background:${barColor}"></div>
+        <div class="comp-avg-line" style="left:${avgW}%">
+          <div class="comp-avg-lbl">equipo</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Fortalezas
+  const fortHTML = d.fortalezas.map(f =>
+    `<li><div class="item-dot ${f.dot}"></div><span>${f.txt}</span></li>`).join('');
+
+  // Atención
+  const atenHTML = d.atencion.map(a =>
+    `<li><div class="item-dot amber"></div><span>${a.txt}</span></li>`).join('');
+
+  // Steps
+  const stepsHTML = d.pasos.map(p =>
+    `<div class="step">
+      <div class="step-num" style="background:${p.color}">${p.num}</div>
+      <div class="step-text">${p.txt}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <!-- HERO -->
+    <div class="report-hero" style="background:linear-gradient(135deg,${d.colorDark},${d.color})">
+      <div class="rh-inner">
+        <div class="rh-eyebrow">Reporte Personal · ${PERIOD_BY_MONTH(monthValue)}</div>
+        <div class="rh-name">${d.nombre}</div>
+        <div class="rh-period">${d.status} · ${d.meses} meses evaluados</div>
+        <div class="rh-chips">${d.chips.map(ch=>`<span class="rh-chip">${ch}</span>`).join('')}</div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">${kpiHTML}</div>
+
+    <!-- Fortalezas + Atención -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="sc-title"><span class="sc-icon">💪</span> Tus fortalezas</div>
+        <ul class="item-list">${fortHTML}</ul>
+      </div>
+      <div class="section-card">
+        <div class="sc-title"><span class="sc-icon">🎯</span> A trabajar</div>
+        <ul class="item-list">${atenHTML}</ul>
+      </div>
+    </div>
+
+    <!-- Comparativa -->
+    <div class="section-card">
+      <div class="sc-title"><span class="sc-icon">📊</span> Tus métricas vs el promedio del equipo</div>
+      ${compHTML}
+    </div>
+
+    <!-- Mensaje personal -->
+    <div class="message-box personal">
+      <div class="mb-eyebrow">Mensaje del mes</div>
+      <div class="mb-text">${d.mensaje}</div>
+    </div>
+
+    <!-- Próximos pasos -->
+    <div class="section-card">
+      <div class="sc-title"><span class="sc-icon">⬆️</span> Próximos pasos</div>
+      <div class="steps">${stepsHTML}</div>
+    </div>
+
+    <!-- Sistema -->
+    <div class="message-box sistema">
+      <div class="mb-eyebrow">Tu posición en el nuevo sistema</div>
+      <div class="mb-text">${d.sistemaMsg}</div>
+    </div>`;
+
+  refreshPdfState();
+}
+</script>
+</div>
+<script src="/metricas/js/api/http.js"></script>
+<script src="/metricas/js/api/metricas.api.js"></script>
+<script>
+document.getElementById('reportMonth').value = getCurrentMonthValue();
+document.getElementById('reportMonth').addEventListener('change', renderReport);
+document.getElementById('exportReportData').addEventListener('click', downloadReportBase);
+document.getElementById('uploadPdfTrigger').addEventListener('click', () => {
+  document.getElementById('pdfFileInput').click();
+});
+document.getElementById('pdfFileInput').addEventListener('change', async (event) => {
+  const [file] = event.target.files || [];
+  await uploadSelectedPdf(file);
+  event.target.value = '';
+});
+refreshPdfState();
+</script>
+<script src="/metricas/js/auth-shell.js"></script>
+<script src="/metricas/js/mag-theme.js"></script>
+</body>
+</html>

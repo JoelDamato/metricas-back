@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Closers</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/metricas/css/styles.css">
+<link rel="stylesheet" href="/metricas/css/mag-theme.css">
+<style>
+  .closers-report-page {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 48px;
+  }
+
+  .closers-report-page .report-shell {
+    width: min(1220px, 94vw);
+    margin: 0 auto;
+    padding: 104px 0 36px;
+  }
+
+  .closers-report-page .report-header {
+    background: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    box-shadow: var(--mag-shadow);
+    overflow: hidden;
+  }
+
+  .closers-report-page .report-header-top {
+    padding: 28px 30px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .closers-report-page .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .closers-report-page .report-header h1 {
+    font-size: clamp(2rem, 3vw, 3rem);
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+
+  .closers-report-page .report-header p {
+    color: var(--muted);
+  }
+
+  .closers-report-page .report-filters {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .closers-report-page .report-filters label {
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .closers-report-page .report-filters input,
+  .closers-report-page .report-filters button {
+    font: inherit;
+  }
+
+  .closers-report-page .report-filters input {
+    min-width: 170px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--s2);
+    color: var(--text);
+  }
+
+  .closers-report-page .report-filters button {
+    padding: 11px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(75, 142, 245, 0.16);
+    color: var(--blue);
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .closers-report-page .header-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 0 30px 28px;
+  }
+
+  .closers-report-page .header-chip {
+    background: var(--s2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+  }
+
+  .closers-report-page .header-chip-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .closers-report-page .header-chip-value {
+    margin-top: 4px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .closers-report-page .tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0 0;
+  }
+
+  .closers-report-page .tb {
+    padding: 11px 16px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--s1);
+    color: var(--muted);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .closers-report-page .tb.active {
+    background: rgba(75, 142, 245, 0.16);
+    color: var(--blue);
+  }
+
+  .closers-report-page .tab-content {
+    display: none;
+  }
+
+  .closers-report-page .tab-content.active {
+    display: block;
+  }
+
+  .closers-report-page .status {
+    margin: 16px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    min-height: 20px;
+  }
+
+  .closers-report-page .section {
+    margin-top: 24px;
+  }
+
+  .closers-report-page .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .closers-report-page .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .closers-report-page .podio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .closers-report-page .podio-card,
+  .closers-report-page .chart-card,
+  .closers-report-page .empty-state,
+  .closers-report-page .personal-frame-wrap {
+    background: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--mag-shadow);
+  }
+
+  .closers-report-page .podio-card {
+    padding: 18px 18px 16px;
+  }
+
+  .closers-report-page .rank-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(75, 142, 245, 0.15);
+    color: var(--blue);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .closers-report-page .podio-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .closers-report-page .podio-stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .closers-report-page .podio-stat strong {
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  .closers-report-page .table-wrap {
+    overflow: auto;
+    background: var(--s1);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--mag-shadow);
+  }
+
+  .closers-report-page table {
+    width: 100%;
+    min-width: 1080px;
+    border-collapse: collapse;
+  }
+
+  .closers-report-page th,
+  .closers-report-page td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .closers-report-page th {
+    background: var(--s2);
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .closers-report-page td {
+    color: var(--text);
+  }
+
+  .closers-report-page td.r,
+  .closers-report-page th.r {
+    text-align: right;
+  }
+
+  .closers-report-page .closer-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+  }
+
+  .closers-report-page .cdot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .closers-report-page .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .closers-report-page .chart-card {
+    padding: 18px 18px 16px;
+  }
+
+  .closers-report-page .chart-card h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+
+  .closers-report-page .bar-row {
+    margin-bottom: 12px;
+  }
+
+  .closers-report-page .bar-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .closers-report-page .bar-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+
+  .closers-report-page .bar-head span:first-child {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .closers-report-page .bar-head span:last-child {
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .closers-report-page .bar-track {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--s3);
+    overflow: hidden;
+  }
+
+  .closers-report-page .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+  }
+
+  .closers-report-page .empty-state {
+    padding: 28px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .closers-report-page .personal-frame-head {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .closers-report-page .personal-frame-head h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .closers-report-page .personal-frame-head p {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .closers-report-page .personal-frame {
+    width: 100%;
+    min-height: 980px;
+    height: 82vh;
+    border: 0;
+    display: block;
+    background: transparent;
+  }
+
+  @media (max-width: 900px) {
+    .closers-report-page .report-shell {
+      padding-top: 96px;
+    }
+
+    .closers-report-page .report-header-top,
+    .closers-report-page .header-metrics {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+  }
+</style>
+</head>
+<body class="mag-view closers-report-page">
+<div class="report-shell">
+  <header class="report-header">
+    <div class="report-header-top">
+      <div>
+        <div class="eyebrow">Método Acelerador de Ganancias · Interno</div>
+        <h1>Reporte Closers</h1>
+        <p>Lectura mensual usando la misma base y las mismas reglas de Agendas Totales.</p>
+      </div>
+      <div class="report-filters">
+        <label>
+          Mes
+          <input id="monthFilter" type="month" />
+        </label>
+        <button id="reloadReport" type="button">Aplicar</button>
+      </div>
+    </div>
+    <div id="headerMetrics" class="header-metrics"></div>
+  </header>
+
+  <div class="tabs">
+    <button class="tb active" type="button" data-tab="general">Reporte General</button>
+    <button class="tb" type="button" data-tab="personal">Reportes Personales</button>
+  </div>
+
+  <div id="reportStatus" class="status"></div>
+
+  <section id="tab-general" class="tab-content active">
+    <section class="section">
+      <div class="section-title">Ranking Mensual</div>
+      <div id="podioGrid" class="podio-grid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Métricas Completas</div>
+      <div id="tableContainer"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Comparativas Visuales</div>
+      <div id="chartsGrid" class="charts-grid"></div>
+    </section>
+  </section>
+
+  <section id="tab-personal" class="tab-content">
+    <div class="personal-frame-wrap">
+      <div class="personal-frame-head">
+        <h3>Reportes Personales</h3>
+        <p>Lectura individual por closer con fortalezas, brechas y próximos pasos.</p>
+      </div>
+      <iframe
+        id="personalReportFrame"
+        class="personal-frame"
+        src="/metricas/views/mag-reportes-personales.html?embed=1"
+        title="Reportes Personales"
+        loading="lazy"
+      ></iframe>
+    </div>
+  </section>
+</div>
+
+<script src="/metricas/js/api/http.js"></script>
+<script src="/metricas/js/api/metricas.api.js"></script>
+<script src="/metricas/js/auth-shell.js"></script>
+<script src="/metricas/js/mag-theme.js"></script>
+<script src="/metricas/js/views/mag-reporte-closers.page.js"></script>
+</body>
+</html>

@@ -1,4 +1,20 @@
 let csmChart = null;
+let csmPeriodFiltersInitialized = false;
+const MONTH_FILTER_OPTIONS = [
+  { value: 'all', label: 'Anual' },
+  { value: '1', label: 'Enero' },
+  { value: '2', label: 'Febrero' },
+  { value: '3', label: 'Marzo' },
+  { value: '4', label: 'Abril' },
+  { value: '5', label: 'Mayo' },
+  { value: '6', label: 'Junio' },
+  { value: '7', label: 'Julio' },
+  { value: '8', label: 'Agosto' },
+  { value: '9', label: 'Septiembre' },
+  { value: '10', label: 'Octubre' },
+  { value: '11', label: 'Noviembre' },
+  { value: '12', label: 'Diciembre' }
+];
 
 function formatInteger(value) {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value || 0));
@@ -29,6 +45,14 @@ function formatCountWithPercent(count, base) {
 function toDateOnly(value) {
   if (!value) return '';
   return String(value).slice(0, 10);
+}
+
+function formatDate(value) {
+  const dateOnly = toDateOnly(value);
+  if (!dateOnly) return '—';
+  const match = dateOnly.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return dateOnly;
+  return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
 function safeDiv(a, b) {
@@ -85,6 +109,92 @@ function getDefaultRenewalRange() {
     from: from.toISOString().slice(0, 10),
     to: now.toISOString().slice(0, 10)
   };
+}
+
+function getDefaultCsmPeriod() {
+  const now = new Date();
+  return {
+    year: String(now.getFullYear()),
+    month: String(now.getMonth() + 1)
+  };
+}
+
+function setSelectOptions(select, options, selectedValue) {
+  if (!select) return;
+  select.innerHTML = options
+    .map((option) => `<option value="${escapeHtml(option.value)}"${String(option.value) === String(selectedValue) ? ' selected' : ''}>${escapeHtml(option.label)}</option>`)
+    .join('');
+}
+
+function getYearMonthFromValue(value) {
+  const date = toDateOnly(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return {
+    year: date.slice(0, 4),
+    month: String(Number(date.slice(5, 7)))
+  };
+}
+
+function setupCsmPeriodFilters(rows) {
+  const yearSelect = document.getElementById('csmYear');
+  const monthSelect = document.getElementById('csmMonth');
+  if (!yearSelect || !monthSelect) return;
+
+  const defaults = getDefaultCsmPeriod();
+  const params = new URLSearchParams(window.location.search);
+  const requestedYear = params.get('anio') || defaults.year;
+  const requestedMonth = params.get('mes') || defaults.month;
+
+  const yearSet = new Set();
+  (rows || []).forEach((row) => {
+    const period = getYearMonthFromValue(row.f_pago_con_acceso);
+    if (period?.year) yearSet.add(period.year);
+  });
+
+  if (!yearSet.size) {
+    yearSet.add(defaults.year);
+  }
+
+  const years = [...yearSet].sort((a, b) => Number(b) - Number(a));
+  const effectiveYear = years.includes(String(requestedYear)) ? String(requestedYear) : years[0];
+  const effectiveMonth = ['all', ...MONTH_FILTER_OPTIONS.slice(1).map((option) => option.value)].includes(String(requestedMonth))
+    ? String(requestedMonth)
+    : defaults.month;
+
+  setSelectOptions(yearSelect, years.map((year) => ({ value: year, label: year })), effectiveYear);
+  setSelectOptions(monthSelect, MONTH_FILTER_OPTIONS, effectiveMonth);
+  csmPeriodFiltersInitialized = true;
+}
+
+function getCsmPeriodFilters() {
+  return {
+    year: document.getElementById('csmYear')?.value || getDefaultCsmPeriod().year,
+    month: document.getElementById('csmMonth')?.value || getDefaultCsmPeriod().month
+  };
+}
+
+function filterRowsByPayAccessPeriod(rows, filters = {}) {
+  const year = String(filters.year || '').trim();
+  const month = String(filters.month || '').trim();
+
+  return (rows || []).filter((row) => {
+    const period = getYearMonthFromValue(row.f_pago_con_acceso);
+    if (!period?.year) return false;
+    if (year && period.year !== year) return false;
+    if (month && month !== 'all' && period.month !== String(Number(month))) return false;
+    return true;
+  });
+}
+
+function describeCsmPeriod(filters = {}) {
+  const year = String(filters.year || '').trim();
+  const month = String(filters.month || '').trim();
+  if (month === 'all') {
+    return `año ${year}`;
+  }
+
+  const monthLabel = MONTH_FILTER_OPTIONS.find((option) => option.value === String(Number(month)))?.label || 'Mes';
+  return `${monthLabel.toLowerCase()} ${year}`;
 }
 
 function setupRenewalFilters() {
@@ -220,6 +330,7 @@ function buildMetricRow({ key, label, value, base, fieldsLabel, logic, detailCol
     label,
     value,
     base,
+    note: logic,
     info: {
       title: label,
       base,
@@ -298,7 +409,11 @@ function showMetricInfo(info) {
 }
 
 function attachMetricInfo(root, infoMap) {
-  root.querySelectorAll('[data-info-key]').forEach((node) => {
+  const nodes = [];
+  if (root?.matches?.('[data-info-key]')) nodes.push(root);
+  root.querySelectorAll?.('[data-info-key]').forEach((node) => nodes.push(node));
+
+  nodes.forEach((node) => {
     const open = () => showMetricInfo(infoMap[node.dataset.infoKey]);
     node.addEventListener('click', open);
     node.addEventListener('keydown', (event) => {
@@ -316,12 +431,27 @@ function getLatestDate(...dates) {
   return valid.sort((a, b) => a.getTime() - b.getTime())[valid.length - 1];
 }
 
+function discardDatesBeforeReference(dates, referenceDate) {
+  return (dates || []).map((date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+    if (!(referenceDate instanceof Date) || Number.isNaN(referenceDate.getTime())) return date;
+    return date.getTime() < referenceDate.getTime() ? null : date;
+  });
+}
+
 function enrichRows(rows) {
   return (rows || []).map((row) => {
-    const moduleDates = Array.from({ length: 10 }, (_, index) => parseDate(row[`modulo_${index + 1}`]));
-    const onboardingDate = parseDate(row.f_onboarding);
+    const rawModuleDates = Array.from({ length: 10 }, (_, index) => parseDate(row[`modulo_${index + 1}`]));
     const accessDate = parseDate(row.f_acceso);
     const payAccessDate = parseDate(row.f_pago_con_acceso);
+    const onboardingDateRaw = parseDate(row.f_onboarding);
+    const payReferenceDate = payAccessDate || accessDate;
+    const onboardingDate = (
+      onboardingDateRaw instanceof Date
+      && payReferenceDate instanceof Date
+      && onboardingDateRaw.getTime() < payReferenceDate.getTime()
+    ) ? null : onboardingDateRaw;
+    const moduleDates = discardDatesBeforeReference(rawModuleDates, payReferenceDate || onboardingDate || null);
     const firstResultDate = parseDate(row.f_primer_resultado);
     const successDate = parseDate(row.caso_de_exito);
     const abandonDate = parseDate(row.f_abandono);
@@ -329,7 +459,6 @@ function enrichRows(rows) {
     const renewalCompletedDate = parseDate(row.fecha_final_renovacion);
     const advanceDate = parseDate(row.ultima_fecha_de_avance);
     const responseDate = parseDate(row.ultima_respuesta);
-    const payReferenceDate = payAccessDate || accessDate;
     const payToOnboardingMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_onbo));
     const payToDiagnosisMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
     const diagnosisUnder7Flag = parseUnderSevenMetric(row.diagnostico_7dias);
@@ -421,10 +550,14 @@ function renderMetricsTable(metrics, infoMap) {
   attachMetricInfo(container, infoMap);
 }
 
-function renderSections(sections) {
+function renderSections(sections, infoMap = {}) {
   const container = document.getElementById('detailContainer');
-  container.innerHTML = (sections || []).map((section) => `
-    <section class="table-wrap csm-detail-panel">
+  const hasModuleCards = (sections || []).some((section) => section.layout === 'half');
+  const sectionMarkup = (sections || []).map((section) => `
+    <section
+      class="table-wrap csm-detail-panel${section.layout === 'half' ? ' csm-detail-panel-half' : ''}${section.infoKey ? ' csm-detail-panel-clickable' : ''}"
+      ${section.infoKey ? `data-info-key="${escapeHtml(section.infoKey)}" role="button" tabindex="0"` : ''}
+    >
       <div class="csm-detail-head">
         <h3>${escapeHtml(section.title)}</h3>
         <p>${escapeHtml(section.description || '')}</p>
@@ -441,14 +574,41 @@ function renderSections(sections) {
       </table>
     </section>
   `).join('');
+
+  container.innerHTML = `
+    ${hasModuleCards ? `
+      <div class="csm-detail-group-title">
+        <h3>Modulos del Meg</h3>
+      </div>
+    ` : ''}
+    ${sectionMarkup}
+  `;
+
+  attachMetricInfo(container, infoMap);
 }
 
-function renderChart(config) {
+function renderChart(config, infoMap = {}) {
   const canvas = document.getElementById('csmChart');
+  const panel = canvas?.closest('.chart-panel');
   if (!canvas || typeof Chart === 'undefined' || !config) return;
 
   document.getElementById('chartTitle').textContent = config.title;
   document.getElementById('chartDescription').textContent = config.description;
+
+  if (panel) {
+    if (config.infoKey) {
+      panel.dataset.infoKey = config.infoKey;
+      panel.setAttribute('role', 'button');
+      panel.setAttribute('tabindex', '0');
+      panel.classList.add('csm-chart-panel-clickable');
+      attachMetricInfo(panel, infoMap);
+    } else {
+      delete panel.dataset.infoKey;
+      panel.removeAttribute('role');
+      panel.removeAttribute('tabindex');
+      panel.classList.remove('csm-chart-panel-clickable');
+    }
+  }
 
   if (csmChart) csmChart.destroy();
 
@@ -503,16 +663,74 @@ function buildTimePage(rows) {
   const payToDiagnosis = payToDiagnosisRows
     .map((row) => row.value)
     .filter((value) => value !== null && Number.isFinite(value));
-  const diagnosisUnder7Rows = activeProgramRows
-    .filter((row) => row.diagnosisUnder7Flag === true)
+  const onboardingToDiagnosisRows = activeProgramRows
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
-      value: 'Si',
-      diagnosisDays: row.payToDiagnosisMetric,
-      payDate: toDateOnly(row.payReferenceDate),
-      diagnosisDate: toDateOnly(row.modulo_1 || row.f_onboarding || '')
+      value: daysBetween(row.onboardingDate, row.moduleDates[0]),
+      onboardingDate: toDateOnly(row.f_onboarding || ''),
+      diagnosisDate: toDateOnly(row.modulo_1 || '')
     }))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0)
+    .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
+  const onboardingToDiagnosis = onboardingToDiagnosisRows
+    .map((row) => row.value)
+    .filter((value) => value !== null && Number.isFinite(value));
+  const diagnosisUnder7Rows = activeProgramRows
+    .map((row) => {
+      const elapsedDays = row.payReferenceDate && row.moduleDates[0]
+        ? daysBetween(row.payReferenceDate, row.moduleDates[0])
+        : row.payToDiagnosisMetric;
+
+      const normalizedElapsed = elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null;
+      if (normalizedElapsed === null || normalizedElapsed < 0 || normalizedElapsed > 7) return null;
+
+      return {
+        nombre: row.nombre || 'Sin nombre',
+        elapsedDays: normalizedElapsed,
+        diagnosisDate: toDateOnly(row.modulo_1 || ''),
+        payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || '')
+      };
+    })
+    .filter(Boolean)
+    .map((row) => ({
+      ...row
+    }))
+    .sort((a, b) => a.elapsedDays - b.elapsedDays || a.nombre.localeCompare(b.nombre));
+  const diagnosisOver7Rows = activeProgramRows
+    .map((row) => {
+      const elapsedDays = row.payReferenceDate
+        ? (row.moduleDates[0]
+          ? daysBetween(row.payReferenceDate, row.moduleDates[0])
+          : daysBetween(row.payReferenceDate, new Date()))
+        : null;
+
+      const normalizedElapsed = elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null;
+      if (normalizedElapsed === null || normalizedElapsed <= 7) return null;
+
+      return {
+        nombre: row.nombre || 'Sin nombre',
+        elapsedDays: normalizedElapsed,
+        status: row.moduleDates[0] ? 'Ya la hizo' : 'Aun no',
+        diagnosisDate: toDateOnly(row.modulo_1 || ''),
+        payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || '')
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.elapsedDays - a.elapsedDays || a.nombre.localeCompare(b.nombre));
+  const pendingOnboardingRows = activeProgramRows
+    .map((row) => {
+      if (!row.payReferenceDate) return null;
+      if (row.onboardingDate) return null;
+
+      const elapsedDays = daysBetween(row.payReferenceDate, new Date());
+      return {
+        nombre: row.nombre || 'Sin nombre',
+        payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
+        elapsedDays: elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (b.elapsedDays ?? -1) - (a.elapsedDays ?? -1) || a.nombre.localeCompare(b.nombre));
   const onboardingToFirstResultRows = activeProgramRows
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
@@ -531,12 +749,24 @@ function buildTimePage(rows) {
     }))
     .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0);
   const onboardingToSuccess = onboardingToSuccessRows.map((row) => row.value);
+  const entryToModule7Rows = activeProgramRows
+    .map((row) => ({
+      nombre: row.nombre || 'Sin nombre',
+      value: daysBetween(row.payReferenceDate, row.moduleDates[6]),
+      payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
+      module7Date: toDateOnly(row.modulo_7 || '')
+    }))
+    .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0)
+    .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
+  const entryToModule7 = entryToModule7Rows.map((row) => row.value);
 
   const unitStats = Array.from({ length: 10 }, (_, index) => {
     const diffs = activeProgramRows
       .map((row) => {
         const current = row.moduleDates[index];
-        const previous = index === 0 ? row.onboardingDate : row.moduleDates[index - 1];
+        const previous = index === 0
+          ? (row.payReferenceDate || row.onboardingDate)
+          : row.moduleDates[index - 1];
         return daysBetween(previous, current);
       })
       .filter((value) => value !== null && Number.isFinite(value) && value >= 0);
@@ -552,7 +782,9 @@ function buildTimePage(rows) {
     .map((row) => {
       const unitValues = Array.from({ length: 10 }, (_, index) => {
         const current = row.moduleDates[index];
-        const previous = index === 0 ? row.onboardingDate : row.moduleDates[index - 1];
+        const previous = index === 0
+          ? (row.payReferenceDate || row.onboardingDate)
+          : row.moduleDates[index - 1];
         const value = daysBetween(previous, current);
         return value !== null && Number.isFinite(value) && value >= 0 ? formatDays(value) : '-';
       });
@@ -560,8 +792,9 @@ function buildTimePage(rows) {
     })
     .sort((a, b) => a[0].localeCompare(b[0]));
 
-  const diagnosticUnder7 = activeProgramRows.filter((row) => row.diagnosisUnder7Flag === true).length;
-  const diagnosticUnder7Base = activeProgramRows.filter((row) => row.diagnosisUnder7Flag !== null).length;
+  const diagnosticUnder7 = diagnosisUnder7Rows.length;
+  const diagnosticUnder7Base = activeProgramRows.filter((row) => row.payReferenceDate).length;
+  const diagnosticOver7 = diagnosisOver7Rows.length;
   const averageUnit = average(unitStats.map((row) => row.avgDays).filter((value) => value !== null));
 
   const metrics = [
@@ -574,6 +807,19 @@ function buildTimePage(rows) {
       logic: 'Promedio del campo "pago_a_onbo".',
       detailColumns: ['Cliente', 'Pago a onbo'],
       detailRows: payToOnboardingRows.map((row) => [
+        row.nombre,
+        formatDays(row.value)
+      ])
+    }),
+    buildMetricRow({
+      key: 'onboarding_to_diagnosis',
+      label: 'Tiempo promedio desde onboarding a sesión diagnóstico',
+      value: formatDays(average(onboardingToDiagnosis)),
+      base: `${formatInteger(onboardingToDiagnosis.length)} clientes con "f_onboarding" y "modulo_1"`,
+      fieldsLabel: '"f_onboarding", "modulo_1"',
+      logic: 'Promedio de días entre onboarding y la sesión diagnóstico.',
+      detailColumns: ['Cliente', 'Onboarding a diagnóstico'],
+      detailRows: onboardingToDiagnosisRows.map((row) => [
         row.nombre,
         formatDays(row.value)
       ])
@@ -595,14 +841,45 @@ function buildTimePage(rows) {
       key: 'diagnosis_under_7',
       label: 'Cantidad de sesiones diagnóstico menor a 7 días',
       value: formatInteger(diagnosticUnder7),
-      base: `${formatInteger(diagnosticUnder7Base)} clientes con "diagnostico_7dias" y sin "abandono" en CSM`,
-      fieldsLabel: '"diagnostico_7dias"',
-      logic: 'Cantidad de clientes con el campo "diagnostico_7dias" positivo.',
-      detailColumns: ['Cliente', 'Diagnóstico < 7 días', 'Pago a diagnóstico'],
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con fecha de ingreso y sin "abandono" en CSM`,
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "modulo_1"',
+      logic: 'Cantidad de clientes que hicieron la sesión diagnóstico dentro de los primeros 7 días desde su ingreso.',
+      detailColumns: ['Cliente', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
       detailRows: diagnosisUnder7Rows.map((row) => [
         row.nombre,
-        row.value,
-        formatDays(row.diagnosisDays)
+        formatDays(row.elapsedDays),
+        row.payDate || '-',
+        row.diagnosisDate || '-'
+      ])
+    }),
+    buildMetricRow({
+      key: 'diagnosis_over_7',
+      label: 'Cantidad de sesiones diagnóstico mayor a 7 días',
+      value: formatInteger(diagnosticOver7),
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con fecha de ingreso y sin "abandono" en CSM`,
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "modulo_1"',
+      logic: 'Cantidad de clientes que tardaron más de 7 días en llegar a la sesión diagnóstico. Si todavía no la hicieron, también se listan cuando ya superaron los 7 días desde el ingreso.',
+      detailColumns: ['Cliente', 'Estado', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
+      detailRows: diagnosisOver7Rows.map((row) => [
+        row.nombre,
+        row.status,
+        formatDays(row.elapsedDays),
+        row.payDate || '-',
+        row.diagnosisDate || '-'
+      ])
+    }),
+    buildMetricRow({
+      key: 'pending_onboarding_diagnosis',
+      label: 'Clientes del mes sin onboarding',
+      value: formatInteger(pendingOnboardingRows.length),
+      base: `${formatInteger(diagnosticUnder7Base)} clientes con fecha de ingreso y sin "abandono" en CSM`,
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "f_onboarding"',
+      logic: 'Cuenta clientes del mes filtrado por ingreso que todavía no tienen onboarding cargado.',
+      detailColumns: ['Cliente', 'Pago con acceso', 'Días desde ingreso'],
+      detailRows: pendingOnboardingRows.map((row) => [
+        row.nombre,
+        row.payDate || '-',
+        row.elapsedDays !== null ? formatDays(row.elapsedDays) : '-'
       ])
     }),
     buildMetricRow({
@@ -640,13 +917,57 @@ function buildTimePage(rows) {
       logic: 'Promedio de días por unidad.',
       detailColumns: ['Cliente', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9', 'U10'],
       detailRows: unitClientRows
+    }),
+    buildMetricRow({
+      key: 'entry_to_module_7',
+      label: 'Tiempo promedio desde ingreso a módulo 7',
+      value: formatDays(average(entryToModule7)),
+      base: `${formatInteger(entryToModule7.length)} clientes con fecha de ingreso y "modulo_7"`,
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "modulo_7"',
+      logic: 'Promedio de días entre el ingreso y la llegada al módulo 7.',
+      detailColumns: ['Cliente', 'Ingreso a módulo 7', 'Ingreso', 'Módulo 7'],
+      detailRows: entryToModule7Rows.map((row) => [
+        row.nombre,
+        formatDays(row.value),
+        row.payDate || '-',
+        row.module7Date || '-'
+      ])
     })
   ];
 
   const sections = [
     {
+      title: 'Tiempo promedio en cada unidad',
+      description: 'Resumen del promedio general de días entre hitos consecutivos del recorrido.',
+      layout: 'half',
+      infoKey: 'unit_average_time',
+      columns: ['Métrica', 'Valor', 'Base'],
+      rows: [
+        [
+          'Tiempo promedio en cada unidad',
+          formatDays(averageUnit),
+          `${formatInteger(unitStats.filter((row) => row.avgDays !== null).length)} unidades con base`
+        ]
+      ]
+    },
+    {
+      title: 'Tiempo promedio desde ingreso a módulo 7',
+      description: 'Tiempo promedio desde el ingreso hasta llegar al módulo 7 sobre clientes con ambas fechas cargadas.',
+      layout: 'half',
+      infoKey: 'entry_to_module_7',
+      columns: ['Métrica', 'Valor', 'Base'],
+      rows: [
+        [
+          'Ingreso a módulo 7',
+          formatDays(average(entryToModule7)),
+          `${formatInteger(entryToModule7.length)} clientes con ingreso y módulo 7`
+        ]
+      ]
+    },
+    {
       title: 'Detalle por Unidad',
       description: 'Promedio de días entre hitos consecutivos y cantidad de clientes que llegaron a cada unidad.',
+      infoKey: 'unit_average_time',
       columns: ['Unidad', 'Promedio dias', 'Clientes', '% sobre total'],
       rows: unitStats.map((row) => [
         row.unit,
@@ -659,10 +980,11 @@ function buildTimePage(rows) {
 
   return {
     metrics,
-    kpiKeys: ['pay_to_onboarding', 'pay_to_diagnosis', 'diagnosis_under_7', 'onboarding_to_first_result'],
+    kpiKeys: ['pay_to_onboarding', 'onboarding_to_diagnosis', 'pay_to_diagnosis', 'diagnosis_under_7', 'diagnosis_over_7', 'pending_onboarding_diagnosis'],
     chart: {
       title: 'Tiempo Promedio por Unidad',
       description: 'Promedio de días entre el hito anterior y la unidad registrada.',
+      infoKey: 'unit_average_time',
       labels: unitStats.map((row) => row.unit.replace('Unidad ', 'U')),
       datasets: [
         {
@@ -1009,10 +1331,14 @@ function buildRenewalsPage(rows, context = {}) {
     const daysToRenewal = calendarDaysUntil(row.fecha_final);
     return daysToRenewal !== null && daysToRenewal >= 0 && daysToRenewal <= 15;
   });
+  const overdueUnrenewedRows = rows.filter((row) => {
+    if (row.renewalCompletedDate) return false;
+    const daysToRenewal = calendarDaysUntil(row.fecha_final);
+    return daysToRenewal !== null && daysToRenewal < 0;
+  });
   const renewedRows = rows.filter((row) => row.renewalCompletedDate);
   const renewalBase = renewable15Rows.length || renewable30Rows.length;
   const renewalRate = safeDiv(renewedRows.length * 100, renewalBase);
-  const projectedRenewals = (renewalRate / 100) * renewable30Rows.length;
   const renewable30Ids = new Set(renewable30Rows.map((row) => row.id));
   const renewable15Ids = new Set(renewable15Rows.map((row) => row.id));
   const renewalFinancials = buildRenewalFinancialMetrics(context.comprobanteRows || [], context.filters || {});
@@ -1039,6 +1365,31 @@ function buildRenewalsPage(rows, context = {}) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .slice(-8);
 
+  const detailColumns = ['Cliente', 'Closer', 'Fecha final', 'Dias al cierre', 'GHL ID'];
+  const toDetailRows = (detailRows) => detailRows
+    .map((row) => {
+      const daysToRenewal = calendarDaysUntil(row.fecha_final);
+      return [
+        row.nombre || 'Sin nombre',
+        row.closer || 'Sin closer',
+        formatDate(row.fecha_final),
+        daysToRenewal === null ? '-' : formatInteger(daysToRenewal),
+        row.ghlid || '-'
+      ];
+    })
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[2]).localeCompare(String(b[2])) || String(a[0]).localeCompare(String(b[0]), 'es'));
+
+  const renewedDetailColumns = ['Cliente', 'Closer', 'Fecha final', 'Fecha renovacion', 'GHL ID'];
+  const renewedDetailRows = renewedRows
+    .map((row) => [
+      row.nombre || 'Sin nombre',
+      row.closer || 'Sin closer',
+      formatDate(row.fecha_final),
+      formatDate(row.fecha_final_renovacion),
+      row.ghlid || '-'
+    ])
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[3]).localeCompare(String(b[3])) || String(a[0]).localeCompare(String(b[0]), 'es'));
+
   const operationalMetrics = [
     buildMetricRow({
       key: 'renewable_30d',
@@ -1048,7 +1399,9 @@ function buildRenewalsPage(rows, context = {}) {
       note: 'La ventana 30D se reconstruye por fecha final para no depender de flags desactualizados.',
       dateLabel: '"fecha_final" comparada contra hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 30 días inclusive.'
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 30 días inclusive.',
+      detailColumns,
+      detailRows: toDetailRows(renewable30Rows)
     }),
     buildMetricRow({
       key: 'renewable_15d',
@@ -1058,7 +1411,9 @@ function buildRenewalsPage(rows, context = {}) {
       note: 'La ventana 15D se reconstruye por fecha final para seguir la misma base que Notion.',
       dateLabel: '"fecha_final" comparada contra hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 15 días inclusive.'
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 15 días inclusive.',
+      detailColumns,
+      detailRows: toDetailRows(renewable15Rows)
     }),
     buildMetricRow({
       key: 'renewals_completed',
@@ -1068,7 +1423,21 @@ function buildRenewalsPage(rows, context = {}) {
       note: 'Cuenta renovaciones cerradas con fecha registrada.',
       dateLabel: '"fecha_final_renovacion"',
       fieldsLabel: '"fecha_final_renovacion"',
-      logic: 'Cuenta clientes con fecha válida en "fecha_final_renovacion".'
+      logic: 'Cuenta clientes con fecha válida en "fecha_final_renovacion".',
+      detailColumns: renewedDetailColumns,
+      detailRows: renewedDetailRows
+    }),
+    buildMetricRow({
+      key: 'renewals_overdue',
+      label: 'Clientes ya vencidos sin renovar',
+      value: formatInteger(overdueUnrenewedRows.length),
+      base: `${formatInteger(rows.length)} clientes totales`,
+      note: 'Detecta clientes cuya fecha final ya pasó y todavía no tienen fecha de renovación.',
+      dateLabel: '"fecha_final" menor a hoy',
+      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" ya quedó atrás.',
+      detailColumns,
+      detailRows: toDetailRows(overdueUnrenewedRows)
     }),
     buildMetricRow({
       key: 'renewal_rate',
@@ -1079,16 +1448,6 @@ function buildRenewalsPage(rows, context = {}) {
       dateLabel: 'Ventanas recalculadas por "fecha_final" y cierre de renovación',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
       logic: 'Calculo renovaciones concretadas sobre la base renovable más cercana a cierre: primero la ventana recalculada de 15 días y, si no hay base, la de 30 días.'
-    }),
-    buildMetricRow({
-      key: 'renewal_projection',
-      label: 'Proyeccion de renovaciones a 30 dias',
-      value: formatInteger(Math.round(projectedRenewals)),
-      base: `${formatInteger(renewable30Rows.length)} clientes en 30D`,
-      note: 'Aplico la tasa de renovación actual sobre la ventana 30D.',
-      dateLabel: 'Ventana 30D recalculada por "fecha_final"',
-      fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Multiplico la tasa actual de renovación por la cantidad de clientes no renovados cuya "fecha_final" cae dentro de los próximos 30 días.'
     })
   ];
 
@@ -1113,20 +1472,20 @@ function buildRenewalsPage(rows, context = {}) {
   return {
     metrics,
     tableMetrics: operationalMetrics,
-    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewal_rate'],
+    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewals_overdue', 'renewal_rate'],
     chart: {
       title: 'Embudo de Renovación',
-      description: 'Lectura rápida de la base renovable, cierres y proyección operativa.',
-      labels: ['30 dias', '15 dias', 'Renovadas', 'Proyeccion 30D'],
+      description: 'Lectura rápida de la base renovable, cierres y clientes vencidos sin renovar.',
+      labels: ['30 dias', '15 dias', 'Renovadas', 'Vencidas sin renovar'],
       datasets: [
         {
           label: 'Clientes',
-          data: [renewable30Rows.length, renewable15Rows.length, renewedRows.length, Math.round(projectedRenewals)],
+          data: [renewable30Rows.length, renewable15Rows.length, renewedRows.length, overdueUnrenewedRows.length],
           backgroundColor: [
             'rgba(37, 99, 235, 0.72)',
             'rgba(59, 130, 246, 0.72)',
             'rgba(16, 185, 129, 0.72)',
-            'rgba(245, 158, 11, 0.72)'
+            'rgba(239, 68, 68, 0.72)'
           ],
           borderRadius: 8
         }
@@ -1157,7 +1516,7 @@ async function initCsmPage() {
     status.textContent = 'Cargando metricas de CSM...';
 
     try {
-      const filters = pageKey === 'renovaciones' ? getRenewalFilters() : {};
+      const filters = pageKey === 'renovaciones' ? getRenewalFilters() : getCsmPeriodFilters();
 
       if (pageKey === 'renovaciones' && filters.from && filters.to && filters.from > filters.to) {
         status.textContent = 'La fecha desde no puede ser mayor a la fecha hasta.';
@@ -1170,7 +1529,16 @@ async function initCsmPage() {
           ? window.metricasApi.fetchAllRows('comprobantes', { limit: 1000 })
           : Promise.resolve({ rows: [] })
       ]);
-      const rows = enrichRows(csmResponse.rows || []);
+      const enrichedRows = enrichRows(csmResponse.rows || []);
+
+      if (pageKey !== 'renovaciones' && !csmPeriodFiltersInitialized) {
+        setupCsmPeriodFilters(enrichedRows);
+      }
+
+      const rows = pageKey === 'renovaciones'
+        ? enrichedRows
+        : filterRowsByPayAccessPeriod(enrichedRows, filters);
+
       const page = builder(rows, {
         comprobanteRows: comprobantesResponse.rows || [],
         filters
@@ -1178,9 +1546,9 @@ async function initCsmPage() {
       const infoMap = Object.fromEntries(page.metrics.map((metric) => [metric.key, metric.info]));
 
       renderKpiCards(page.metrics, page.kpiKeys, infoMap);
-      renderChart(page.chart);
+      renderChart(page.chart, infoMap);
       renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
-      renderSections(page.sections);
+      renderSections(page.sections, infoMap);
 
       if (pageKey === 'renovaciones') {
         const params = new URLSearchParams(window.location.search);
@@ -1189,7 +1557,11 @@ async function initCsmPage() {
         window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
         status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm" | rango monetario ${filters.from || 'sin desde'} a ${filters.to || 'sin hasta'}. Facturacion, pendiente y cantidad usan fecha de venta; cash usa fecha de acreditacion.`;
       } else {
-        status.textContent = '';
+        const params = new URLSearchParams(window.location.search);
+        params.set('anio', filters.year || '');
+        params.set('mes', filters.month || '');
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm" filtrados por "f_pago_con_acceso" en ${describeCsmPeriod(filters)}.`;
       }
     } catch (error) {
       document.getElementById('kpiContainer').innerHTML = '';
@@ -1203,6 +1575,10 @@ async function initCsmPage() {
     document.getElementById('reload')?.addEventListener('click', loadPage);
     document.getElementById('desde')?.addEventListener('change', loadPage);
     document.getElementById('hasta')?.addEventListener('change', loadPage);
+  } else {
+    document.getElementById('reload')?.addEventListener('click', loadPage);
+    document.getElementById('csmYear')?.addEventListener('change', loadPage);
+    document.getElementById('csmMonth')?.addEventListener('change', loadPage);
   }
 
   await loadPage();
