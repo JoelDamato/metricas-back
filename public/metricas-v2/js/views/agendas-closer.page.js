@@ -239,13 +239,19 @@ const AGENDA_CLOSER_ROW_INFO = {
     title: 'Costo por agenda',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_agenda"',
-    logic: 'Se calcula como "inversion_realizada" / total de agendas del período, tomando todas las agendas del filtro general aunque haya un closer seleccionado.'
+    logic: 'Agarra la inversión total de marketing y la divide por la cantidad total de agendas.'
   },
   costoAgendaCloser: {
     title: 'Costo total x closer',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_totales" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
-    logic: 'Se calcula como "costo por agenda" x "agendados" del closer en el período.'
+    logic: 'Agarra el costo por agenda y lo multiplica por la cantidad de agendas de ese closer.'
+  },
+  costoVentaCloser: {
+    title: 'Costo por venta',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_totales" + "agenda_detalle_por_origen_closer"',
+    dateLabel: 'Mixta: inversión por rango + ventas por "fecha_de_agendamiento"',
+    logic: 'Agarra el costo total por closer y lo divide por la cantidad de ventas.'
   }
 };
 
@@ -656,7 +662,8 @@ function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
     ccAgendasMes: acc.cash_collected_agendas_mes,
     inversionTotalMkt: investmentTotalMkt,
     costoAgenda,
-    costoAgendaCloser
+    costoAgendaCloser,
+    costoVentaCloser: safeDiv(costoAgendaCloser, ven)
   };
 }
 
@@ -733,6 +740,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
     { key: 'inversionTotalMkt', label: 'Inversión total en MKT', format: 'currency' },
     { key: 'costoAgenda', label: 'Costo por agenda', format: 'currency' },
     { key: 'costoAgendaCloser', label: 'Costo total x closer', format: 'currency' },
+    { key: 'costoVentaCloser', label: 'Costo por venta', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
     { key: 'pctCcne', label: '% CCNE', format: 'percent' },
