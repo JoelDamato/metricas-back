@@ -132,6 +132,12 @@ function getClientName(row) {
   ).trim();
 }
 
+function renderClientLink(row) {
+  const name = getClientName(row);
+  const ghlid = row?.ghlid || row?.ghl_id || '';
+  return window.metricasGhl?.renderContactCell(name, ghlid) || escapeHtml(name);
+}
+
 function createMonthBucket() {
   return {
     ventas: [],
@@ -307,7 +313,7 @@ function showDetailPopup({ section, rowDefinition, month, year, rows }) {
       <ol class="sales-analysis-detail-list">
         ${orderedRows.map((row) => `
           <li>
-            <strong>${escapeHtml(getClientName(row))}</strong>
+            ${renderClientLink(row)}
             <span class="sales-analysis-detail-meta">
               Producto: ${escapeHtml(row.producto_format || 'Sin producto')}
             </span>

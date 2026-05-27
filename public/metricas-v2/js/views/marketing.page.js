@@ -248,6 +248,12 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function renderLeadContactCell(row) {
+  const name = row?.nombre || 'Sin nombre';
+  const ghlid = row?.ghlid || row?.ghl_id || '';
+  return window.metricasGhl?.renderContactCell(name, ghlid) || escapeHtml(name);
+}
+
 function ensureMarketingViewStyles() {
   if (document.getElementById('marketingViewStyles')) return;
 
@@ -1412,7 +1418,7 @@ function renderTraceabilityTable(rows) {
   const body = orderedRows.map((row) => `
     <tr>
       <td>${formatDateLabel(row.fecha_agenda)}</td>
-      <td>${row.nombre || '-'}</td>
+      <td>${renderLeadContactCell(row)}</td>
       <td>${row.mail || '-'}</td>
       <td>${row.campaign || '-'}</td>
       <td>${row.adset || '-'}</td>

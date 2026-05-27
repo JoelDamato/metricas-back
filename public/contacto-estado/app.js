@@ -21,6 +21,12 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function buildGhlContactUrl(ghlId) {
+  const normalized = String(ghlId || '').trim();
+  if (!normalized) return '';
+  return `https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(normalized)}`;
+}
+
 function getInitials(name) {
   const parts = String(name || '')
     .trim()
@@ -93,6 +99,7 @@ function renderContact(contact) {
   const safeGhlId = escapeHtml(contact.ghlId || 'Sin dato');
   const safeEmail = escapeHtml(contact.email || 'Sin dato');
   const safePhone = escapeHtml(contact.telefono || 'Sin dato');
+  const ghlUrl = buildGhlContactUrl(contact.ghlId);
   container.innerHTML = `
     <article class="contact-card">
       <div class="card-hero">
@@ -101,6 +108,7 @@ function renderContact(contact) {
           <p class="card-kicker">Ficha resumida</p>
           <h2>${safeName}</h2>
           <p class="card-subcopy">Resumen principal del contacto para compartir de forma simple y rápida.</p>
+          ${ghlUrl ? `<p class="card-subcopy"><a class="metricas-ghl-link" href="${ghlUrl}" target="_blank" rel="noopener noreferrer">Ver GHL</a></p>` : ''}
         </div>
         <span class="status-pill ${statusTone}">${safeStatus}</span>
       </div>

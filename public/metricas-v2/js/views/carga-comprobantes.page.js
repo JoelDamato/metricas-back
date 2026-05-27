@@ -224,8 +224,9 @@
       return;
     }
 
+    const clientCard = window.metricasGhl?.renderContactCell(client.nombre || 'Sin nombre', client.ghlid || '') || `<strong>${escapeHtml(client.nombre || 'Sin nombre')}</strong>`;
     refs.clientSummary.innerHTML = `
-      <strong>${escapeHtml(client.nombre || 'Sin nombre')}</strong>
+      ${clientCard}
       <span>Mail: ${escapeHtml(client.mail || '-')}</span>
       <span>Teléfono: ${escapeHtml(client.telefono || '-')}</span>
       <span>Etapa: ${escapeHtml(client.etapa || '-')}</span>
@@ -385,7 +386,11 @@
 
   function previewRowsFromPayload(payload) {
     const rows = [
-      ['Cliente', payload.clientName || '-'],
+      ['Cliente', {
+        type: 'ghl-contact',
+        label: payload.clientName || '-',
+        ghlid: payload.ghlId || ''
+      }],
       ['GHL ID', payload.ghlId || '-'],
       ['Page ID CRM 2.0', payload.clientPageId || '-'],
       ['Identificador', payload.identificador || '-'],
@@ -443,7 +448,9 @@
       .map(([label, value]) => `
         <article class="carga-preview-item">
           <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
+          ${value && typeof value === 'object' && value.type === 'ghl-contact'
+            ? (window.metricasGhl?.renderContactCell(value.label, value.ghlid) || `<strong>${escapeHtml(value.label)}</strong>`)
+            : `<strong>${escapeHtml(value)}</strong>`}
         </article>
       `)
       .join('');

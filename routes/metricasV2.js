@@ -33,5 +33,6 @@ router.get('/comprobantes-loader/bootstrap', controller.getComprobantesLoaderBoo
 router.get('/comprobantes-loader/cliente', controller.lookupComprobantesLoaderClient);
 router.post('/comprobantes-loader', controller.createComprobanteManual);
 router.post('/assistant/ask', controller.askAssistant);
+router.post('/closers/personal-report', controller.generateCloserPersonalReport);
 
 module.exports = router;

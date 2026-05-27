@@ -180,6 +180,10 @@ async function createComprobanteManual(payload = {}) {
   return window.http.postJson('/api/metricas/comprobantes-loader', payload);
 }
 
+async function generateCloserPersonalReport(payload = {}) {
+  return window.http.postJson('/api/metricas/closers/personal-report', payload);
+}
+
 window.metricasApi = {
   fetchViews,
   fetchRows,
@@ -209,5 +213,6 @@ window.metricasApi = {
   fetchAllRows,
   fetchComprobantesLoaderBootstrap,
   lookupComprobantesLoaderClient,
-  createComprobanteManual
+  createComprobanteManual,
+  generateCloserPersonalReport
 };

@@ -1,6 +1,8 @@
 const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
 const comprobantesLoaderService = require('../services/comprobantes-loader.service');
+const closerPersonalReportService = require('../services/closer-personal-report.service');
+const access = require('../../auth/access');
 
 async function health(req, res) {
   res.json({
@@ -425,6 +427,28 @@ async function createComprobanteManual(req, res, next) {
   }
 }
 
+async function generateCloserPersonalReport(req, res, next) {
+  try {
+    if (!access.canGenerateCloserAiReportForUser(req.authUser)) {
+      const error = new Error('No tenés permiso para generar reportes de closers con GPT');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const report = await closerPersonalReportService.generateCloserPersonalReport({
+      closer: req.body?.closer,
+      month: req.body?.month
+    });
+
+    res.json({
+      ok: true,
+      report
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
   getResources,
@@ -451,5 +475,6 @@ module.exports = {
   askAssistant,
   getComprobantesLoaderBootstrap,
   lookupComprobantesLoaderClient,
-  createComprobanteManual
+  createComprobanteManual,
+  generateCloserPersonalReport
 };

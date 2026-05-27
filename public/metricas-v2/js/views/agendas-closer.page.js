@@ -1,4 +1,5 @@
 const RESOURCE = 'agenda_detalle_por_origen_closer';
+const TOTALS_RESOURCE = 'agenda_totales';
 const CASH_FIELDS = [
   'cash_collected_real_mes',
   'cash_collected_otros_meses',
@@ -227,6 +228,24 @@ const AGENDA_CLOSER_ROW_INFO = {
     viewLabel: '"agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: "f_acreditacion" igual al mes de "fecha_de_agendamiento"',
     logic: 'Muestra "cash_collected_agendas_mes". Toma cash acreditado solo cuando el mes de agenda coincide con el mes acreditado.'
+  },
+  inversionTotalMkt: {
+    title: 'Inversión total en MKT',
+    viewLabel: 'Endpoint "marketing/inversion" sobre "kpi_marketing_inversiones"',
+    dateLabel: 'Rango del período seleccionado',
+    logic: 'Suma "inversion_realizada" para el período mensual o anual filtrado. Si hay origen seleccionado, también filtra por ese origen.'
+  },
+  costoAgenda: {
+    title: 'Costo por agenda',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
+    dateLabel: 'Mixta: inversión por rango + agendas por "fecha_agenda"',
+    logic: 'Se calcula como "inversion_realizada" / "total_agendados" dentro del mismo período.'
+  },
+  costoVentaCloser: {
+    title: 'Costo por venta del closer',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
+    dateLabel: 'Mixta: inversión por rango + ventas por "fecha_de_agendamiento"',
+    logic: 'Se calcula como "costo agenda x closer" / "ventas" del período.'
   }
 };
 
@@ -259,8 +278,6 @@ const SUM_FIELDS = [
   'cash_collected_otros_meses',
   'cash_collected_agendas_mes'
 ];
-
-let estrategiaField = null;
 
 function showMetricInfo(info) {
   if (!info) return;
@@ -394,27 +411,15 @@ function setOptions(selectId, options, selectedValue, includeAll = false) {
   }
 }
 
-function disableEstrategiaFilter() {
-  const select = document.getElementById('estrategia');
-  select.innerHTML = '<option value="">No disponible en esta vista</option>';
-  select.disabled = true;
-}
-
 function uniqueValues(rows, key) {
   return [...new Set(rows.map((row) => row[key]).filter((v) => v !== null && v !== undefined && v !== ''))]
     .sort((a, b) => String(a).localeCompare(String(b)));
-}
-
-function detectEstrategiaField(rows) {
-  const candidates = ['estrategia_a', 'estrategia', 'strategy'];
-  return candidates.find((field) => rows.some((row) => Object.prototype.hasOwnProperty.call(row, field))) || null;
 }
 
 function getFilters() {
   return {
     anio: document.getElementById('anio').value,
     origen: document.getElementById('origen').value,
-    estrategia: document.getElementById('estrategia').value,
     closer: document.getElementById('closer').value
   };
 }
@@ -452,9 +457,6 @@ function applyLocalFilters(rows, filters) {
   return (rows || []).filter((row) => {
     if (filters.origen && normalizeText(row.origen) !== normalizeText(filters.origen)) return false;
     if (filters.closer && normalizeText(row.closer) !== normalizeText(filters.closer)) return false;
-    if (filters.estrategia && estrategiaField) {
-      if (normalizeText(row[estrategiaField]) !== normalizeText(filters.estrategia)) return false;
-    }
     return true;
   });
 }
@@ -503,7 +505,6 @@ async function fetchAovDia1ForFilters(range, filters) {
   const baseOptions = {
     from: range.from,
     to: range.to,
-    estrategia: filters.estrategia || undefined,
     closer: filters.closer || undefined
   };
 
@@ -515,6 +516,19 @@ async function fetchAovDia1ForFilters(range, filters) {
     ...baseOptions,
     origen: filters.origen
   });
+}
+
+async function fetchInvestmentForFilters(range, filters) {
+  const options = {
+    from: range.from,
+    to: range.to
+  };
+
+  if (filters.origen) {
+    options.origen = filters.origen;
+  }
+
+  return window.metricasApi.fetchMarketingInvestment(options);
 }
 
 function emptyAccumulator() {
@@ -574,7 +588,7 @@ function aggregateByMonth(rows, year) {
   return { byMonth, totals };
 }
 
-function metricRowsFor(acc) {
+function metricRowsFor(acc, investmentTotalMkt = 0) {
   const ag = acc.total_agendados;
   const apl = acc.total_aplica;
   const resp = acc.total_respondio;
@@ -587,6 +601,7 @@ function metricRowsFor(acc) {
   const fact = acc.facturacion_total_mes;
   const ccne = acc.ccne;
   const cce = acc.cce;
+  const costoAgenda = safeDiv(investmentTotalMkt, ag);
 
   return {
     agendados: ag,
@@ -637,7 +652,10 @@ function metricRowsFor(acc) {
     factAgenda: acc.facturacion_f_agenda,
     ccRealMes: acc.cash_collected_real_mes,
     ccOtrosMeses: acc.cash_collected_otros_meses,
-    ccAgendasMes: acc.cash_collected_agendas_mes
+    ccAgendasMes: acc.cash_collected_agendas_mes,
+    inversionTotalMkt: investmentTotalMkt,
+    costoAgenda,
+    costoVentaCloser: safeDiv(investmentTotalMkt, ven)
   };
 }
 
@@ -661,7 +679,7 @@ function buildExecutionMetricGroups(metrics) {
     .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
-function buildMatrixTable(rows, filters, aovDia1Data = {}) {
+function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}) {
   const container = document.getElementById('tableContainer');
   const currentMonth = new Date().getMonth() + 1;
   const selectedYear = Number(filters?.anio);
@@ -673,12 +691,15 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}) {
 
   const { byMonth, totals } = aggregateByMonth(rows, selectedYear);
   const months = MONTHS.map((month) => month.value);
-  const totalMetrics = metricRowsFor(totals);
+  const totalMetrics = metricRowsFor(totals, Number(investmentData.total || 0));
   totalMetrics.aovDia1 = Number(aovDia1Data.total || 0);
 
   const monthMetricsMap = new Map();
   months.forEach((month) => {
-    const monthMetrics = metricRowsFor(byMonth.get(month) || emptyAccumulator());
+    const monthMetrics = metricRowsFor(
+      byMonth.get(month) || emptyAccumulator(),
+      Number(investmentData.byMonth?.[month] || 0)
+    );
     monthMetrics.aovDia1 = Number(aovDia1Data.byMonth?.[month] || 0);
     monthMetricsMap.set(month, monthMetrics);
   });
@@ -703,6 +724,9 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}) {
     { key: 'paidUpfront', label: 'Paid Upfront', format: 'currency' },
     { key: 'pctPaidUpfront', label: '% Paid Upfront', format: 'percent' },
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
+    { key: 'inversionTotalMkt', label: 'Inversión total en MKT', format: 'currency' },
+    { key: 'costoAgenda', label: 'Costo por agenda', format: 'currency' },
+    { key: 'costoVentaCloser', label: 'Costo por venta del closer', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
     { key: 'pctCcne', label: '% CCNE', format: 'percent' },
@@ -880,8 +904,8 @@ async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones de filtros...';
 
-  const response = await window.metricasApi.fetchRows(RESOURCE, {
-    limit: 2000,
+  const response = await window.metricasApi.fetchAllRows(RESOURCE, {
+    limit: 1000,
     orderBy: 'anio',
     orderDir: 'desc'
   });
@@ -895,20 +919,10 @@ async function initFilters() {
   const origenes = uniqueValues(rows, 'origen');
   const closers = uniqueValues(rows, 'closer');
 
-  estrategiaField = detectEstrategiaField(rows);
-
   const defaultYear = years.includes(current.year) ? current.year : years[0];
   setOptions('anio', years, defaultYear);
   setOptions('origen', origenes, '', true);
   setOptions('closer', closers, '', true);
-
-  if (estrategiaField) {
-    const estrategias = uniqueValues(rows, estrategiaField);
-    setOptions('estrategia', estrategias, '', true);
-    document.getElementById('estrategia').disabled = false;
-  } else {
-    disableEstrategiaFilter();
-  }
 }
 
 async function loadAgendaCloser() {
@@ -924,30 +938,53 @@ async function loadAgendaCloser() {
     }
 
     const query = {
-      limit: 2000,
+      limit: 1000,
       orderBy: 'mes',
       orderDir: 'asc',
       eq_anio: selectedYear
     };
 
     if (filters.origen) query.eq_origen = filters.origen;
-    if (filters.estrategia && estrategiaField) {
-      query[`eq_${estrategiaField}`] = filters.estrategia;
-    }
+    if (filters.closer) query.eq_closer = filters.closer;
 
     const yearRange = getYearRange(selectedYear);
     const aovRequests = MONTHS.map((month) => fetchAovDia1ForFilters(getMonthRange(selectedYear, month.value), filters));
+    const investmentRequests = MONTHS.map((month) => fetchInvestmentForFilters(getMonthRange(selectedYear, month.value), filters));
+    const totalsQuery = {
+      limit: 1000,
+      orderBy: 'mes',
+      orderDir: 'asc',
+      eq_anio: selectedYear
+    };
 
-    const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
-      window.metricasApi.fetchRows(RESOURCE, query),
+    const responses = await Promise.all([
+      window.metricasApi.fetchAllRows(RESOURCE, query),
       fetchAovDia1ForFilters(yearRange, filters),
-      ...aovRequests
+      ...aovRequests,
+      fetchInvestmentForFilters(yearRange, filters),
+      ...investmentRequests,
+      !filters.closer
+        ? window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
+        : Promise.resolve(null)
     ]);
+
+    const response = responses[0];
+    const totalAovDia1Response = responses[1];
+    const monthAovResponses = responses.slice(2, 2 + MONTHS.length);
+    const totalInvestmentResponse = responses[2 + MONTHS.length];
+    const monthInvestmentResponses = responses.slice(3 + MONTHS.length);
+    const totalsResponse = responses[3 + (MONTHS.length * 2)];
 
     const rows = applyLocalFilters(
       sanitizeRowsForYear(normalizeCloserRows(response.rows || []), selectedYear),
       filters
     );
+    const totalsRows = !filters.closer && totalsResponse
+      ? applyLocalFilters(
+          sanitizeRowsForYear(totalsResponse.rows || [], selectedYear),
+          filters
+        )
+      : rows;
 
     const aovDia1Data = {
       total: Number(totalAovDia1Response?.aovDia1 || 0),
@@ -957,9 +994,17 @@ async function loadAgendaCloser() {
       }, {})
     };
 
-    buildKpis(rows);
-    buildMatrixTable(rows, filters, aovDia1Data);
-    status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ' | origen Todos'}${filters.closer ? ` | closer ${filters.closer}` : ' | closer Todos'}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
+    const investmentData = {
+      total: Number(totalInvestmentResponse?.investment?.inversion_realizada || 0),
+      byMonth: MONTHS.reduce((acc, month, index) => {
+        acc[month.value] = Number(monthInvestmentResponses[index]?.investment?.inversion_realizada || 0);
+        return acc;
+      }, {})
+    };
+
+    buildKpis(totalsRows);
+    buildMatrixTable(totalsRows, filters, aovDia1Data, investmentData);
+    status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ' | origen Todos'}${filters.closer ? ` | closer ${filters.closer}` : ' | closer Todos'}`;
   } catch (error) {
     status.textContent = error.message;
   }

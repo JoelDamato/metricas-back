@@ -199,6 +199,7 @@ function mapToSupabase(payload) {
     pago_a_onbo: getValue(p['Pago a onbo']),
     pago_a_diagnostico: getValue(p['Pago a diagnostico']) ?? getValue(p['Pago a Diagnostico']),
     diagnostico_7dias: getValue(p['Diagnostico en 7 dias']),
+    f_diagnostico: getValue(p['F.Diagnostico']) ?? getValue(p['F Diagnostico']) ?? getValue(p['F. Diagnostico']),
     proximo_renovar_15d: getValue(p['Proximo a renovar 15D']),
     proximo_renovar_30d: getValue(p['Proximo a renovar 30D']),
     f_acceso: getValue(p['F. acceso']),

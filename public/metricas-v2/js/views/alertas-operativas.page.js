@@ -122,6 +122,21 @@
     return normalizeText(row?.abandono).includes('abandono');
   }
 
+  function createContactCell(label, ghlid) {
+    return {
+      type: 'ghl-contact',
+      label: label || 'Sin nombre',
+      ghlid: ghlid || ''
+    };
+  }
+
+  function renderPopupCell(cell) {
+    if (cell && typeof cell === 'object' && cell.type === 'ghl-contact') {
+      return window.metricasGhl?.renderContactCell(cell.label, cell.ghlid) || escapeHtml(cell.label);
+    }
+    return escapeHtml(cell);
+  }
+
   function buildPopup(alert) {
     const existing = document.getElementById('alertasOperativasPopup');
     if (existing) existing.remove();
@@ -138,7 +153,7 @@
               </thead>
               <tbody>
                 ${alert.rows.map((row) => `
-                  <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>
+                  <tr>${row.map((cell) => `<td>${renderPopupCell(cell)}</td>`).join('')}</tr>
                 `).join('')}
               </tbody>
             </table>
@@ -201,7 +216,7 @@
     return (rows || []).map((row) => {
       const payDate = parseDateAsLocalDay(row.f_pago_con_acceso || row.f_acceso);
       const onboardingDateRaw = parseDateAsLocalDay(row.f_onboarding);
-      const diagnosisDateRaw = parseDateAsLocalDay(row.modulo_1);
+      const diagnosisDateRaw = parseDateAsLocalDay(row.f_diagnostico || row.modulo_1);
 
       const onboardingDate = (payDate && onboardingDateRaw && onboardingDateRaw < payDate) ? null : onboardingDateRaw;
       const diagnosisDate = (payDate && diagnosisDateRaw && diagnosisDateRaw < payDate) ? null : diagnosisDateRaw;
@@ -254,6 +269,7 @@
       .filter((row) => !row.onboardingDate)
       .map((row) => ({
         nombre: row.nombre || 'Sin nombre',
+        ghlid: row.ghlid || '',
         payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
         elapsedDays: daysBetween(row.payDate, today),
         modelo: row.modelo_negocio || '-'
@@ -264,6 +280,7 @@
       .filter((row) => !row.diagnosisDate)
       .map((row) => ({
         nombre: row.nombre || 'Sin nombre',
+        ghlid: row.ghlid || '',
         payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
         elapsedDays: daysBetween(row.payDate, today),
         onboardingDate: toDateOnly(row.f_onboarding || '')
@@ -408,7 +425,7 @@
         columns: ['Closer', 'Cliente', 'GHL ID', 'F. agenda', 'F. llamada', 'Setter', 'Origen', 'Estrategia', 'Estado'],
         rows: agendaPendingRows.map((row) => [
           row.closer,
-          row.cliente,
+          createContactCell(row.cliente, row.ghlid),
           row.ghlid,
           formatDate(row.fechaAgenda),
           formatDate(row.fechaLlamada),
@@ -429,7 +446,7 @@
         fieldsLabel: '"f_pago_con_acceso", "f_acceso", "f_onboarding"',
         logic: 'Entra todo cliente activo con fecha de ingreso y sin fecha de onboarding. Ordena por días transcurridos desde el ingreso.',
         columns: ['Cliente', 'Pago con acceso', 'Días desde ingreso', 'Modelo'],
-        rows: noOnboardingRows.map((row) => [row.nombre, formatDate(row.payDate), formatDays(row.elapsedDays), row.modelo]),
+        rows: noOnboardingRows.map((row) => [createContactCell(row.nombre, row.ghlid), formatDate(row.payDate), formatDays(row.elapsedDays), row.modelo]),
         emptyText: 'No hay clientes pendientes de onboarding.'
       },
       {
@@ -442,7 +459,7 @@
         fieldsLabel: '"f_pago_con_acceso", "f_acceso", "modulo_1"',
         logic: 'Cuenta clientes activos que todavía no hicieron la sesión diagnóstico y ya superaron 7 días desde su ingreso.',
         columns: ['Cliente', 'Pago con acceso', 'Días desde ingreso', 'Onboarding'],
-        rows: diagnosisOver7Rows.map((row) => [row.nombre, formatDate(row.payDate), formatDays(row.elapsedDays), formatDate(row.onboardingDate)]),
+        rows: diagnosisOver7Rows.map((row) => [createContactCell(row.nombre, row.ghlid), formatDate(row.payDate), formatDays(row.elapsedDays), formatDate(row.onboardingDate)]),
         emptyText: 'No hay clientes atrasados en diagnóstico.'
       },
       {
@@ -603,7 +620,7 @@
     try {
       const [csmData, comprobantesData, leadsData] = await Promise.all([
         window.metricasApi.fetchAllRows('csm', {
-          select: 'nombre,abandono,f_pago_con_acceso,f_acceso,f_onboarding,modulo_1,modelo_negocio'
+          select: 'nombre,ghlid,abandono,f_pago_con_acceso,f_acceso,f_onboarding,f_diagnostico,modulo_1,modelo_negocio'
         }),
         window.metricasApi.fetchAllRows('comprobantes', {
           select: 'creado_por,estado,tipo,producto_format,f_venta,f_acreditacion,facturacion,cash_collected_total,cash_collected,ghlid'

@@ -342,6 +342,21 @@ function buildMetricRow({ key, label, value, base, fieldsLabel, logic, detailCol
   };
 }
 
+function createContactCell(label, ghlid) {
+  return {
+    type: 'ghl-contact',
+    label: label || 'Sin nombre',
+    ghlid: ghlid || ''
+  };
+}
+
+function renderDetailCell(cell) {
+  if (cell && typeof cell === 'object' && cell.type === 'ghl-contact') {
+    return window.metricasGhl?.renderContactCell(cell.label, cell.ghlid) || escapeHtml(cell.label);
+  }
+  return escapeHtml(cell);
+}
+
 function showMetricInfo(info) {
   if (!info) return;
 
@@ -360,7 +375,7 @@ function showMetricInfo(info) {
             </thead>
             <tbody>
               ${info.detailRows.map((row) => `
-                <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>
+                <tr>${row.map((cell) => `<td>${renderDetailCell(cell)}</td>`).join('')}</tr>
               `).join('')}
             </tbody>
           </table>
@@ -445,12 +460,18 @@ function enrichRows(rows) {
     const accessDate = parseDate(row.f_acceso);
     const payAccessDate = parseDate(row.f_pago_con_acceso);
     const onboardingDateRaw = parseDate(row.f_onboarding);
+    const diagnosisDateRaw = parseDate(row.f_diagnostico || row.modulo_1);
     const payReferenceDate = payAccessDate || accessDate;
     const onboardingDate = (
       onboardingDateRaw instanceof Date
       && payReferenceDate instanceof Date
       && onboardingDateRaw.getTime() < payReferenceDate.getTime()
     ) ? null : onboardingDateRaw;
+    const diagnosisDate = (
+      diagnosisDateRaw instanceof Date
+      && onboardingDate instanceof Date
+      && diagnosisDateRaw.getTime() < onboardingDate.getTime()
+    ) ? null : diagnosisDateRaw;
     const moduleDates = discardDatesBeforeReference(rawModuleDates, payReferenceDate || onboardingDate || null);
     const firstResultDate = parseDate(row.f_primer_resultado);
     const successDate = parseDate(row.caso_de_exito);
@@ -478,6 +499,7 @@ function enrichRows(rows) {
       payToOnboardingSource: 'pago_a_onbo',
       payToDiagnosisMetric,
       diagnosisUnder7Flag,
+      diagnosisDate,
       successDate,
       abandonDate,
       finalDate,
@@ -641,6 +663,7 @@ function buildTimePage(rows) {
     .filter((row) => row.payToOnboardingMetric !== null && Number.isFinite(row.payToOnboardingMetric))
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
+      ghlid: row.ghlid || '',
       value: row.payToOnboardingMetric,
       payDate: toDateOnly(row.payReferenceDate),
       onboardingDate: toDateOnly(row.f_onboarding || ''),
@@ -654,31 +677,20 @@ function buildTimePage(rows) {
     .filter((row) => row.payToDiagnosisMetric !== null && Number.isFinite(row.payToDiagnosisMetric))
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
+      ghlid: row.ghlid || '',
       value: row.payToDiagnosisMetric,
       payDate: toDateOnly(row.payReferenceDate),
-      diagnosisDate: toDateOnly(row.modulo_1 || row.f_onboarding || ''),
+      diagnosisDate: toDateOnly(row.diagnosisDate),
       source: row.payAccessDate ? 'f_pago_con_acceso' : row.accessDate ? 'f_acceso' : 'notion_field'
     }))
     .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
   const payToDiagnosis = payToDiagnosisRows
     .map((row) => row.value)
     .filter((value) => value !== null && Number.isFinite(value));
-  const onboardingToDiagnosisRows = activeProgramRows
-    .map((row) => ({
-      nombre: row.nombre || 'Sin nombre',
-      value: daysBetween(row.onboardingDate, row.moduleDates[0]),
-      onboardingDate: toDateOnly(row.f_onboarding || ''),
-      diagnosisDate: toDateOnly(row.modulo_1 || '')
-    }))
-    .filter((row) => row.value !== null && Number.isFinite(row.value) && row.value >= 0)
-    .sort((a, b) => a.value - b.value || a.nombre.localeCompare(b.nombre));
-  const onboardingToDiagnosis = onboardingToDiagnosisRows
-    .map((row) => row.value)
-    .filter((value) => value !== null && Number.isFinite(value));
   const diagnosisUnder7Rows = activeProgramRows
     .map((row) => {
-      const elapsedDays = row.payReferenceDate && row.moduleDates[0]
-        ? daysBetween(row.payReferenceDate, row.moduleDates[0])
+      const elapsedDays = row.payReferenceDate && row.diagnosisDate
+        ? daysBetween(row.payReferenceDate, row.diagnosisDate)
         : row.payToDiagnosisMetric;
 
       const normalizedElapsed = elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null;
@@ -686,8 +698,9 @@ function buildTimePage(rows) {
 
       return {
         nombre: row.nombre || 'Sin nombre',
+        ghlid: row.ghlid || '',
         elapsedDays: normalizedElapsed,
-        diagnosisDate: toDateOnly(row.modulo_1 || ''),
+        diagnosisDate: toDateOnly(row.diagnosisDate),
         payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || '')
       };
     })
@@ -699,8 +712,8 @@ function buildTimePage(rows) {
   const diagnosisOver7Rows = activeProgramRows
     .map((row) => {
       const elapsedDays = row.payReferenceDate
-        ? (row.moduleDates[0]
-          ? daysBetween(row.payReferenceDate, row.moduleDates[0])
+        ? (row.diagnosisDate
+          ? daysBetween(row.payReferenceDate, row.diagnosisDate)
           : daysBetween(row.payReferenceDate, new Date()))
         : null;
 
@@ -709,9 +722,10 @@ function buildTimePage(rows) {
 
       return {
         nombre: row.nombre || 'Sin nombre',
+        ghlid: row.ghlid || '',
         elapsedDays: normalizedElapsed,
-        status: row.moduleDates[0] ? 'Ya la hizo' : 'Aun no',
-        diagnosisDate: toDateOnly(row.modulo_1 || ''),
+        status: row.diagnosisDate ? 'Ya la hizo' : 'Aun no',
+        diagnosisDate: toDateOnly(row.diagnosisDate),
         payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || '')
       };
     })
@@ -725,6 +739,7 @@ function buildTimePage(rows) {
       const elapsedDays = daysBetween(row.payReferenceDate, new Date());
       return {
         nombre: row.nombre || 'Sin nombre',
+        ghlid: row.ghlid || '',
         payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
         elapsedDays: elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null
       };
@@ -734,6 +749,7 @@ function buildTimePage(rows) {
   const onboardingToFirstResultRows = activeProgramRows
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
+      ghlid: row.ghlid || '',
       value: daysBetween(row.onboardingDate, row.firstResultDate),
       onboardingDate: toDateOnly(row.f_onboarding || ''),
       firstResultDate: toDateOnly(row.f_primer_resultado || '')
@@ -743,6 +759,7 @@ function buildTimePage(rows) {
   const onboardingToSuccessRows = activeProgramRows
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
+      ghlid: row.ghlid || '',
       value: daysBetween(row.onboardingDate, row.successDate),
       onboardingDate: toDateOnly(row.f_onboarding || ''),
       successDate: toDateOnly(row.caso_de_exito || '')
@@ -752,6 +769,7 @@ function buildTimePage(rows) {
   const entryToModule7Rows = activeProgramRows
     .map((row) => ({
       nombre: row.nombre || 'Sin nombre',
+      ghlid: row.ghlid || '',
       value: daysBetween(row.payReferenceDate, row.moduleDates[6]),
       payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
       module7Date: toDateOnly(row.modulo_7 || '')
@@ -788,9 +806,9 @@ function buildTimePage(rows) {
         const value = daysBetween(previous, current);
         return value !== null && Number.isFinite(value) && value >= 0 ? formatDays(value) : '-';
       });
-      return [row.nombre || 'Sin nombre', ...unitValues];
+      return [createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''), ...unitValues];
     })
-    .sort((a, b) => a[0].localeCompare(b[0]));
+    .sort((a, b) => String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const diagnosticUnder7 = diagnosisUnder7Rows.length;
   const diagnosticUnder7Base = activeProgramRows.filter((row) => row.payReferenceDate).length;
@@ -807,20 +825,7 @@ function buildTimePage(rows) {
       logic: 'Promedio del campo "pago_a_onbo".',
       detailColumns: ['Cliente', 'Pago a onbo'],
       detailRows: payToOnboardingRows.map((row) => [
-        row.nombre,
-        formatDays(row.value)
-      ])
-    }),
-    buildMetricRow({
-      key: 'onboarding_to_diagnosis',
-      label: 'Tiempo promedio desde onboarding a sesión diagnóstico',
-      value: formatDays(average(onboardingToDiagnosis)),
-      base: `${formatInteger(onboardingToDiagnosis.length)} clientes con "f_onboarding" y "modulo_1"`,
-      fieldsLabel: '"f_onboarding", "modulo_1"',
-      logic: 'Promedio de días entre onboarding y la sesión diagnóstico.',
-      detailColumns: ['Cliente', 'Onboarding a diagnóstico'],
-      detailRows: onboardingToDiagnosisRows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.value)
       ])
     }),
@@ -833,7 +838,7 @@ function buildTimePage(rows) {
       logic: 'Promedio del campo "pago_a_diagnostico".',
       detailColumns: ['Cliente', 'Pago a diagnóstico'],
       detailRows: payToDiagnosisRows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.value)
       ])
     }),
@@ -846,7 +851,7 @@ function buildTimePage(rows) {
       logic: 'Cantidad de clientes que hicieron la sesión diagnóstico dentro de los primeros 7 días desde su ingreso.',
       detailColumns: ['Cliente', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
       detailRows: diagnosisUnder7Rows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.elapsedDays),
         row.payDate || '-',
         row.diagnosisDate || '-'
@@ -861,7 +866,7 @@ function buildTimePage(rows) {
       logic: 'Cantidad de clientes que tardaron más de 7 días en llegar a la sesión diagnóstico. Si todavía no la hicieron, también se listan cuando ya superaron los 7 días desde el ingreso.',
       detailColumns: ['Cliente', 'Estado', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
       detailRows: diagnosisOver7Rows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         row.status,
         formatDays(row.elapsedDays),
         row.payDate || '-',
@@ -877,7 +882,7 @@ function buildTimePage(rows) {
       logic: 'Cuenta clientes del mes filtrado por ingreso que todavía no tienen onboarding cargado.',
       detailColumns: ['Cliente', 'Pago con acceso', 'Días desde ingreso'],
       detailRows: pendingOnboardingRows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         row.payDate || '-',
         row.elapsedDays !== null ? formatDays(row.elapsedDays) : '-'
       ])
@@ -891,7 +896,7 @@ function buildTimePage(rows) {
       logic: 'Promedio de días entre onboarding y primer resultado.',
       detailColumns: ['Cliente', 'Tiempo a primer resultado'],
       detailRows: onboardingToFirstResultRows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.value)
       ])
     }),
@@ -904,7 +909,7 @@ function buildTimePage(rows) {
       logic: 'Promedio de días entre onboarding y caso de éxito.',
       detailColumns: ['Cliente', 'Tiempo a caso de éxito'],
       detailRows: onboardingToSuccessRows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.value)
       ])
     }),
@@ -927,7 +932,7 @@ function buildTimePage(rows) {
       logic: 'Promedio de días entre el ingreso y la llegada al módulo 7.',
       detailColumns: ['Cliente', 'Ingreso a módulo 7', 'Ingreso', 'Módulo 7'],
       detailRows: entryToModule7Rows.map((row) => [
-        row.nombre,
+        createContactCell(row.nombre, row.ghlid),
         formatDays(row.value),
         row.payDate || '-',
         row.module7Date || '-'
@@ -980,7 +985,7 @@ function buildTimePage(rows) {
 
   return {
     metrics,
-    kpiKeys: ['pay_to_onboarding', 'onboarding_to_diagnosis', 'pay_to_diagnosis', 'diagnosis_under_7', 'diagnosis_over_7', 'pending_onboarding_diagnosis'],
+    kpiKeys: ['pay_to_onboarding', 'pay_to_diagnosis', 'diagnosis_under_7', 'diagnosis_over_7', 'pending_onboarding_diagnosis'],
     chart: {
       title: 'Tiempo Promedio por Unidad',
       description: 'Promedio de días entre el hito anterior y la unidad registrada.',
@@ -1370,25 +1375,25 @@ function buildRenewalsPage(rows, context = {}) {
     .map((row) => {
       const daysToRenewal = calendarDaysUntil(row.fecha_final);
       return [
-        row.nombre || 'Sin nombre',
+        createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
         row.closer || 'Sin closer',
         formatDate(row.fecha_final),
         daysToRenewal === null ? '-' : formatInteger(daysToRenewal),
         row.ghlid || '-'
       ];
     })
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[2]).localeCompare(String(b[2])) || String(a[0]).localeCompare(String(b[0]), 'es'));
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[2]).localeCompare(String(b[2])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const renewedDetailColumns = ['Cliente', 'Closer', 'Fecha final', 'Fecha renovacion', 'GHL ID'];
   const renewedDetailRows = renewedRows
     .map((row) => [
-      row.nombre || 'Sin nombre',
+      createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
       row.closer || 'Sin closer',
       formatDate(row.fecha_final),
       formatDate(row.fecha_final_renovacion),
       row.ghlid || '-'
     ])
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[3]).localeCompare(String(b[3])) || String(a[0]).localeCompare(String(b[0]), 'es'));
+    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[3]).localeCompare(String(b[3])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const operationalMetrics = [
     buildMetricRow({

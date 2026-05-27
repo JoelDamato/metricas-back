@@ -79,6 +79,11 @@ const REPORTES_PREMIO_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com'
 ]);
 
+const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
+  'leonardoalaniz19@gmail.com',
+  'matirandazzo@gmail.com'
+]);
+
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/metricas/views/setting.html',
@@ -165,6 +170,11 @@ function isCsmOnlyUser(userOrEmail) {
 function canEditReportesPremioForUser(user) {
   const email = normalizeEmail(user?.email);
   return user?.role === 'total' || REPORTES_PREMIO_EDITOR_EMAILS.has(email);
+}
+
+function canGenerateCloserAiReportForUser(user) {
+  const email = normalizeEmail(user?.email);
+  return user?.role === 'total' || CLOSER_AI_REPORT_EDITOR_EMAILS.has(email);
 }
 
 function hasRoleAccess(allowedRoles, role) {
@@ -262,7 +272,8 @@ function getUserPermissions(user) {
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
     canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
-    canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' })
+    canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' }),
+    canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user)
   };
 }
 
@@ -279,6 +290,7 @@ module.exports = {
   isRestrictedCommercialUser,
   isCsmOnlyUser,
   canEditReportesPremioForUser,
+  canGenerateCloserAiReportForUser,
   canAccessPage,
   canAccessResource,
   canAccessFeature,

@@ -1,4 +1,54 @@
 (async function initAuthShell() {
+  const GHL_CONTACT_BASE_URL = 'https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/';
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normalizeGhlId(value) {
+    const text = String(value || '').trim();
+    if (!text || text === '-') return '';
+
+    const match = text.match(/contacts\/detail\/([^/?#]+)/i);
+    return (match?.[1] || text).trim();
+  }
+
+  function buildGhlContactUrl(ghlId) {
+    const normalized = normalizeGhlId(ghlId);
+    if (!normalized) return '';
+    return `${GHL_CONTACT_BASE_URL}${encodeURIComponent(normalized)}`;
+  }
+
+  function renderGhlContactCell(label, ghlId) {
+    const safeLabel = escapeHtml(label || 'Sin nombre');
+    const url = buildGhlContactUrl(ghlId);
+    if (!url) return safeLabel;
+
+    return `
+      <div class="metricas-ghl-cell">
+        <span class="metricas-ghl-name">${safeLabel}</span>
+        <a
+          class="metricas-ghl-link"
+          href="${url}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Ver GHL</a>
+      </div>
+    `;
+  }
+
+  window.metricasGhl = {
+    baseUrl: GHL_CONTACT_BASE_URL,
+    normalizeId: normalizeGhlId,
+    buildContactUrl: buildGhlContactUrl,
+    renderContactCell: renderGhlContactCell
+  };
+
   const currentUrl = new URL(window.location.href);
   const LAST_STANDARD_PAGE_KEY = 'metricas-last-standard-page';
   const CURRENT_STANDARD_PAGE_KEY = 'metricas-current-standard-page';

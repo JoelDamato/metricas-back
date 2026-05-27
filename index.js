@@ -50,7 +50,7 @@ app.use((error, req, res, next) => {
 });
 
 // --- 5. INICIAR SERVIDOR ---
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3101;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });

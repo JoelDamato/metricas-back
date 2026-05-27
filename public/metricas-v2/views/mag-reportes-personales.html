@@ -140,6 +140,7 @@
   <button class="print-btn" onclick="window.print()">🖨 Imprimir / Exportar</button>
   <div class="pdf-actions">
     <button id="exportReportData" class="pdf-export-btn" type="button">Descargar base</button>
+    <button id="generateAiReport" class="pdf-export-btn" type="button" hidden>Generar con GPT</button>
     <button id="uploadPdfTrigger" class="pdf-upload-btn" type="button">Subir PDF</button>
     <input id="pdfFileInput" class="pdf-hidden-input" type="file" accept="application/pdf" />
     <a id="downloadPdfLink" class="pdf-download-link is-disabled" href="#" target="_blank" rel="noopener noreferrer">Descargar PDF</a>
@@ -156,6 +157,8 @@
 
 <script>
 const PERIOD = 'Enero – Mayo 2026';
+const GENERATED_REPORT_CACHE = new Map();
+let canGenerateCloserAiReport = false;
 const PERIOD_BY_MONTH = (monthValue) => {
   const [year, month] = String(monthValue || '').split('-').map(Number);
   if (!year || !month) return PERIOD;
@@ -420,6 +423,14 @@ function fmtNum(n, unit) {
   return n.toFixed(1) + '%';
 }
 
+function getCacheKey(closerKey, monthValue) {
+  return `${closerKey || ''}::${monthValue || ''}`;
+}
+
+function escapeTextBlock(value) {
+  return escapeHtml(value || '').replace(/\n/g, '<br />');
+}
+
 function getCurrentMonthValue() {
   const queryMonth = new URLSearchParams(window.location.search).get('month');
   if (/^\d{4}-\d{2}$/.test(queryMonth || '')) return queryMonth;
@@ -459,6 +470,109 @@ function getSelectedReportContext() {
     monthValue,
     closerName: DATA[closerKey]?.nombre || ''
   };
+}
+
+function renderGeneratedReport(payload) {
+  const key = document.getElementById('sel').value;
+  const el = document.getElementById('report');
+  const monthValue = document.getElementById('reportMonth').value;
+  const reportData = payload?.report || {};
+  const metrics = payload?.metrics || {};
+  const closerMetrics = metrics.closer || {};
+  const teamAverages = metrics.teamAverages || {};
+  const style = payload?.style || {};
+  const color = style.color || '#3A7BF5';
+  const colorDark = style.colorDark || '#1A3A8A';
+
+  const kpiHTML = (reportData.kpis || []).map((k) => `
+    <div class="kpi-card ${escapeHtml(k.cls || '')}">
+      <div class="kpi-lbl">${escapeHtml(k.lbl || '')}</div>
+      <div class="kpi-val">${escapeHtml(k.val || '')}</div>
+      <div class="kpi-sub">${escapeHtml(k.sub || '')}</div>
+    </div>`).join('');
+
+  const compRows = [
+    { lbl:'Cash Agendas Mes', tuVal:Number(closerMetrics.cashAgendasMes || 0), teamVal:Number(teamAverages.cashTotal || 0), max:Math.max(Number(closerMetrics.cashAgendasMes || 0), Number(teamAverages.cashTotal || 0), 1) * 1.2, invert:false, unit:'$' },
+    { lbl:'Tasa de cierre', tuVal:Number(closerMetrics.cierrePct || 0), teamVal:Number(teamAverages.tasaCierre || 0), max:Math.max(Number(closerMetrics.cierrePct || 0), Number(teamAverages.tasaCierre || 0), 12), invert:false, unit:'%' },
+    { lbl:'No asistidas', tuVal:Number(closerMetrics.noAsistidasPct || 0), teamVal:Number(teamAverages.pctNoAsistidas || 0), max:Math.max(Number(closerMetrics.noAsistidasPct || 0), Number(teamAverages.pctNoAsistidas || 0), 20), invert:true, unit:'%' },
+    { lbl:'% Cobro agenda', tuVal:Number(closerMetrics.cashSobreFacturacionPct || 0), teamVal:Number(teamAverages.pctCobroAgenda || 0), max:Math.max(Number(closerMetrics.cashSobreFacturacionPct || 0), Number(teamAverages.pctCobroAgenda || 0), 20), invert:false, unit:'%' },
+    { lbl:'Cash por agenda', tuVal:Number(closerMetrics.cashPorAgenda || 0), teamVal:Number(teamAverages.cashPorAgenda || 0), max:Math.max(Number(closerMetrics.cashPorAgenda || 0), Number(teamAverages.cashPorAgenda || 0), 1) * 1.2, invert:false, unit:'$' },
+    { lbl:'Ticket promedio', tuVal:Number(closerMetrics.ticketPromedio || 0), teamVal:Number(teamAverages.ticketPromedio || 0), max:Math.max(Number(closerMetrics.ticketPromedio || 0), Number(teamAverages.ticketPromedio || 0), 1) * 1.2, invert:false, unit:'$' }
+  ];
+
+  const compHTML = compRows.map((row) => {
+    const barW = Math.min((row.tuVal / row.max) * 100, 100);
+    const avgW = Math.min((row.teamVal / row.max) * 100, 100);
+    const isBetter = row.invert ? row.tuVal <= row.teamVal : row.tuVal >= row.teamVal;
+    const barColor = isBetter ? 'var(--green)' : 'var(--amber)';
+    return `<div class="comp-row">
+      <div class="comp-header">
+        <span class="comp-lbl">${escapeHtml(row.lbl)}</span>
+        <span class="comp-vals">Vos: <b>${fmtNum(row.tuVal, row.unit)}</b> · Equipo: ${fmtNum(row.teamVal, row.unit)}</span>
+      </div>
+      <div class="comp-track">
+        <div class="comp-fill" style="width:${barW}%;background:${barColor}"></div>
+        <div class="comp-avg-line" style="left:${avgW}%">
+          <div class="comp-avg-lbl">equipo</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const fortHTML = (reportData.fortalezas || []).map((item) =>
+    `<li><div class="item-dot ${escapeHtml(item.dot || 'green')}"></div><span>${escapeTextBlock(item.txt)}</span></li>`).join('');
+  const atenHTML = (reportData.atencion || []).map((item) =>
+    `<li><div class="item-dot ${escapeHtml(item.dot || 'amber')}"></div><span>${escapeTextBlock(item.txt)}</span></li>`).join('');
+  const stepsHTML = (reportData.pasos || []).map((step) =>
+    `<div class="step">
+      <div class="step-num" style="background:${escapeHtml(step.color || '#3A7BF5')}">${escapeHtml(step.num || '')}</div>
+      <div class="step-text">${escapeTextBlock(step.txt)}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="report-hero" style="background:linear-gradient(135deg,${colorDark},${color})">
+      <div class="rh-inner">
+        <div class="rh-eyebrow">Reporte Personal · ${escapeHtml(payload.monthLabel || PERIOD_BY_MONTH(monthValue))}</div>
+        <div class="rh-name">${escapeHtml(payload.closer || DATA[key]?.nombre || '')}</div>
+        <div class="rh-period">${escapeHtml(payload.status || '')} · ranking #${escapeHtml(String(payload.rankingPosition || '-'))} de ${escapeHtml(String(payload.activeClosers || '-'))}</div>
+        <div class="rh-chips">${(reportData.chips || []).map((chip) => `<span class="rh-chip">${escapeHtml(chip)}</span>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="kpi-grid">${kpiHTML}</div>
+
+    <div class="two-col">
+      <div class="section-card">
+        <div class="sc-title"><span class="sc-icon">💪</span> Tus fortalezas</div>
+        <ul class="item-list">${fortHTML}</ul>
+      </div>
+      <div class="section-card">
+        <div class="sc-title"><span class="sc-icon">🎯</span> A trabajar</div>
+        <ul class="item-list">${atenHTML}</ul>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="sc-title"><span class="sc-icon">📊</span> Tus métricas vs el promedio del equipo</div>
+      ${compHTML}
+    </div>
+
+    <div class="message-box personal">
+      <div class="mb-eyebrow">Mensaje del mes</div>
+      <div class="mb-text">${escapeTextBlock(reportData.mensaje)}</div>
+    </div>
+
+    <div class="section-card">
+      <div class="sc-title"><span class="sc-icon">⬆️</span> Próximos pasos</div>
+      <div class="steps">${stepsHTML}</div>
+    </div>
+
+    <div class="message-box sistema">
+      <div class="mb-eyebrow">Tu posición en el nuevo sistema</div>
+      <div class="mb-text">${escapeTextBlock(reportData.sistemaMsg)}</div>
+    </div>`;
+
+  refreshPdfState();
 }
 
 function downloadReportBase() {
@@ -546,16 +660,61 @@ async function uploadSelectedPdf(file) {
   }
 }
 
+async function generateAiReport() {
+  const { closerKey, monthValue, closerName } = getSelectedReportContext();
+  const status = document.getElementById('pdfStatus');
+  const reportNode = document.getElementById('report');
+
+  if (!canGenerateCloserAiReport) {
+    status.textContent = 'Solo Matías Randazzo o Leonardo Alaniz pueden generar reportes con GPT.';
+    return;
+  }
+
+  if (!closerKey || !closerName) {
+    status.textContent = 'Elegí un closer antes de generar el reporte.';
+    return;
+  }
+
+  const cacheKey = getCacheKey(closerKey, monthValue);
+  const cached = GENERATED_REPORT_CACHE.get(cacheKey);
+  if (cached) {
+    renderGeneratedReport(cached);
+    status.textContent = 'Mostrando reporte generado previamente para ese closer y mes.';
+    return;
+  }
+
+  reportNode.innerHTML = '<div class="empty"><div class="empty-icon">🤖</div><div class="empty-text">Generando reporte real del closer con GPT...</div></div>';
+  status.textContent = 'Generando reporte con GPT...';
+
+  try {
+    const response = await window.metricasApi.generateCloserPersonalReport({
+      closer: closerName,
+      month: monthValue
+    });
+    GENERATED_REPORT_CACHE.set(cacheKey, response.report);
+    renderGeneratedReport(response.report);
+    status.textContent = `Reporte generado para ${closerName} en ${response.report.monthLabel}.`;
+  } catch (error) {
+    status.textContent = error.message || 'No pude generar el reporte con GPT.';
+    renderReport();
+  }
+}
+
 function renderReport() {
   const key = document.getElementById('sel').value;
   const el  = document.getElementById('report');
+  const monthValue = document.getElementById('reportMonth').value;
+  const cached = GENERATED_REPORT_CACHE.get(getCacheKey(key, monthValue));
   if (!key) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Seleccioná un closer para ver su reporte personal.</div></div>';
     refreshPdfState();
     return;
   }
+  if (cached) {
+    renderGeneratedReport(cached);
+    return;
+  }
   const d = DATA[key];
-  const monthValue = document.getElementById('reportMonth').value;
   const c = d.color;
 
   // KPI cards
@@ -653,6 +812,20 @@ function renderReport() {
 
   refreshPdfState();
 }
+
+async function initAiPermissions() {
+  const button = document.getElementById('generateAiReport');
+  if (!button) return;
+
+  try {
+    const response = await window.http.getJson('/api/metricas/auth/session');
+    canGenerateCloserAiReport = Boolean(response?.user?.permissions?.canGenerateCloserAiReport);
+  } catch (error) {
+    canGenerateCloserAiReport = false;
+  }
+
+  button.hidden = !canGenerateCloserAiReport;
+}
 </script>
 </div>
 <script src="/metricas/js/api/http.js"></script>
@@ -661,6 +834,7 @@ function renderReport() {
 document.getElementById('reportMonth').value = getCurrentMonthValue();
 document.getElementById('reportMonth').addEventListener('change', renderReport);
 document.getElementById('exportReportData').addEventListener('click', downloadReportBase);
+document.getElementById('generateAiReport').addEventListener('click', generateAiReport);
 document.getElementById('uploadPdfTrigger').addEventListener('click', () => {
   document.getElementById('pdfFileInput').click();
 });
@@ -670,6 +844,7 @@ document.getElementById('pdfFileInput').addEventListener('change', async (event)
   event.target.value = '';
 });
 refreshPdfState();
+initAiPermissions();
 </script>
 <script src="/metricas/js/auth-shell.js"></script>
 <script src="/metricas/js/mag-theme.js"></script>
