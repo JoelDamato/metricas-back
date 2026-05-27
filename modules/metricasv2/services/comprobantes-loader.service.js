@@ -105,10 +105,17 @@ function standardizeResponsibleVenta(user = {}, rawValue = '') {
 function toNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  const normalized = String(value)
-    .replace(/\s+/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.');
+  const raw = String(value).replace(/\s+/g, '');
+  const lastComma = raw.lastIndexOf(',');
+  const lastDot = raw.lastIndexOf('.');
+  const decimalIndex = Math.max(lastComma, lastDot);
+  const digitsAfterSeparator = decimalIndex >= 0
+    ? raw.slice(decimalIndex + 1).replace(/[^\d]/g, '')
+    : '';
+  const hasDecimalPart = digitsAfterSeparator.length > 0 && digitsAfterSeparator.length <= 2;
+  const normalized = hasDecimalPart
+    ? `${raw.slice(0, decimalIndex).replace(/[^\d-]/g, '') || '0'}.${digitsAfterSeparator}`
+    : raw.replace(/[^\d-]/g, '');
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }

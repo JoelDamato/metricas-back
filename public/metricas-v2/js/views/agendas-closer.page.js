@@ -239,13 +239,13 @@ const AGENDA_CLOSER_ROW_INFO = {
     title: 'Costo por agenda',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_agenda"',
-    logic: 'Se calcula como "inversion_realizada" / "total_agendados" dentro del mismo período.'
+    logic: 'Se calcula como "inversion_realizada" / total de agendas del período, tomando todas las agendas del filtro general aunque haya un closer seleccionado.'
   },
-  costoVentaCloser: {
-    title: 'Costo por venta del closer',
-    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
-    dateLabel: 'Mixta: inversión por rango + ventas por "fecha_de_agendamiento"',
-    logic: 'Se calcula como "costo agenda x closer" / "ventas" del período.'
+  costoAgendaCloser: {
+    title: 'Costo total x closer',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_totales" + "agenda_detalle_por_origen_closer"',
+    dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
+    logic: 'Se calcula como "costo por agenda" x "agendados" del closer en el período.'
   }
 };
 
@@ -588,7 +588,7 @@ function aggregateByMonth(rows, year) {
   return { byMonth, totals };
 }
 
-function metricRowsFor(acc, investmentTotalMkt = 0) {
+function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
   const ag = acc.total_agendados;
   const apl = acc.total_aplica;
   const resp = acc.total_respondio;
@@ -601,7 +601,8 @@ function metricRowsFor(acc, investmentTotalMkt = 0) {
   const fact = acc.facturacion_total_mes;
   const ccne = acc.ccne;
   const cce = acc.cce;
-  const costoAgenda = safeDiv(investmentTotalMkt, ag);
+  const costoAgenda = safeDiv(investmentTotalMkt, agendaBaseTotal);
+  const costoAgendaCloser = costoAgenda * ag;
 
   return {
     agendados: ag,
@@ -655,7 +656,7 @@ function metricRowsFor(acc, investmentTotalMkt = 0) {
     ccAgendasMes: acc.cash_collected_agendas_mes,
     inversionTotalMkt: investmentTotalMkt,
     costoAgenda,
-    costoVentaCloser: safeDiv(investmentTotalMkt, ven)
+    costoAgendaCloser
   };
 }
 
@@ -679,7 +680,7 @@ function buildExecutionMetricGroups(metrics) {
     .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
-function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}) {
+function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, agendaBaseData = {}) {
   const container = document.getElementById('tableContainer');
   const currentMonth = new Date().getMonth() + 1;
   const selectedYear = Number(filters?.anio);
@@ -691,14 +692,19 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}) 
 
   const { byMonth, totals } = aggregateByMonth(rows, selectedYear);
   const months = MONTHS.map((month) => month.value);
-  const totalMetrics = metricRowsFor(totals, Number(investmentData.total || 0));
+  const totalMetrics = metricRowsFor(
+    totals,
+    Number(investmentData.total || 0),
+    Number(agendaBaseData.totalAgendados || 0)
+  );
   totalMetrics.aovDia1 = Number(aovDia1Data.total || 0);
 
   const monthMetricsMap = new Map();
   months.forEach((month) => {
     const monthMetrics = metricRowsFor(
       byMonth.get(month) || emptyAccumulator(),
-      Number(investmentData.byMonth?.[month] || 0)
+      Number(investmentData.byMonth?.[month] || 0),
+      Number(agendaBaseData.byMonth?.[month] || 0)
     );
     monthMetrics.aovDia1 = Number(aovDia1Data.byMonth?.[month] || 0);
     monthMetricsMap.set(month, monthMetrics);
@@ -726,7 +732,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}) 
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
     { key: 'inversionTotalMkt', label: 'Inversión total en MKT', format: 'currency' },
     { key: 'costoAgenda', label: 'Costo por agenda', format: 'currency' },
-    { key: 'costoVentaCloser', label: 'Costo por venta del closer', format: 'currency' },
+    { key: 'costoAgendaCloser', label: 'Costo total x closer', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
     { key: 'pctCcne', label: '% CCNE', format: 'percent' },
@@ -956,6 +962,7 @@ async function loadAgendaCloser() {
       orderDir: 'asc',
       eq_anio: selectedYear
     };
+    if (filters.origen) totalsQuery.eq_origen = filters.origen;
 
     const responses = await Promise.all([
       window.metricasApi.fetchAllRows(RESOURCE, query),
@@ -963,9 +970,7 @@ async function loadAgendaCloser() {
       ...aovRequests,
       fetchInvestmentForFilters(yearRange, filters),
       ...investmentRequests,
-      !filters.closer
-        ? window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
-        : Promise.resolve(null)
+      window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
     ]);
 
     const response = responses[0];
@@ -979,12 +984,10 @@ async function loadAgendaCloser() {
       sanitizeRowsForYear(normalizeCloserRows(response.rows || []), selectedYear),
       filters
     );
-    const totalsRows = !filters.closer && totalsResponse
-      ? applyLocalFilters(
-          sanitizeRowsForYear(totalsResponse.rows || [], selectedYear),
-          filters
-        )
-      : rows;
+    const totalsBaseRows = sanitizeRowsForYear(normalizeCloserRows(totalsResponse.rows || []), selectedYear);
+    const totalsRows = filters.closer
+      ? rows
+      : applyLocalFilters(totalsBaseRows, filters);
 
     const aovDia1Data = {
       total: Number(totalAovDia1Response?.aovDia1 || 0),
@@ -1002,8 +1005,18 @@ async function loadAgendaCloser() {
       }, {})
     };
 
+    const agendaBaseData = {
+      totalAgendados: totalsBaseRows.reduce((sum, row) => sum + Number(row.total_agendados || 0), 0),
+      byMonth: MONTHS.reduce((acc, month) => {
+        acc[month.value] = totalsBaseRows
+          .filter((row) => Number(row.mes) === month.value)
+          .reduce((sum, row) => sum + Number(row.total_agendados || 0), 0);
+        return acc;
+      }, {})
+    };
+
     buildKpis(totalsRows);
-    buildMatrixTable(totalsRows, filters, aovDia1Data, investmentData);
+    buildMatrixTable(totalsRows, filters, aovDia1Data, investmentData, agendaBaseData);
     status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ' | origen Todos'}${filters.closer ? ` | closer ${filters.closer}` : ' | closer Todos'}`;
   } catch (error) {
     status.textContent = error.message;

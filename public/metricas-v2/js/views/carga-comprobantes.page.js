@@ -110,13 +110,22 @@
     const raw = String(value || '').trim();
     if (!raw) return 0;
     const clean = raw.replace(/[^\d,.-]/g, '');
+    const separators = clean.match(/[.,]/g) || [];
+    if (!separators.length) {
+      return Number(clean.replace(/[^\d-]/g, '')) || 0;
+    }
+
     const lastComma = clean.lastIndexOf(',');
     const lastDot = clean.lastIndexOf('.');
     const decimalIndex = Math.max(lastComma, lastDot);
+    const digitsAfterSeparator = decimalIndex >= 0
+      ? clean.slice(decimalIndex + 1).replace(/[^\d]/g, '')
+      : '';
+    const hasDecimalPart = digitsAfterSeparator.length > 0 && digitsAfterSeparator.length <= 2;
 
-    if (decimalIndex >= 0) {
+    if (decimalIndex >= 0 && hasDecimalPart) {
       const integerPart = clean.slice(0, decimalIndex).replace(/[^\d-]/g, '');
-      const decimalPart = clean.slice(decimalIndex + 1).replace(/[^\d]/g, '');
+      const decimalPart = digitsAfterSeparator;
       return Number(`${integerPart || '0'}.${decimalPart}`) || 0;
     }
 
