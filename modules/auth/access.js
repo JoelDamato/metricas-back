@@ -90,7 +90,7 @@ const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/metricas/views/setting.html',
-    allowedPages: new Set(['setting.html']),
+    allowedPages: new Set(['setting.html', 'carga-comprobantes.html']),
     allowedResources: new Set(['setters']),
     allowedFeatures: {}
   },
