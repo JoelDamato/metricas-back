@@ -98,6 +98,121 @@ function standardizeResponsibleVenta(user = {}, rawValue = '') {
   return value;
 }
 
+function splitNameTokens(value) {
+  return normalizeText(value)
+    .split(/[^a-z0-9]+/i)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function levenshteinDistance(a = '', b = '') {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+
+  const rows = Array.from({ length: a.length + 1 }, (_, index) => index);
+  for (let column = 1; column <= b.length; column += 1) {
+    let previousDiagonal = rows[0];
+    rows[0] = column;
+    for (let row = 1; row <= a.length; row += 1) {
+      const current = rows[row];
+      const substitutionCost = a[row - 1] === b[column - 1] ? 0 : 1;
+      rows[row] = Math.min(
+        rows[row] + 1,
+        rows[row - 1] + 1,
+        previousDiagonal + substitutionCost
+      );
+      previousDiagonal = current;
+    }
+  }
+
+  return rows[a.length];
+}
+
+function similarityRatio(a = '', b = '') {
+  const left = normalizeText(a);
+  const right = normalizeText(b);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const maxLength = Math.max(left.length, right.length);
+  if (!maxLength) return 1;
+  return 1 - (levenshteinDistance(left, right) / maxLength);
+}
+
+function tokenSimilarity(a = '', b = '') {
+  const left = normalizeText(a);
+  const right = normalizeText(b);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  if (left.startsWith(right) || right.startsWith(left)) return 0.92;
+  if (left.includes(right) || right.includes(left)) return 0.86;
+  return similarityRatio(left, right);
+}
+
+function nameSimilarityScore(leftName = '', rightName = '') {
+  const left = normalizeText(leftName);
+  const right = normalizeText(rightName);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  if (left.includes(right) || right.includes(left)) return 0.97;
+
+  const leftTokens = splitNameTokens(leftName);
+  const rightTokens = splitNameTokens(rightName);
+  if (!leftTokens.length || !rightTokens.length) {
+    return similarityRatio(left, right);
+  }
+
+  const tokenScores = leftTokens.map((leftToken) => {
+    let best = 0;
+    rightTokens.forEach((rightToken) => {
+      best = Math.max(best, tokenSimilarity(leftToken, rightToken));
+    });
+    return best;
+  });
+
+  const reverseScores = rightTokens.map((rightToken) => {
+    let best = 0;
+    leftTokens.forEach((leftToken) => {
+      best = Math.max(best, tokenSimilarity(rightToken, leftToken));
+    });
+    return best;
+  });
+
+  const averageTokenScore = (
+    tokenScores.reduce((sum, value) => sum + value, 0)
+    + reverseScores.reduce((sum, value) => sum + value, 0)
+  ) / (tokenScores.length + reverseScores.length);
+
+  return Math.max(averageTokenScore, similarityRatio(left, right));
+}
+
+function findBestNotionUserMatch(notionUsers = [], responsibleVenta = '', authUser = {}) {
+  if (!Array.isArray(notionUsers) || !notionUsers.length) return null;
+
+  const targetName = standardizeResponsibleVenta(authUser, responsibleVenta);
+  const targetEmail = normalizeEmail(authUser?.email);
+  if (targetEmail) {
+    const emailMatch = notionUsers.find((item) => normalizeEmail(item?.email) === targetEmail);
+    if (emailMatch) return emailMatch;
+  }
+
+  const normalizedTarget = normalizeText(targetName);
+  if (!normalizedTarget) return null;
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  notionUsers.forEach((item) => {
+    const score = nameSimilarityScore(targetName, item?.name || '');
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = item;
+    }
+  });
+
+  return bestScore >= 0.72 ? bestMatch : null;
+}
+
 function toNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -171,6 +286,12 @@ function parseRelationId(value) {
   return text.toLowerCase();
 }
 
+function parseNotionUuid(value) {
+  const compact = String(value || '').replace(/-/g, '').trim().toLowerCase();
+  if (!/^[a-f0-9]{32}$/.test(compact)) return null;
+  return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20)}`;
+}
+
 function notionDateValue(value) {
   return value ? { date: { start: value } } : undefined;
 }
@@ -228,7 +349,7 @@ function notionRelationArrayValue(ids = []) {
 
 function notionPeopleValue(ids = []) {
   const people = ids
-    .map((id) => parseRelationId(id))
+    .map((id) => parseNotionUuid(id))
     .filter(Boolean)
     .map((id) => ({ id }));
   if (!people.length) return undefined;
@@ -956,7 +1077,7 @@ async function createComprobante(payload, user) {
 
   normalized.productIds = normalized.productName ? [findBestOptionIdByName(productOptions, normalized.productName)].filter(Boolean) : [];
   normalized.medioPagoIds = normalized.medioPago ? [findBestOptionIdByName(mediosOptions, normalized.medioPago)].filter(Boolean) : [];
-  const responsibleMatch = notionUsers.find((item) => normalizeText(item.name) === normalizeText(normalized.responsableVenta));
+  const responsibleMatch = findBestNotionUserMatch(notionUsers, normalized.responsableVenta, user);
   normalized.responsableVentaUserIds = responsibleMatch ? [responsibleMatch.id] : [];
 
   if ((normalized.tipo === 'Cobranza' || (normalized.tipo === 'Venta' && normalizeText(normalized.medioPago) === 'cheque' && normalized.cheques.length > 1)) && !normalized.latestSaleId) {
