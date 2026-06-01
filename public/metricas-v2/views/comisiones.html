@@ -9,13 +9,126 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/metricas/css/styles.css" />
   </head>
-  <body class="ranking-page">
+  <body class="ranking-page comisiones-page">
     <main class="container">
       <div class="nav"><a href="/metricas/dashboard.html">Volver al dashboard</a></div>
-      <section class="ranking-hero">
-        <h1>Comisiones</h1>
-        <p>Vista creada. Contenido pendiente.</p>
+
+      <section class="ranking-hero comisiones-hero">
+        <div>
+          <h1>Comisiones</h1>
+          <p>Motor nuevo de comisiones sobre Supabase, con resumen general, detalle por persona y reglas editables por mes.</p>
+        </div>
+        <div class="comisiones-hero-meta">
+          <label>
+            <span>Mes</span>
+            <input id="commissionsMonth" type="month" />
+          </label>
+          <button id="reloadCommissions" type="button">Actualizar</button>
+        </div>
+      </section>
+
+      <section class="comisiones-shell">
+        <div class="comisiones-tabs" role="tablist" aria-label="Vistas de comisiones">
+          <button class="comisiones-tab is-active" type="button" data-tab="overview">Vista general</button>
+          <button class="comisiones-tab" type="button" data-tab="person">Detalle por persona</button>
+          <button class="comisiones-tab" type="button" data-tab="rules">Reglas del mes</button>
+        </div>
+
+        <section id="commissionsStatus" class="alertas-status">Cargando comisiones...</section>
+
+        <section class="comisiones-panel is-active" data-panel="overview">
+          <div id="commissionsSummaryCards" class="comisiones-summary-grid"></div>
+          <div id="commissionsAreas" class="comisiones-areas-grid"></div>
+        </section>
+
+        <section class="comisiones-panel" data-panel="person">
+          <div class="comisiones-detail-toolbar">
+            <label>
+              <span>Persona</span>
+              <select id="commissionPersonSelect"></select>
+            </label>
+          </div>
+          <div id="commissionPersonSummary" class="comisiones-person-summary"></div>
+          <div id="commissionPersonDetails" class="table-wrap comisiones-table-wrap"></div>
+        </section>
+
+        <section class="comisiones-panel" data-panel="rules">
+          <div class="comisiones-rules-toolbar">
+            <button id="saveCommissionRules" type="button">Guardar reglas del mes</button>
+            <button id="saveCommissionDefaults" type="button" class="button-secondary">Guardar como base futura</button>
+            <button id="lockCommissionMonth" type="button" class="button-secondary">Bloquear mes</button>
+          </div>
+          <div id="commissionRulesLockState" class="comisiones-lock-state"></div>
+
+          <div class="comisiones-rules-grid">
+            <section class="card comisiones-rule-card">
+              <h3>Reglas globales</h3>
+              <div class="comisiones-form-grid">
+                <label>
+                  <span>Mínimo global setter</span>
+                  <input id="commissionMinimumSetterPct" type="number" min="0" step="0.001" />
+                </label>
+                <label>
+                  <span>% fijo transferencias Club</span>
+                  <input id="commissionClubTransferPct" type="number" min="0" step="0.001" />
+                </label>
+                <label>
+                  <span>% base closer MEG</span>
+                  <input id="commissionDefaultCloserPct" type="number" min="0" step="0.001" />
+                </label>
+                <label>
+                  <span>% fijo Meg personalizado</span>
+                  <input id="commissionPersonalizedCloserPct" type="number" min="0" step="0.001" />
+                </label>
+                <label class="comisiones-checkbox">
+                  <input id="commissionOnlyVerified" type="checkbox" />
+                  <span>Tomar solo comprobantes verificados para comisiones</span>
+                </label>
+              </div>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Escala por agendas</h3>
+              <div id="commissionAgendaScaleRows" class="comisiones-scale-list"></div>
+              <button id="addAgendaScaleRow" type="button" class="button-secondary">Agregar tramo</button>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Escala Club closers</h3>
+              <div id="commissionClubScaleRows" class="comisiones-scale-list"></div>
+              <button id="addClubScaleRow" type="button" class="button-secondary">Agregar tramo</button>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Porcentajes fijos closers</h3>
+              <div id="commissionOverrideRows" class="comisiones-scale-list"></div>
+              <button id="addCommissionOverrideRow" type="button" class="button-secondary">Agregar persona</button>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Reglas especiales closers</h3>
+              <div id="commissionCloserRuleRows" class="comisiones-scale-list"></div>
+              <button id="addCommissionCloserRuleRow" type="button" class="button-secondary">Agregar regla</button>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Área por persona</h3>
+              <div id="commissionAreaRows" class="comisiones-scale-list"></div>
+              <button id="addCommissionAreaRow" type="button" class="button-secondary">Agregar persona</button>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <h3>Notas operativas</h3>
+              <textarea id="commissionNotes" rows="8" placeholder="Una nota por línea"></textarea>
+            </section>
+          </div>
+        </section>
       </section>
     </main>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/auth-shell.js"></script>
+    <script src="/metricas/js/views/comisiones.page.js"></script>
   </body>
 </html>

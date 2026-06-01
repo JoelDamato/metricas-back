@@ -1,5 +1,6 @@
 (function initAlertasOperativasPage() {
   const statusNode = document.getElementById('status');
+  const areaSummaryNode = document.getElementById('alertasAreaSummary');
   const summaryNode = document.getElementById('alertasSummary');
   const sectionsNode = document.getElementById('alertasSections');
   const cutoffNode = document.getElementById('alertasFechaCorte');
@@ -86,6 +87,7 @@
   function setLoading(isLoading) {
     if (loadingNode) loadingNode.hidden = !isLoading;
     if (reloadButton) reloadButton.disabled = isLoading;
+    areaSummaryNode?.toggleAttribute('hidden', isLoading);
     summaryNode.toggleAttribute('hidden', isLoading);
     sectionsNode.toggleAttribute('hidden', isLoading);
     statusNode.classList.toggle('is-loading', isLoading);
@@ -108,6 +110,36 @@
     };
 
     return iconByKey[alert.key] || '!';
+  }
+
+  function getAreaMeta(area) {
+    const meta = {
+      comercial: {
+        key: 'comercial',
+        label: 'Comercial',
+        icon: '📞',
+        description: 'Seguimiento de leads, agendas y calidad del embudo comercial.'
+      },
+      csm: {
+        key: 'csm',
+        label: 'CSM',
+        icon: '🤝',
+        description: 'Clientes que ya entraron y necesitan avance operativo del equipo CSM.'
+      },
+      administracion: {
+        key: 'administracion',
+        label: 'Administración',
+        icon: '💵',
+        description: 'Cobranza, conciliación y consistencia de comprobantes.'
+      }
+    };
+
+    return meta[area] || {
+      key: area || 'general',
+      label: area || 'General',
+      icon: '📌',
+      description: ''
+    };
   }
 
   function normalizeDigits(value) {
@@ -415,6 +447,7 @@
     return [
       {
         key: 'agendas_pendientes',
+        area: 'comercial',
         title: 'Agendas pendientes',
         severity: 'high',
         count: agendaPendingRows.length,
@@ -438,6 +471,7 @@
       },
       {
         key: 'sin_onboarding',
+        area: 'csm',
         title: 'Clientes sin onboarding',
         severity: 'high',
         count: noOnboardingRows.length,
@@ -451,6 +485,7 @@
       },
       {
         key: 'sin_diagnostico_7',
+        area: 'csm',
         title: 'Sin diagnóstico > 7 días',
         severity: 'high',
         count: diagnosisOver7Rows.length,
@@ -464,6 +499,7 @@
       },
       {
         key: 'cash_raro',
+        area: 'administracion',
         title: 'Ventas con cash raro',
         severity: 'medium',
         count: weirdCashRows.length,
@@ -486,6 +522,7 @@
       },
       {
         key: 'leads_duplicados',
+        area: 'comercial',
         title: 'Clientes duplicados en leads',
         severity: 'medium',
         count: duplicateLeadGroups.length,
@@ -508,6 +545,7 @@
       },
       {
         key: 'comprobantes_sin_conciliar',
+        area: 'administracion',
         title: 'Comprobantes sin conciliar',
         severity: 'medium',
         count: unconciledRows.length,
@@ -530,6 +568,7 @@
       },
       {
         key: 'comprobantes_rebotados',
+        area: 'administracion',
         title: 'Comprobantes rebotados',
         severity: 'high',
         count: bouncedRows.length,
@@ -553,8 +592,52 @@
     ];
   }
 
+  function groupAlertsByArea(alerts) {
+    const groups = new Map();
+
+    alerts.forEach((alert) => {
+      const area = alert.area || 'general';
+      const current = groups.get(area) || [];
+      current.push(alert);
+      groups.set(area, current);
+    });
+
+    return ['comercial', 'csm', 'administracion']
+      .map((areaKey) => {
+        const items = groups.get(areaKey) || [];
+        const meta = getAreaMeta(areaKey);
+        const total = items.reduce((sum, alert) => sum + Number(alert.count || 0), 0);
+        return {
+          ...meta,
+          alerts: items,
+          total
+        };
+      })
+      .filter((group) => group.alerts.length);
+  }
+
   function renderSummary(alerts) {
     const alertMap = new Map(alerts.map((alert) => [alert.key, alert]));
+    const areaGroups = groupAlertsByArea(alerts);
+
+    if (areaSummaryNode) {
+      areaSummaryNode.innerHTML = areaGroups.map((group) => `
+        <article class="card alertas-area-card">
+          <div class="alertas-area-card-head">
+            <span class="alertas-area-card-icon" aria-hidden="true">${escapeHtml(group.icon)}</span>
+            <div>
+              <h3>${escapeHtml(group.label)}</h3>
+              <p>${escapeHtml(group.description)}</p>
+            </div>
+          </div>
+          <div class="alertas-area-card-total">${formatInteger(group.total)} casos</div>
+          <div class="alertas-area-card-tags">
+            ${group.alerts.map((alert) => `<span class="alertas-area-card-tag">${escapeHtml(alert.title)}: ${formatInteger(alert.count)}</span>`).join('')}
+          </div>
+        </article>
+      `).join('');
+    }
+
     summaryNode.innerHTML = alerts.map((alert) => `
       <article
         class="card alertas-summary-card alertas-summary-card-${escapeHtml(alert.severity)}"
@@ -575,35 +658,51 @@
 
   function renderSections(alerts) {
     const alertMap = new Map(alerts.map((alert) => [alert.key, alert]));
-    sectionsNode.innerHTML = alerts.map((alert) => `
-      <section class="table-wrap alertas-section">
-        <div class="alertas-section-head">
+    const areaGroups = groupAlertsByArea(alerts);
+
+    sectionsNode.innerHTML = areaGroups.map((group) => `
+      <section class="alertas-area-block">
+        <div class="alertas-area-block-head">
           <div>
-            <h3>
-              <button
-                type="button"
-                class="metric-info-trigger metric-label alertas-section-trigger"
-                data-alert-key="${escapeHtml(alert.key)}"
-              >${escapeHtml(alert.title)}</button>
-            </h3>
-            <p>${escapeHtml(alert.description)}</p>
+            <span class="alertas-area-block-kicker">${escapeHtml(group.label)}</span>
+            <h2>${escapeHtml(group.icon)} ${escapeHtml(group.label)}</h2>
+            <p>${escapeHtml(group.description)}</p>
           </div>
-          <span class="alertas-section-total">${formatInteger(alert.count)}</span>
+          <span class="alertas-area-block-total">${formatInteger(group.total)} casos</span>
         </div>
-        <div class="alertas-section-meta">
-          <span><strong>Base:</strong> ${escapeHtml(alert.base)}</span>
-        </div>
-        <div class="table-wrap csm-table-wrap">
-          <table class="csm-table csm-detail-table">
-            <thead>
-              <tr>${alert.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr>
-            </thead>
-            <tbody>
-              ${alert.rows.length
-                ? alert.rows.slice(0, 8).map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')
-                : `<tr><td colspan="${alert.columns.length}">${escapeHtml(alert.emptyText || 'Sin casos abiertos.')}</td></tr>`}
-            </tbody>
-          </table>
+        <div class="alertas-area-block-grid">
+          ${group.alerts.map((alert) => `
+            <section class="table-wrap alertas-section">
+              <div class="alertas-section-head">
+                <div>
+                  <h3>
+                    <button
+                      type="button"
+                      class="metric-info-trigger metric-label alertas-section-trigger"
+                      data-alert-key="${escapeHtml(alert.key)}"
+                    >${escapeHtml(alert.title)}</button>
+                  </h3>
+                  <p>${escapeHtml(alert.description)}</p>
+                </div>
+                <span class="alertas-section-total">${formatInteger(alert.count)}</span>
+              </div>
+              <div class="alertas-section-meta">
+                <span><strong>Base:</strong> ${escapeHtml(alert.base)}</span>
+              </div>
+              <div class="table-wrap csm-table-wrap">
+                <table class="csm-table csm-detail-table">
+                  <thead>
+                    <tr>${alert.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join('')}</tr>
+                  </thead>
+                  <tbody>
+                    ${alert.rows.length
+                      ? alert.rows.slice(0, 8).map((row) => `<tr>${row.map((cell) => `<td>${renderPopupCell(cell)}</td>`).join('')}</tr>`).join('')
+                      : `<tr><td colspan="${alert.columns.length}">${escapeHtml(alert.emptyText || 'Sin casos abiertos.')}</td></tr>`}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          `).join('')}
         </div>
       </section>
     `).join('');
@@ -614,26 +713,17 @@
   async function loadAlertas() {
     setLoading(true);
     statusNode.textContent = 'Cargando alertas operativas...';
+    if (areaSummaryNode) areaSummaryNode.innerHTML = '';
     summaryNode.innerHTML = '';
     sectionsNode.innerHTML = '';
 
     try {
-      const [csmData, comprobantesData, leadsData] = await Promise.all([
-        window.metricasApi.fetchAllRows('csm', {
-          select: 'nombre,ghlid,abandono,f_pago_con_acceso,f_acceso,f_onboarding,f_diagnostico,modulo_1,modelo_negocio'
-        }),
-        window.metricasApi.fetchAllRows('comprobantes', {
-          select: 'creado_por,estado,tipo,producto_format,f_venta,f_acreditacion,facturacion,cash_collected_total,cash_collected,ghlid'
-        }),
-        window.metricasApi.fetchAllRows('leads_raw', {
-          select: 'nombre,mail,telefono,whatsapp,ghlid,fecha_creada,created_time,origen,primer_origen,setter,closer,fecha_agenda,fecha_llamada,agendo,aplica,llamada_meg,estrategia_a'
-        })
-      ]);
+      const response = await window.metricasApi.fetchOperationalAlerts();
 
       const alerts = buildAlerts({
-        csmRows: csmData.rows || [],
-        comprobantesRows: comprobantesData.rows || [],
-        leadsRows: leadsData.rows || []
+        csmRows: response.rows?.csm || [],
+        comprobantesRows: response.rows?.comprobantes || [],
+        leadsRows: response.rows?.leads || []
       });
 
       renderSummary(alerts);

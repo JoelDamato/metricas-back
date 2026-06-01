@@ -14,6 +14,7 @@ module.exports = {
   notionComprobantesDatabaseId: getEnv('NOTION_COMPROBANTES_DATABASE_ID', getEnv('NOTION_DATABASE_ID')),
   notionProductsDatabaseId: getEnv('NOTION_PRODUCTS_DATABASE_ID', '280482517a95804cbbcae130cc9f1ecb'),
   reportesPersonalesBucket: getEnv('SUPABASE_REPORTES_PERSONALES_BUCKET', 'reportes-personales'),
+  reportesPersonalesDataBucket: getEnv('SUPABASE_REPORTES_PERSONALES_DATA_BUCKET', 'reportes-personales-data'),
   assistantProvider: getEnv('METRICAS_ASSISTANT_PROVIDER', 'ollama'),
   ollamaBaseUrl: getEnv('OLLAMA_BASE_URL', getEnv('OLLAMA_HOST', 'http://localhost:11434/api')),
   ollamaModel: getEnv('OLLAMA_MODEL', 'gemma3'),

@@ -31,9 +31,12 @@
     medioPago: document.getElementById('medioPago'),
     tc: document.getElementById('tc'),
     ventaFields: document.getElementById('ventaFields'),
+    productNameField: document.getElementById('productNameField'),
     productName: document.getElementById('productName'),
     productsSourceText: document.getElementById('productsSourceText'),
+    facturacionUsdField: document.getElementById('facturacionUsdField'),
     facturacionUsd: document.getElementById('facturacionUsd'),
+    cantidadPagosField: document.getElementById('cantidadPagosField'),
     cantidadPagos: document.getElementById('cantidadPagos'),
     cashCollectedArs: document.getElementById('cashCollectedArs'),
     cashCollectedUsd: document.getElementById('cashCollectedUsd'),
@@ -44,12 +47,16 @@
     attachments: document.getElementById('attachments'),
     attachmentsDropzone: document.getElementById('attachmentsDropzone'),
     attachmentsList: document.getElementById('attachmentsList'),
+    mesesSoporteField: document.getElementById('mesesSoporteField'),
     mesesSoporte: document.getElementById('mesesSoporte'),
+    sesionesField: document.getElementById('sesionesField'),
     sesiones: document.getElementById('sesiones'),
+    bonusMatiField: document.getElementById('bonusMatiField'),
     bonusMati: document.getElementById('bonusMati'),
     infoComprobantes: document.getElementById('infoComprobantes'),
     cobranzaLinkSection: document.getElementById('cobranzaLinkSection'),
     latestSaleId: document.getElementById('latestSaleId'),
+    searchRelatedSaleBtn: document.getElementById('searchRelatedSaleBtn'),
     latestSaleSummary: document.getElementById('latestSaleSummary'),
     submitStatus: document.getElementById('submitStatus'),
     submitBtn: document.getElementById('submitComprobanteBtn'),
@@ -57,7 +64,13 @@
     previewAlerts: document.getElementById('previewAlerts'),
     previewGrid: document.getElementById('previewGrid'),
     editPreviewBtn: document.getElementById('editPreviewBtn'),
-    confirmSubmitBtn: document.getElementById('confirmSubmitBtn')
+    confirmSubmitBtn: document.getElementById('confirmSubmitBtn'),
+    creatingPopup: document.getElementById('comprobanteCreatingPopup'),
+    clientSection: document.getElementById('clientSection'),
+    baseSection: document.getElementById('baseSection'),
+    cashSection: document.getElementById('cashSection'),
+    attachmentsSection: document.getElementById('attachmentsSection'),
+    submitSection: document.getElementById('submitSection')
   };
 
   function todayIso() {
@@ -136,13 +149,24 @@
     const raw = String(value || '').trim();
     if (!raw) return '';
     const clean = raw.replace(/[^\d,.-]/g, '');
+    const separators = clean.match(/[.,]/g) || [];
+    if (!separators.length) {
+      const integerDigits = clean.replace(/[^\d]/g, '');
+      if (!integerDigits) return '';
+      return new Intl.NumberFormat('es-AR').format(Number(integerDigits));
+    }
+
     const lastComma = clean.lastIndexOf(',');
     const lastDot = clean.lastIndexOf('.');
     const decimalIndex = Math.max(lastComma, lastDot);
+    const decimalDigitsRaw = decimalIndex >= 0
+      ? clean.slice(decimalIndex + 1).replace(/[^\d]/g, '')
+      : '';
+    const hasDecimalPart = decimalDigitsRaw.length > 0 && decimalDigitsRaw.length <= 2;
 
-    if (decimalIndex >= 0) {
+    if (decimalIndex >= 0 && hasDecimalPart) {
       const integerDigits = clean.slice(0, decimalIndex).replace(/[^\d]/g, '');
-      const decimalDigits = clean.slice(decimalIndex + 1).replace(/[^\d]/g, '').slice(0, 2);
+      const decimalDigits = decimalDigitsRaw.slice(0, 2);
       const formattedInteger = new Intl.NumberFormat('es-AR').format(Number(integerDigits || 0));
       return decimalDigits ? `${formattedInteger},${decimalDigits}` : `${formattedInteger},`;
     }
@@ -158,9 +182,6 @@
     node.addEventListener('input', () => {
       const raw = String(node.value || '');
       node.value = raw.replace(/[^\d,.-]/g, '');
-    });
-    node.addEventListener('blur', () => {
-      node.value = formatNumberInputValue(node.value);
     });
   }
 
@@ -208,6 +229,124 @@
     refs.previewSection.hidden = true;
   }
 
+  function setCreatingPopup(isVisible) {
+    if (!refs.creatingPopup) return;
+    refs.creatingPopup.hidden = !isVisible;
+  }
+
+  function setSectionVisibility(node, isVisible) {
+    if (!node) return;
+    node.hidden = !isVisible;
+  }
+
+  function getStepState() {
+    const tipo = refs.tipo.value;
+    const isVenta = tipo === 'Venta';
+    const isDevolucion = tipo === 'Devolución';
+    const isCheque = normalizeText(refs.medioPago.value) === 'cheque';
+    const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
+    const baseReady = clientReady
+      && Boolean(tipo)
+      && Boolean(refs.medioPago.value)
+      && Boolean(refs.tc.value)
+      && Boolean(refs.responsableVenta.value);
+    const ventaReady = isVenta
+      ? (
+          Boolean(refs.productName.value)
+          && Boolean(refs.facturacionUsd.value)
+          && Boolean(refs.cantidadPagos.value)
+        )
+      : true;
+    const cashReady = baseReady && Boolean(refs.cashCollectedArs.value);
+    const chequeCount = Number(refs.chequeCount.value || 0);
+    const chequeRows = collectChequeRows();
+    const chequeReady = !isVenta || !isCheque || (
+      chequeCount > 0
+      && chequeRows.length === chequeCount
+      && chequeRows.every((row) => Boolean(String(row.montoArs || '').trim()))
+    );
+    const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución' || (isVenta && isCheque);
+    const relationReady = !needsRelatedSale || Boolean(refs.latestSaleId.value);
+    const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady;
+
+    return {
+      tipo,
+      isVenta,
+      isDevolucion,
+      isCheque,
+      clientReady,
+      baseReady,
+      ventaReady,
+      cashReady,
+      chequeReady,
+      relationReady,
+      readyToReview
+    };
+  }
+
+  function updateStepFlow() {
+    const stepState = getStepState();
+
+    setSectionVisibility(refs.baseSection, stepState.clientReady);
+    setSectionVisibility(refs.ventaFields, stepState.baseReady && (stepState.isVenta || stepState.isDevolucion));
+    setSectionVisibility(
+      refs.cobranzaLinkSection,
+      stepState.baseReady
+        && (!stepState.isVenta || stepState.ventaReady)
+        && (stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución' || stepState.isCheque)
+    );
+    setSectionVisibility(
+      refs.cashSection,
+      stepState.baseReady
+        && (!stepState.isVenta || stepState.ventaReady)
+        && (stepState.relationReady || !(stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución' || stepState.isCheque))
+    );
+    setSectionVisibility(
+      refs.chequeFields,
+      stepState.baseReady && stepState.isVenta && stepState.ventaReady && stepState.isCheque && stepState.relationReady && stepState.cashReady
+    );
+    setSectionVisibility(
+      refs.attachmentsSection,
+      stepState.baseReady && (!stepState.isVenta || stepState.ventaReady) && stepState.relationReady && stepState.cashReady && stepState.chequeReady
+    );
+    setSectionVisibility(
+      refs.submitSection,
+      stepState.baseReady
+        && (!stepState.isVenta || stepState.ventaReady)
+        && stepState.relationReady
+        && stepState.cashReady
+        && stepState.chequeReady
+    );
+
+    refs.submitBtn.disabled = !stepState.readyToReview;
+
+    if (!stepState.clientReady) {
+      refs.submitStatus.textContent = 'Primero buscá y vinculá el cliente.';
+      return;
+    }
+    if (!stepState.baseReady) {
+      refs.submitStatus.textContent = 'Completá tipo, medio de pago, TC y responsable para seguir.';
+      return;
+    }
+    if (stepState.isVenta && !stepState.ventaReady) {
+      refs.submitStatus.textContent = 'Completá producto, facturación USD y cantidad de pagos para seguir.';
+      return;
+    }
+    if (!stepState.relationReady) {
+      refs.submitStatus.textContent = 'Necesitás cargar la venta relacionada para seguir.';
+      return;
+    }
+    if (!stepState.cashReady) {
+      refs.submitStatus.textContent = 'Completá el cash collected ARS para seguir.';
+      return;
+    }
+    if (!stepState.chequeReady) {
+      refs.submitStatus.textContent = 'Completá todos los cheques para seguir.';
+      return;
+    }
+    refs.submitStatus.textContent = 'Todo completo. Ya podés revisar antes de enviar.';
+  }
+
   function populateSelect(selectNode, values, placeholder) {
     if (!selectNode) return;
     const options = [];
@@ -225,11 +364,26 @@
     refs.identificador.value = clientName ? `Transaccion de ${clientName}` : '';
   }
 
+  function renderLatestSaleSummary(sale, emptyText = 'Todavía no encontré una venta previa.') {
+    if (!sale) {
+      refs.latestSaleSummary.innerHTML = `<strong>${escapeHtml(emptyText)}</strong>`;
+      return;
+    }
+
+    refs.latestSaleSummary.innerHTML = `
+      <strong>Venta relacionada encontrada</strong>
+      <span>Producto: ${escapeHtml(sale.producto || '-')}</span>
+      <span>Fecha venta: ${escapeHtml(sale.fechaVenta || '-')}</span>
+      <span>Facturación USD: ${sale.facturacionUsd ? formatCurrency(sale.facturacionUsd) : '-'}</span>
+      <span>Cash collected total: ${sale.cashCollectedTotal ? formatCurrency(sale.cashCollectedTotal) : '-'}</span>
+    `;
+  }
+
   function setClientSummary(client) {
     if (!client) {
       refs.clientSummary.innerHTML = '<strong>Sin cliente cargado todavía.</strong>';
       refs.latestSaleId.value = '';
-      refs.latestSaleSummary.innerHTML = '<strong>Todavía no encontré una venta previa.</strong>';
+      renderLatestSaleSummary(null);
       return;
     }
 
@@ -244,16 +398,11 @@
     const sale = client.latestSale;
     refs.latestSaleId.value = sale?.notionPageId || '';
     if (!sale) {
-      refs.latestSaleSummary.innerHTML = '<strong>No encontré una venta previa cargada para este cliente.</strong>';
+      renderLatestSaleSummary(null, 'No encontré una venta previa cargada para este cliente.');
       return;
     }
 
-    refs.latestSaleSummary.innerHTML = `
-      <strong>Última venta encontrada</strong>
-      <span>Producto: ${escapeHtml(sale.producto || '-')}</span>
-      <span>Fecha venta: ${escapeHtml(sale.fechaVenta || '-')}</span>
-      <span>Facturación USD: ${sale.facturacionUsd ? formatCurrency(sale.facturacionUsd) : '-'}</span>
-    `;
+    renderLatestSaleSummary(sale);
   }
 
   function renderAttachments() {
@@ -301,6 +450,16 @@
     `).join('');
 
     refs.chequeRows.querySelectorAll('[data-cheque-monto]').forEach(bindFormattedNumberInput);
+    refs.chequeRows.querySelectorAll('input').forEach((node) => {
+      node.addEventListener('input', () => {
+        updateStepFlow();
+        invalidatePreview();
+      });
+      node.addEventListener('change', () => {
+        updateStepFlow();
+        invalidatePreview();
+      });
+    });
   }
 
   function updateVisibility() {
@@ -310,20 +469,41 @@
     const isDevolucion = tipo === 'Devolución';
     const isCheque = normalizeText(refs.medioPago.value) === 'cheque';
 
-    refs.ventaFields.hidden = !isVenta;
+    refs.ventaFields.hidden = !(isVenta || isDevolucion);
     refs.chequeFields.hidden = !(isVenta && isCheque);
-    refs.cobranzaLinkSection.hidden = !(isCobranza || (isVenta && isCheque));
+    refs.cobranzaLinkSection.hidden = !(isCobranza || isDevolucion || (isVenta && isCheque));
+    setSectionVisibility(refs.mesesSoporteField, isVenta);
+    setSectionVisibility(refs.sesionesField, isVenta);
+    setSectionVisibility(refs.bonusMatiField, isVenta);
+    setSectionVisibility(refs.productNameField, isVenta);
+    setSectionVisibility(refs.cantidadPagosField, isVenta);
+    setSectionVisibility(refs.facturacionUsdField, isVenta || isDevolucion);
 
     refs.productName.disabled = !isVenta;
     refs.cantidadPagos.disabled = !isVenta;
+    refs.latestSaleId.readOnly = !isDevolucion;
+    if (refs.searchRelatedSaleBtn) refs.searchRelatedSaleBtn.hidden = !isDevolucion;
+
+    if (!isVenta && !isDevolucion) {
+      refs.facturacionUsd.value = '';
+      refs.cantidadPagos.value = '';
+      refs.productName.value = '';
+      refs.mesesSoporte.value = '';
+      refs.sesiones.value = '';
+      refs.bonusMati.checked = false;
+    }
 
     if (isDevolucion) {
-      refs.facturacionUsd.value = '';
       refs.cantidadPagos.value = '';
       refs.productName.value = '';
     }
 
+    if (isDevolucion && !refs.latestSaleId.value) {
+      renderLatestSaleSummary(null, 'Pegá el Notion ID de la venta para traer la referencia.');
+    }
+
     updateCashValidation();
+    updateStepFlow();
     invalidatePreview();
   }
 
@@ -335,8 +515,13 @@
 
     refs.cashCollectedUsd.value = tc > 0 && cashArs > 0 ? formatCurrency(cashArs / tc) : '';
 
+    if (tipo === 'Devolución') {
+      refs.cashValidationCard.innerHTML = '<strong>Referencia</strong><p>Usá la venta relacionada de arriba para mirar la facturación y el cash collected total antes de completar el cash ARS.</p>';
+      return;
+    }
+
     if (tipo !== 'Venta') {
-      refs.cashValidationCard.innerHTML = '<strong>Validación</strong><p>Para cobranzas y devoluciones solo controlo que cash ARS y TC estén completos.</p>';
+      refs.cashValidationCard.innerHTML = '<strong>Validación</strong><p>Para cobranzas solo controlo que cash ARS y TC estén completos.</p>';
       return;
     }
 
@@ -417,10 +602,10 @@
       rows.push(['Cash collected USD', formatCurrency(parseLocaleNumber(payload.cashCollectedArs) / parseLocaleNumber(payload.tc))]);
     }
 
-    if (payload.tipo === 'Venta') {
-      rows.push(['Producto adquirido', payload.productName || '-']);
+    if (payload.tipo === 'Venta' || payload.tipo === 'Devolución') {
+      if (payload.tipo === 'Venta') rows.push(['Producto adquirido', payload.productName || '-']);
       rows.push(['Facturación USD', payload.facturacionUsd ? formatCurrency(parseLocaleNumber(payload.facturacionUsd)) : '-']);
-      rows.push(['Cantidad de pagos', payload.cantidadPagos || '-']);
+      if (payload.tipo === 'Venta') rows.push(['Cantidad de pagos', payload.cantidadPagos || '-']);
     }
 
     if (payload.latestSaleId) {
@@ -571,6 +756,7 @@
       renderAttachments();
       setLoading(false, 'Formulario listo para probar.');
       refs.form.hidden = false;
+      updateStepFlow();
       invalidatePreview();
     } catch (error) {
       refs.status.innerHTML = `<span>No pude preparar la pantalla. ${escapeHtml(error.message || 'Error desconocido')}</span>`;
@@ -597,6 +783,7 @@
       updateIdentificador();
       setClientSummary(response.client);
       refs.submitStatus.textContent = 'Cliente encontrado y relación lista.';
+      updateStepFlow();
       invalidatePreview();
     } catch (error) {
       state.client = null;
@@ -606,8 +793,35 @@
       updateIdentificador();
       setClientSummary(null);
       refs.submitStatus.textContent = error.message || 'No pude encontrar al cliente.';
+      updateStepFlow();
     } finally {
       refs.searchClientBtn.disabled = false;
+    }
+  }
+
+  async function lookupRelatedSaleFromInput() {
+    if (refs.tipo.value !== 'Devolución') return;
+
+    const saleId = String(refs.latestSaleId.value || '').trim();
+    if (!saleId) {
+      renderLatestSaleSummary(null, 'Pegá el Notion ID de la venta para traer la referencia.');
+      updateStepFlow();
+      invalidatePreview();
+      return;
+    }
+
+    refs.submitStatus.textContent = 'Buscando venta relacionada...';
+    try {
+      const response = await api.lookupComprobantesLoaderRelatedSale(saleId);
+      refs.latestSaleId.value = response.sale?.notionPageId || saleId;
+      renderLatestSaleSummary(response.sale);
+      refs.submitStatus.textContent = 'Venta relacionada cargada como referencia.';
+    } catch (error) {
+      renderLatestSaleSummary(null, error.message || 'No pude encontrar la venta relacionada.');
+      refs.submitStatus.textContent = error.message || 'No pude encontrar la venta relacionada.';
+    } finally {
+      updateStepFlow();
+      invalidatePreview();
     }
   }
 
@@ -641,9 +855,9 @@
       latestSaleId: refs.latestSaleId.value,
       attachmentNames: state.attachments.map((file) => file.name),
       attachmentFiles,
-      mesesSoporte: refs.mesesSoporte.value,
-      sesiones: refs.sesiones.value,
-      bonusMati: refs.bonusMati.checked,
+      mesesSoporte: refs.tipo.value === 'Venta' ? refs.mesesSoporte.value : '',
+      sesiones: refs.tipo.value === 'Venta' ? refs.sesiones.value : '',
+      bonusMati: refs.tipo.value === 'Venta' ? refs.bonusMati.checked : false,
       infoComprobantes: refs.infoComprobantes.value
     };
   }
@@ -675,6 +889,7 @@
     refs.submitBtn.disabled = true;
     refs.confirmSubmitBtn.disabled = true;
     refs.submitStatus.textContent = 'Creando comprobante...';
+    setCreatingPopup(true);
 
     try {
       const payload = state.previewPayload || await buildPayload();
@@ -689,6 +904,7 @@
       refs.submitStatus.textContent = `Comprobante creado. Registros generados: ${response.created.length}.`;
       showSuccessPopup(response);
       refs.form.reset();
+      refs.responsableVenta.value = state.bootstrap?.responsibleVentaDefault || '';
       syncAutomaticDates();
       state.attachments = [];
       state.client = null;
@@ -697,10 +913,12 @@
       updateIdentificador();
       renderChequeRows();
       updateVisibility();
+      updateStepFlow();
       invalidatePreview();
     } catch (error) {
       refs.submitStatus.textContent = error.message || 'No pude crear el comprobante.';
     } finally {
+      setCreatingPopup(false);
       refs.submitBtn.disabled = false;
       refs.confirmSubmitBtn.disabled = false;
     }
@@ -714,6 +932,15 @@
       searchClient();
     }
   });
+  refs.searchRelatedSaleBtn?.addEventListener('click', lookupRelatedSaleFromInput);
+  refs.latestSaleId?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      lookupRelatedSaleFromInput();
+    }
+  });
+  refs.latestSaleId?.addEventListener('blur', lookupRelatedSaleFromInput);
+  refs.latestSaleId?.addEventListener('change', lookupRelatedSaleFromInput);
   refs.clientName?.addEventListener('input', updateIdentificador);
   refs.tipo?.addEventListener('change', updateVisibility);
   refs.medioPago?.addEventListener('change', updateVisibility);
@@ -726,6 +953,7 @@
   bindFormattedNumberInput(refs.facturacionUsd);
   refs.chequeCount?.addEventListener('input', () => {
     renderChequeRows();
+    updateStepFlow();
     invalidatePreview();
   });
   refs.form?.addEventListener('submit', handleSubmit);
@@ -752,12 +980,16 @@
   ].forEach((node) => {
     node?.addEventListener('input', invalidatePreview);
     node?.addEventListener('change', invalidatePreview);
+    node?.addEventListener('input', updateStepFlow);
+    node?.addEventListener('change', updateStepFlow);
   });
   refs.bonusMati?.addEventListener('change', invalidatePreview);
+  refs.bonusMati?.addEventListener('change', updateStepFlow);
 
   refs.attachments?.addEventListener('change', (event) => {
     syncFiles(event.target.files);
     refs.attachments.value = '';
+    updateStepFlow();
     invalidatePreview();
   });
 
@@ -766,10 +998,14 @@
     if (removeIndex === undefined) return;
     state.attachments.splice(Number(removeIndex), 1);
     renderAttachments();
+    updateStepFlow();
     invalidatePreview();
   });
 
-  refs.attachmentsDropzone?.addEventListener('click', () => refs.attachments.click());
+  refs.attachmentsDropzone?.addEventListener('click', (event) => {
+    if (event.target === refs.attachments) return;
+    refs.attachments.click();
+  });
   refs.attachmentsDropzone?.addEventListener('dragover', (event) => {
     event.preventDefault();
     refs.attachmentsDropzone.classList.add('is-dragover');
@@ -781,6 +1017,7 @@
     event.preventDefault();
     refs.attachmentsDropzone.classList.remove('is-dragover');
     syncFiles(event.dataTransfer?.files);
+    updateStepFlow();
     invalidatePreview();
   });
 

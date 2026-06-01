@@ -319,6 +319,86 @@ body::before {
   margin: 24px 0 0;
 }
 
+.areas-block {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.areas-header h3 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.5rem;
+}
+
+.areas-stack {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.area-accordion {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+.area-accordion summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 18px 20px;
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.area-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.area-accordion summary::after {
+  content: "+";
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.area-accordion[open] summary::after {
+  content: "−";
+}
+
+.area-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 20px 20px;
+}
+
+.area-detail {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(243, 247, 255, 0.95), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(19, 34, 56, 0.08);
+}
+
+.area-detail dt {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.area-detail dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
 .detail {
   padding: 16px;
   border-radius: 18px;
@@ -413,7 +493,8 @@ code {
 
   .hero,
   .metric-strip,
-  .contact-details {
+  .contact-details,
+  .area-details {
     grid-template-columns: 1fr;
   }
 

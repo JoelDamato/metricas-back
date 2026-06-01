@@ -13,6 +13,37 @@ async function fetchRows(resource, options = {}) {
   return window.http.getJson(`/api/metricas/views/${encodeURIComponent(resource)}${suffix}`);
 }
 
+async function fetchOperationalAlerts() {
+  return window.http.getJson('/api/metricas/alertas-operativas');
+}
+
+async function fetchCommissionsDashboard(month) {
+  const qs = queryString({ month });
+  return window.http.getJson(`/api/metricas/commissions/dashboard?${qs}`);
+}
+
+async function fetchCommissionPersonDetail(month, person) {
+  const qs = queryString({ month, person });
+  return window.http.getJson(`/api/metricas/commissions/person?${qs}`);
+}
+
+async function fetchCommissionConfig(month) {
+  const qs = queryString({ month });
+  return window.http.getJson(`/api/metricas/commissions/config?${qs}`);
+}
+
+async function saveCommissionConfig(payload = {}) {
+  return window.http.postJson('/api/metricas/commissions/config', payload);
+}
+
+async function saveDefaultCommissionConfig(payload = {}) {
+  return window.http.postJson('/api/metricas/commissions/config/default', payload);
+}
+
+async function lockCommissionMonth(payload = {}) {
+  return window.http.postJson('/api/metricas/commissions/config/lock', payload);
+}
+
 async function fetchAgendaDetalleDiarioCloser(options = {}) {
   return fetchRows('agenda_detalle_diario_closer', options);
 }
@@ -176,6 +207,11 @@ async function lookupComprobantesLoaderClient(ghlId) {
   return window.http.getJson(`/api/metricas/comprobantes-loader/cliente?${qs}`);
 }
 
+async function lookupComprobantesLoaderRelatedSale(saleId) {
+  const qs = queryString({ saleId });
+  return window.http.getJson(`/api/metricas/comprobantes-loader/venta-relacionada?${qs}`);
+}
+
 async function createComprobanteManual(payload = {}) {
   return window.http.postJson('/api/metricas/comprobantes-loader', payload);
 }
@@ -184,8 +220,43 @@ async function generateCloserPersonalReport(payload = {}) {
   return window.http.postJson('/api/metricas/closers/personal-report', payload);
 }
 
+async function fetchCloserPersonalReport(params = {}) {
+  const qs = queryString({
+    closer: params.closer,
+    month: params.month
+  });
+  return window.http.getJson(`/api/metricas/closers/personal-report?${qs}`);
+}
+
+async function fetchAuthUsers() {
+  return window.http.getJson('/api/metricas/auth/users');
+}
+
+async function createAuthUser(payload = {}) {
+  return window.http.postJson('/api/metricas/auth/users', payload);
+}
+
+async function updateAuthUser(id, payload = {}) {
+  return window.http.patchJson(`/api/metricas/auth/users/${encodeURIComponent(id)}`, payload);
+}
+
+async function updateAuthUserPassword(id, password) {
+  return window.http.patchJson(`/api/metricas/auth/users/${encodeURIComponent(id)}/password`, { password });
+}
+
+async function deleteAuthUser(id) {
+  return window.http.deleteJson(`/api/metricas/auth/users/${encodeURIComponent(id)}`);
+}
+
 window.metricasApi = {
   fetchViews,
+  fetchOperationalAlerts,
+  fetchCommissionsDashboard,
+  fetchCommissionPersonDetail,
+  fetchCommissionConfig,
+  saveCommissionConfig,
+  saveDefaultCommissionConfig,
+  lockCommissionMonth,
   fetchRows,
   fetchAgendaDetalleDiarioCloser,
   fetchVentasDiarioCloser,
@@ -213,6 +284,13 @@ window.metricasApi = {
   fetchAllRows,
   fetchComprobantesLoaderBootstrap,
   lookupComprobantesLoaderClient,
+  lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
-  generateCloserPersonalReport
+  generateCloserPersonalReport,
+  fetchCloserPersonalReport,
+  fetchAuthUsers,
+  createAuthUser,
+  updateAuthUser,
+  updateAuthUserPassword,
+  deleteAuthUser
 };

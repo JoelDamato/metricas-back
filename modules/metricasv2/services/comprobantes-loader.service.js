@@ -2,14 +2,10 @@ const axios = require('axios');
 const env = require('../config/env');
 
 const DEFAULT_PRODUCTS = [
-  'MEG',
-  'MEG Premium',
-  'MEG Full',
-  'Club',
-  'Renovacion',
-  'Consultoria',
-  'Onboarding',
-  'Mentoria'
+  'Meg 2.1',
+  'Renovacion Meg 2.1',
+  'Meg personalizado',
+  'Renovacion personalizado'
 ];
 
 const DEFAULT_PAYMENT_METHODS = [
@@ -419,8 +415,8 @@ async function getBootstrap(user) {
   const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
   const notionProducts = await fetchRelationOptions(productsDatabaseId);
   const notionPaymentMethods = await fetchRelationOptions(mediosDatabaseId);
-  const fallbackProducts = notionProducts.length ? [] : await fetchHistoricalProducts();
-  const products = notionProducts.length ? notionProducts.map((item) => item.name) : fallbackProducts;
+  const fallbackProducts = await fetchHistoricalProducts();
+  const products = DEFAULT_PRODUCTS.slice();
   const paymentOptions = notionPaymentMethods.length
     ? notionPaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
@@ -430,7 +426,7 @@ async function getBootstrap(user) {
     tipoOptions: DEFAULT_TYPES,
     mediosDePagoOptions: paymentOptions.length ? paymentOptions : DEFAULT_PAYMENT_METHODS,
     cantidadPagosOptions: [1, 2, 3, 4],
-    productsSource: notionProducts.length ? 'notion' : 'fallback',
+    productsSource: notionProducts.length ? 'notion' : 'fixed',
     products,
     uploadAcceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
   };
@@ -458,7 +454,7 @@ async function lookupClientByGhlId(rawGhlInput) {
     throw error;
   }
 
-  const latestSale = await findLatestVentaByGhlId(ghlId);
+  const latestSale = await findLatestVentaByGhlId(ghlId, row.nombre || '');
 
   return {
     pageId: row.id || null,
@@ -471,29 +467,147 @@ async function lookupClientByGhlId(rawGhlInput) {
   };
 }
 
-async function findLatestVentaByGhlId(ghlId) {
-  if (!ghlId) return null;
+async function lookupRelatedSaleById(rawSaleId) {
+  const saleId = parseRelationId(rawSaleId);
+  if (!saleId) {
+    const error = new Error('No pude leer un Notion ID válido para la venta relacionada');
+    error.statusCode = 400;
+    throw error;
+  }
 
-  const response = await supabaseRequest('comprobantes', {
-    select: 'id,cliente,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_ars,tipo',
-    ghlid: `eq.${ghlId}`,
+  const supabaseResponse = await supabaseRequest('comprobantes', {
+    select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_total,tipo',
+    id: `eq.${saleId}`,
     tipo: 'eq.Venta',
-    order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
-    limit: 10
+    limit: 1
   });
 
-  const row = (response.data || [])[0];
+  const supabaseRow = (supabaseResponse.data || [])[0];
+  if (supabaseRow) {
+    return {
+      notionPageId: supabaseRow.id || null,
+      cliente: supabaseRow.cliente || supabaseRow.cliente_format || '',
+      producto: supabaseRow.producto_format || '',
+      fechaVenta: supabaseRow.f_venta || null,
+      fechaAcreditacion: supabaseRow.f_acreditacion || null,
+      facturacionUsd: toNumber(supabaseRow.facturacion),
+      cashCollectedTotal: toNumber(supabaseRow.cash_collected_total)
+    };
+  }
+
+  const response = await axios.get(`https://api.notion.com/v1/pages/${saleId}`, {
+    headers: buildNotionHeaders()
+  });
+  const properties = response.data?.properties || {};
+  const tipo = properties.Tipo?.select?.name || '';
+  if (normalizeText(tipo) !== 'venta') {
+    const error = new Error('La página relacionada no es una venta');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    notionPageId: response.data?.id || saleId,
+    cliente: (properties.Identificador?.title || []).map((item) => item.plain_text).join('') || '',
+    producto: properties['Producto Format']?.formula?.string || '',
+    fechaVenta: properties['F.venta respaldo']?.date?.start || null,
+    fechaAcreditacion: properties['Fecha de acreditacion']?.date?.start || null,
+    facturacionUsd: properties.Facturacion?.number ?? null,
+    cashCollectedTotal: properties['Cash collected Total']?.formula?.number ?? null
+  };
+}
+
+async function findLatestVentaByGhlId(ghlId, clientName = '') {
+  const saleQueries = [];
+
+  if (ghlId) {
+    saleQueries.push({
+      ghlid: `eq.${ghlId}`,
+      tipo: 'eq.Venta',
+      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
+      limit: 10
+    });
+  }
+
+  const normalizedClientName = String(clientName || '').trim();
+  if (normalizedClientName) {
+    saleQueries.push({
+      cliente_format: `ilike.*${normalizedClientName}*`,
+      tipo: 'eq.Venta',
+      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
+      limit: 10
+    });
+  }
+
+  let row = null;
+  for (const query of saleQueries) {
+    const response = await supabaseRequest('comprobantes', {
+      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_ars,cash_collected_total,tipo',
+      ...query
+    });
+    row = (response.data || [])[0] || null;
+    if (row) break;
+  }
+
+  if (!row) {
+    row = await findLatestVentaInNotion(clientName);
+  }
+
   if (!row) return null;
 
   return {
     notionPageId: row.id || null,
-    cliente: row.cliente || '',
+    cliente: row.cliente || row.cliente_format || '',
     producto: row.producto_format || '',
     fechaVenta: row.f_venta || null,
     fechaAcreditacion: row.f_acreditacion || null,
     facturacionUsd: toNumber(row.facturacion),
-    cashCollectedArs: toNumber(row.cash_collected_ars)
+    cashCollectedArs: toNumber(row.cash_collected_ars),
+    cashCollectedTotal: toNumber(row.cash_collected_total)
   };
+}
+
+async function findLatestVentaInNotion(clientName = '') {
+  const databaseId = getComprobantesDatabaseId();
+  const safeClientName = String(clientName || '').trim();
+  if (!env.notionApiKey || !databaseId || !safeClientName) return null;
+
+  try {
+    const response = await axios.post(
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      {
+        page_size: 10,
+        filter: {
+          and: [
+            { property: 'Tipo', select: { equals: 'Venta' } },
+            { property: 'Identificador', title: { contains: safeClientName } }
+          ]
+        },
+        sorts: [
+          { property: 'Fecha creado', direction: 'descending' }
+        ]
+      },
+      {
+        headers: buildNotionHeaders()
+      }
+    );
+
+    const page = (response.data?.results || [])[0];
+    if (!page) return null;
+    const properties = page.properties || {};
+
+    return {
+      id: page.id,
+      cliente_format: safeClientName,
+      producto_format: properties['Producto Format']?.formula?.string || '',
+      f_venta: properties['F.venta respaldo']?.date?.start || null,
+      f_acreditacion: properties['Fecha de acreditacion']?.date?.start || null,
+      facturacion: properties.Facturacion?.number ?? null,
+      cash_collected_ars: properties['Cash collected AR']?.number ?? null
+    };
+  } catch (error) {
+    return null;
+  }
 }
 
 function buildChequeRows(payload) {
@@ -713,8 +827,17 @@ function normalizePayload(payload = {}, user) {
     }
   }
 
+  if (tipo === 'Devolución') {
+    normalized.facturacionUsd = payload.facturacionUsd === '' || payload.facturacionUsd === null || payload.facturacionUsd === undefined
+      ? null
+      : requiredNumber(payload.facturacionUsd, 'la facturación USD');
+  }
+
   if (tipo === 'Cobranza' || tipo === 'Devolución') {
     normalized.autoFinalizar = true;
+    normalized.mesesSoporte = null;
+    normalized.sesiones = null;
+    normalized.bonusMati = false;
   }
 
   return normalized;
@@ -733,7 +856,7 @@ function buildDraftOperations(normalized) {
       'Responsable venta': notionPeopleValue(normalized.responsableVentaUserIds || []),
       Tipo: notionSelectValue(operationTipo),
       Productos: notionRelationArrayValue(overrides.productIds || normalized.productIds || []),
-      Facturacion: operationType === 'Venta' ? notionNumberValue(normalized.facturacionUsd) : undefined,
+      Facturacion: (operationType === 'Venta' || operationType === 'Devolución') ? notionNumberValue(normalized.facturacionUsd) : undefined,
       'Cash collected': notionNumberValue(cashUsd),
       'Cash collected AR': notionNumberValue(amountArs),
       TC: notionNumberValue(normalized.tc),
@@ -806,6 +929,20 @@ async function createNotionPage(properties) {
   return response.data;
 }
 
+async function updateNotionPageProperties(pageId, properties) {
+  if (!pageId || !properties || typeof properties !== 'object') return null;
+
+  const response = await axios.patch(
+    `https://api.notion.com/v1/pages/${pageId}`,
+    { properties },
+    {
+      headers: buildNotionHeaders()
+    }
+  );
+
+  return response.data;
+}
+
 async function createComprobante(payload, user) {
   const normalized = normalizePayload(payload, user);
   const schema = await fetchComprobantesDatabaseSchema();
@@ -836,6 +973,12 @@ async function createComprobante(payload, user) {
       if (normalized.attachmentFiles.length && operation.localType === normalized.tipo) {
         await attachFilesToNotionPage(created.id, normalized.attachmentFiles);
       }
+      if (operation.localType === 'Venta') {
+        await updateNotionPageProperties(created.id, {
+          Finalizado: notionCheckboxValue(true),
+          'Venta relacionada': notionRelationValue(created.id)
+        });
+      }
       results.push({
         id: created.id,
         url: created.url,
@@ -865,5 +1008,6 @@ async function createComprobante(payload, user) {
 module.exports = {
   getBootstrap,
   lookupClientByGhlId,
+  lookupRelatedSaleById,
   createComprobante
 };

@@ -100,6 +100,30 @@ function renderContact(contact) {
   const safeEmail = escapeHtml(contact.email || 'Sin dato');
   const safePhone = escapeHtml(contact.telefono || 'Sin dato');
   const ghlUrl = buildGhlContactUrl(contact.ghlId);
+  const areaSections = [
+    { key: 'comercial', label: 'Area comercial' },
+    { key: 'csm', label: 'CSM' },
+    { key: 'administracion', label: 'Administracion' }
+  ];
+  const areaMarkup = areaSections.map((section, index) => {
+    const items = Array.isArray(contact.areas?.[section.key]) ? contact.areas[section.key] : [];
+    const itemsMarkup = items.slice(0, 3).map((item) => `
+      <div class="area-detail">
+        <dt>${escapeHtml(item.label || 'Dato')}</dt>
+        <dd>${escapeHtml(item.type === 'amount' ? formatAmount(item.value) : (item.value || 'Sin dato'))}</dd>
+      </div>
+    `).join('');
+
+    return `
+      <details class="area-accordion"${index === 0 ? ' open' : ''}>
+        <summary>${escapeHtml(section.label)}</summary>
+        <dl class="area-details">
+          ${itemsMarkup || '<div class="area-detail"><dt>Dato</dt><dd>Sin dato</dd></div>'}
+        </dl>
+      </details>
+    `;
+  }).join('');
+
   container.innerHTML = `
     <article class="contact-card">
       <div class="card-hero">
@@ -138,6 +162,16 @@ function renderContact(contact) {
           <dd>${safePhone}</dd>
         </div>
       </dl>
+
+      <section class="areas-block">
+        <div class="areas-header">
+          <p class="card-kicker">Resumen por área</p>
+          <h3>Datos clave del contacto</h3>
+        </div>
+        <div class="areas-stack">
+          ${areaMarkup}
+        </div>
+      </section>
     </article>
   `;
 }

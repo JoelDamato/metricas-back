@@ -197,6 +197,9 @@
     const splitToggleLabel = isSplitScreenPage ? 'Cerrar dividida' : 'Pantalla dividida';
     rememberStandardPage();
     const canGoBack = window.history.length > 1;
+    const adminLink = permissions.canManageUsers === true
+      ? '<a class="auth-shell-logout-icon auth-shell-link-admin-icon" href="/metricas/views/admin-usuarios.html" aria-label="Administración"><span aria-hidden="true">⚙</span></a>'
+      : '';
     shell.innerHTML = `
       <div class="auth-shell-inner">
         <div class="auth-shell-group auth-shell-group--primary">
@@ -227,6 +230,7 @@
               <span class="auth-shell-access">Acceso: <strong>${accessLabel}</strong></span>
             </span>
           </div>
+          ${adminLink}
           <button id="logoutMetricas" class="auth-shell-logout-icon" type="button" aria-label="Salir">
             <span aria-hidden="true">⇱</span>
           </button>

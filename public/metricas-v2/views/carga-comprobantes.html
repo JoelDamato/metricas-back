@@ -56,7 +56,7 @@
         </div>
 
         <form id="comprobanteForm" class="carga-comprobantes-form" hidden>
-          <section class="carga-section">
+          <section id="clientSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Cliente y relación</h2>
               <p>Pegá la URL de GHL o el GHL ID para encontrar al cliente y dejar lista la relación.</p>
@@ -95,7 +95,7 @@
             </div>
           </section>
 
-          <section class="carga-section">
+          <section id="baseSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Tipo y base</h2>
               <p>La fecha se toma automáticamente con el día de creación del comprobante.</p>
@@ -126,29 +126,48 @@
             <input id="fechaAcreditacion" name="fechaAcreditacion" type="hidden" />
           </section>
 
+          <section id="cobranzaLinkSection" class="carga-section">
+            <div class="carga-section-head">
+              <h2>Venta relacionada</h2>
+              <p>Para cobranzas se busca automáticamente la última venta del cliente. En devoluciones podés pegar el Notion ID para traer la referencia.</p>
+            </div>
+            <div class="carga-grid carga-grid--two">
+              <label class="carga-field">
+                <span>Venta relacionada (Notion ID)</span>
+                <div class="carga-field-row">
+                  <input id="latestSaleId" name="latestSaleId" type="text" readonly />
+                  <button id="searchRelatedSaleBtn" type="button" class="metricas-secondary-button">Buscar venta</button>
+                </div>
+              </label>
+              <div id="latestSaleSummary" class="carga-client-summary">
+                <strong>Todavía no encontré una venta previa.</strong>
+              </div>
+            </div>
+          </section>
+
           <section id="ventaFields" class="carga-section">
             <div class="carga-section-head">
               <h2>Datos de venta</h2>
-              <p>Solo aparece cuando el tipo es venta.</p>
+              <p>Completá la facturación y, si corresponde, los datos propios de la venta.</p>
             </div>
             <div class="carga-grid carga-grid--three">
-              <label class="carga-field carga-field--full">
+              <label id="productNameField" class="carga-field carga-field--full">
                 <span>Producto adquirido</span>
                 <select id="productName" name="productName"></select>
                 <small id="productsSourceText" class="carga-field-help"></small>
               </label>
-              <label class="carga-field">
+              <label id="facturacionUsdField" class="carga-field">
                 <span>Facturación USD</span>
                 <input id="facturacionUsd" name="facturacionUsd" type="text" inputmode="decimal" placeholder="Ej: 2.500" />
               </label>
-              <label class="carga-field">
+              <label id="cantidadPagosField" class="carga-field">
                 <span>Cantidad de pagos</span>
                 <select id="cantidadPagos" name="cantidadPagos"></select>
               </label>
             </div>
           </section>
 
-          <section class="carga-section">
+          <section id="cashSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Cash y validación</h2>
               <p>El cash ARS es obligatorio y se controla contra la facturación USD cargada manualmente.</p>
@@ -183,7 +202,7 @@
             <div id="chequeRows" class="carga-cheque-list"></div>
           </section>
 
-          <section class="carga-section">
+          <section id="attachmentsSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Adjuntos e info</h2>
               <p>Podés subir imágenes o PDF del comprobante para que queden adjuntos en Notion.</p>
@@ -198,15 +217,15 @@
                 </div>
                 <ul id="attachmentsList" class="carga-attachments-list"></ul>
               </label>
-              <label class="carga-field">
+              <label id="mesesSoporteField" class="carga-field">
                 <span>Meses de soporte</span>
                 <input id="mesesSoporte" name="mesesSoporte" type="number" min="0" step="1" placeholder="Ej: 3" />
               </label>
-              <label class="carga-field">
+              <label id="sesionesField" class="carga-field">
                 <span>Sesiones</span>
                 <input id="sesiones" name="sesiones" type="number" min="0" step="1" placeholder="Ej: 8" />
               </label>
-              <label class="carga-field carga-checkbox-field">
+              <label id="bonusMatiField" class="carga-field carga-checkbox-field">
                 <input id="bonusMati" name="bonusMati" type="checkbox" />
                 <span>Bonus Mati</span>
               </label>
@@ -217,23 +236,7 @@
             </div>
           </section>
 
-          <section id="cobranzaLinkSection" class="carga-section">
-            <div class="carga-section-head">
-              <h2>Venta relacionada</h2>
-              <p>Para cobranzas se busca automáticamente la última venta del cliente.</p>
-            </div>
-            <div class="carga-grid carga-grid--two">
-              <label class="carga-field">
-                <span>Venta relacionada (Notion ID)</span>
-                <input id="latestSaleId" name="latestSaleId" type="text" readonly />
-              </label>
-              <div id="latestSaleSummary" class="carga-client-summary">
-                <strong>Todavía no encontré una venta previa.</strong>
-              </div>
-            </div>
-          </section>
-
-          <section class="carga-submit">
+          <section id="submitSection" class="carga-submit">
             <div id="submitStatus" class="carga-submit-status">Todavía no se envió nada.</div>
             <button id="submitComprobanteBtn" type="submit" class="metricas-primary-button">Revisar antes de enviar</button>
           </section>
@@ -253,5 +256,12 @@
         </form>
       </section>
     </main>
+
+    <div id="comprobanteCreatingPopup" class="loading-popup" hidden>
+      <div class="loading-popup-card">
+        <div class="carga-loader-spinner" aria-hidden="true"></div>
+        <p>Creando comprobante...</p>
+      </div>
+    </div>
   </body>
 </html>

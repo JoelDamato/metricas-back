@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administración de usuarios | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/metricas/css/styles.css" />
+  </head>
+  <body class="ranking-page admin-users-page">
+    <main class="container">
+      <section class="ranking-hero admin-users-hero">
+        <span class="admin-users-hero-kicker">Control de acceso</span>
+        <h1>Administración</h1>
+        <p>Creá cuentas nuevas o gestioná permisos existentes desde una sola pantalla, con pasos más claros y lenguaje simple.</p>
+      </section>
+
+      <section class="card admin-users-shell">
+        <div class="admin-users-tabs" role="tablist" aria-label="Secciones de administración">
+          <button id="tabCreate" class="admin-users-tab is-active" type="button" data-tab="create" role="tab" aria-selected="true">Crear cuenta</button>
+          <button id="tabManage" class="admin-users-tab" type="button" data-tab="manage" role="tab" aria-selected="false">Editar o borrar</button>
+        </div>
+
+        <p id="adminUsersStatus" class="admin-users-status">Cargando usuarios...</p>
+
+        <section id="createPanel" class="admin-users-panel" data-panel="create">
+          <div class="admin-users-panel-head">
+            <div>
+              <h2>Crear una cuenta nueva</h2>
+              <p>Definí el rol principal y, si hace falta, ajustá accesos especiales.</p>
+            </div>
+            <div class="admin-users-panel-badge">Alta rápida</div>
+          </div>
+          <form id="createUserForm" class="admin-users-form"></form>
+        </section>
+
+        <section id="managePanel" class="admin-users-panel" data-panel="manage" hidden>
+          <div class="admin-users-panel-head">
+            <div>
+              <h2>Cuentas cargadas</h2>
+              <p>Elegí una cuenta para editar permisos, cambiar la contraseña o borrarla.</p>
+            </div>
+            <div class="admin-users-panel-badge">Gestión</div>
+          </div>
+          <div id="usersList" class="admin-users-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <div id="adminUserModal" class="admin-users-modal" hidden>
+      <div class="admin-users-modal-backdrop" data-close-modal="1"></div>
+      <div class="admin-users-modal-card" role="dialog" aria-modal="true" aria-labelledby="adminUserModalTitle">
+        <button id="closeAdminUserModal" class="admin-users-modal-close" type="button" aria-label="Cerrar">×</button>
+        <div class="admin-users-modal-head">
+          <span class="admin-users-modal-kicker">Editar cuenta</span>
+          <h2 id="adminUserModalTitle">Permisos</h2>
+          <p id="adminUserModalSubtitle"></p>
+        </div>
+        <form id="editUserForm" class="admin-users-form"></form>
+      </div>
+    </div>
+
+    <script src="/metricas/js/api/http.js"></script>
+    <script src="/metricas/js/api/metricas.api.js"></script>
+    <script src="/metricas/js/auth-shell.js"></script>
+    <script src="/metricas/js/views/admin-usuarios.page.js"></script>
+  </body>
+</html>

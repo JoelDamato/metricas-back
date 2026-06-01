@@ -509,6 +509,21 @@ async function generateCloserPersonalReport({ closer, month }) {
   };
 }
 
+async function getStoredCloserPersonalReport({ closer, month }) {
+  return supabaseService.getStoredCloserPersonalReport({ closer, month });
+}
+
+async function generateAndStoreCloserPersonalReport({ closer, month }, user) {
+  const payload = await generateCloserPersonalReport({ closer, month });
+  const stored = await supabaseService.saveCloserPersonalReport({
+    closer: payload.closer,
+    month: payload.month
+  }, payload, user);
+  return stored.report || payload;
+}
+
 module.exports = {
-  generateCloserPersonalReport
+  generateCloserPersonalReport,
+  getStoredCloserPersonalReport,
+  generateAndStoreCloserPersonalReport
 };

@@ -124,6 +124,38 @@ function normalizeReportePersonalPdfParams(params = {}) {
   };
 }
 
+function normalizeReportePersonalReportParams(params = {}) {
+  const closer = String(params.closer || '').trim();
+  const month = String(params.month || '').trim();
+
+  if (!closer) {
+    const error = new Error('Falta el closer para el reporte personal');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!validateMonthKey(month)) {
+    const error = new Error('El mes debe venir en formato YYYY-MM');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const closerSlug = slugifyStorageSegment(closer);
+  if (!closerSlug) {
+    const error = new Error('Closer inválido para guardar el reporte');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    closer,
+    month,
+    closerSlug,
+    objectPath: `closers/${month}/${closerSlug}.json`
+  };
+}
+
 function isDateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
 }
@@ -1505,9 +1537,11 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
     });
 }
 
-async function ensureReportesPersonalesBucket() {
-  const bucketId = env.reportesPersonalesBucket;
+async function ensureStorageBucket(bucketId, options = {}) {
   const url = `${env.supabaseUrl}/storage/v1/bucket`;
+  const allowedMimeTypes = Array.isArray(options.allowedMimeTypes) && options.allowedMimeTypes.length
+    ? options.allowedMimeTypes
+    : null;
 
   try {
     await axios.post(url, {
@@ -1515,7 +1549,7 @@ async function ensureReportesPersonalesBucket() {
       name: bucketId,
       public: false,
       file_size_limit: 20971520,
-      allowed_mime_types: ['application/pdf']
+      allowed_mime_types: allowedMimeTypes
     }, {
       headers: buildStorageHeaders({ 'Content-Type': 'application/json' })
     });
@@ -1529,11 +1563,23 @@ async function ensureReportesPersonalesBucket() {
       return;
     }
 
-    const error = new Error(`Error asegurando bucket de reportes personales: ${err.response?.data?.message || err.message}`);
+    const error = new Error(`Error asegurando bucket ${bucketId}: ${err.response?.data?.message || err.message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;
     throw error;
   }
+}
+
+async function ensureReportesPersonalesBucket() {
+  return ensureStorageBucket(env.reportesPersonalesBucket, {
+    allowedMimeTypes: ['application/pdf']
+  });
+}
+
+async function ensureReportesPersonalesDataBucket() {
+  return ensureStorageBucket(env.reportesPersonalesDataBucket, {
+    allowedMimeTypes: ['application/json']
+  });
 }
 
 async function getCloserPersonalPdf(params = {}) {
@@ -1620,6 +1666,87 @@ async function uploadCloserPersonalPdf(params = {}, fileBuffer, user) {
   }
 }
 
+async function getStoredCloserPersonalReport(params = {}) {
+  const normalized = normalizeReportePersonalReportParams(params);
+  const url = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders(),
+      responseType: 'text'
+    });
+    const raw = typeof response.data === 'string'
+      ? response.data
+      : Buffer.isBuffer(response.data)
+        ? response.data.toString('utf8')
+        : JSON.stringify(response.data || {});
+    const report = JSON.parse(raw);
+
+    return {
+      exists: true,
+      closer: normalized.closer,
+      month: normalized.month,
+      path: normalized.objectPath,
+      report
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return {
+        exists: false,
+        closer: normalized.closer,
+        month: normalized.month,
+        path: normalized.objectPath,
+        report: null
+      };
+    }
+
+    const error = new Error(`Error consultando reporte personal guardado: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function saveCloserPersonalReport(params = {}, reportPayload = {}, user) {
+  const normalized = normalizeReportePersonalReportParams(params);
+
+  if (!reportPayload || typeof reportPayload !== 'object') {
+    const error = new Error('No llegó contenido válido para guardar el reporte personal');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await ensureReportesPersonalesDataBucket();
+
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+  const body = Buffer.from(JSON.stringify({
+    ...reportPayload,
+    savedAt: new Date().toISOString(),
+    savedBy: String(user?.email || '').trim().toLowerCase() || null
+  }, null, 2), 'utf8');
+
+  try {
+    await axios.post(uploadUrl, body, {
+      headers: buildStorageHeaders({
+        'Content-Type': 'application/json',
+        'x-upsert': 'true',
+        'cache-control': '3600'
+      }),
+      maxBodyLength: Infinity
+    });
+
+    return getStoredCloserPersonalReport(normalized);
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando reporte personal: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
 module.exports = {
   listResources,
   listRows,
@@ -1641,6 +1768,8 @@ module.exports = {
   getMarketingCampaignTotals,
   getCloserPersonalPdf,
   uploadCloserPersonalPdf,
+  getStoredCloserPersonalReport,
+  saveCloserPersonalReport,
   normalizeResourceName,
   parseLimit,
   parseOffset

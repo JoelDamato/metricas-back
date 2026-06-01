@@ -2,6 +2,7 @@ const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
 const comprobantesLoaderService = require('../services/comprobantes-loader.service');
 const closerPersonalReportService = require('../services/closer-personal-report.service');
+const commissionsService = require('../services/commissions.service');
 const access = require('../../auth/access');
 
 async function health(req, res) {
@@ -19,6 +20,126 @@ async function getResources(req, res, next) {
       ok: true,
       count: resources.length,
       resources
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listAllResourceRows(resource, options = {}) {
+  const pageSize = Math.min(Math.max(Number(options.limit || 1000), 1), 1000);
+  const rows = [];
+  let offset = Number(options.offset || 0);
+
+  while (true) {
+    const chunk = await supabaseService.listRows(resource, {
+      ...options,
+      limit: pageSize,
+      offset
+    });
+
+    rows.push(...chunk);
+
+    if (chunk.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return rows;
+}
+
+async function getOperationalAlertsData(req, res, next) {
+  try {
+    const [csmRows, comprobantesRows, leadsRows] = await Promise.all([
+      listAllResourceRows('csm', {
+        select: 'nombre,ghlid,abandono,f_pago_con_acceso,f_acceso,f_onboarding,f_diagnostico,modulo_1,modelo_negocio'
+      }),
+      listAllResourceRows('comprobantes', {
+        select: 'creado_por,estado,tipo,producto_format,f_venta,f_acreditacion,facturacion,cash_collected_total,cash_collected,ghlid'
+      }),
+      listAllResourceRows('leads_raw', {
+        select: 'nombre,mail,telefono,whatsapp,ghlid,fecha_creada,created_time,origen,primer_origen,setter,closer,fecha_agenda,fecha_llamada,agendo,aplica,llamada_meg,estrategia_a'
+      })
+    ]);
+
+    res.json({
+      ok: true,
+      rows: {
+        csm: csmRows,
+        comprobantes: comprobantesRows,
+        leads: leadsRows
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getCommissionsDashboard(req, res, next) {
+  try {
+    const data = await commissionsService.buildCommissionDashboard(req.query.month);
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getCommissionPersonDetail(req, res, next) {
+  try {
+    const data = await commissionsService.getCommissionPersonDetail(req.query.month, req.query.person);
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getCommissionConfig(req, res, next) {
+  try {
+    const data = await commissionsService.getCommissionConfig(req.query.month);
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveCommissionConfig(req, res, next) {
+  try {
+    const data = await commissionsService.saveCommissionConfig(req.body?.month, req.body?.config || {}, req.authUser);
+    res.json({
+      ok: true,
+      ...data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveDefaultCommissionConfig(req, res, next) {
+  try {
+    const config = await commissionsService.saveDefaultCommissionConfig(req.body?.config || {}, req.authUser);
+    res.json({
+      ok: true,
+      config
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function lockCommissionMonth(req, res, next) {
+  try {
+    const data = await commissionsService.lockCommissionMonth(req.body?.month, req.authUser);
+    res.json({
+      ok: true,
+      ...data
     });
   } catch (error) {
     next(error);
@@ -415,6 +536,18 @@ async function lookupComprobantesLoaderClient(req, res, next) {
   }
 }
 
+async function lookupComprobantesLoaderRelatedSale(req, res, next) {
+  try {
+    const sale = await comprobantesLoaderService.lookupRelatedSaleById(req.query.saleId || req.query.id || '');
+    res.json({
+      ok: true,
+      sale
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function createComprobanteManual(req, res, next) {
   try {
     const result = await comprobantesLoaderService.createComprobante(req.body || {}, req.authUser);
@@ -435,10 +568,10 @@ async function generateCloserPersonalReport(req, res, next) {
       throw error;
     }
 
-    const report = await closerPersonalReportService.generateCloserPersonalReport({
+    const report = await closerPersonalReportService.generateAndStoreCloserPersonalReport({
       closer: req.body?.closer,
       month: req.body?.month
-    });
+    }, req.authUser);
 
     res.json({
       ok: true,
@@ -449,8 +582,32 @@ async function generateCloserPersonalReport(req, res, next) {
   }
 }
 
+async function getCloserPersonalReport(req, res, next) {
+  try {
+    const stored = await closerPersonalReportService.getStoredCloserPersonalReport({
+      closer: req.query.closer,
+      month: req.query.month
+    });
+
+    res.json({
+      ok: true,
+      exists: Boolean(stored?.exists),
+      report: stored?.report || null
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
+  getCommissionConfig,
+  getCommissionsDashboard,
+  getCommissionPersonDetail,
+  saveCommissionConfig,
+  saveDefaultCommissionConfig,
+  lockCommissionMonth,
+  getOperationalAlertsData,
   getResources,
   getResourceRows,
   getKpiCloserRules,
@@ -475,6 +632,8 @@ module.exports = {
   askAssistant,
   getComprobantesLoaderBootstrap,
   lookupComprobantesLoaderClient,
+  lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
-  generateCloserPersonalReport
+  generateCloserPersonalReport,
+  getCloserPersonalReport
 };

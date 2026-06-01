@@ -10,11 +10,12 @@ const PAGE_ROLE_ACCESS = {
   'kpi-closers.html': ['total', 'comercial'],
   'setting.html': ['total', 'comercial'],
   'reportes.html': ['total', 'comercial'],
-  'alertas-operativas.html': ['total', 'comercial'],
+  'alertas-operativas.html': ['total', 'comercial', 'csm'],
   'mag-sistema-agendas.html': ['total', 'comercial'],
   'mag-reportes-personales.html': ['total', 'comercial'],
   'mag-reporte-closers-2026.html': ['total', 'comercial'],
   'mag-manual-closers.html': ['total', 'comercial'],
+  'admin-usuarios.html': ['total'],
   'leads-bdd.html': ['total', 'comercial', 'csm'],
   'marketing.html': ['total', 'comercial', 'csm'],
   'comisiones.html': ['total', 'comercial', 'csm'],
@@ -50,8 +51,10 @@ const FEATURE_ROLE_ACCESS = {
   reportes_premio: ['total', 'comercial'],
   reportes_comentarios: ['total', 'comercial'],
   marketing_inversion: ['total', 'comercial', 'csm'],
+  alertas_operativas: ['total', 'comercial', 'csm'],
   auth_session: ['total', 'comercial', 'csm'],
-  assistant: ['total', 'comercial', 'csm']
+  assistant: ['total', 'comercial', 'csm'],
+  user_admin: ['total']
 };
 
 const MARKETING_ONLY_EMAILS = new Set([
@@ -135,15 +138,55 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function getAccessConfig(userOrEmail) {
+  if (!userOrEmail || typeof userOrEmail === 'string') return {};
+  const accessConfig = userOrEmail.access_config;
+  return accessConfig && typeof accessConfig === 'object' ? accessConfig : {};
+}
+
+function getConfigBoolean(userOrEmail, key) {
+  const accessConfig = getAccessConfig(userOrEmail);
+  if (typeof accessConfig[key] === 'boolean') return accessConfig[key];
+  return null;
+}
+
+function normalizeOverride(rawOverride = null) {
+  if (!rawOverride || typeof rawOverride !== 'object') return null;
+  return {
+    homePath: rawOverride.homePath ? String(rawOverride.homePath).trim() : null,
+    allowedPages: new Set(Array.isArray(rawOverride.allowedPages) ? rawOverride.allowedPages : Array.from(rawOverride.allowedPages || [])),
+    allowedResources: new Set(Array.isArray(rawOverride.allowedResources) ? rawOverride.allowedResources : Array.from(rawOverride.allowedResources || [])),
+    allowedFeatures: Object.fromEntries(
+      Object.entries(rawOverride.allowedFeatures || {}).map(([feature, methods]) => [
+        feature,
+        Array.isArray(methods) ? methods.map((method) => String(method || '').toUpperCase()).filter(Boolean) : []
+      ])
+    )
+  };
+}
+
 function getUserAccessOverride(userOrEmail) {
+  const config = getAccessConfig(userOrEmail);
+  const hasCustomOverride = config.useCustomAccess === true
+    || (Array.isArray(config.allowedPages) && config.allowedPages.length > 0)
+    || (Array.isArray(config.allowedResources) && config.allowedResources.length > 0)
+    || String(config.homePath || '').trim() !== ''
+    || (config.allowedFeatures && typeof config.allowedFeatures === 'object' && Object.keys(config.allowedFeatures).length > 0);
+
+  if (hasCustomOverride) {
+    return normalizeOverride(config);
+  }
+
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
 
-  return USER_ACCESS_OVERRIDES[email] || null;
+  return normalizeOverride(USER_ACCESS_OVERRIDES[email] || null);
 }
 
 function isMarketingOnlyUser(userOrEmail) {
+  const configValue = getConfigBoolean(userOrEmail, 'marketingOnly');
+  if (configValue !== null) return configValue;
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
@@ -152,6 +195,8 @@ function isMarketingOnlyUser(userOrEmail) {
 }
 
 function isRestrictedCommercialUser(userOrEmail) {
+  const configValue = getConfigBoolean(userOrEmail, 'restrictedCommercial');
+  if (configValue !== null) return configValue;
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
@@ -160,6 +205,8 @@ function isRestrictedCommercialUser(userOrEmail) {
 }
 
 function isCsmOnlyUser(userOrEmail) {
+  const configValue = getConfigBoolean(userOrEmail, 'csmOnly');
+  if (configValue !== null) return configValue;
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
@@ -168,13 +215,23 @@ function isCsmOnlyUser(userOrEmail) {
 }
 
 function canEditReportesPremioForUser(user) {
+  const configValue = getConfigBoolean(user, 'canEditReportesPremio');
+  if (configValue !== null) return configValue;
   const email = normalizeEmail(user?.email);
   return user?.role === 'total' || REPORTES_PREMIO_EDITOR_EMAILS.has(email);
 }
 
 function canGenerateCloserAiReportForUser(user) {
+  const configValue = getConfigBoolean(user, 'canGenerateCloserAiReport');
+  if (configValue !== null) return configValue;
   const email = normalizeEmail(user?.email);
   return user?.role === 'total' || CLOSER_AI_REPORT_EDITOR_EMAILS.has(email);
+}
+
+function canManageUsersForUser(user) {
+  const configValue = getConfigBoolean(user, 'canManageUsers');
+  if (configValue !== null) return configValue;
+  return user?.role === 'total';
 }
 
 function hasRoleAccess(allowedRoles, role) {
@@ -195,6 +252,7 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
   const override = getUserAccessOverride(user);
   if (override) return override.allowedPages.has(pageName);
   if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
@@ -216,6 +274,10 @@ function canAccessResourceForUser(user, resourceName) {
 }
 
 function canAccessFeatureForUser(user, featureName, options = {}) {
+  if (featureName === 'user_admin') {
+    return canManageUsersForUser(user);
+  }
+
   const override = getUserAccessOverride(user);
   if (override) {
     const allowedMethods = override.allowedFeatures[featureName];
@@ -268,12 +330,37 @@ function getUserPermissions(user) {
     onlyMarketingAccess: isMarketingOnlyUser(user),
     homePath: override?.homePath || null,
     allowedPages: override ? Array.from(override.allowedPages) : null,
+    allowedResources: override ? Array.from(override.allowedResources) : null,
+    allowedFeatures: override ? override.allowedFeatures : null,
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
     canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
     canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' }),
-    canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user)
+    canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
+    canManageUsers: canManageUsersForUser(user),
+    accessFlags: {
+      marketingOnly: isMarketingOnlyUser(user),
+      restrictedCommercial: isRestrictedCommercialUser(user),
+      csmOnly: isCsmOnlyUser(user)
+    }
+  };
+}
+
+function getUserAccessSummary(user) {
+  return {
+    role: user?.role || null,
+    flags: {
+      marketingOnly: isMarketingOnlyUser(user),
+      restrictedCommercial: isRestrictedCommercialUser(user),
+      csmOnly: isCsmOnlyUser(user),
+      canEditReportesPremio: canEditReportesPremioForUser(user),
+      canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
+      canManageUsers: canManageUsersForUser(user)
+    },
+    homePath: getUserAccessOverride(user)?.homePath || null,
+    pages: Object.keys(PAGE_ROLE_ACCESS).filter((pageName) => canAccessPageForUser(user, pageName)),
+    resources: Object.keys(RESOURCE_ROLE_ACCESS).filter((resourceName) => canAccessResourceForUser(user, resourceName))
   };
 }
 
@@ -291,11 +378,13 @@ module.exports = {
   isCsmOnlyUser,
   canEditReportesPremioForUser,
   canGenerateCloserAiReportForUser,
+  canManageUsersForUser,
   canAccessPage,
   canAccessResource,
   canAccessFeature,
   canAccessPageForUser,
   canAccessResourceForUser,
   canAccessFeatureForUser,
-  getUserPermissions
+  getUserPermissions,
+  getUserAccessSummary
 };
