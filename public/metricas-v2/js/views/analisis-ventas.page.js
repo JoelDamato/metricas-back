@@ -302,6 +302,10 @@ function renderTables(sectionSummaries, year) {
     .join('');
 }
 
+function getResponsibleCloser(row) {
+  return String(row?.responsable_venta || row?.creado_por || '').trim() || 'Sin closer';
+}
+
 function showDetailPopup({ section, rowDefinition, month, year, rows }) {
   const existing = document.getElementById('salesAnalysisDetailPopup');
   if (existing) existing.remove();
@@ -318,7 +322,7 @@ function showDetailPopup({ section, rowDefinition, month, year, rows }) {
               Producto: ${escapeHtml(row.producto_format || 'Sin producto')}
             </span>
             <span class="sales-analysis-detail-meta">
-              Closer: ${escapeHtml(row.creado_por || 'Sin closer')} · Facturacion: ${formatCurrency(row.facturacion)} · Cash inicial: ${formatCurrency(row.cash_collected)} · Cash/facturacion: ${formatPercent(getCashPct(row))}
+              Closer: ${escapeHtml(getResponsibleCloser(row))} · Facturacion: ${formatCurrency(row.facturacion)} · Cash inicial: ${formatCurrency(row.cash_collected)} · Cash/facturacion: ${formatPercent(getCashPct(row))}
             </span>
             <span class="sales-analysis-detail-meta">
               Cash total venta: ${formatCurrency(getEffectiveCashCollected(row))}

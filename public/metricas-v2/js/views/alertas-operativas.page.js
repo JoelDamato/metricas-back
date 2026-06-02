@@ -17,13 +17,17 @@
       .replace(/'/g, '&#39;');
   }
 
-  function normalizeText(value) {
-    return String(value || '')
+function normalizeText(value) {
+  return String(value || '')
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
-  }
+}
+
+function getResponsibleCloser(row) {
+  return String(row?.responsable_venta || row?.creado_por || '').trim() || 'Sin closer';
+}
 
   function toDateOnly(value) {
     if (!value) return '';
@@ -336,7 +340,7 @@
         if (!issues.length) return null;
 
         return {
-          closer: row.creado_por || 'Sin closer',
+          closer: getResponsibleCloser(row),
           ghlid: row.ghlid || row.ghl_id || '-',
           producto: row.producto_format || '-',
           venta: toDateOnly(row.f_venta || ''),
@@ -412,7 +416,7 @@
         if (!estado.includes('sin conciliar')) return null;
 
         return {
-          closer: row.creado_por || 'Sin closer',
+          closer: getResponsibleCloser(row),
           estado: row.estado || 'Sin estado',
           tipo: row.tipo || '-',
           producto: row.producto_format || '-',
@@ -431,7 +435,7 @@
         if (!estado.includes('rebot')) return null;
 
         return {
-          closer: row.creado_por || 'Sin closer',
+          closer: getResponsibleCloser(row),
           estado: row.estado || 'Sin estado',
           tipo: row.tipo || '-',
           producto: row.producto_format || '-',

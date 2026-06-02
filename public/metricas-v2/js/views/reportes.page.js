@@ -29,7 +29,7 @@ const REPORTES_BLOCK_INFO = {
     title: 'Comprobantes',
     viewLabel: '"comprobantes"',
     dateLabel: '"f_acreditacion"',
-    logic: 'Cuenta comprobantes por closer usando "creado_por" y los separa por "estado" dentro del rango filtrado de "f_acreditacion". En este bloque se excluyen comprobantes cuyo "producto_format" contiene "Club". Los estados salen directo de la tabla, por ejemplo "Conciliado", "Rectificado", "Rebotado" o sin estado.'
+    logic: 'Cuenta comprobantes por closer usando primero "responsable_venta" y, si falta, cae a "creado_por". Los separa por "estado" dentro del rango filtrado de "f_acreditacion". En este bloque se excluyen comprobantes cuyo "producto_format" contiene "Club". Los estados salen directo de la tabla, por ejemplo "Conciliado", "Rectificado", "Rebotado" o sin estado.'
   }
 };
 const REPORTES_METRIC_INFO = {
@@ -130,6 +130,10 @@ function shouldIncludeCloser(name) {
   const normalized = normalizeText(name);
   if (!normalized) return false;
   return !EXCLUDED_CLOSERS.some((term) => normalized.includes(term));
+}
+
+function getResponsibleCloser(row) {
+  return String(row?.responsable_venta || row?.creado_por || '').trim();
 }
 
 function formatInteger(value) {
@@ -674,7 +678,7 @@ async function loadComprobantesData(range) {
   const states = new Set();
 
   (response.rows || []).forEach((row) => {
-    const closer = String(row.creado_por || '').trim();
+    const closer = getResponsibleCloser(row);
     if (!shouldIncludeCloser(closer)) return;
     if (normalizeText(row.producto_format).includes('club')) return;
 
@@ -704,7 +708,7 @@ function bindReportInfoButtons(container) {
           title: `Comprobantes · ${button.dataset.metricLabel}`,
           viewLabel: '"comprobantes"',
           dateLabel: '"f_acreditacion"',
-          logic: `Cuenta comprobantes donde "estado" = "${button.dataset.metricLabel}" y los agrupa por "creado_por" dentro del rango filtrado por "f_acreditacion". En este bloque no se incluyen filas cuyo "producto_format" contiene "Club".`
+          logic: `Cuenta comprobantes donde "estado" = "${button.dataset.metricLabel}" y los agrupa por "responsable_venta" (o "creado_por" si falta) dentro del rango filtrado por "f_acreditacion". En este bloque no se incluyen filas cuyo "producto_format" contiene "Club".`
         });
         return;
       }

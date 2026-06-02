@@ -242,6 +242,7 @@ function mapToSupabase(payload) {
     rebotar_pago: getValue(p['Rebotar pago']),
     rectificar_pago: getValue(p['Rectificar pago']),
     responsable_actual: getValue(p['Responsable Actual']),
+    responsable_venta: getValue(p['Responsable venta']),
     score: getValue(p['Score']),
     tc: getValue(p['TC']),
     telefono: getValue(p['Telefono']),

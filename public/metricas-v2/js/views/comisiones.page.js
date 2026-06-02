@@ -356,7 +356,6 @@
     document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
     document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
-    document.getElementById('commissionNotes').value = (config.notes || []).join('\n');
 
     document.getElementById('commissionAgendaScaleRows').innerHTML = (config.agendaScale || [])
       .map((row, index) => createScaleRowMarkup('agendaScale', index, row)).join('');
@@ -426,10 +425,7 @@
       fixedOverrides: readOverrideRows(),
       closerRules: readCloserRuleRows(),
       personAreas: readAreaRows(),
-      notes: document.getElementById('commissionNotes').value
-        .split('\n')
-        .map((row) => row.trim())
-        .filter(Boolean)
+      notes: Array.isArray(state.rulesDraft?.notes) ? state.rulesDraft.notes : []
     };
   }
 

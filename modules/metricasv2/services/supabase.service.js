@@ -1328,7 +1328,7 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
       return false;
     }
 
-    if (closer && normalizeCloserGroup(row.creado_por) !== normalizeCloserGroup(closer)) {
+    if (closer && normalizeCloserGroup(row.responsable_venta || row.creado_por) !== normalizeCloserGroup(closer)) {
       return false;
     }
 

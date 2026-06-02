@@ -120,6 +120,13 @@ function titleCaseName(value) {
     .join(' ');
 }
 
+function extractResponsibleVenta(infoComprobantes = '') {
+  const raw = String(infoComprobantes || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/responsable venta:\s*([^|]+)/i);
+  return titleCaseName(match?.[1] || '');
+}
+
 function normalizeScale(scale = [], fallback = []) {
   const rows = Array.isArray(scale) ? scale : fallback;
   return rows
@@ -378,6 +385,15 @@ function normalizeComprobanteRows(rows = []) {
     tipo: titleCaseName(row.tipo),
     producto_format: String(row.producto_format || '').trim(),
     creado_por: titleCaseName(row.creado_por),
+    responsable_venta_db: titleCaseName(row.responsable_venta),
+    responsable_actual: titleCaseName(row.responsable_actual),
+    info_comprobantes: String(row.info_comprobantes || '').trim(),
+    responsable_venta: titleCaseName(
+      row.responsable_venta
+      || extractResponsibleVenta(row.info_comprobantes)
+      || row.responsable_actual
+      || row.creado_por
+    ),
     setter: titleCaseName(row.setter),
     origen: String(row.origen || '').trim(),
     calendario_agendado: String(row.calendario_agendado || '').trim(),
@@ -463,7 +479,7 @@ function buildCloserClubSequenceMap(rows, monthKey) {
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
     .sort((a, b) => String(a.f_acreditacion_only || a.f_venta_only || '').localeCompare(String(b.f_acreditacion_only || b.f_venta_only || '')) || a.id.localeCompare(b.id))
     .forEach((row) => {
-      const closerKey = normalizeText(row.creado_por);
+      const closerKey = normalizeText(row.responsable_venta || row.creado_por);
       if (!closerKey) return;
       const current = groups.get(closerKey) || 0;
       groups.set(`${closerKey}:${row.id}`, current + 1);
@@ -505,7 +521,7 @@ function resolveCloserMegCommission(row, context) {
 
   const nextVisited = new Set(visited);
   nextVisited.add(row.id);
-  const closerName = row.creado_por || '';
+  const closerName = row.responsable_venta || row.creado_por || '';
   if (!closerName) return null;
 
   const type = normalizeText(row.tipo);
@@ -609,7 +625,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     const isClub = isClubProduct(row.producto_format);
     const setterName = row.setter || '';
-    const closerName = row.creado_por || '';
+    const closerName = row.responsable_venta || row.creado_por || '';
 
     if (closerName) {
       const closerArea = getAreaForPerson(areaMap, closerName, 'Comercial');
@@ -714,7 +730,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         product: row.producto_format || 'Club',
         ghlid: row.ghlid || '',
         setter: setterName,
-        closer: row.creado_por || '',
+        closer: row.responsable_venta || row.creado_por || '',
         origin: row.origen || '',
         calendar: row.calendario_agendado || '',
         baseAmount,
@@ -776,7 +792,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       product: row.producto_format || (type === 'cobranza' ? 'Cobranza' : 'Venta'),
       ghlid: row.ghlid || '',
       setter: setterName,
-      closer: row.creado_por || '',
+      closer: row.responsable_venta || row.creado_por || '',
       origin: row.origen || '',
       calendar: row.calendario_agendado || '',
       baseAmount,
@@ -936,7 +952,7 @@ async function buildCommissionDashboard(monthKey) {
   const [{ config, locked }, comprobantesRows, settersRows] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchAllRows('comprobantes', {
-      select: 'id,tipo,producto_format,creado_por,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones'
+      select: 'id,tipo,producto_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones'
     }),
     fetchAllRows('setters', {
       select: 'anio,mes,setter,agendo,venta_club'

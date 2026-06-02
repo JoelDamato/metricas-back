@@ -22,7 +22,7 @@ const RANKING_METRIC_INFO = {
     title: 'Facturación Total',
     viewLabel: '"ranking_closers_mensual"',
     dateLabel: 'Mes del ranking por "f_venta"',
-    logic: 'Suma "facturacion" de comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "creado_por" y por mes de "f_venta".'
+    logic: 'Suma "facturacion" de comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "responsable_venta" y, si falta, cae a "creado_por", siempre por mes de "f_venta".'
   },
   cash_collected_total: {
     title: 'Cash Collected Total',
@@ -34,7 +34,7 @@ const RANKING_METRIC_INFO = {
     title: 'Ventas Totales',
     viewLabel: '"ranking_closers_mensual"',
     dateLabel: 'Mes del ranking por "f_venta"',
-    logic: 'Cuenta comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "creado_por" y por mes de "f_venta".'
+    logic: 'Cuenta comprobantes con "tipo"=\'Venta\', "producto_format" válido y distinto de Club. La vista agrupa por "responsable_venta" y, si falta, cae a "creado_por", siempre por mes de "f_venta".'
   },
   efectividad: {
     title: 'Efectividad',
@@ -46,7 +46,7 @@ const RANKING_METRIC_INFO = {
     title: 'Incobrable',
     viewLabel: '"ranking_closers_mensual"',
     dateLabel: 'Mes del ranking por "f_venta"',
-    logic: 'Suma "monto_incobrable" de comprobantes no Club, agrupado por "creado_por" dentro del mismo mes de "f_venta" que usa el ranking.'
+    logic: 'Suma "monto_incobrable" de comprobantes no Club, agrupado por "responsable_venta" y, si falta, cae a "creado_por", dentro del mismo mes de "f_venta" que usa el ranking.'
   }
 };
 

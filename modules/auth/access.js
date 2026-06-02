@@ -87,6 +87,10 @@ const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'matirandazzo@gmail.com'
 ]);
 
+const MARKETING_FORCE_ALLOW_EMAILS = new Set([
+  'nahuerandazzo@gmail.com'
+]);
+
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/metricas/views/setting.html',
@@ -136,6 +140,10 @@ const MARKETING_ONLY_ALLOWED_FEATURES = new Set(['views', 'marketing_inversion']
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function hasForcedMarketingAccess(userOrEmail) {
+  return MARKETING_FORCE_ALLOW_EMAILS.has(normalizeEmail(typeof userOrEmail === 'string' ? userOrEmail : userOrEmail?.email));
 }
 
 function getAccessConfig(userOrEmail) {
@@ -253,6 +261,7 @@ function canAccessFeature(role, featureName) {
 
 function canAccessPageForUser(user, pageName) {
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
+  if (hasForcedMarketingAccess(user) && pageName === 'marketing.html') return true;
   const override = getUserAccessOverride(user);
   if (override) return override.allowedPages.has(pageName);
   if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
@@ -264,6 +273,7 @@ function canAccessPageForUser(user, pageName) {
 }
 
 function canAccessResourceForUser(user, resourceName) {
+  if (hasForcedMarketingAccess(user) && ['kpi_marketing_diario', 'kpi_marketing_inversiones'].includes(resourceName)) return true;
   const override = getUserAccessOverride(user);
   if (override) return override.allowedResources.has(resourceName);
   if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_RESOURCES.has(resourceName);
@@ -276,6 +286,13 @@ function canAccessResourceForUser(user, resourceName) {
 function canAccessFeatureForUser(user, featureName, options = {}) {
   if (featureName === 'user_admin') {
     return canManageUsersForUser(user);
+  }
+
+  if (
+    hasForcedMarketingAccess(user)
+    && featureName === 'marketing_inversion'
+  ) {
+    return true;
   }
 
   const override = getUserAccessOverride(user);

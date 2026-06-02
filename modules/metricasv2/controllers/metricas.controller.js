@@ -54,7 +54,7 @@ async function getOperationalAlertsData(req, res, next) {
         select: 'nombre,ghlid,abandono,f_pago_con_acceso,f_acceso,f_onboarding,f_diagnostico,modulo_1,modelo_negocio'
       }),
       listAllResourceRows('comprobantes', {
-        select: 'creado_por,estado,tipo,producto_format,f_venta,f_acreditacion,facturacion,cash_collected_total,cash_collected,ghlid'
+        select: 'creado_por,responsable_venta,estado,tipo,producto_format,f_venta,f_acreditacion,facturacion,cash_collected_total,cash_collected,ghlid'
       }),
       listAllResourceRows('leads_raw', {
         select: 'nombre,mail,telefono,whatsapp,ghlid,fecha_creada,created_time,origen,primer_origen,setter,closer,fecha_agenda,fecha_llamada,agendo,aplica,llamada_meg,estrategia_a'
