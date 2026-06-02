@@ -500,16 +500,86 @@ async function fetchNotionUsers() {
   if (!env.notionApiKey) return [];
 
   try {
-    const response = await axios.get('https://api.notion.com/v1/users', {
-      headers: buildNotionHeaders()
-    });
+    const users = [];
+    let nextCursor = null;
 
-    return (response.data?.results || [])
+    do {
+      const response = await axios.get('https://api.notion.com/v1/users', {
+        headers: buildNotionHeaders(),
+        params: nextCursor ? { start_cursor: nextCursor } : {}
+      });
+
+      users.push(...(response.data?.results || []));
+      nextCursor = response.data?.has_more ? response.data?.next_cursor || null : null;
+    } while (nextCursor);
+
+    return users
       .filter((user) => user?.type === 'person' && user?.name)
       .map((user) => ({ id: user.id, name: user.name, email: user.person?.email || '' }));
   } catch (error) {
     return [];
   }
+}
+
+async function fetchAssignedResponsibleVentaCandidates() {
+  const databaseId = getComprobantesDatabaseId();
+  if (!env.notionApiKey || !databaseId) return [];
+
+  try {
+    const people = [];
+    let nextCursor = null;
+    let pagesFetched = 0;
+
+    do {
+      const response = await axios.post(
+        `https://api.notion.com/v1/databases/${databaseId}/query`,
+        {
+          page_size: 100,
+          ...(nextCursor ? { start_cursor: nextCursor } : {})
+        },
+        {
+          headers: buildNotionHeaders()
+        }
+      );
+
+      (response.data?.results || []).forEach((page) => {
+        const assigned = page?.properties?.['Responsable venta']?.people || [];
+        assigned.forEach((person) => {
+          if (person?.id && person?.name) {
+            people.push({
+              id: person.id,
+              name: person.name,
+              email: person.person?.email || ''
+            });
+          }
+        });
+      });
+
+      pagesFetched += (response.data?.results || []).length;
+      nextCursor = response.data?.has_more ? response.data?.next_cursor || null : null;
+    } while (nextCursor && pagesFetched < 500);
+
+    return Array.from(
+      new Map(people.map((person) => [person.id, person])).values()
+    );
+  } catch (error) {
+    return [];
+  }
+}
+
+async function fetchResponsibleVentaCandidates() {
+  const [notionUsers, assignedPeople] = await Promise.all([
+    fetchNotionUsers(),
+    fetchAssignedResponsibleVentaCandidates()
+  ]);
+
+  return Array.from(
+    new Map(
+      [...notionUsers, ...assignedPeople]
+        .filter((person) => person?.id && person?.name)
+        .map((person) => [person.id, person])
+    ).values()
+  );
 }
 
 async function fetchComprobantesDatabaseSchema() {
@@ -1072,7 +1142,7 @@ async function createComprobante(payload, user) {
   const [productOptions, mediosOptions, notionUsers] = await Promise.all([
     fetchRelationOptions(productsDatabaseId),
     fetchRelationOptions(mediosDatabaseId),
-    fetchNotionUsers()
+    fetchResponsibleVentaCandidates()
   ]);
 
   normalized.productIds = normalized.productName ? [findBestOptionIdByName(productOptions, normalized.productName)].filter(Boolean) : [];
