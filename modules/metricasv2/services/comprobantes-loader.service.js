@@ -607,12 +607,12 @@ async function getBootstrap(user) {
   const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
   const notionProducts = await fetchRelationOptions(productsDatabaseId);
   const notionPaymentMethods = await fetchRelationOptions(mediosDatabaseId);
-  const fallbackProducts = await fetchHistoricalProducts();
-  const products = uniqueSorted([
-    ...DEFAULT_PRODUCTS,
-    ...notionProducts.map((item) => item.name),
-    ...fallbackProducts
-  ]);
+  const products = notionProducts.length
+    ? uniqueSorted([
+      ...DEFAULT_PRODUCTS,
+      ...notionProducts.map((item) => item.name).filter((name) => DEFAULT_PRODUCTS.includes(name))
+    ])
+    : DEFAULT_PRODUCTS.slice();
   const paymentOptions = notionPaymentMethods.length
     ? notionPaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
