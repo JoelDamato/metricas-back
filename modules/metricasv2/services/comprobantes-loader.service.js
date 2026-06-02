@@ -2,6 +2,7 @@ const axios = require('axios');
 const env = require('../config/env');
 
 const DEFAULT_PRODUCTS = [
+  'Club',
   'Meg 2.1',
   'Renovacion Meg 2.1',
   'Meg personalizado',
@@ -607,7 +608,11 @@ async function getBootstrap(user) {
   const notionProducts = await fetchRelationOptions(productsDatabaseId);
   const notionPaymentMethods = await fetchRelationOptions(mediosDatabaseId);
   const fallbackProducts = await fetchHistoricalProducts();
-  const products = DEFAULT_PRODUCTS.slice();
+  const products = uniqueSorted([
+    ...DEFAULT_PRODUCTS,
+    ...notionProducts.map((item) => item.name),
+    ...fallbackProducts
+  ]);
   const paymentOptions = notionPaymentMethods.length
     ? notionPaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
