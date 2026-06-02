@@ -393,6 +393,8 @@
 <script>
 /* ═══ CONSTANTS ═══ */
 const TARGET=20000,FLOOR=16500,STEP=5000;
+const MAY_2026_TARGET=16500;
+const MAY_2026_FLOOR=12500;
 const COLORS=['#4B8EF5','#2DD4A0','#F59E0B','#A78BFA','#F472B6','#34D399'];
 const MS=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MIN_PCT=10; // individual minimum % of team weekly cash
@@ -618,7 +620,19 @@ async function loadMonthlyBaseCategories(year,month){
 }
 
 /* ═══ BONUS MATH ═══ */
-function adj(days){const f=days/7;return{floor:FLOOR*f,target:TARGET*f,step:STEP*f};}
+function getMonthlyThresholds(){
+  const month=Number(document.getElementById('sel-mes')?.value || 0);
+  const year=Number(document.getElementById('sel-yr')?.value || 0);
+  if(year===2026 && month===5){
+    return { floor: MAY_2026_FLOOR, target: MAY_2026_TARGET, step: STEP };
+  }
+  return { floor: FLOOR, target: TARGET, step: STEP };
+}
+function adj(days){
+  const f=days/7;
+  const thresholds=getMonthlyThresholds();
+  return { floor: thresholds.floor*f, target: thresholds.target*f, step: thresholds.step*f };
+}
 function bonusPct(cash,days){const{target,step}=adj(days);if(cash<target)return 0;return 0.01+Math.floor((cash-target)/step)*0.005;}
 function wkStatus(cash,days){const{floor,target}=adj(days);if(!cash)return'idle';if(cash<floor)return'miss';if(cash<target)return'mid';return'hit';}
 
