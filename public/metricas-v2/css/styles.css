@@ -1,11 +1,91 @@
 :root {
   --bg: #f5f2e8;
   --panel: #fffef7;
+  --panel-soft: rgba(255, 255, 255, 0.9);
   --text: #1c1c1c;
   --muted: #6e6a62;
   --accent: #0f766e;
   --accent-2: #f59e0b;
   --border: #d8d3c2;
+  --body-glow-1: rgba(15, 118, 110, 0.12);
+  --body-glow-2: rgba(245, 158, 11, 0.12);
+  --shell-text: #eff6ff;
+  --shell-surface: linear-gradient(180deg, rgba(17, 31, 84, 0.98), rgba(12, 24, 66, 0.96));
+  --shell-border: rgba(80, 135, 255, 0.3);
+  --shell-shadow:
+    0 24px 50px rgba(4, 11, 33, 0.34),
+    0 12px 0 rgba(41, 113, 255, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --shell-chip: linear-gradient(180deg, rgba(24, 45, 108, 0.94), rgba(15, 30, 76, 0.92));
+  --shell-chip-strong: linear-gradient(180deg, #3589ff 0%, #2a68f0 100%);
+  --shell-chip-muted: linear-gradient(180deg, rgba(236, 244, 255, 0.98), rgba(214, 228, 250, 0.94));
+  --shell-chip-text: #f5f9ff;
+  --shell-chip-text-strong: #ffffff;
+  --shell-chip-text-muted: #0e1732;
+  --shell-chip-border: rgba(87, 140, 255, 0.18);
+  --shell-avatar-surface:
+    radial-gradient(circle at 34% 28%, rgba(103, 183, 255, 0.3), transparent 36%),
+    linear-gradient(180deg, rgba(22, 55, 140, 0.98), rgba(12, 34, 94, 0.96));
+  --shell-avatar-border: rgba(72, 151, 255, 0.3);
+  --shell-access-strong: #65a7ff;
+  --shell-notice-bg: #e7f6ef;
+  --shell-notice-text: #12623f;
+  --surface-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --table-head: rgba(15, 118, 110, 0.08);
+  --toolbar-bg: rgba(255, 255, 255, 0.94);
+  --toolbar-border: rgba(23, 66, 119, 0.14);
+  --toolbar-shadow: 0 10px 22px rgba(8, 29, 58, 0.12);
+  --toolbar-text: #17345f;
+  --toolbar-pane: rgba(255, 255, 255, 0.28);
+  --toolbar-iframe: #ffffff;
+  --toolbar-divider: linear-gradient(180deg, #d7e8ff 0%, #adcdf6 100%);
+  --toolbar-divider-border: rgba(23, 66, 119, 0.16);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #08111f;
+  --panel: #0f1c31;
+  --panel-soft: rgba(15, 28, 49, 0.92);
+  --text: #edf4ff;
+  --muted: #9cb1cf;
+  --accent: #6fd3c9;
+  --accent-2: #f2bc62;
+  --border: rgba(129, 160, 207, 0.22);
+  --body-glow-1: rgba(56, 189, 248, 0.16);
+  --body-glow-2: rgba(99, 102, 241, 0.18);
+  --shell-text: #edf4ff;
+  --shell-surface: linear-gradient(180deg, rgba(10, 20, 38, 0.98), rgba(8, 16, 31, 0.96));
+  --shell-border: rgba(126, 161, 219, 0.18);
+  --shell-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.34),
+    0 12px 0 rgba(53, 94, 172, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shell-chip: linear-gradient(180deg, rgba(19, 39, 68, 0.96), rgba(12, 27, 50, 0.94));
+  --shell-chip-strong: linear-gradient(180deg, rgba(67, 136, 255, 0.95), rgba(43, 91, 214, 0.95));
+  --shell-chip-muted: linear-gradient(180deg, rgba(229, 238, 255, 0.14), rgba(179, 203, 255, 0.08));
+  --shell-chip-text: #edf4ff;
+  --shell-chip-text-strong: #ffffff;
+  --shell-chip-text-muted: #edf4ff;
+  --shell-chip-border: rgba(126, 161, 219, 0.16);
+  --shell-avatar-surface:
+    radial-gradient(circle at 34% 28%, rgba(123, 196, 255, 0.26), transparent 36%),
+    linear-gradient(180deg, rgba(19, 39, 68, 0.98), rgba(11, 24, 44, 0.96));
+  --shell-avatar-border: rgba(126, 161, 219, 0.22);
+  --shell-access-strong: #8dc2ff;
+  --shell-notice-bg: rgba(27, 83, 54, 0.36);
+  --shell-notice-text: #baf4cf;
+  --surface-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+  --table-head: rgba(111, 211, 201, 0.12);
+  --toolbar-bg: rgba(10, 20, 38, 0.94);
+  --toolbar-border: rgba(126, 161, 219, 0.16);
+  --toolbar-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  --toolbar-text: #edf4ff;
+  --toolbar-pane: rgba(15, 28, 49, 0.5);
+  --toolbar-iframe: #0d1730;
+  --toolbar-divider: linear-gradient(180deg, rgba(38, 63, 108, 0.95) 0%, rgba(24, 43, 79, 0.98) 100%);
+  --toolbar-divider-border: rgba(126, 161, 219, 0.16);
+  color-scheme: dark;
 }
 
 * {
@@ -17,10 +97,11 @@ body {
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 10% 20%, rgba(15, 118, 110, 0.12), transparent 35%),
-    radial-gradient(circle at 85% 10%, rgba(245, 158, 11, 0.12), transparent 30%),
+    radial-gradient(circle at 10% 20%, var(--body-glow-1), transparent 35%),
+    radial-gradient(circle at 85% 10%, var(--body-glow-2), transparent 30%),
     var(--bg);
   min-height: 100vh;
+  transition: background 180ms ease, color 180ms ease;
 }
 
 .container {
@@ -75,7 +156,7 @@ p {
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--surface-shadow);
 }
 
 .metric-card {
@@ -90,7 +171,9 @@ p {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -106,8 +189,17 @@ button {
 input {
   border: 1px solid var(--border);
   background: var(--panel);
+  color: var(--text);
   border-radius: 10px;
   padding: 10px;
+}
+
+select,
+textarea {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 10px;
 }
 
 .table-wrap {
@@ -131,7 +223,7 @@ td {
 }
 
 th {
-  background: rgba(15, 118, 110, 0.08);
+  background: var(--table-head);
 }
 
 .nav {
@@ -148,6 +240,14 @@ th {
     radial-gradient(circle at 8% 10%, rgba(37, 138, 247, 0.22), transparent 26%),
     radial-gradient(circle at 92% 12%, rgba(88, 180, 255, 0.18), transparent 20%),
     linear-gradient(180deg, #1f86df 0%, #5aaef7 18%, #f8fbff 38%, #edf5ff 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] .ranking-page {
+  background:
+    radial-gradient(circle at 8% 10%, rgba(88, 180, 255, 0.16), transparent 26%),
+    radial-gradient(circle at 92% 12%, rgba(62, 118, 255, 0.14), transparent 20%),
+    linear-gradient(180deg, #0c1c33 0%, #11284a 22%, #0d1e38 58%, #08111f 100%);
   background-attachment: fixed;
 }
 
@@ -168,6 +268,10 @@ th {
   margin-bottom: 6px;
 }
 
+:root[data-theme='dark'] .ranking-hero h1 {
+  color: #edf4ff;
+}
+
 .ranking-hero p {
   color: var(--text);
   display: inline-block;
@@ -178,11 +282,21 @@ th {
   background: rgba(255, 255, 255, 0.78);
 }
 
+:root[data-theme='dark'] .ranking-hero p {
+  background: rgba(15, 28, 49, 0.76);
+}
+
 .ranking-actions {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(60, 108, 182, 0.35);
   border-radius: 14px;
   padding: 12px;
+}
+
+:root[data-theme='dark'] .ranking-actions {
+  background: var(--panel-soft);
+  border-color: var(--border);
+  box-shadow: var(--surface-shadow);
 }
 
 .ranking-actions label {
@@ -192,6 +306,11 @@ th {
   color: #264976;
   font-size: 0.86rem;
   font-weight: 700;
+}
+
+:root[data-theme='dark'] .ranking-actions label,
+:root[data-theme='dark'] .agenda-origin-filter {
+  color: var(--text);
 }
 
 .ranking-actions select {
@@ -2777,7 +2896,7 @@ th {
   z-index: 10000;
   padding: 6px 0 5px;
   background: transparent;
-  color: #eff6ff;
+  color: var(--shell-text);
   border: 0;
   box-shadow: none;
   backdrop-filter: none;
@@ -2792,13 +2911,9 @@ th {
   gap: 14px;
   padding: 10px 18px;
   border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(17, 31, 84, 0.98), rgba(12, 24, 66, 0.96));
-  border: 1px solid rgba(80, 135, 255, 0.3);
-  box-shadow:
-    0 24px 50px rgba(4, 11, 33, 0.34),
-    0 12px 0 rgba(41, 113, 255, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-border);
+  box-shadow: var(--shell-shadow);
   backdrop-filter: blur(18px);
 }
 
@@ -2842,8 +2957,8 @@ th {
   justify-content: center;
   padding: 9px 14px;
   border-radius: 20px;
-  background: linear-gradient(180deg, rgba(12, 34, 91, 0.98), rgba(10, 28, 76, 0.96));
-  border: 1px solid rgba(76, 155, 255, 0.34);
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-chip-border);
   box-shadow:
     0 10px 28px rgba(2, 9, 29, 0.34),
     inset 0 0 0 1px rgba(76, 155, 255, 0.12),
@@ -2861,18 +2976,18 @@ th {
 .auth-shell-user {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #f7fbff;
+  color: var(--shell-chip-text-strong);
   white-space: nowrap;
 }
 
 .auth-shell-access {
   font-size: 0.76rem;
-  color: rgba(224, 236, 255, 0.78);
+  color: color-mix(in srgb, var(--shell-chip-text) 78%, transparent);
   white-space: nowrap;
 }
 
 .auth-shell-access strong {
-  color: #65a7ff;
+  color: var(--shell-access-strong);
   text-transform: capitalize;
 }
 
@@ -2887,29 +3002,29 @@ th {
   min-height: 40px;
   padding: 0 18px;
   border-radius: 16px;
-  border: 1px solid rgba(87, 140, 255, 0.18);
+  border: 1px solid var(--shell-chip-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 8px 18px rgba(3, 12, 34, 0.18);
 }
 
 .auth-shell-link {
-  color: #f5f9ff;
+  color: var(--shell-chip-text);
   text-decoration: none;
   font-weight: 700;
   font-size: 0.92rem;
-  background: linear-gradient(180deg, rgba(24, 45, 108, 0.94), rgba(15, 30, 76, 0.92));
+  background: var(--shell-chip);
 }
 
 .auth-shell-link-icon {
   font-size: 1.08rem;
   line-height: 1;
-  color: #f7fbff;
+  color: var(--shell-chip-text-strong);
 }
 
 .auth-shell-link-home {
-  background: linear-gradient(180deg, rgba(236, 244, 255, 0.98), rgba(214, 228, 250, 0.94));
-  color: #0e1732;
+  background: var(--shell-chip-muted);
+  color: var(--shell-chip-text-muted);
 }
 
 .auth-shell-link-admin {
@@ -2925,7 +3040,11 @@ th {
 }
 
 .auth-shell-link-home .auth-shell-link-icon {
-  color: #0e1732;
+  color: var(--shell-chip-text-muted);
+}
+
+.auth-shell-link-theme {
+  min-width: 96px;
 }
 
 .auth-shell-nav-button {
@@ -2951,8 +3070,8 @@ th {
   place-items: center;
   padding: 0;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(24, 45, 108, 0.94), rgba(15, 30, 76, 0.92));
-  color: #ffffff;
+  background: var(--shell-chip);
+  color: var(--shell-chip-text-strong);
   font: inherit;
   font-size: 1.2rem;
   font-weight: 800;
@@ -2963,25 +3082,25 @@ th {
 .auth-shell-notice {
   padding: 8px 10px;
   border-radius: 8px;
-  background: #e7f6ef;
-  color: #12623f;
+  background: var(--shell-notice-bg);
+  color: var(--shell-notice-text);
   font-weight: 800;
   text-decoration: none;
   white-space: nowrap;
 }
 
 .auth-shell-notice:hover {
-  background: #d3efdf;
+  filter: brightness(1.04);
 }
 
 .auth-shell button {
-  color: #f7fbff;
+  color: var(--shell-chip-text-strong);
   font-weight: 700;
 }
 
 .auth-shell-button-secondary {
-  background: linear-gradient(180deg, #3589ff 0%, #2a68f0 100%);
-  color: #ffffff;
+  background: var(--shell-chip-strong);
+  color: var(--shell-chip-text-strong);
   font-weight: 700;
   margin-right: 0;
   font-size: 0.92rem;
@@ -3006,10 +3125,8 @@ th {
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 28%, rgba(103, 183, 255, 0.3), transparent 36%),
-    linear-gradient(180deg, rgba(22, 55, 140, 0.98), rgba(12, 34, 94, 0.96));
-  border: 1px solid rgba(72, 151, 255, 0.3);
+  background: var(--shell-avatar-surface);
+  border: 1px solid var(--shell-avatar-border);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 10px 24px rgba(4, 11, 33, 0.24),
@@ -3041,8 +3158,8 @@ th {
   padding: 0;
   min-height: 40px;
   font-size: 1.08rem;
-  background: linear-gradient(180deg, rgba(24, 45, 108, 0.94), rgba(15, 30, 76, 0.92));
-  color: #ffffff;
+  background: var(--shell-chip);
+  color: var(--shell-chip-text-strong);
 }
 
 .dollar-popup-card {
@@ -3115,9 +3232,9 @@ th {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid rgba(23, 66, 119, 0.14);
-  box-shadow: 0 10px 22px rgba(8, 29, 58, 0.12);
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  box-shadow: var(--toolbar-shadow);
   backdrop-filter: blur(8px);
 }
 
@@ -3131,7 +3248,7 @@ th {
 .split-screen-toolbar label {
   display: grid;
   gap: 6px;
-  color: #17345f;
+  color: var(--toolbar-text);
   font-weight: 700;
   font-size: 0.88rem;
 }
@@ -3149,21 +3266,21 @@ th {
 .split-screen-pane {
   min-width: 0;
   min-height: 0;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--toolbar-pane);
 }
 
 .split-screen-pane iframe {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  background: var(--toolbar-iframe);
 }
 
 .split-screen-divider {
   cursor: col-resize;
-  background: linear-gradient(180deg, #d7e8ff 0%, #adcdf6 100%);
-  border-left: 1px solid rgba(23, 66, 119, 0.16);
-  border-right: 1px solid rgba(23, 66, 119, 0.16);
+  background: var(--toolbar-divider);
+  border-left: 1px solid var(--toolbar-divider-border);
+  border-right: 1px solid var(--toolbar-divider-border);
   touch-action: none;
   position: relative;
 }
@@ -4233,9 +4350,59 @@ th {
 
 .comisiones-hero {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 22px;
+  padding: 24px 26px;
+  border: 1px solid rgba(71, 122, 198, 0.14);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(88, 149, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
+  box-shadow: 0 18px 40px rgba(38, 74, 140, 0.08);
+}
+
+.comisiones-hero-copy {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.comisiones-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(49, 118, 255, 0.12);
+  color: #2457a8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.comisiones-hero h1 {
+  margin: 0;
+  color: #163f72;
+}
+
+.comisiones-hero p {
+  margin: 0;
+  color: #557293;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+
+.comisiones-hero-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(71, 122, 198, 0.12);
 }
 
 .comisiones-hero-meta {
@@ -4245,15 +4412,29 @@ th {
   flex-wrap: wrap;
 }
 
-.comisiones-hero-meta label {
+.comisiones-hero-meta label,
+.comisiones-hero-field {
   display: grid;
   gap: 6px;
   color: #284d7c;
   font-weight: 700;
 }
 
-.comisiones-hero-meta input {
+.comisiones-hero-meta input,
+.comisiones-hero-field input {
   min-width: 180px;
+  min-height: 44px;
+}
+
+.comisiones-hero-meta #reloadCommissions {
+  background: linear-gradient(180deg, #3176ff 0%, #2457e8 100%);
+  color: #fff;
+  box-shadow: 0 18px 30px rgba(43, 92, 230, 0.24);
+}
+
+.comisiones-hero-actions #reloadCommissions {
+  min-height: 44px;
+  padding-inline: 18px;
 }
 
 .comisiones-shell {
@@ -4290,6 +4471,242 @@ th {
 
 .comisiones-panel.is-active {
   display: grid;
+}
+
+.comisiones-sheet-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 26px;
+  background:
+    linear-gradient(#dfe7ee 1px, transparent 1px),
+    linear-gradient(90deg, #dfe7ee 1px, transparent 1px),
+    linear-gradient(180deg, #ffffff, #fbfdff);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  box-shadow: 0 22px 48px rgba(18, 47, 84, 0.08);
+  border: 1px solid rgba(71, 122, 198, 0.14);
+}
+
+.comisiones-sheet-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#edf2f7 1px, transparent 1px),
+    linear-gradient(90deg, #edf2f7 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.55;
+}
+
+.comisiones-sheet-layout,
+.comisiones-sheet-main {
+  position: relative;
+  display: grid;
+  gap: 18px;
+}
+
+.comisiones-overview-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 1.6fr);
+  gap: 20px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(71, 122, 198, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.comisiones-overview-hero-icon {
+  width: 92px;
+  height: 92px;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #dce9ff 0%, #c8ddff 100%);
+  color: #1b59d4;
+  font-size: 2.2rem;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.comisiones-overview-hero-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.comisiones-overview-hero-copy h3 {
+  margin: 0;
+  color: #163f72;
+  font-size: 1.9rem;
+}
+
+.comisiones-overview-hero-stats {
+  display: grid;
+  gap: 10px;
+}
+
+.comisiones-overview-hero-stats span {
+  color: #2a4c79;
+  font-weight: 700;
+}
+
+.comisiones-overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.comisiones-overview-kpi {
+  padding: 20px 22px;
+  border-radius: 24px;
+  border: 1px solid rgba(71, 122, 198, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 255, 0.88));
+}
+
+.comisiones-overview-kpi span {
+  display: block;
+  color: #4f6e93;
+  font-weight: 700;
+  font-size: 0.94rem;
+}
+
+.comisiones-overview-kpi strong {
+  display: block;
+  margin-top: 10px;
+  color: #173d70;
+  font-size: 1.9rem;
+}
+
+.comisiones-overview-kpi p {
+  margin: 10px 0 0;
+  color: #5d7898;
+}
+
+.comisiones-overview-kpi.is-club {
+  background: linear-gradient(180deg, rgba(236, 244, 255, 0.95), rgba(227, 239, 255, 0.86));
+}
+
+.comisiones-overview-kpi.is-meg {
+  background: linear-gradient(180deg, rgba(242, 238, 255, 0.95), rgba(235, 231, 255, 0.86));
+}
+
+.comisiones-overview-kpi.is-total {
+  background: linear-gradient(180deg, rgba(232, 245, 236, 0.95), rgba(224, 242, 231, 0.86));
+}
+
+.comisiones-sheet-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.comisiones-sheet-mini,
+.comisiones-sheet-table,
+.comisiones-sheet-summary {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.comisiones-sheet-mini {
+  width: auto;
+  min-width: 220px;
+}
+
+.comisiones-sheet-mini th,
+.comisiones-sheet-table th,
+.comisiones-sheet-summary th {
+  background: linear-gradient(180deg, #1f4f8c, #163f72);
+  color: #fff;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.comisiones-sheet-mini th,
+.comisiones-sheet-mini td,
+.comisiones-sheet-table th,
+.comisiones-sheet-table td,
+.comisiones-sheet-summary th,
+.comisiones-sheet-summary td {
+  border: 1px solid #cfd8df;
+  padding: 6px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.comisiones-sheet-mini td {
+  font-weight: 700;
+  text-align: center;
+}
+
+.comisiones-sheet-counter {
+  padding: 8px 12px;
+  border: 1px solid #cfd8df;
+  background: rgba(255, 255, 255, 0.9);
+  color: #214a80;
+  font-weight: 700;
+}
+
+.comisiones-sheet-table-wrap {
+  overflow: auto;
+}
+
+.comisiones-sheet-table {
+  font-size: 0.84rem;
+}
+
+.comisiones-sheet-table th {
+  font-size: 0.72rem;
+}
+
+.comisiones-sheet-table td,
+.comisiones-sheet-summary td {
+  color: #203243;
+  font-size: 0.86rem;
+}
+
+.comisiones-sheet-table tbody tr:hover td,
+.comisiones-sheet-summary tbody tr:hover td {
+  background: #f2f7ff;
+}
+
+.comisiones-sheet-role {
+  color: #214a80;
+  font-weight: 700;
+}
+
+.comisiones-sheet-link {
+  color: #204f89;
+}
+
+.comisiones-sheet-total-row td {
+  background: #eef4ff;
+  font-weight: 700;
+}
+
+.comisiones-sheet-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.comisiones-sheet-summary {
+  font-size: 0.82rem;
+}
+
+.comisiones-sheet-summary th {
+  font-size: 0.7rem;
+}
+
+.comisiones-sheet-summary-commercial td:nth-child(7) {
+  background: #eef4ff;
+  color: #173d70;
+  font-weight: 700;
 }
 
 .comisiones-summary-grid {
@@ -4379,6 +4796,16 @@ th {
   text-decoration: underline;
 }
 
+.comisiones-external-link {
+  color: #2257a0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.comisiones-external-link:hover {
+  text-decoration: underline;
+}
+
 .comisiones-detail-toolbar {
   display: flex;
   align-items: center;
@@ -4434,6 +4861,12 @@ th {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.comisiones-rules-toolbar #saveCommissionRules {
+  background: linear-gradient(180deg, #3176ff 0%, #2457e8 100%);
+  color: #fff;
+  box-shadow: 0 18px 30px rgba(43, 92, 230, 0.24);
 }
 
 .button-secondary {
@@ -4589,6 +5022,28 @@ th {
   .comisiones-hero {
     flex-direction: column;
     align-items: stretch;
+    padding: 20px 18px;
+  }
+
+  .comisiones-hero-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .comisiones-sheet-card {
+    padding: 12px;
+  }
+
+  .comisiones-overview-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .comisiones-overview-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .comisiones-sheet-bottom {
+    grid-template-columns: 1fr;
   }
 
   .comisiones-scale-row {
@@ -4597,6 +5052,12 @@ th {
 
   .comisiones-detail-toolbar label {
     min-width: 100%;
+  }
+
+  .comisiones-hero-field,
+  .comisiones-hero-field input,
+  .comisiones-hero-actions #reloadCommissions {
+    width: 100%;
   }
 
   .alertas-section-head {
@@ -5295,6 +5756,563 @@ th {
 .metricas-secondary-button {
   background: rgba(30, 67, 152, 0.08);
   color: #163475;
+}
+
+:root[data-theme='dark'] .ranking-actions .agenda-origin-option,
+:root[data-theme='dark'] .ranking-page .nav a,
+:root[data-theme='dark'] .ranking-page #status,
+:root[data-theme='dark'] .chart-panel,
+:root[data-theme='dark'] .metric-info-actions,
+:root[data-theme='dark'] .agenda-page .table-wrap,
+:root[data-theme='dark'] .agenda-page .agenda-table-panel,
+:root[data-theme='dark'] .sales-analysis-page .table-wrap,
+:root[data-theme='dark'] .sales-analysis-panel,
+:root[data-theme='dark'] .kpi-closers-page .kpi-rule-card,
+:root[data-theme='dark'] .kpi-closers-page #weightsSummary,
+:root[data-theme='dark'] .setting-table th:first-child,
+:root[data-theme='dark'] .setting-table td:first-child,
+:root[data-theme='dark'] .alertas-back-nav a,
+:root[data-theme='dark'] .alertas-panel-shell,
+:root[data-theme='dark'] .alertas-toolbar-pill,
+:root[data-theme='dark'] .alertas-area-card,
+:root[data-theme='dark'] .alertas-summary-card,
+:root[data-theme='dark'] .alertas-area-block-kicker,
+:root[data-theme='dark'] .alertas-area-block-total,
+:root[data-theme='dark'] .alertas-section-total,
+:root[data-theme='dark'] .comisiones-tab,
+:root[data-theme='dark'] .comisiones-person-kpis span,
+:root[data-theme='dark'] .button-secondary,
+:root[data-theme='dark'] .comisiones-scale-row,
+:root[data-theme='dark'] .scalito-panel,
+:root[data-theme='dark'] .scalito-head,
+:root[data-theme='dark'] .scalito-suggestions,
+:root[data-theme='dark'] .scalito-messages,
+:root[data-theme='dark'] .scalito-chip,
+:root[data-theme='dark'] .scalito-form,
+:root[data-theme='dark'] .carga-comprobantes-panel,
+:root[data-theme='dark'] .carga-section,
+:root[data-theme='dark'] .carga-client-summary,
+:root[data-theme='dark'] .carga-validation-card,
+:root[data-theme='dark'] .carga-cheque-row,
+:root[data-theme='dark'] .carga-dropzone,
+:root[data-theme='dark'] .carga-attachments-list li,
+:root[data-theme='dark'] .carga-preview-section,
+:root[data-theme='dark'] .carga-preview-alerts,
+:root[data-theme='dark'] .carga-preview-item,
+:root[data-theme='dark'] .kpi-popup-card,
+:root[data-theme='dark'] .metric-info-card,
+:root[data-theme='dark'] .carga-success-item {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.96), rgba(11, 22, 40, 0.94));
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: var(--surface-shadow);
+}
+
+:root[data-theme='dark'] .ranking-page td,
+:root[data-theme='dark'] .setting-table td,
+:root[data-theme='dark'] .sales-analysis-page td,
+:root[data-theme='dark'] .agenda-page td,
+:root[data-theme='dark'] .kpi-table td,
+:root[data-theme='dark'] .comisiones-table td {
+  background: rgba(12, 23, 41, 0.9);
+  color: var(--text);
+  border-bottom-color: rgba(126, 161, 219, 0.16);
+}
+
+:root[data-theme='dark'] .ranking-page tr:nth-child(even) td,
+:root[data-theme='dark'] .sales-analysis-page tr:nth-child(even) td,
+:root[data-theme='dark'] .agenda-page tr:nth-child(even) td,
+:root[data-theme='dark'] .kpi-table tr:nth-child(even) td,
+:root[data-theme='dark'] .comisiones-table tr:nth-child(even) td {
+  background: rgba(15, 28, 49, 0.96);
+}
+
+:root[data-theme='dark'] .ranking-page th,
+:root[data-theme='dark'] .sales-analysis-page th,
+:root[data-theme='dark'] .agenda-page th,
+:root[data-theme='dark'] .kpi-table th,
+:root[data-theme='dark'] .setting-table thead th,
+:root[data-theme='dark'] .comisiones-table th {
+  background: linear-gradient(180deg, rgba(31, 56, 92, 0.96), rgba(23, 42, 72, 0.94));
+  color: var(--text);
+  border-bottom-color: rgba(126, 161, 219, 0.16);
+}
+
+:root[data-theme='dark'] .ranking-page #kpiContainer .card,
+:root[data-theme='dark'] .central-cards .card,
+:root[data-theme='dark'] .central-group,
+:root[data-theme='dark'] .central-group[open],
+:root[data-theme='dark'] .alertas-summary-card,
+:root[data-theme='dark'] .alertas-area-card,
+:root[data-theme='dark'] .comisiones-summary-card,
+:root[data-theme='dark'] .comisiones-rule-card,
+:root[data-theme='dark'] .comisiones-person-card {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.98), rgba(11, 22, 40, 0.96));
+  border-color: var(--border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .ranking-page .table-wrap,
+:root[data-theme='dark'] .sales-analysis-page .table-wrap,
+:root[data-theme='dark'] .agenda-page .table-wrap,
+:root[data-theme='dark'] .setting-table,
+:root[data-theme='dark'] .comisiones-table-wrap {
+  background: rgba(9, 18, 34, 0.92);
+  border-color: var(--border);
+}
+
+:root[data-theme='dark'] .ranking-page #kpiContainer .card h4,
+:root[data-theme='dark'] .metric-info-trigger.metric-label,
+:root[data-theme='dark'] .metric-info-card h3,
+:root[data-theme='dark'] .sales-analysis-panel h3,
+:root[data-theme='dark'] .sales-analysis-detail-card h3,
+:root[data-theme='dark'] .agenda-page .agenda-table-header h3,
+:root[data-theme='dark'] .kpi-closers-page .kpi-rule-card h3,
+:root[data-theme='dark'] .comisiones-area-head h3,
+:root[data-theme='dark'] .comisiones-person-card h3,
+:root[data-theme='dark'] .comisiones-rule-card h3,
+:root[data-theme='dark'] .carga-section-head h2,
+:root[data-theme='dark'] .carga-comprobantes-toolbar-copy strong,
+:root[data-theme='dark'] .carga-field span,
+:root[data-theme='dark'] .carga-preview-item strong,
+:root[data-theme='dark'] .carga-dropzone strong,
+:root[data-theme='dark'] .carga-cheque-row h4,
+:root[data-theme='dark'] .alertas-area-card-head h3,
+:root[data-theme='dark'] .alertas-area-block-head h2,
+:root[data-theme='dark'] .alertas-summary-card h3,
+:root[data-theme='dark'] .alertas-section-total,
+:root[data-theme='dark'] .alertas-section-head h3,
+:root[data-theme='dark'] .central-page .ranking-hero h1,
+:root[data-theme='dark'] .central-group-summary h2,
+:root[data-theme='dark'] .central-cards .card h3 {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .ranking-page #kpiContainer .card p,
+:root[data-theme='dark'] .metric-info-card p,
+:root[data-theme='dark'] .sales-analysis-panel p,
+:root[data-theme='dark'] .sales-analysis-detail-card p,
+:root[data-theme='dark'] .sales-analysis-detail-list li,
+:root[data-theme='dark'] .sales-analysis-detail-meta,
+:root[data-theme='dark'] .agenda-page .agenda-table-header p,
+:root[data-theme='dark'] .kpi-closers-page .kpi-rule-card--facturacion p,
+:root[data-theme='dark'] .comisiones-summary-card span,
+:root[data-theme='dark'] .comisiones-summary-card p,
+:root[data-theme='dark'] .comisiones-area-head p,
+:root[data-theme='dark'] .comisiones-rule-note,
+:root[data-theme='dark'] .comisiones-lock-state,
+:root[data-theme='dark'] .comisiones-empty,
+:root[data-theme='dark'] .carga-section-head p,
+:root[data-theme='dark'] .carga-field-help,
+:root[data-theme='dark'] .carga-submit-status,
+:root[data-theme='dark'] .carga-attachments-list li.is-empty,
+:root[data-theme='dark'] .carga-comprobantes-toolbar-copy p,
+:root[data-theme='dark'] .alertas-page .ranking-hero p,
+:root[data-theme='dark'] .alertas-section-meta,
+:root[data-theme='dark'] .alertas-empty-inline,
+:root[data-theme='dark'] .alertas-area-card-head p,
+:root[data-theme='dark'] .alertas-area-block-head p,
+:root[data-theme='dark'] .central-page .ranking-hero p,
+:root[data-theme='dark'] .central-group-summary p,
+:root[data-theme='dark'] .central-cards .card p {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .ranking-actions button,
+:root[data-theme='dark'] .metricas-primary-button,
+:root[data-theme='dark'] .kpi-popup-card button,
+:root[data-theme='dark'] .scalito-fab,
+:root[data-theme='dark'] .scalito-form button,
+:root[data-theme='dark'] .alertas-toolbar #reloadAlertas,
+:root[data-theme='dark'] .comisiones-tab.is-active {
+  background: linear-gradient(180deg, #3d89ff 0%, #255ce2 100%);
+  color: #ffffff;
+  border-color: rgba(118, 166, 255, 0.28);
+}
+
+:root[data-theme='dark'] .metricas-secondary-button,
+:root[data-theme='dark'] .button-secondary,
+:root[data-theme='dark'] .comisiones-tab,
+:root[data-theme='dark'] .sales-analysis-cell-btn,
+:root[data-theme='dark'] .carga-attachments-list button,
+:root[data-theme='dark'] .scalito-chip,
+:root[data-theme='dark'] .scalito-close {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--text);
+  border-color: rgba(126, 161, 219, 0.18);
+}
+
+:root[data-theme='dark'] .metric-info-search,
+:root[data-theme='dark'] .carga-field input,
+:root[data-theme='dark'] .carga-field select,
+:root[data-theme='dark'] .carga-field textarea,
+:root[data-theme='dark'] .scalito-form textarea,
+:root[data-theme='dark'] .comisiones-hero-meta input,
+:root[data-theme='dark'] .comisiones-detail-toolbar select,
+:root[data-theme='dark'] .comisiones-form-grid input,
+:root[data-theme='dark'] .comisiones-form-grid select,
+:root[data-theme='dark'] .comisiones-rule-card input,
+:root[data-theme='dark'] .comisiones-rule-card select,
+:root[data-theme='dark'] .comisiones-rule-card textarea {
+  background: rgba(8, 16, 31, 0.92);
+  color: var(--text);
+  border-color: rgba(126, 161, 219, 0.22);
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .metricas-ghl-link,
+:root[data-theme='dark'] .comisiones-inline-link,
+:root[data-theme='dark'] .scalito-msg.bot,
+:root[data-theme='dark'] .carga-comprobantes-status,
+:root[data-theme='dark'] .carga-preview-alerts,
+:root[data-theme='dark'] .alertas-toolbar-pill,
+:root[data-theme='dark'] .alertas-status {
+  color: #b9d7ff;
+}
+
+:root[data-theme='dark'] .metricas-ghl-link,
+:root[data-theme='dark'] .alertas-toolbar-pill,
+:root[data-theme='dark'] .alertas-status::before,
+:root[data-theme='dark'] .carga-comprobantes-status,
+:root[data-theme='dark'] .carga-preview-alerts {
+  background: rgba(55, 101, 177, 0.16);
+  border-color: rgba(118, 166, 255, 0.18);
+}
+
+:root[data-theme='dark'] .carga-validation-card.is-ok,
+:root[data-theme='dark'] .kpi-table .ok-cell.is-ok,
+:root[data-theme='dark'] .kpi-table .rule-mark.ok {
+  background: linear-gradient(180deg, rgba(21, 90, 55, 0.92), rgba(14, 59, 38, 0.96));
+  border-color: rgba(75, 208, 140, 0.26);
+  color: #c8ffe0;
+}
+
+:root[data-theme='dark'] .carga-validation-card.is-error,
+:root[data-theme='dark'] .kpi-table .rule-mark.fail,
+:root[data-theme='dark'] .scalito-msg.error,
+:root[data-theme='dark'] .carga-preview-alerts.has-warnings {
+  background: linear-gradient(180deg, rgba(105, 30, 40, 0.9), rgba(75, 22, 30, 0.94));
+  border-color: rgba(233, 104, 120, 0.24);
+  color: #ffd2d8;
+}
+
+:root[data-theme='dark'] .ranking-page td:first-child,
+:root[data-theme='dark'] .sales-analysis-page td:last-child,
+:root[data-theme='dark'] .sales-analysis-page th:last-child,
+:root[data-theme='dark'] .setting-table td:last-child,
+:root[data-theme='dark'] .setting-pct,
+:root[data-theme='dark'] .agenda-page td.month-current {
+  color: #cfe2ff;
+}
+
+:root[data-theme='dark'] .sales-analysis-page td:last-child,
+:root[data-theme='dark'] .setting-table td:last-child,
+:root[data-theme='dark'] .agenda-page td.month-current,
+:root[data-theme='dark'] .kpi-table .kpi-team-row td,
+:root[data-theme='dark'] .agenda-page th.month-current {
+  background: rgba(44, 91, 166, 0.28) !important;
+}
+
+:root[data-theme='dark'] .central-page {
+  background:
+    radial-gradient(circle at 76% 16%, rgba(82, 148, 255, 0.16), transparent 24%),
+    radial-gradient(circle at 12% 98%, rgba(73, 132, 255, 0.1), transparent 26%),
+    linear-gradient(180deg, #08111f 0%, #0d1e38 46%, #07111d 100%);
+}
+
+:root[data-theme='dark'] .central-page::before {
+  background:
+    radial-gradient(circle at 84% 26%, rgba(116, 170, 255, 0.08) 0 2px, transparent 2px 100%),
+    radial-gradient(circle at 93% 86%, rgba(116, 170, 255, 0.12) 0 2px, transparent 2px 100%);
+}
+
+:root[data-theme='dark'] .central-page::after {
+  background:
+    linear-gradient(160deg, transparent 54%, rgba(71, 139, 255, 0.06) 72%, transparent 88%),
+    radial-gradient(circle at 88% 26%, rgba(46, 126, 255, 0.12), transparent 24%);
+}
+
+:root[data-theme='dark'] .central-page .ranking-hero .central-hero-icon,
+:root[data-theme='dark'] .central-group-summary::after,
+:root[data-theme='dark'] .central-group-icon {
+  background: linear-gradient(180deg, rgba(21, 40, 69, 0.96), rgba(13, 27, 47, 0.94));
+  border-color: rgba(126, 161, 219, 0.18);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme='dark'] .alertas-page {
+  background:
+    radial-gradient(circle at 78% 14%, rgba(93, 149, 255, 0.18), transparent 24%),
+    radial-gradient(circle at 18% 100%, rgba(84, 152, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, #08111f 0%, #0d1e38 48%, #07111d 100%);
+}
+
+:root[data-theme='dark'] .alertas-page::before {
+  background:
+    radial-gradient(circle at 85% 24%, rgba(122, 171, 255, 0.08) 0 2px, transparent 2px 100%),
+    radial-gradient(circle at 95% 92%, rgba(122, 171, 255, 0.12) 0 2px, transparent 2px 100%);
+}
+
+:root[data-theme='dark'] .alertas-page::after {
+  background:
+    linear-gradient(170deg, transparent 58%, rgba(86, 147, 255, 0.06) 76%, transparent 92%);
+}
+
+:root[data-theme='dark'] .alertas-hero-icon {
+  background: linear-gradient(180deg, rgba(21, 40, 69, 0.98), rgba(13, 27, 47, 0.96));
+  border-color: rgba(126, 161, 219, 0.16);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme='dark'] .alertas-summary-card-high .alertas-summary-chip,
+:root[data-theme='dark'] .alertas-summary-card-medium .alertas-summary-chip {
+  color: #fff3d5;
+}
+
+:root[data-theme='dark'] .alertas-summary-chip,
+:root[data-theme='dark'] .alertas-area-card-tag {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .alertas-summary-card strong,
+:root[data-theme='dark'] .alertas-area-card-total,
+:root[data-theme='dark'] .comisiones-summary-card strong,
+:root[data-theme='dark'] .comisiones-area-head strong {
+  color: #f3f7ff;
+}
+
+:root[data-theme='dark'] .comisiones-hero-meta label,
+:root[data-theme='dark'] .comisiones-detail-toolbar label,
+:root[data-theme='dark'] .comisiones-form-grid label,
+:root[data-theme='dark'] .comisiones-rule-card label,
+:root[data-theme='dark'] .carga-checkbox-field span {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .scalito-msg.user {
+  background: linear-gradient(180deg, #3d89ff 0%, #255ce2 100%);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .carga-comprobantes-page {
+  background:
+    radial-gradient(circle at top center, rgba(57, 117, 255, 0.16), transparent 28%),
+    linear-gradient(180deg, #08111f 0%, #0d1e38 42%, #07111d 100%);
+}
+
+:root[data-theme='dark'] .metric-page-eyebrow,
+:root[data-theme='dark'] .metric-chip {
+  background: rgba(126, 161, 219, 0.12);
+  border-color: rgba(126, 161, 219, 0.18);
+  color: #cfe2ff;
+}
+
+:root[data-theme='dark'] .carga-field input[readonly] {
+  color: #b7cae7;
+  background: rgba(17, 31, 54, 0.96);
+}
+
+:root[data-theme='dark'] .marketing-editor,
+:root[data-theme='dark'] .credit-balance-summary,
+:root[data-theme='dark'] .marketing-panel,
+:root[data-theme='dark'] .loading-popup-card {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.96), rgba(11, 22, 40, 0.94));
+  border-color: var(--border);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .marketing-editor h3,
+:root[data-theme='dark'] .credit-balance-summary h3,
+:root[data-theme='dark'] .marketing-panel-head h3,
+:root[data-theme='dark'] .ads-collapse > summary {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .marketing-editor label,
+:root[data-theme='dark'] .credit-balance-summary p,
+:root[data-theme='dark'] .loading-popup-card p,
+:root[data-theme='dark'] .marketing-sort-trigger.active {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .marketing-table th {
+  background: linear-gradient(180deg, rgba(31, 56, 92, 0.96), rgba(23, 42, 72, 0.94));
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .marketing-table td {
+  background: rgba(12, 23, 41, 0.92);
+  color: var(--text);
+  border-bottom-color: rgba(126, 161, 219, 0.16);
+}
+
+:root[data-theme='dark'] .marketing-save,
+:root[data-theme='dark'] #saveInvestment,
+:root[data-theme='dark'] #saveCreditBalance {
+  background: linear-gradient(180deg, #3d89ff 0%, #255ce2 100%);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .marketing-history-link,
+:root[data-theme='dark'] .ads-collapse > summary {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--text);
+  border-radius: 14px;
+}
+
+:root[data-theme='dark'] .marketing-sort-arrow {
+  color: #8dc2ff;
+}
+
+:root[data-theme='dark'] .admin-users-shell,
+:root[data-theme='dark'] .admin-users-block,
+:root[data-theme='dark'] .admin-users-row,
+:root[data-theme='dark'] .admin-users-modal-card {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.98), rgba(11, 22, 40, 0.96));
+  border-color: var(--border);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .admin-users-hero-kicker,
+:root[data-theme='dark'] .admin-users-panel-badge,
+:root[data-theme='dark'] .admin-users-chip,
+:root[data-theme='dark'] .admin-users-chip-soft,
+:root[data-theme='dark'] .admin-users-chip-muted,
+:root[data-theme='dark'] .admin-users-tabs {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .admin-users-tab {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .admin-users-tab.is-active,
+:root[data-theme='dark'] .admin-users-form-actions button {
+  background: linear-gradient(180deg, #3d89ff 0%, #255ce2 100%);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .admin-users-panel-head h2,
+:root[data-theme='dark'] .admin-users-block h3,
+:root[data-theme='dark'] .admin-users-row-main h3,
+:root[data-theme='dark'] .admin-users-modal-head h2 {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .admin-users-panel-head p,
+:root[data-theme='dark'] .admin-users-status,
+:root[data-theme='dark'] .admin-users-row-main p,
+:root[data-theme='dark'] .admin-users-modal-head p,
+:root[data-theme='dark'] .admin-users-form label,
+:root[data-theme='dark'] .admin-users-check {
+  color: var(--muted) !important;
+}
+
+:root[data-theme='dark'] .admin-users-form input,
+:root[data-theme='dark'] .admin-users-form select,
+:root[data-theme='dark'] .admin-users-pill-check span {
+  background: rgba(8, 16, 31, 0.92);
+  border-color: rgba(126, 161, 219, 0.22);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .admin-users-pill-check input:checked + span {
+  border-color: rgba(118, 166, 255, 0.32);
+  background: rgba(55, 101, 177, 0.18);
+  color: #cfe2ff;
+  box-shadow: inset 0 0 0 1px rgba(118, 166, 255, 0.16);
+}
+
+:root[data-theme='dark'] .admin-users-secondary-btn,
+:root[data-theme='dark'] .admin-users-modal-close {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .admin-users-delete-btn {
+  background: rgba(128, 35, 44, 0.26);
+  color: #ffd2d8;
+}
+
+:root[data-theme='dark'] .admin-users-empty {
+  border-color: rgba(126, 161, 219, 0.22);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .reportes-page .report-block-head h3,
+:root[data-theme='dark'] .reportes-page .report-block-head p,
+:root[data-theme='dark'] .reportes-page .report-comments-panel,
+:root[data-theme='dark'] .reportes-page .report-comment-card,
+:root[data-theme='dark'] .reportes-page .report-comments-empty,
+:root[data-theme='dark'] .reportes-page .report-premio-panel,
+:root[data-theme='dark'] .reportes-page .report-premio-input-wrap {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.96), rgba(11, 22, 40, 0.94));
+  border-color: var(--border);
+}
+
+:root[data-theme='dark'] .reportes-page .report-block-head h3 {
+  color: #9fcbff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='dark'] .reportes-page .report-block-title,
+:root[data-theme='dark'] .reportes-page .report-comments-head h3,
+:root[data-theme='dark'] .reportes-page .report-premio-summary strong {
+  color: #9fcbff;
+}
+
+:root[data-theme='dark'] .reportes-page .report-block-head p,
+:root[data-theme='dark'] .reportes-page .report-comments-kicker,
+:root[data-theme='dark'] .reportes-page .report-premio-tag {
+  color: #cfe2ff;
+}
+
+:root[data-theme='dark'] .reportes-page .report-comments-form label,
+:root[data-theme='dark'] .reportes-page .report-comment-head strong,
+:root[data-theme='dark'] .reportes-page .report-premio-summary p,
+:root[data-theme='dark'] .reportes-page .report-premio-form label,
+:root[data-theme='dark'] .reportes-page .report-premio-input-wrap span {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .reportes-page .report-comment-head span,
+:root[data-theme='dark'] .reportes-page .report-comment-foot,
+:root[data-theme='dark'] .reportes-page .report-comment-card p,
+:root[data-theme='dark'] .reportes-page .report-empty,
+:root[data-theme='dark'] .reportes-page .report-premio-meta,
+:root[data-theme='dark'] .reportes-page .report-premio-readonly {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .reportes-page .report-comments-form select,
+:root[data-theme='dark'] .reportes-page .report-comments-form textarea,
+:root[data-theme='dark'] .reportes-page .report-premio-input-wrap input {
+  background: rgba(8, 16, 31, 0.92);
+  color: var(--text);
+  border-color: rgba(126, 161, 219, 0.22);
+}
+
+:root[data-theme='dark'] .reportes-page .report-comments-alert,
+:root[data-theme='dark'] .reportes-page .report-comment-badge {
+  background: rgba(41, 122, 79, 0.24);
+  color: #bbf7d0;
+}
+
+:root[data-theme='dark'] .reportes-page .report-comment-card.is-unread {
+  border-color: rgba(75, 208, 140, 0.26);
+  background: linear-gradient(180deg, rgba(15, 42, 31, 0.9), rgba(11, 31, 24, 0.94));
+}
+
+:root[data-theme='dark'] .reportes-page .report-table th:first-child {
+  background: rgba(31, 56, 92, 0.98);
+  color: #cfe2ff;
+}
+
+:root[data-theme='dark'] .reportes-page .report-table .total-col {
+  background: rgba(44, 91, 166, 0.28);
+  color: #cfe2ff;
 }
 
 @media (max-width: 1120px) {

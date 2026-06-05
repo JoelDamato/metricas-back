@@ -14,12 +14,13 @@
       <div class="nav"><a href="/metricas/dashboard.html">Volver al dashboard</a></div>
 
       <section class="ranking-hero comisiones-hero">
-        <div>
+        <div class="comisiones-hero-copy">
+          <span class="comisiones-hero-kicker">Panel comercial</span>
           <h1>Comisiones</h1>
-          <p>Motor nuevo de comisiones sobre Supabase, con resumen general, detalle por persona y reglas editables por mes.</p>
+          <p>Resumen mensual, detalle de comprobantes y configuración de porcentajes en una sola vista.</p>
         </div>
-        <div class="comisiones-hero-meta">
-          <label>
+        <div class="comisiones-hero-actions">
+          <label class="comisiones-hero-field">
             <span>Mes</span>
             <input id="commissionsMonth" type="month" />
           </label>
@@ -30,15 +31,14 @@
       <section class="comisiones-shell">
         <div class="comisiones-tabs" role="tablist" aria-label="Vistas de comisiones">
           <button class="comisiones-tab is-active" type="button" data-tab="overview">Vista general</button>
-          <button class="comisiones-tab" type="button" data-tab="person">Detalle por persona</button>
-          <button class="comisiones-tab" type="button" data-tab="rules">Reglas del mes</button>
+          <button class="comisiones-tab" type="button" data-tab="person">Detalle</button>
+          <button class="comisiones-tab" type="button" data-tab="rules">Configuración</button>
         </div>
 
         <section id="commissionsStatus" class="alertas-status">Cargando comisiones...</section>
 
         <section class="comisiones-panel is-active" data-panel="overview">
-          <div id="commissionsSummaryCards" class="comisiones-summary-grid"></div>
-          <div id="commissionsAreas" class="comisiones-areas-grid"></div>
+          <div id="commissionsSheetOverview" class="comisiones-sheet-overview"></div>
         </section>
 
         <section class="comisiones-panel" data-panel="person">
@@ -54,15 +54,13 @@
 
         <section class="comisiones-panel" data-panel="rules">
           <div class="comisiones-rules-toolbar">
-            <button id="saveCommissionRules" type="button">Guardar reglas del mes</button>
-            <button id="saveCommissionDefaults" type="button" class="button-secondary">Guardar como base futura</button>
-            <button id="lockCommissionMonth" type="button" class="button-secondary">Bloquear mes</button>
+            <button id="saveCommissionRules" type="button">Guardar</button>
           </div>
           <div id="commissionRulesLockState" class="comisiones-lock-state"></div>
 
           <div class="comisiones-rules-grid">
             <section class="card comisiones-rule-card">
-              <h3>Reglas globales</h3>
+              <h3>Configuración global</h3>
               <div class="comisiones-form-grid">
                 <label>
                   <span>Mínimo global setter</span>
@@ -89,10 +87,10 @@
 
             <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
-                <h3>Escala por agendas</h3>
-                <button id="addAgendaScaleRow" type="button" class="button-secondary">Agregar tramo</button>
+                <h3>Escalera de porcentaje según ventas</h3>
+                <button id="addSetterSalesScaleRow" type="button" class="button-secondary">Agregar tramo</button>
               </div>
-              <div id="commissionAgendaScaleRows" class="comisiones-scale-list"></div>
+              <div id="commissionSetterSalesScaleRows" class="comisiones-scale-list"></div>
             </section>
 
             <section class="card comisiones-rule-card">
@@ -113,10 +111,9 @@
 
             <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
-                <h3>Reglas especiales closers</h3>
-                <button id="addCommissionCloserRuleRow" type="button" class="button-secondary">Agregar regla</button>
+                <h3>Personas que cargan comprobantes</h3>
               </div>
-              <div id="commissionCloserRuleRows" class="comisiones-scale-list"></div>
+              <div id="commissionRoleRows" class="comisiones-scale-list"></div>
             </section>
 
             <section class="card comisiones-rule-card">

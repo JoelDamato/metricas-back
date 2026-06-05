@@ -1,10 +1,12 @@
 (function initComisionesPage() {
+  const ALL_PEOPLE_VALUE = '__ALL__';
   const state = {
     month: '',
     dashboard: null,
     selectedPerson: '',
     configMeta: null,
-    rulesDraft: null
+    rulesDraft: null,
+    rolePeopleOptions: []
   };
 
   const statusNode = document.getElementById('commissionsStatus');
@@ -37,8 +39,64 @@
     }).format(Number(value || 0));
   }
 
+  function formatUsd(value) {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(value || 0));
+  }
+
+  function formatSheetInteger(value) {
+    return Number(value || 0) === 0 ? '' : formatInteger(value);
+  }
+
+  function formatSheetCurrency(value) {
+    return Number(value || 0) === 0 ? '' : formatCurrency(value);
+  }
+
+  function formatSheetPercent(value) {
+    return Number(value || 0) === 0 ? '' : formatPercent(value);
+  }
+
+  function formatDetailDate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const [year, month, day] = raw.slice(0, 10).split('-');
+    if (!year || !month || !day) return raw;
+    return `${day}/${month}/${year}`;
+  }
+
+  function formatDetailUsd(value) {
+    return Number(value || 0) === 0 ? '' : formatUsd(value);
+  }
+
+  function formatDetailCurrency(value) {
+    return Number(value || 0) === 0 ? '' : formatCurrency(value);
+  }
+
+  function formatDetailPercent(value) {
+    return Number(value || 0) === 0 ? '' : formatPercent(value);
+  }
+
+  function formatDetailBoolean(value) {
+    return value ? 'TRUE' : '';
+  }
+
+  function formatDetailText(value) {
+    return String(value || '').trim();
+  }
+
+  function buildNotionPageUrl(pageId) {
+    const id = String(pageId || '').trim();
+    if (!id) return '';
+    return `https://www.notion.so/${id.replace(/-/g, '')}`;
+  }
+
   function getCurrentMonthValue() {
     const now = new Date();
+    now.setMonth(now.getMonth() - 1);
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
@@ -66,76 +124,344 @@
     return JSON.parse(JSON.stringify(config || {}));
   }
 
-  function renderSummaryCards(summary) {
-    const node = document.getElementById('commissionsSummaryCards');
-    if (!summary) {
-      node.innerHTML = '';
-      return;
-    }
-
-    const cards = [
-      { label: 'Comisión total ARS', value: formatCurrency(summary.totalCommission), note: 'Suma de todas las comisiones calculadas del mes.' },
-      { label: 'Base comisionable ARS', value: formatCurrency(summary.totalBase), note: 'Monto total sobre el que se aplicaron porcentajes.' },
-      { label: 'Personas con comisión', value: formatInteger(summary.peopleCount), note: 'Personas que tuvieron al menos una comisión en el mes.' },
-      { label: 'Transacciones tomadas', value: formatInteger(summary.transactionCount), note: 'Ventas y cobranzas únicas usadas por el motor de comisiones.' },
-      { label: 'Líneas de comisión', value: formatInteger(summary.commissionLineCount), note: 'Cada comprobante puede generar una línea de closer y otra de setter.' }
-    ];
-
-    node.innerHTML = cards.map((card) => `
-      <article class="card comisiones-summary-card">
-        <span>${escapeHtml(card.label)}</span>
-        <strong>${escapeHtml(card.value)}</strong>
-        <p>${escapeHtml(card.note)}</p>
-      </article>
-    `).join('');
+  function collectRolePeopleOptions() {
+    const names = new Set();
+    (state.dashboard?.details || []).forEach((detail) => {
+      [detail.person, detail.closer, detail.setter].forEach((name) => {
+        const trimmed = String(name || '').trim();
+        if (trimmed) names.add(trimmed);
+      });
+    });
+    (state.rulesDraft?.personRoles || []).forEach((row) => {
+      const trimmed = String(row?.person || '').trim();
+      if (trimmed) names.add(trimmed);
+    });
+    return [...names].sort((a, b) => a.localeCompare(b, 'es'));
   }
 
-  function renderAreas(areas) {
-    const node = document.getElementById('commissionsAreas');
-    if (!areas?.length) {
+  function ensureRoleRows(config) {
+    const names = collectRolePeopleOptions();
+    state.rolePeopleOptions = names;
+    const current = Array.isArray(config.personRoles) ? config.personRoles : [];
+    const byPerson = new Map(current.map((row) => [String(row.person || '').trim().toLowerCase(), row]));
+    config.personRoles = names.map((person) => byPerson.get(person.toLowerCase()) || { person, role: 'Closer' });
+  }
+
+  function getMonthParts(monthValue) {
+    const [year, month] = String(monthValue || '').split('-').map(Number);
+    return {
+      year: Number.isFinite(year) ? year : '',
+      month: Number.isFinite(month) ? month : ''
+    };
+  }
+
+  function formatRoleLabel(role) {
+    const normalized = String(role || '').trim().toLowerCase();
+    if (normalized === 'closer') return 'Closers';
+    if (normalized === 'setter') return 'Setters';
+    return role || '-';
+  }
+
+  function groupPeopleByRole(people) {
+    const groups = new Map();
+    (people || []).forEach((person) => {
+      const key = formatRoleLabel(person.role);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(person);
+    });
+
+    return [...groups.entries()].map(([role, rows]) => ({ role, rows }));
+  }
+
+  function buildSheetRows(details) {
+    const rowsMap = new Map();
+
+    (details || []).forEach((detail) => {
+      const role = formatRoleLabel(detail.role);
+      const key = `${role}|${detail.person}`;
+      const current = rowsMap.get(key) || {
+        type: role.toLowerCase(),
+        role,
+        person: detail.person || '-',
+        ventasMeg: 0,
+        ventasClub: 0,
+        ventasSetting: 0,
+        agendas: 0,
+        settingPct: null,
+        facturacion: 0,
+        cc: 0,
+        comisionMegUsd: 0,
+        comisionMegArs: 0,
+        comisionClubArs: 0,
+        comisionSetting: 0,
+        total: 0
+      };
+
+      const type = String(detail.tipo || '').trim().toLowerCase();
+      const isSale = type === 'venta';
+
+      if (detail.role === 'Closer' && detail.category === 'MEG' && isSale) current.ventasMeg += 1;
+      if (detail.role === 'Closer' && detail.category === 'Club' && isSale) current.ventasClub += 1;
+      if (detail.role === 'Setter' && detail.category === 'MEG' && isSale) current.ventasSetting += 1;
+
+      if (detail.role === 'Setter' && detail.category === 'MEG') {
+        current.agendas += 1;
+      }
+
+      if (detail.role === 'Closer' && detail.category === 'MEG') {
+        if (isSale) current.facturacion += Number(detail.facturacionUsd || 0);
+        current.cc += Number(detail.cashUsd || 0);
+        current.comisionMegArs += Number(detail.commissionAmount || 0);
+      }
+
+      if (detail.role === 'Setter' && detail.category === 'MEG') {
+        if (isSale) current.facturacion += Number(detail.facturacionUsd || 0);
+        current.cc += Number(detail.cashUsd || 0);
+        current.comisionSetting += Number(detail.commissionAmount || 0);
+        if (current.settingPct === null && Number(detail.commissionPct || 0) > 0) {
+          current.settingPct = Number(detail.commissionPct || 0);
+        }
+      }
+
+      if (detail.category === 'Club') {
+        current.comisionClubArs += Number(detail.commissionAmount || 0);
+      }
+
+      current.total += Number(detail.commissionAmount || 0);
+      rowsMap.set(key, current);
+    });
+
+    const roleOrder = { Closers: 0, Setters: 1 };
+    return [...rowsMap.values()].sort((a, b) => {
+      const roleDiff = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+      if (roleDiff) return roleDiff;
+      return a.person.localeCompare(b.person, 'es');
+    });
+  }
+
+  function buildAreaCommercialSummary(details) {
+    const rows = details || [];
+    const isMeg = (detail) => detail.category === 'MEG';
+    const isSale = (detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta';
+    const hasVsl = (detail) => String(detail.origin || '').toUpperCase().includes('VSL');
+    const hasRt = (detail) => String(detail.calendar || '').toUpperCase().includes('RT');
+    const sumBy = (arr, getter) => arr.reduce((sum, item) => sum + Number(getter(item) || 0), 0);
+
+    const closerMegSales = rows.filter((detail) => detail.role === 'Closer' && isMeg(detail) && isSale(detail));
+    const setterMegRows = rows.filter((detail) => detail.role === 'Setter' && isMeg(detail));
+
+    const vslCloserSales = closerMegSales.filter(hasVsl);
+    const rtSetterRows = setterMegRows.filter(hasRt);
+
+    const totalCloserFacturacion = sumBy(closerMegSales, (detail) => detail.baseAmount);
+    const totalSetterCc = sumBy(setterMegRows, (detail) => detail.baseAmount);
+    const totalCommercialGain = totalSetterCc * 0.04;
+
+    const vslCc = sumBy(setterMegRows.filter(hasVsl), (detail) => detail.baseAmount);
+    const rtCc = sumBy(rtSetterRows, (detail) => detail.baseAmount);
+    const vslGain = vslCc * 0.1;
+    const rtGain = rtCc * 0.05;
+
+    return [
+      {
+        label: 'VSL',
+        ventasMeg: vslCloserSales.length,
+        facturacion: sumBy(vslCloserSales, (detail) => detail.baseAmount),
+        cc: vslCc,
+        percentage: 0.1,
+        gain: vslGain,
+        gainFinal: vslGain,
+        total: vslGain + rtGain
+      },
+      {
+        label: 'VSL + RT',
+        ventasMeg: '',
+        facturacion: '',
+        cc: rtCc,
+        percentage: 0.05,
+        gain: rtGain,
+        gainFinal: rtGain,
+        total: ''
+      },
+      {
+        label: 'Comercial',
+        ventasMeg: closerMegSales.length,
+        facturacion: totalCloserFacturacion,
+        cc: totalSetterCc,
+        percentage: 0.04,
+        gain: totalCommercialGain,
+        gainFinal: totalCommercialGain,
+        total: ''
+      },
+      {
+        label: 'CSM',
+        ventasMeg: closerMegSales.length,
+        facturacion: totalCloserFacturacion,
+        cc: totalSetterCc,
+        percentage: 0.04,
+        gain: totalCommercialGain,
+        gainFinal: totalCommercialGain,
+        total: ''
+      }
+    ];
+  }
+
+  function renderSheetOverview(dashboard) {
+    const node = document.getElementById('commissionsSheetOverview');
+    const rows = buildSheetRows(dashboard?.details || []);
+    const commercialSummaryRows = buildAreaCommercialSummary(dashboard?.details || []);
+    const summary = dashboard?.summary || null;
+    if (!summary || !rows.length) {
       node.innerHTML = '<div class="card comisiones-empty">No encontré comisiones calculables para este mes.</div>';
       return;
     }
 
-    node.innerHTML = areas.map((area) => `
-      <section class="card comisiones-area-card">
-        <div class="comisiones-area-head">
-          <div>
-            <h3>${escapeHtml(area.area)}</h3>
-            <p>${formatInteger(area.peopleCount)} personas · ${formatInteger(area.transactionCount)} transacciones</p>
+    const { year, month } = getMonthParts(state.month);
+    const totalClubCommission = rows.reduce((sum, row) => sum + Number(row.comisionClubArs || 0), 0);
+    const totalMegCommission = rows.reduce((sum, row) => sum + Number(row.comisionMegArs || 0) + Number(row.comisionSetting || 0), 0);
+    const totalCommission = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+
+    node.innerHTML = `
+      <section class="card comisiones-sheet-card">
+        <div class="comisiones-sheet-grid" aria-hidden="true"></div>
+        <div class="comisiones-sheet-layout">
+          <div class="comisiones-sheet-main">
+            <section class="comisiones-overview-hero">
+              <div class="comisiones-overview-hero-icon" aria-hidden="true">$</div>
+              <div class="comisiones-overview-hero-copy">
+                <h3>Resumen de ${escapeHtml(getMonthLabel(state.month))}</h3>
+                <div class="comisiones-overview-hero-stats">
+                  <span>${formatInteger(summary.transactionCount)} transacciones</span>
+                  <span>${formatInteger(summary.commissionLineCount)} líneas de comisión</span>
+                </div>
+              </div>
+              <div class="comisiones-overview-kpis">
+                <article class="comisiones-overview-kpi is-club">
+                  <span>Comisiones Club</span>
+                  <strong>${formatCurrency(totalClubCommission)}</strong>
+                  <p>Total club del mes</p>
+                </article>
+                <article class="comisiones-overview-kpi is-meg">
+                  <span>Comisiones MEG</span>
+                  <strong>${formatCurrency(totalMegCommission)}</strong>
+                  <p>MEG + setting del mes</p>
+                </article>
+                <article class="comisiones-overview-kpi is-total">
+                  <span>Total</span>
+                  <strong>${formatCurrency(totalCommission)}</strong>
+                  <p>Total a cobrar</p>
+                </article>
+              </div>
+            </section>
+
+            <div class="comisiones-sheet-meta">
+              <table class="comisiones-sheet-mini">
+                <tbody>
+                  <tr>
+                    <th>Periodo</th>
+                    <th>Año</th>
+                  </tr>
+                  <tr>
+                    <td>${escapeHtml(month)}</td>
+                    <td>${escapeHtml(year)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="comisiones-sheet-table-wrap">
+              <table class="comisiones-sheet-table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Integrante</th>
+                    <th>Ventas MEG</th>
+                    <th>Ventas CLUB</th>
+                    <th>Ventas setting</th>
+                    <th>Agendas</th>
+                    <th>% Setting</th>
+                    <th>Facturacion</th>
+                    <th>CC</th>
+                    <th>Comision MEG US</th>
+                    <th>Comision MEG ARS</th>
+                    <th>Comision CLUB ARS</th>
+                    <th>Comision Setting</th>
+                    <th>Total a cobrar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows.map((row, index) => `
+                    <tr>
+                      <td>${index === 0 || rows[index - 1].role !== row.role ? `<span class="comisiones-sheet-role">${escapeHtml(row.type)}</span>` : ''}</td>
+                      <td><button class="comisiones-inline-link comisiones-sheet-link" type="button" data-person="${escapeHtml(row.person)}">${escapeHtml(row.person)}</button></td>
+                      <td>${formatSheetInteger(row.ventasMeg)}</td>
+                      <td>${formatSheetInteger(row.ventasClub)}</td>
+                      <td>${formatSheetInteger(row.ventasSetting)}</td>
+                      <td>${formatSheetInteger(row.agendas)}</td>
+                      <td>${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
+                      <td>${formatSheetCurrency(row.facturacion)}</td>
+                      <td>${formatSheetCurrency(row.cc)}</td>
+                      <td>${formatSheetCurrency(row.comisionMegUsd)}</td>
+                      <td>${formatSheetCurrency(row.comisionMegArs)}</td>
+                      <td>${formatSheetCurrency(row.comisionClubArs)}</td>
+                      <td>${formatSheetCurrency(row.comisionSetting)}</td>
+                      <td>${formatSheetCurrency(row.total)}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="comisiones-sheet-total-row">
+                    <td colspan="2">Totales</td>
+                    <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasMeg, 0))}</td>
+                    <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasClub, 0))}</td>
+                    <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasSetting, 0))}</td>
+                    <td>${formatInteger(rows.reduce((sum, row) => sum + row.agendas, 0))}</td>
+                    <td></td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.facturacion, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.cc, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionMegUsd, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionMegArs, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionClubArs, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionSetting, 0))}</td>
+                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.total, 0))}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="comisiones-sheet-bottom">
+              <table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">
+                <thead>
+                  <tr>
+                    <th>Area</th>
+                    <th>Ventas MEG</th>
+                    <th>Facturacion</th>
+                    <th>CC</th>
+                    <th>Porcentaje</th>
+                    <th>Ganancia</th>
+                    <th>Ganancia Final</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${commercialSummaryRows.map((row) => `
+                    <tr>
+                      <td>${escapeHtml(row.label)}</td>
+                      <td>${row.ventasMeg === '' ? '' : formatSheetInteger(row.ventasMeg)}</td>
+                      <td>${row.facturacion === '' ? '' : formatSheetCurrency(row.facturacion)}</td>
+                      <td>${row.cc === '' ? '' : formatSheetCurrency(row.cc)}</td>
+                      <td>${row.percentage ? formatSheetPercent(row.percentage) : ''}</td>
+                      <td>${row.gain === '' ? '' : formatSheetCurrency(row.gain)}</td>
+                      <td>${row.gainFinal === '' ? '' : formatSheetCurrency(row.gainFinal)}</td>
+                      <td>${row.total === '' ? '' : formatSheetCurrency(row.total)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+            </div>
           </div>
-          <strong>${formatCurrency(area.totalCommission)}</strong>
-        </div>
-        <div class="table-wrap">
-          <table class="csm-table comisiones-table">
-            <thead>
-              <tr>
-                <th>Persona</th>
-                <th>Rol</th>
-                <th>Comisión</th>
-                <th>Base</th>
-                <th>Transacciones</th>
-                <th>Agendas</th>
-                <th>Club</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${area.people.map((person) => `
-                <tr>
-                  <td><button class="comisiones-inline-link" type="button" data-person="${escapeHtml(person.person)}">${escapeHtml(person.person)}</button></td>
-                  <td>${escapeHtml(person.role)}</td>
-                  <td>${formatCurrency(person.totalCommission)}</td>
-                  <td>${formatCurrency(person.totalBase)}</td>
-                  <td>${formatInteger(person.transactionCount)}</td>
-                  <td>${formatInteger(person.agendas)}</td>
-                  <td>${formatInteger(person.clubSalesSequential)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
         </div>
       </section>
-    `).join('');
+    `;
 
     node.querySelectorAll('[data-person]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -148,7 +474,10 @@
   }
 
   function fillPersonSelect(people) {
-    const options = ['<option value="">Seleccioná una persona</option>'];
+    const options = [
+      `<option value="${ALL_PEOPLE_VALUE}">Total comprobantes</option>`,
+      '<option value="">Seleccioná una persona</option>'
+    ];
     (people || []).forEach((person) => {
       options.push(`<option value="${escapeHtml(person.person)}">${escapeHtml(person.person)} · ${escapeHtml(person.area)}</option>`);
     });
@@ -159,63 +488,117 @@
   function renderPersonPanel() {
     const summaryNode = document.getElementById('commissionPersonSummary');
     const detailNode = document.getElementById('commissionPersonDetails');
+    const allDetails = state.dashboard?.details || [];
+    const isAllView = state.selectedPerson === ALL_PEOPLE_VALUE;
     const person = state.dashboard?.people?.find((row) => row.person === state.selectedPerson) || null;
-    const details = (state.dashboard?.details || []).filter((row) => row.person === state.selectedPerson);
+    const details = isAllView
+      ? allDetails
+      : allDetails.filter((row) => row.person === state.selectedPerson);
 
-    if (!state.selectedPerson || !person) {
+    if (isAllView) {
+      const uniqueTransactions = new Set(details.map((detail) => detail.transactionId).filter(Boolean));
+      summaryNode.innerHTML = `
+        <div class="card comisiones-person-card">
+          <h3>Total comprobantes</h3>
+          <p>Vista consolidada de todas las líneas del mes</p>
+          <div class="comisiones-person-kpis">
+            <span><strong>${formatCurrency(state.dashboard?.summary?.totalCommission)}</strong> comisión total</span>
+            <span><strong>${formatCurrency(state.dashboard?.summary?.totalBase)}</strong> CC tomado</span>
+            <span><strong>${formatInteger(uniqueTransactions.size)}</strong> comprobantes únicos</span>
+            <span><strong>${formatInteger(details.length)}</strong> líneas de comisión</span>
+            <span><strong>${formatInteger(state.dashboard?.summary?.peopleCount)}</strong> personas con comisión</span>
+          </div>
+        </div>
+      `;
+    } else if (!state.selectedPerson || !person) {
       summaryNode.innerHTML = '<div class="card comisiones-empty">Seleccioná una persona para ver su detalle.</div>';
       detailNode.innerHTML = '';
       return;
+    } else {
+      summaryNode.innerHTML = `
+        <div class="card comisiones-person-card">
+          <h3>${escapeHtml(person.person)}</h3>
+          <p>${escapeHtml(person.area)} · ${escapeHtml(person.role)}</p>
+          <div class="comisiones-person-kpis">
+            <span><strong>${formatCurrency(person.totalCommission)}</strong> comisión total</span>
+            <span><strong>${formatCurrency(person.totalBase)}</strong> CC tomado</span>
+            <span><strong>${formatInteger(person.transactionCount)}</strong> transacciones</span>
+            <span><strong>${formatInteger(person.agendas)}</strong> agendas del mes</span>
+            <span><strong>${formatInteger(person.clubSalesSequential)}</strong> ventas Club</span>
+          </div>
+        </div>
+      `;
     }
 
-    summaryNode.innerHTML = `
-      <div class="card comisiones-person-card">
-        <h3>${escapeHtml(person.person)}</h3>
-        <p>${escapeHtml(person.area)} · ${escapeHtml(person.role)}</p>
-        <div class="comisiones-person-kpis">
-          <span><strong>${formatCurrency(person.totalCommission)}</strong> comisión total</span>
-          <span><strong>${formatCurrency(person.totalBase)}</strong> base tomada</span>
-          <span><strong>${formatInteger(person.transactionCount)}</strong> transacciones</span>
-          <span><strong>${formatInteger(person.agendas)}</strong> agendas del mes</span>
-          <span><strong>${formatInteger(person.clubSalesSequential)}</strong> ventas Club</span>
-        </div>
-      </div>
-    `;
-
     detailNode.innerHTML = `
-      <table class="csm-table comisiones-table">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Producto</th>
-            <th>Closer</th>
-            <th>Setter</th>
-            <th>Base</th>
-            <th>%</th>
-            <th>Comisión</th>
-            <th>Regla aplicada</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${details.length ? details.map((detail) => `
+      <div class="comisiones-table-wrap">
+        <table class="csm-table comisiones-table">
+          <thead>
             <tr>
-              <td>${escapeHtml(detail.date || '-')}</td>
-              <td>${escapeHtml(detail.tipo || '-')}</td>
-              <td>${escapeHtml(detail.product || '-')}</td>
-              <td>${escapeHtml(detail.closer || '-')}</td>
-              <td>${escapeHtml(detail.setter || '-')}</td>
-              <td>${formatCurrency(detail.baseAmount)}</td>
-              <td>${formatPercent(detail.commissionPct)}</td>
-              <td>${formatCurrency(detail.commissionAmount)}</td>
-              <td>
-                <strong>${escapeHtml(detail.sourceRule || '-')}</strong>
-                <div class="comisiones-rule-note">${escapeHtml(detail.sourceRuleNote || '')}</div>
-              </td>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Conciliado</th>
+              <th>Cheque</th>
+              <th>F.acreditación</th>
+              <th>Producto</th>
+              <th>Nombre cliente</th>
+              <th>Monto CC</th>
+              <th>Fact</th>
+              <th>Porcentaje</th>
+              <th>TC</th>
+              <th>Origen</th>
+              <th>Calendario</th>
+              <th>CC Pesos</th>
+              <th>Comisión MEG US</th>
+              <th>Comisión CLUB US</th>
+              <th>Comisión final ARS</th>
+              <th>Setter</th>
+              <th>% Setter</th>
+              <th>Comisión Setter</th>
+              <th>Estado comprobante</th>
+              <th>ID</th>
             </tr>
-          `).join('') : '<tr><td colspan="9">No hay transacciones para esta persona.</td></tr>'}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            ${details.length ? details.map((detail) => {
+              const notionUrl = buildNotionPageUrl(detail.transactionId);
+              const isSetter = detail.role === 'Setter';
+              const isCloserMeg = detail.role === 'Closer' && detail.category === 'MEG';
+              const isCloserClub = detail.role === 'Closer' && detail.category === 'Club';
+              const commissionMegUsd = isCloserMeg ? Number(detail.cashUsd || 0) * Number(detail.commissionPct || 0) : 0;
+              const commissionClubUsd = isCloserClub ? Number(detail.commissionAmount || 0) : 0;
+              const setterPct = isSetter ? Number(detail.commissionPct || 0) : 0;
+              const setterCommission = isSetter ? Number(detail.commissionAmount || 0) : 0;
+              return `
+                <tr>
+                  <td>${escapeHtml(formatDetailDate(detail.date))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.tipo))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.conciliado))}</td>
+                  <td>${escapeHtml(formatDetailBoolean(detail.cheque))}</td>
+                  <td>${escapeHtml(formatDetailDate(detail.acreditacionDate))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.product))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
+                  <td>${formatDetailUsd(detail.cashUsd)}</td>
+                  <td>${formatDetailUsd(detail.facturacionUsd)}</td>
+                  <td>${formatDetailPercent(detail.commissionPct)}</td>
+                  <td>${formatDetailCurrency(detail.tc)}</td>
+                  <td>${escapeHtml(formatDetailText(detail.origin))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.calendar))}</td>
+                  <td>${formatDetailCurrency(detail.cashArs)}</td>
+                  <td>${formatDetailUsd(commissionMegUsd)}</td>
+                  <td>${formatDetailUsd(commissionClubUsd)}</td>
+                  <td>${formatDetailCurrency(detail.commissionAmount)}</td>
+                  <td>${escapeHtml(formatDetailText(detail.setter))}</td>
+                  <td>${formatDetailPercent(setterPct)}</td>
+                  <td>${formatDetailCurrency(setterCommission)}</td>
+                  <td>${escapeHtml(formatDetailText(detail.status))}</td>
+                  <td>${notionUrl ? `<a class="comisiones-external-link" href="${escapeHtml(notionUrl)}" target="_blank" rel="noreferrer">${escapeHtml(detail.transactionId || '')}</a>` : ''}</td>
+                </tr>
+              `;
+            }).join('') : `<tr><td colspan="22">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
+          </tbody>
+        </table>
+      </div>
     `;
   }
 
@@ -223,7 +606,7 @@
     return `
       <div class="comisiones-scale-row" data-scale-type="${escapeHtml(type)}" data-index="${index}">
         <label>
-          <span>Desde</span>
+          <span>${type === 'setterSalesScale' ? 'Desde ventas' : 'Desde'}</span>
           <input type="number" data-field="min" min="0" step="1" value="${escapeHtml(row.min)}" />
         </label>
         <label>
@@ -255,46 +638,6 @@
     `;
   }
 
-  function createCloserRuleRowMarkup(index, row) {
-    return `
-      <div class="comisiones-scale-row comisiones-rule-row" data-closer-rule-index="${index}">
-        <label>
-          <span>Closer</span>
-          <input type="text" data-field="person" value="${escapeHtml(row.person || '')}" />
-        </label>
-        <label>
-          <span>Producto</span>
-          <input type="text" data-field="product" value="${escapeHtml(row.product || '')}" placeholder="Meg 2.1 / Club" />
-        </label>
-        <label>
-          <span>Tipo</span>
-          <input type="text" data-field="type" value="${escapeHtml(row.type || '')}" placeholder="Venta / Cobranza" />
-        </label>
-        <label>
-          <span>Origen contiene</span>
-          <input type="text" data-field="originIncludes" value="${escapeHtml(row.originIncludes || '')}" />
-        </label>
-        <label>
-          <span>Calendario contiene</span>
-          <input type="text" data-field="calendarIncludes" value="${escapeHtml(row.calendarIncludes || '')}" />
-        </label>
-        <label>
-          <span>Porcentaje</span>
-          <input type="number" data-field="pct" min="0" step="0.001" value="${escapeHtml(row.pct ?? '')}" />
-        </label>
-        <label class="comisiones-checkbox-inline">
-          <input type="checkbox" data-field="enabled" ${row.enabled !== false ? 'checked' : ''} />
-          <span>Activa</span>
-        </label>
-        <label class="comisiones-rule-note-input">
-          <span>Nota</span>
-          <input type="text" data-field="note" value="${escapeHtml(row.note || '')}" />
-        </label>
-        <button type="button" class="button-secondary" data-remove-closer-rule="${index}">Quitar</button>
-      </div>
-    `;
-  }
-
   function createAreaRowMarkup(index, row) {
     return `
       <div class="comisiones-scale-row" data-area-index="${index}">
@@ -311,6 +654,30 @@
           </select>
         </label>
         <button type="button" class="button-secondary" data-remove-area="${index}">Quitar</button>
+      </div>
+    `;
+  }
+
+  function createRoleRowMarkup(index, row) {
+    const options = state.rolePeopleOptions.map((person) => `
+      <option value="${escapeHtml(person)}" ${row.person === person ? 'selected' : ''}>${escapeHtml(person)}</option>
+    `).join('');
+    return `
+      <div class="comisiones-scale-row comisiones-role-row" data-role-index="${index}">
+        <label>
+          <span>Persona</span>
+          <select data-field="person">
+            ${options}
+          </select>
+        </label>
+        <label>
+          <span>Rol</span>
+          <select data-field="role">
+            <option value="Closer" ${row.role === 'Closer' ? 'selected' : ''}>Closer</option>
+            <option value="Setter" ${row.role === 'Setter' ? 'selected' : ''}>Setter</option>
+            <option value="Ambos" ${row.role === 'Ambos' ? 'selected' : ''}>Ambos</option>
+          </select>
+        </label>
       </div>
     `;
   }
@@ -332,19 +699,13 @@
       });
     });
 
-    document.querySelectorAll('[data-remove-closer-rule]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.rulesDraft.closerRules.splice(Number(button.dataset.removeCloserRule), 1);
-        renderRulesEditor();
-      });
-    });
-
     document.querySelectorAll('[data-remove-area]').forEach((button) => {
       button.addEventListener('click', () => {
         state.rulesDraft.personAreas.splice(Number(button.dataset.removeArea), 1);
         renderRulesEditor();
       });
     });
+
   }
 
   function renderRulesEditor() {
@@ -356,15 +717,16 @@
     document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
     document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
+    ensureRoleRows(config);
 
-    document.getElementById('commissionAgendaScaleRows').innerHTML = (config.agendaScale || [])
-      .map((row, index) => createScaleRowMarkup('agendaScale', index, row)).join('');
+    document.getElementById('commissionSetterSalesScaleRows').innerHTML = (config.setterSalesScale || [])
+      .map((row, index) => createScaleRowMarkup('setterSalesScale', index, row)).join('');
     document.getElementById('commissionClubScaleRows').innerHTML = (config.clubScale || [])
       .map((row, index) => createScaleRowMarkup('clubScale', index, row)).join('');
     document.getElementById('commissionOverrideRows').innerHTML = (config.fixedOverrides || [])
       .map((row, index) => createOverrideRowMarkup(index, row)).join('');
-    document.getElementById('commissionCloserRuleRows').innerHTML = (config.closerRules || [])
-      .map((row, index) => createCloserRuleRowMarkup(index, row)).join('');
+    document.getElementById('commissionRoleRows').innerHTML = (config.personRoles || [])
+      .map((row, index) => createRoleRowMarkup(index, row)).join('');
     document.getElementById('commissionAreaRows').innerHTML = (config.personAreas || [])
       .map((row, index) => createAreaRowMarkup(index, row)).join('');
 
@@ -391,23 +753,17 @@
     })).filter((row) => row.person);
   }
 
-  function readCloserRuleRows() {
-    return Array.from(document.querySelectorAll('#commissionCloserRuleRows .comisiones-scale-row')).map((row) => ({
-      person: row.querySelector('[data-field="person"]').value.trim(),
-      product: row.querySelector('[data-field="product"]').value.trim(),
-      type: row.querySelector('[data-field="type"]').value.trim(),
-      originIncludes: row.querySelector('[data-field="originIncludes"]').value.trim(),
-      calendarIncludes: row.querySelector('[data-field="calendarIncludes"]').value.trim(),
-      pct: Number(row.querySelector('[data-field="pct"]').value || 0),
-      enabled: row.querySelector('[data-field="enabled"]').checked,
-      note: row.querySelector('[data-field="note"]').value.trim()
-    })).filter((row) => row.person || row.product || row.type || row.originIncludes || row.calendarIncludes);
-  }
-
   function readAreaRows() {
     return Array.from(document.querySelectorAll('#commissionAreaRows .comisiones-scale-row')).map((row) => ({
       person: row.querySelector('[data-field="person"]').value.trim(),
       area: row.querySelector('[data-field="area"]').value
+    })).filter((row) => row.person);
+  }
+
+  function readRoleRows() {
+    return Array.from(document.querySelectorAll('#commissionRoleRows .comisiones-scale-row')).map((row) => ({
+      person: row.querySelector('[data-field="person"]').value.trim(),
+      role: row.querySelector('[data-field="role"]').value
     })).filter((row) => row.person);
   }
 
@@ -420,10 +776,11 @@
         personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value || 0),
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
       },
-      agendaScale: readScaleRows('commissionAgendaScaleRows'),
+      setterSalesScale: readScaleRows('commissionSetterSalesScaleRows'),
       clubScale: readScaleRows('commissionClubScaleRows'),
       fixedOverrides: readOverrideRows(),
-      closerRules: readCloserRuleRows(),
+      closerRules: Array.isArray(state.rulesDraft?.closerRules) ? state.rulesDraft.closerRules : [],
+      personRoles: readRoleRows(),
       personAreas: readAreaRows(),
       notes: Array.isArray(state.rulesDraft?.notes) ? state.rulesDraft.notes : []
     };
@@ -440,11 +797,11 @@
     setStatus(`Cargando comisiones de ${getMonthLabel(state.month)}...`);
     const response = await window.metricasApi.fetchCommissionsDashboard(state.month);
     state.dashboard = response;
-    renderSummaryCards(response.summary);
-    renderAreas(response.areas);
+    renderSheetOverview(response);
+    if (state.rulesDraft) renderRulesEditor();
     fillPersonSelect(response.people);
     if (!state.selectedPerson && response.people?.length) {
-      state.selectedPerson = response.people[0].person;
+      state.selectedPerson = ALL_PEOPLE_VALUE;
       personSelect.value = state.selectedPerson;
     }
     renderPersonPanel();
@@ -477,27 +834,14 @@
     }
   }
 
-  async function lockMonth() {
-    try {
-      await window.metricasApi.lockCommissionMonth({ month: state.month });
-      setStatus(`El mes ${getMonthLabel(state.month)} quedó bloqueado.`);
-      await loadPage();
-    } catch (error) {
-      console.error(error);
-      setStatus(error.message || 'No pude bloquear el mes.');
-    }
-  }
-
   document.querySelectorAll('.comisiones-tab').forEach((button) => {
     button.addEventListener('click', () => setActiveTab(button.dataset.tab));
   });
 
   document.getElementById('reloadCommissions').addEventListener('click', loadPage);
   document.getElementById('saveCommissionRules').addEventListener('click', () => saveRules('month'));
-  document.getElementById('saveCommissionDefaults').addEventListener('click', () => saveRules('default'));
-  document.getElementById('lockCommissionMonth').addEventListener('click', lockMonth);
-  document.getElementById('addAgendaScaleRow').addEventListener('click', () => {
-    state.rulesDraft.agendaScale.push({ min: 0, pct: 0 });
+  document.getElementById('addSetterSalesScaleRow').addEventListener('click', () => {
+    state.rulesDraft.setterSalesScale.push({ min: 0, pct: 0 });
     renderRulesEditor();
   });
   document.getElementById('addClubScaleRow').addEventListener('click', () => {
@@ -506,19 +850,6 @@
   });
   document.getElementById('addCommissionOverrideRow').addEventListener('click', () => {
     state.rulesDraft.fixedOverrides.push({ person: '', pct: 0, enabled: true });
-    renderRulesEditor();
-  });
-  document.getElementById('addCommissionCloserRuleRow').addEventListener('click', () => {
-    state.rulesDraft.closerRules.push({
-      person: '',
-      product: '',
-      type: '',
-      originIncludes: '',
-      calendarIncludes: '',
-      pct: 0,
-      enabled: true,
-      note: ''
-    });
     renderRulesEditor();
   });
   document.getElementById('addCommissionAreaRow').addEventListener('click', () => {

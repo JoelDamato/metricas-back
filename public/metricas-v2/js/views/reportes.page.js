@@ -604,27 +604,54 @@ async function loadAgendaData(range) {
 }
 
 async function loadVentasData(range) {
-  const response = await window.metricasApi.fetchVentasDiarioCloser({
+  const response = await window.metricasApi.fetchAllRows('comprobantes', {
     limit: 1000,
     from: range.from,
     to: range.to,
-    dateField: 'fecha_venta'
+    dateField: 'f_venta',
+    select: 'responsable_venta,creado_por,tipo,producto_format,f_venta'
   });
 
-  return groupByCloser(response.rows || [], (row) => ({
-    ventas: row.ventas
+  const rows = (response.rows || [])
+    .filter((row) => normalizeText(row.tipo) === 'venta')
+    .filter((row) => !normalizeText(row.producto_format).includes('club'))
+    .map((row) => ({
+      ...row,
+      closer: getResponsibleCloser(row)
+    }))
+    .filter((row) => shouldIncludeCloser(row.closer));
+
+  return groupByCloser(rows, () => ({
+    ventas: 1
   }));
 }
 
 async function fetchCashRows(range) {
-  const response = await window.metricasApi.fetchCashCollectedDiarioCloser({
+  const response = await window.metricasApi.fetchAllRows('comprobantes', {
     limit: 1000,
     from: range.from,
     to: range.to,
-    dateField: 'fecha_acreditacion'
+    dateField: 'f_acreditacion',
+    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,cash_collected_ars,estado'
   });
 
-  return response.rows || [];
+  return (response.rows || [])
+    .filter((row) => !normalizeText(row.producto_format).includes('club'))
+    .map((row) => {
+      const total = Number(row.cash_collected_total || 0);
+      const fallbackCash = Number(row.cash_collected || 0);
+      const effectiveCash = total > 0 ? total : fallbackCash;
+      const normalizedState = normalizeText(row.estado);
+      const conciliado = normalizedState === 'conciliado' ? effectiveCash : 0;
+
+      return {
+        closer: getResponsibleCloser(row),
+        cash_collected_total: effectiveCash,
+        cash_collected_ars_total: Number(row.cash_collected_ars || 0),
+        cash_collected_conciliado: conciliado
+      };
+    })
+    .filter((row) => shouldIncludeCloser(row.closer) && Number(row.cash_collected_total || 0) > 0);
 }
 
 function buildCashData(rows, premioPct) {

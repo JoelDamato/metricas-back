@@ -2,7 +2,8 @@ const axios = require('axios');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-adtVGEjzC1rVd9tgDyGs19_ChKUo5SytA_-K_pz_vghfFBQSVh6ZdHg/exec";
+const googleScriptUrl = process.env.GOOGLE_SCRIPT_WEBHOOK || "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-adtVGEjzC1rVd9tgDyGs19_ChKUo5SytA_-K_pz_vghfFBQSVh6ZdHg/exec";
+const GOOGLE_SHEETS_TIMEOUT_MS = parseInt(process.env.GOOGLE_SHEETS_TIMEOUT_MS || '120000', 10);
 
 const queue = [];
 let isProcessing = false;
@@ -418,7 +419,7 @@ async function processQueue() {
     console.log("⏳ Procesando Sheets (Comprobantes)...");
     await axios.post(googleScriptUrl, payload, { 
       headers: { 'Content-Type': 'application/json' },
-      timeout: 30000
+      timeout: GOOGLE_SHEETS_TIMEOUT_MS
     });
     console.log("✅ Google Sheets procesado exitosamente");
   } catch (error) {

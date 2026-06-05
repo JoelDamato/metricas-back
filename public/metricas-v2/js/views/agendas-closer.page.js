@@ -440,10 +440,14 @@ function canonicalizeCloserName(value) {
   return CLOSER_ALIAS_MAP[normalizeText(text)] || text;
 }
 
+function resolveResponsibleCloser(row = {}) {
+  return canonicalizeCloserName(row.responsable_venta || row.closer);
+}
+
 function normalizeCloserRows(rows) {
   return (rows || []).map((row) => ({
     ...row,
-    closer: canonicalizeCloserName(row.closer),
+    closer: resolveResponsibleCloser(row),
     total_agendados: Number(row.total_agendados ?? row.total_leads ?? 0),
     facturacion_total_mes: Number(row.facturacion_total_mes ?? row.facturacion_total ?? 0),
     cash_collected_real_mes: Number(row.cash_collected_real_mes ?? row.cash_collected_total ?? 0),

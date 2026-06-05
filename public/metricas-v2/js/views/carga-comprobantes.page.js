@@ -7,7 +7,9 @@
     client: null,
     attachments: [],
     loading: false,
-    previewPayload: null
+    previewPayload: null,
+    submissionKey: null,
+    isSubmitting: false
   };
 
   const refs = {
@@ -226,7 +228,13 @@
 
   function invalidatePreview() {
     state.previewPayload = null;
+    state.submissionKey = null;
     refs.previewSection.hidden = true;
+  }
+
+  function generateSubmissionKey() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `cmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   function setCreatingPopup(isVisible) {
@@ -630,13 +638,26 @@
     return rows;
   }
 
+  function countDraftOperations(payload) {
+    if (
+      payload.tipo === 'Venta'
+      && normalizeText(payload.medioPago) === 'cheque'
+      && Array.isArray(payload.cheques)
+      && payload.cheques.length > 1
+    ) {
+      return payload.cheques.length;
+    }
+    return 1;
+  }
+
   function renderPreview(payload) {
     const warnings = buildPreviewWarnings(payload);
+    const operationCount = countDraftOperations(payload);
     refs.previewAlerts.hidden = warnings.length === 0;
     refs.previewAlerts.className = `carga-preview-alerts ${warnings.length ? 'has-warnings' : ''}`;
     refs.previewAlerts.innerHTML = warnings.length
       ? `<strong>Revisá esto antes de confirmar</strong><ul>${warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>`
-      : '<strong>Todo listo.</strong><p>No vi inconsistencias obvias en la carga previa.</p>';
+      : `<strong>Todo listo.</strong><p>No vi inconsistencias obvias en la carga previa.</p><p>Esta confirmación va a crear ${operationCount} ${operationCount === 1 ? 'registro' : 'registros'} en Notion.</p>`;
 
     refs.previewGrid.innerHTML = previewRowsFromPayload(payload)
       .map(([label, value]) => `
@@ -858,7 +879,8 @@
       mesesSoporte: refs.tipo.value === 'Venta' ? refs.mesesSoporte.value : '',
       sesiones: refs.tipo.value === 'Venta' ? refs.sesiones.value : '',
       bonusMati: refs.tipo.value === 'Venta' ? refs.bonusMati.checked : false,
-      infoComprobantes: refs.infoComprobantes.value
+      infoComprobantes: refs.infoComprobantes.value,
+      submissionKey: state.submissionKey || generateSubmissionKey()
     };
   }
 
@@ -876,6 +898,7 @@
         return;
       }
       state.previewPayload = payload;
+      state.submissionKey = payload.submissionKey;
       renderPreview(payload);
       refs.submitStatus.textContent = 'Revisá el detalle y confirmá si está todo bien.';
     } catch (error) {
@@ -886,6 +909,8 @@
   }
 
   async function confirmSubmit() {
+    if (state.isSubmitting) return;
+    state.isSubmitting = true;
     refs.submitBtn.disabled = true;
     refs.confirmSubmitBtn.disabled = true;
     refs.submitStatus.textContent = 'Creando comprobante...';
@@ -918,6 +943,7 @@
     } catch (error) {
       refs.submitStatus.textContent = error.message || 'No pude crear el comprobante.';
     } finally {
+      state.isSubmitting = false;
       setCreatingPopup(false);
       refs.submitBtn.disabled = false;
       refs.confirmSubmitBtn.disabled = false;

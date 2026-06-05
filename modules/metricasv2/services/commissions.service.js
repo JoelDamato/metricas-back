@@ -17,6 +17,12 @@ const DEFAULT_CONFIG = {
     { min: 25, pct: 0.055 },
     { min: 35, pct: 0.06 }
   ],
+  setterSalesScale: [
+    { min: 0, pct: 0.045 },
+    { min: 5, pct: 0.05 },
+    { min: 10, pct: 0.055 },
+    { min: 15, pct: 0.06 }
+  ],
   clubScale: [
     { min: 1, pct: 0.5 },
     { min: 4, pct: 0.55 },
@@ -65,6 +71,15 @@ const DEFAULT_CONFIG = {
       note: 'CSV abril 2026: la venta VSL - 3 de Pablo quedó al 9%.'
     }
   ],
+  personRoles: [
+    { person: 'Mauro Gaitan', role: 'Closer' },
+    { person: 'Carlos Tu', role: 'Closer' },
+    { person: 'Walter Alegre', role: 'Closer' },
+    { person: 'Patricia Conti', role: 'Closer' },
+    { person: 'Pablo Butera', role: 'Closer' },
+    { person: 'Claudio Nicolini', role: 'Closer' },
+    { person: 'Nahuel Iasci', role: 'Setter' }
+  ],
   personAreas: [],
   notes: [
     'Semilla inicial creada en el panel de métricas.',
@@ -109,6 +124,13 @@ function parseDateOnly(value) {
 function safeNumber(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function safeBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  const normalized = normalizeText(value);
+  if (!normalized) return false;
+  return ['true', 'si', 'sí', 'yes', '1', 'checked'].includes(normalized);
 }
 
 function titleCaseName(value) {
@@ -159,6 +181,16 @@ function normalizePersonAreas(items = []) {
     .filter((row) => row.person);
 }
 
+function normalizePersonRoles(items = []) {
+  const allowed = new Set(['Closer', 'Setter', 'Ambos']);
+  return (Array.isArray(items) ? items : [])
+    .map((row) => ({
+      person: titleCaseName(row?.person),
+      role: allowed.has(row?.role) ? row.role : 'Ambos'
+    }))
+    .filter((row) => row.person);
+}
+
 function normalizeConfig(rawConfig = {}) {
   const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
   return {
@@ -171,11 +203,13 @@ function normalizeConfig(rawConfig = {}) {
       personalizedCloserPct: Number(config.global?.personalizedCloserPct ?? DEFAULT_CONFIG.global.personalizedCloserPct)
     },
     agendaScale: normalizeScale(config.agendaScale, DEFAULT_CONFIG.agendaScale),
+    setterSalesScale: normalizeScale(config.setterSalesScale, config.agendaScale || DEFAULT_CONFIG.setterSalesScale),
     clubScale: normalizeScale(config.clubScale, DEFAULT_CONFIG.clubScale),
     fixedOverrides: normalizeOverrides(config.fixedOverrides),
     setterFixedOverrides: normalizeOverrides(config.setterFixedOverrides),
     setterClubScale: normalizeScale(config.setterClubScale, DEFAULT_CONFIG.setterClubScale),
     closerRules: normalizeCloserRules(config.closerRules, DEFAULT_CONFIG.closerRules),
+    personRoles: normalizePersonRoles(config.personRoles?.length ? config.personRoles : DEFAULT_CONFIG.personRoles),
     personAreas: normalizePersonAreas(config.personAreas),
     notes: Array.isArray(config.notes) && config.notes.length
       ? config.notes.map((note) => String(note || '').trim()).filter(Boolean)
@@ -299,6 +333,22 @@ function buildAreaMap(config) {
   return map;
 }
 
+function buildRoleMap(config) {
+  const map = new Map();
+  (config.personRoles || []).forEach((row) => {
+    map.set(normalizeText(row.person), row.role);
+  });
+  return map;
+}
+
+function isRoleAllowed(roleMap, person, expectedRole) {
+  if (!roleMap || roleMap.size === 0) return true;
+  const assigned = roleMap.get(normalizeText(person));
+  if (!assigned) return false;
+  if (assigned === 'Ambos') return true;
+  return normalizeText(assigned) === normalizeText(expectedRole);
+}
+
 function getAreaForPerson(areaMap, person, fallback = 'Comercial') {
   return areaMap.get(normalizeText(person)) || fallback;
 }
@@ -350,6 +400,12 @@ function selectCashBase(row) {
   return safeNumber(row.cash_collected);
 }
 
+function selectCashUsd(row) {
+  const total = safeNumber(row.cash_collected_total);
+  if (total > 0) return total;
+  return safeNumber(row.cash_collected);
+}
+
 function selectClubBase(row) {
   const neto = safeNumber(row.neto_club);
   if (neto > 0) return neto;
@@ -384,6 +440,7 @@ function normalizeComprobanteRows(rows = []) {
     id: String(row.id || '').trim(),
     tipo: titleCaseName(row.tipo),
     producto_format: String(row.producto_format || '').trim(),
+    cliente_format: String(row.cliente_format || row.cliente || '').trim(),
     creado_por: titleCaseName(row.creado_por),
     responsable_venta_db: titleCaseName(row.responsable_venta),
     responsable_actual: titleCaseName(row.responsable_actual),
@@ -401,7 +458,14 @@ function normalizeComprobanteRows(rows = []) {
     ghlid: String(row.ghlid || '').trim(),
     cobranza_relacionada: String(row.cobranza_relacionada || row.venta_relacionada || '').trim(),
     porcentaje_venta_vieja: safeNumber(row.porcentaje_venta_vieja),
+    tc: safeNumber(row.tc),
+    cheque: safeBoolean(row.cheque),
+    estado: String(row.estado || '').trim(),
+    conciliado: String(row.conciliacion_financiera || row.conciliacion_financiera_2 || row.conciliar || '').trim(),
+    facturacion: safeNumber(row.facturacion),
+    facturacion_ars: safeNumber(row.facturacion_ars),
     cash_collected_ars: safeNumber(row.cash_collected_ars),
+    cash_usd: selectCashUsd(row),
     f_acreditacion_only: parseDateOnly(row.f_acreditacion),
     f_venta_only: parseDateOnly(row.f_venta),
     cash_base: selectCashBase(row),
@@ -470,6 +534,18 @@ function buildClubSequenceMap(rows, monthKey) {
     });
 
   return groups;
+}
+
+function buildSetterMegSalesCountMap(rows) {
+  const map = new Map();
+  rows
+    .filter((row) => normalizeText(row.tipo) === 'venta' && !isClubProduct(row.producto_format))
+    .forEach((row) => {
+      const setterKey = normalizeText(row.setter);
+      if (!setterKey) return;
+      map.set(setterKey, Number(map.get(setterKey) || 0) + 1);
+    });
+  return map;
 }
 
 function buildCloserClubSequenceMap(rows, monthKey) {
@@ -615,7 +691,9 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const transactionIndex = buildHistoricalTransactionIndex(normalizedRows);
   const clubSequenceMap = buildClubSequenceMap(activeRows, monthKey);
   const closerClubSequenceMap = buildCloserClubSequenceMap(activeRows, monthKey);
+  const setterMegSalesMap = buildSetterMegSalesCountMap(activeRows);
   const areaMap = buildAreaMap(config);
+  const roleMap = buildRoleMap(config);
   const details = [];
   const closerMegCache = new Map();
 
@@ -627,7 +705,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterName = row.setter || '';
     const closerName = row.responsable_venta || row.creado_por || '';
 
-    if (closerName) {
+    if (closerName && isRoleAllowed(roleMap, closerName, 'Closer')) {
       const closerArea = getAreaForPerson(areaMap, closerName, 'Comercial');
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
@@ -641,17 +719,26 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             id: `${row.id}:closer`,
             transactionId: row.id,
             date: row.f_acreditacion_only || row.f_venta_only || '',
+            acreditacionDate: row.f_acreditacion_only || '',
             area: closerArea,
             person: closerName,
             role: 'Closer',
             category: 'Club',
             tipo: row.tipo || 'Venta',
             product: row.producto_format || 'Club',
+            clientName: row.cliente_format || '',
             ghlid: row.ghlid || '',
             setter: setterName,
             closer: closerName,
             origin: row.origen || '',
             calendar: row.calendario_agendado || '',
+            tc: row.tc,
+            cheque: row.cheque,
+            conciliado: row.conciliado || '',
+            status: row.estado || '',
+            facturacionUsd: row.facturacion,
+            cashUsd: row.cash_usd,
+            cashArs: row.cash_collected_ars,
             baseAmount,
             commissionPct: appliedPct,
             commissionAmount: baseAmount * appliedPct,
@@ -678,17 +765,26 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             id: `${row.id}:closer`,
             transactionId: row.id,
             date: row.f_acreditacion_only || row.f_venta_only || '',
+            acreditacionDate: row.f_acreditacion_only || '',
             area: closerArea,
             person: closerName,
             role: 'Closer',
             category: 'MEG',
             tipo: row.tipo || '',
             product: row.producto_format || (type === 'cobranza' ? 'Cobranza' : 'Venta'),
+            clientName: row.cliente_format || '',
             ghlid: row.ghlid || '',
             setter: setterName,
             closer: closerName,
             origin: row.origen || '',
             calendar: row.calendario_agendado || '',
+            tc: row.tc,
+            cheque: row.cheque,
+            conciliado: row.conciliado || '',
+            status: row.estado || '',
+            facturacionUsd: row.facturacion,
+            cashUsd: row.cash_usd,
+            cashArs: row.cash_collected_ars,
             baseAmount,
             commissionPct: closerResult.pct,
             commissionAmount: baseAmount * closerResult.pct,
@@ -703,11 +799,12 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       }
     }
 
-    if (!setterName) return;
+    if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
     const setterClubSales = getSetterClubSalesCount(settersMap, setterName);
+    const setterMegSales = Number(setterMegSalesMap.get(normalizeText(setterName)) || 0);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
 
     if (isClub && type === 'venta') {
@@ -722,17 +819,26 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         id: `${row.id}:setter`,
         transactionId: row.id,
         date: row.f_acreditacion_only || row.f_venta_only || '',
+        acreditacionDate: row.f_acreditacion_only || '',
         area,
         person: setterName,
         role: 'Setter',
         category: 'Club',
         tipo: row.tipo || 'Venta',
         product: row.producto_format || 'Club',
+        clientName: row.cliente_format || '',
         ghlid: row.ghlid || '',
         setter: setterName,
         closer: row.responsable_venta || row.creado_por || '',
         origin: row.origen || '',
         calendar: row.calendario_agendado || '',
+        tc: row.tc,
+        cheque: row.cheque,
+        conciliado: row.conciliado || '',
+        status: row.estado || '',
+        facturacionUsd: row.facturacion,
+        cashUsd: row.cash_usd,
+        cashArs: row.cash_collected_ars,
         baseAmount,
         commissionPct: appliedPct,
         commissionAmount,
@@ -772,9 +878,9 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       sourceRule = 'BCL RT fijo';
       sourceRuleNote = 'Si el origen es BCL y el calendario agendado es RT, cobra fijo el mínimo global.';
     } else {
-      appliedPct = pickScalePct(config.agendaScale, setterAgendas, config.global.minimumSetterPct);
-      sourceRule = 'Escala por agendas';
-      sourceRuleNote = `Escala calculada sobre ${setterAgendas} agendas del setter en ${monthKey}.`;
+      appliedPct = pickScalePct(config.setterSalesScale, setterMegSales, config.global.minimumSetterPct);
+      sourceRule = 'Escala por ventas';
+      sourceRuleNote = `Escala calculada sobre ${setterMegSales} ventas MEG del setter en ${monthKey}.`;
     }
 
     const baseAmount = row.cash_base;
@@ -784,17 +890,26 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       id: `${row.id}:setter`,
       transactionId: row.id,
       date: row.f_acreditacion_only || row.f_venta_only || '',
+      acreditacionDate: row.f_acreditacion_only || '',
       area,
       person: setterName,
       role: 'Setter',
       category: 'MEG',
       tipo: row.tipo || '',
       product: row.producto_format || (type === 'cobranza' ? 'Cobranza' : 'Venta'),
+      clientName: row.cliente_format || '',
       ghlid: row.ghlid || '',
       setter: setterName,
       closer: row.responsable_venta || row.creado_por || '',
       origin: row.origen || '',
       calendar: row.calendario_agendado || '',
+      tc: row.tc,
+      cheque: row.cheque,
+      conciliado: row.conciliado || '',
+      status: row.estado || '',
+      facturacionUsd: row.facturacion,
+      cashUsd: row.cash_usd,
+      cashArs: row.cash_collected_ars,
       baseAmount,
       commissionPct: appliedPct,
       commissionAmount: baseAmount * appliedPct,
@@ -952,7 +1067,7 @@ async function buildCommissionDashboard(monthKey) {
   const [{ config, locked }, comprobantesRows, settersRows] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchAllRows('comprobantes', {
-      select: 'id,tipo,producto_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones'
+      select: 'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar'
     }),
     fetchAllRows('setters', {
       select: 'anio,mes,setter,agendo,venta_club'

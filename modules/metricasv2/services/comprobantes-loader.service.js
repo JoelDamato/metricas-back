@@ -1,5 +1,7 @@
 const axios = require('axios');
 const env = require('../config/env');
+const submissionCache = new Map();
+const SUBMISSION_TTL_MS = 15 * 60 * 1000;
 
 const DEFAULT_PRODUCTS = [
   'Club',
@@ -85,6 +87,40 @@ function uniqueSorted(values) {
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function cleanupSubmissionCache(now = Date.now()) {
+  for (const [key, entry] of submissionCache.entries()) {
+    if (!entry || entry.expiresAt <= now) submissionCache.delete(key);
+  }
+}
+
+function getSubmissionCacheEntry(key) {
+  cleanupSubmissionCache();
+  return submissionCache.get(key) || null;
+}
+
+function setSubmissionCachePending(key, promise) {
+  if (!key) return;
+  submissionCache.set(key, {
+    status: 'pending',
+    promise,
+    expiresAt: Date.now() + SUBMISSION_TTL_MS
+  });
+}
+
+function setSubmissionCacheDone(key, result) {
+  if (!key) return;
+  submissionCache.set(key, {
+    status: 'done',
+    result,
+    expiresAt: Date.now() + SUBMISSION_TTL_MS
+  });
+}
+
+function clearSubmissionCache(key) {
+  if (!key) return;
+  submissionCache.delete(key);
 }
 
 function standardizeResponsibleVenta(user = {}, rawValue = '') {
@@ -994,7 +1030,8 @@ function normalizePayload(payload = {}, user) {
     chequeCount: null,
     cheques: [],
     latestSaleId: optionalString(payload.latestSaleId),
-    autoFinalizar: Boolean(payload.autoFinalizar)
+    autoFinalizar: Boolean(payload.autoFinalizar),
+    submissionKey: optionalString(payload.submissionKey)
   };
 
   if (tipo === 'Venta') {
@@ -1141,6 +1178,12 @@ async function updateNotionPageProperties(pageId, properties) {
 
 async function createComprobante(payload, user) {
   const normalized = normalizePayload(payload, user);
+  const submissionKey = normalized.submissionKey;
+  const cached = submissionKey ? getSubmissionCacheEntry(submissionKey) : null;
+  if (cached?.status === 'done') return cached.result;
+  if (cached?.status === 'pending' && cached.promise) return cached.promise;
+
+  const run = (async () => {
   const schema = await fetchComprobantesDatabaseSchema();
   const productsDatabaseId = schema?.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
   const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
@@ -1198,6 +1241,18 @@ async function createComprobante(payload, user) {
       operations
     };
     throw wrapped;
+  }
+  })();
+
+  setSubmissionCachePending(submissionKey, run);
+
+  try {
+    const result = await run;
+    setSubmissionCacheDone(submissionKey, result);
+    return result;
+  } catch (error) {
+    clearSubmissionCache(submissionKey);
+    throw error;
   }
 }
 

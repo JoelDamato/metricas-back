@@ -24,13 +24,13 @@
     .tb{padding:11px 16px;border:none;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;}
     .tb.active{color:var(--blue);border-bottom-color:var(--blue);}
     .tb:hover:not(.active){color:var(--text);}
-    .tab-content{display:none;padding:22px 28px;}
+    .tab-content{display:none;padding:14px 10px 18px;}
     .tab-content.active{display:block;}
     .manual-frame-wrap{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
     .manual-frame-head{padding:14px 18px;border-bottom:1px solid var(--border);}
     .manual-frame-head h3{font-size:14px;font-weight:600;margin-bottom:4px;}
     .manual-frame-head p{font-size:12px;color:var(--muted);}
-    .manual-frame{display:block;width:100%;height:78vh;min-height:860px;border:0;background:transparent;}
+    .manual-frame{display:block;width:100%;height:calc(100vh - 170px);min-height:680px;border:0;background:transparent;}
 
     /* CONTROLS */
     .ctrl-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
@@ -113,7 +113,7 @@
     .nw-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px;}
 
     /* MAIN TABLE */
-    .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-bottom:20px;}
+    .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;}
     .mtbl{width:100%;border-collapse:collapse;min-width:500px;}
     .mtbl th{background:var(--s1);padding:9px 12px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
     .mtbl th.lft{text-align:left;min-width:180px;}
@@ -166,7 +166,7 @@
     .mono{font-family:'DM Mono',monospace;}
 
     /* CAT CHAIN */
-    .chain-section{margin-bottom:20px;}
+    .chain-section{margin-bottom:14px;}
     .chain-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
     .chain-title::after{content:'';flex:1;height:1px;background:var(--border);}
     .chain-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
@@ -189,8 +189,14 @@
     .chain-arrow{opacity:.8;}
 
     /* TWO COL */
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-    @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
+    .two-col{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:14px;}
+    body.mag-sistema-agendas-page .mag-theme-shell{width:min(1840px,calc(100vw - 14px));padding:78px 0 18px;}
+    @media(max-width:800px){
+      .two-col{grid-template-columns:1fr;}
+      .tab-content{padding:12px 2px 14px;}
+      .manual-frame{height:calc(100vh - 152px);min-height:520px;}
+      body.mag-sistema-agendas-page .mag-theme-shell{width:min(100vw - 8px,1840px);padding:74px 0 12px;}
+    }
     .panel{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
     .ph{padding:12px 16px;border-bottom:1px solid var(--border);}
     .ph h3{font-size:13px;font-weight:600;}
@@ -244,7 +250,7 @@
   <link rel="stylesheet" href="/metricas/css/styles.css">
   <link rel="stylesheet" href="/metricas/css/mag-theme.css">
 </head>
-<body class="mag-view">
+<body class="mag-view mag-sistema-agendas-page">
 <div class="mag-theme-shell">
 
 <div class="hdr">
@@ -411,6 +417,7 @@ const CLOSER_ALIAS_MAP={
 /* ═══ STATE ═══ */
 let weeks=[];
 let selectedProgressWeekIndex=null;
+let selectedProgressMonthKey='';
 let closers=[
   {id:1,name:'Walter Alegre',   status:'walter',startCat:'ABC',weeks:[]},
   {id:2,name:'Carlos Tu',       status:'normal',startCat:'ABC',weeks:[]},
@@ -550,6 +557,10 @@ function getConciliadoAmount(row){
   return Number.isFinite(total) && total>0 ? total : 0;
 }
 
+function getResponsibleCloser(row){
+  return canonicalCloserName(row?.responsable_venta || row?.creado_por || row?.closer);
+}
+
 function isEligibleCashRow(row){
   if(!toDateKey(row?.fecha_acreditacion)) return false;
   return getConciliadoAmount(row)>0;
@@ -562,24 +573,35 @@ async function loadRealCashByAcreditacion(year,month){
 
   resetCloserWeeks();
   const { from, to } = effectiveMonthRange(year,month);
-  const response = await window.metricasApi.fetchAllRows('cash_collected_diario_closer',{
+  const response = await window.metricasApi.fetchAllRows('comprobantes',{
     from,
     to,
-    dateField:'fecha_acreditacion',
-    orderBy:'fecha_acreditacion',
+    dateField:'f_acreditacion',
+    orderBy:'f_acreditacion',
     orderDir:'asc',
-    limit:1000
+    limit:1000,
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,estado'
   });
 
   const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
   (response.rows || []).forEach((row)=>{
-    if(!isEligibleCashRow(row)) return;
-    const closerName=canonicalCloserName(row.closer);
+    if(normalizeText(row?.producto_format).includes('club')) return;
+    const total=Number(row?.cash_collected_total || 0);
+    const fallback=Number(row?.cash_collected || 0);
+    const effectiveCash=total>0?total:fallback;
+    const normalizedState=normalizeText(row?.estado);
+    const cashRow={
+      fecha_acreditacion: row?.f_acreditacion,
+      cash_collected_total: effectiveCash,
+      cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
+    };
+    if(!isEligibleCashRow(cashRow)) return;
+    const closerName=getResponsibleCloser(row);
     const closer=closerMap.get(normalizeText(closerName));
     if(!closer) return;
-    const weekIndex=getWeekIndexForValue(row.fecha_acreditacion);
+    const weekIndex=getWeekIndexForValue(cashRow.fecha_acreditacion);
     if(weekIndex<0) return;
-    closer.weeks[weekIndex]=(closer.weeks[weekIndex]||0)+getConciliadoAmount(row);
+    closer.weeks[weekIndex]=(closer.weeks[weekIndex]||0)+getConciliadoAmount(cashRow);
   });
 }
 
@@ -590,21 +612,32 @@ async function loadMonthlyBaseCategories(year,month){
 
   const prev=previousMonthOf(year,month);
   const { from, to } = monthRange(prev.year,prev.month);
-  const response = await window.metricasApi.fetchAllRows('cash_collected_diario_closer',{
+  const response = await window.metricasApi.fetchAllRows('comprobantes',{
     from,
     to,
-    dateField:'fecha_acreditacion',
-    orderBy:'fecha_acreditacion',
+    dateField:'f_acreditacion',
+    orderBy:'f_acreditacion',
     orderDir:'asc',
-    limit:1000
+    limit:1000,
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,estado'
   });
 
   const totalsByCloser=new Map();
   (response.rows || []).forEach((row)=>{
-    if(!isEligibleCashRow(row)) return;
-    const closerName=canonicalCloserName(row.closer);
+    if(normalizeText(row?.producto_format).includes('club')) return;
+    const total=Number(row?.cash_collected_total || 0);
+    const fallback=Number(row?.cash_collected || 0);
+    const effectiveCash=total>0?total:fallback;
+    const normalizedState=normalizeText(row?.estado);
+    const cashRow={
+      fecha_acreditacion: row?.f_acreditacion,
+      cash_collected_total: effectiveCash,
+      cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
+    };
+    if(!isEligibleCashRow(cashRow)) return;
+    const closerName=getResponsibleCloser(row);
     const key=normalizeText(closerName);
-    totalsByCloser.set(key,(totalsByCloser.get(key)||0)+getConciliadoAmount(row));
+    totalsByCloser.set(key,(totalsByCloser.get(key)||0)+getConciliadoAmount(cashRow));
   });
 
   const rankedClosers=closers
@@ -1114,13 +1147,19 @@ function showTab(tab,btn){
 async function boot(){
   const mo=parseInt(document.getElementById('sel-mes').value);
   const yr=parseInt(document.getElementById('sel-yr').value);
+  const monthKey=`${yr}-${String(mo).padStart(2,'0')}`;
   weeks=calcWeeks(yr,mo);
   const currentIndex=curWeekIdx();
-  if(selectedProgressWeekIndex===null){
+  const monthChanged=selectedProgressMonthKey!==monthKey;
+  if(selectedProgressWeekIndex===null || monthChanged){
     selectedProgressWeekIndex=currentIndex>=0&&currentIndex<weeks.length?currentIndex:(weeks.length?Math.max(0,weeks.length-1):null);
   }else if(selectedProgressWeekIndex>=weeks.length){
     selectedProgressWeekIndex=weeks.length?weeks.length-1:null;
   }
+  if(monthChanged && !(currentIndex>=0&&currentIndex<weeks.length)){
+    selectedProgressWeekIndex=weeks.length?0:null;
+  }
+  selectedProgressMonthKey=monthKey;
   syncWeekProgressSelect();
   resetCloserWeeks();
 

@@ -1,5 +1,6 @@
 (async function initAuthShell() {
   const GHL_CONTACT_BASE_URL = 'https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/';
+  const THEME_STORAGE_KEY = 'metricas-theme';
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -41,6 +42,70 @@
       </div>
     `;
   }
+
+  function resolveTheme(value) {
+    return value === 'dark' ? 'dark' : 'light';
+  }
+
+  function getStoredTheme() {
+    return resolveTheme(localStorage.getItem(THEME_STORAGE_KEY));
+  }
+
+  function applyTheme(theme) {
+    const resolvedTheme = resolveTheme(theme);
+    const isDark = resolvedTheme === 'dark';
+    document.documentElement.dataset.theme = resolvedTheme;
+    document.body?.setAttribute('data-theme', resolvedTheme);
+    document.body?.classList.toggle('theme-dark', isDark);
+    document.body?.classList.toggle('mag-theme-dark', isDark && document.body.classList.contains('mag-view'));
+    window.dispatchEvent(new CustomEvent('metricas:themechange', {
+      detail: { theme: resolvedTheme }
+    }));
+    return resolvedTheme;
+  }
+
+  function setTheme(theme) {
+    const resolvedTheme = applyTheme(theme);
+    localStorage.setItem(THEME_STORAGE_KEY, resolvedTheme);
+    return resolvedTheme;
+  }
+
+  function getThemeToggleState() {
+    const currentTheme = resolveTheme(document.documentElement.dataset.theme);
+    const isDark = currentTheme === 'dark';
+    return {
+      currentTheme,
+      isDark,
+      icon: isDark ? '☾' : '☀',
+      label: isDark ? 'Dark' : 'Light'
+    };
+  }
+
+  function syncThemeToggleButton() {
+    const button = document.getElementById('metricasThemeToggle');
+    if (!button) return;
+    const state = getThemeToggleState();
+    button.setAttribute('aria-pressed', String(state.isDark));
+    button.setAttribute('aria-label', `Cambiar a modo ${state.isDark ? 'claro' : 'oscuro'}`);
+    button.innerHTML = `
+      <span class="auth-shell-link-icon" aria-hidden="true">${state.icon}</span>
+      <span>${state.label}</span>
+    `;
+  }
+
+  applyTheme(getStoredTheme());
+
+  window.metricasTheme = {
+    get: getStoredTheme,
+    set: setTheme,
+    apply: applyTheme
+  };
+
+  window.addEventListener('storage', (event) => {
+    if (event.key !== THEME_STORAGE_KEY) return;
+    applyTheme(event.newValue);
+    syncThemeToggleButton();
+  });
 
   window.metricasGhl = {
     baseUrl: GHL_CONTACT_BASE_URL,
@@ -220,6 +285,7 @@
         </div>
         <div class="auth-shell-group auth-shell-group--secondary">
           <span class="auth-shell-divider" aria-hidden="true"></span>
+          <button id="metricasThemeToggle" class="auth-shell-link auth-shell-link-theme" type="button" aria-pressed="false"></button>
           <div class="auth-shell-account">
             <span class="auth-shell-avatar" aria-hidden="true">
               <span class="auth-shell-avatar-text">${initials}</span>
@@ -238,6 +304,7 @@
       </div>
     `;
     document.body.prepend(shell);
+    syncThemeToggleButton();
 
     if (user.role !== 'total' && !onlyMarketingAccess) {
       try {
@@ -302,6 +369,12 @@
       } catch (error) {
         showDollarPopup({}, error.message);
       }
+    });
+
+    document.getElementById('metricasThemeToggle')?.addEventListener('click', () => {
+      const nextTheme = getThemeToggleState().isDark ? 'light' : 'dark';
+      setTheme(nextTheme);
+      syncThemeToggleButton();
     });
 
     document.getElementById('metricasGoBack')?.addEventListener('click', () => {

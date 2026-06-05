@@ -32,6 +32,10 @@ function canonicalizeCloserName(value) {
   return CLOSER_ALIAS_MAP[normalizeText(text)] || text;
 }
 
+function resolveResponsibleCloser(row = {}) {
+  return canonicalizeCloserName(row.responsable_venta || row.closer);
+}
+
 function shouldIncludeCloser(value) {
   const normalized = normalizeText(value);
   if (!normalized) return false;
@@ -85,7 +89,7 @@ function normalizeRows(rows) {
   return (rows || [])
     .map((row) => ({
       ...row,
-      closer: canonicalizeCloserName(row.closer),
+      closer: resolveResponsibleCloser(row),
       anio: Number(row.anio || 0),
       mes: Number(row.mes || 0),
       total_agendados: Number(row.total_agendados ?? row.total_leads ?? 0),

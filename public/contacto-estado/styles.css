@@ -29,6 +29,10 @@ body {
     linear-gradient(150deg, var(--bg-top), var(--bg-mid) 52%, var(--bg-bottom));
 }
 
+body.contact-status-page {
+  padding-top: 112px;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -174,6 +178,13 @@ body::before {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 14px 30px rgba(29, 96, 219, 0.22);
+}
+
+.contact-status-page .auth-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .status-box {
@@ -491,6 +502,10 @@ code {
     padding-top: 20px;
   }
 
+  body.contact-status-page {
+    padding-top: 132px;
+  }
+
   .hero,
   .metric-strip,
   .contact-details,
@@ -502,4 +517,104 @@ code {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .contact-status-page {
+  --bg-top: #08111f;
+  --bg-mid: #0c1c33;
+  --bg-bottom: #07111d;
+  --ink: #edf4ff;
+  --muted: #9cb1cf;
+  --card: rgba(15, 28, 49, 0.9);
+  --line: rgba(126, 161, 219, 0.16);
+  --accent: #8dc2ff;
+  --accent-soft: rgba(88, 152, 255, 0.16);
+  --ink-soft: rgba(237, 244, 255, 0.72);
+  --error: #ffbcc6;
+  background:
+    radial-gradient(circle at top left, rgba(88, 180, 255, 0.16), transparent 24%),
+    radial-gradient(circle at right center, rgba(99, 102, 241, 0.14), transparent 26%),
+    linear-gradient(150deg, var(--bg-top), var(--bg-mid) 52%, var(--bg-bottom));
+}
+
+:root[data-theme='dark'] body.contact-status-page::before {
+  border-color: rgba(126, 161, 219, 0.14);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-theme='dark'] .hero,
+:root[data-theme='dark'] .hero-side,
+:root[data-theme='dark'] .status-box,
+:root[data-theme='dark'] .contact-card,
+:root[data-theme='dark'] .metric-tile,
+:root[data-theme='dark'] .detail,
+:root[data-theme='dark'] .area-accordion,
+:root[data-theme='dark'] .area-detail {
+  background: linear-gradient(180deg, rgba(15, 28, 49, 0.96), rgba(11, 22, 40, 0.94));
+  border-color: var(--line);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme='dark'] .back-link,
+:root[data-theme='dark'] code {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(126, 161, 219, 0.16);
+}
+
+:root[data-theme='dark'] .field span,
+:root[data-theme='dark'] .side-note,
+:root[data-theme='dark'] .hero-copy,
+:root[data-theme='dark'] .card-subcopy,
+:root[data-theme='dark'] .detail dt,
+:root[data-theme='dark'] .area-detail dt,
+:root[data-theme='dark'] .contact-card.empty-state p {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .field input {
+  background: rgba(8, 16, 31, 0.92);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .lookup-form button {
+  background: linear-gradient(180deg, #3d89ff 0%, #255ce2 100%);
+  color: #ffffff;
+}
+
+:root[data-theme='dark'] .status-box.error {
+  border-color: rgba(233, 104, 120, 0.24);
+  background: linear-gradient(180deg, rgba(105, 30, 40, 0.9), rgba(75, 22, 30, 0.94));
+}
+
+:root[data-theme='dark'] .status-pill.tone-neutral {
+  background: rgba(126, 161, 219, 0.12);
+  color: var(--ink);
+}
+
+:root[data-theme='dark'] .status-pill.tone-club {
+  background: rgba(41, 122, 79, 0.24);
+  color: #bbf7d0;
+}
+
+:root[data-theme='dark'] .status-pill.tone-meg {
+  background: rgba(55, 101, 177, 0.22);
+  color: #cfe2ff;
+}
+
+:root[data-theme='dark'] .status-pill.tone-hot {
+  background: rgba(151, 72, 30, 0.24);
+  color: #ffd9bd;
+}
+
+:root[data-theme='dark'] .loading-line,
+:root[data-theme='dark'] .loading-box {
+  background: linear-gradient(90deg, rgba(24, 39, 61, 0.72), rgba(57, 78, 112, 0.92), rgba(24, 39, 61, 0.72));
+  background-size: 200% 100%;
 }
