@@ -8,7 +8,7 @@
   <style>
     :root{
       --bg:#0C0F18;--s1:#131720;--s2:#181D2C;--s3:#1E2438;--s4:#252D42;
-      --border:#252D42;--text:#E2E6F4;--muted:#5E6788;--faint:#161B26;
+      --border:#252D42;--text:#E2E6F4;--muted:#7E89AF;--faint:#161B26;
       --blue:#4B8EF5;--green:#2DD4A0;--amber:#F59E0B;--red:#F87171;--purple:#A78BFA;
       --cat-a:#FBBF24;--cat-b:#2DD4A0;--cat-c:#60A5FA;--cat-d:#A78BFA;--cat-e:#94A3B8;
     }
@@ -41,49 +41,61 @@
     .phase-badge.out{background:var(--s2);color:var(--muted);border:1px solid var(--border);}
     .today-lbl{font-size:11px;color:var(--muted);margin-left:auto;}
     .today-lbl b{color:var(--text);}
+    .bonus-config{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:10px;margin-bottom:16px;padding:10px 12px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.26);border-radius:12px;box-shadow:0 14px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);}
+    .bonus-config-field{display:flex;flex-direction:column;gap:4px;}
+    .bonus-config-field label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+    .bonus-config-field input{height:36px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;}
+    .bonus-config-actions{display:flex;flex-direction:column;justify-content:flex-end;gap:5px;}
+    .bonus-config-btn{height:36px;border:none;border-radius:8px;padding:0 12px;background:linear-gradient(135deg,var(--blue),#6ea8ff);color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+    .bonus-config-btn[disabled]{opacity:.45;cursor:not-allowed;}
+    .bonus-config-meta{font-size:9px;color:var(--muted);min-height:12px;line-height:1.3;}
+    .bonus-config-meta.error{color:var(--red);}
+    .bonus-config-meta.ok{color:var(--green);}
 
     /* MILESTONE BAR */
-    .mbar{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:18px;}
+    .mbar{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.22);border-radius:12px;padding:16px 20px;margin-bottom:18px;box-shadow:0 14px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);}
     .mbar-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
     .mbar-left{}
-    .mbar-lbl{font-size:10px;color:var(--muted);margin-bottom:3px;}
-    .mbar-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;}
+    .mbar-lbl{font-size:11px;color:#a7b3d6;margin-bottom:5px;letter-spacing:.04em;text-transform:uppercase;}
+    .mbar-val{font-family:'DM Sans',sans-serif;font-size:34px;font-weight:800;line-height:1;letter-spacing:-.03em;color:#f7f9ff;text-shadow:0 0 18px rgba(255,255,255,.08);}
     .mbar-right{text-align:right;}
-    .mpill{font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;}
-    .mpill.none{background:#200808;color:var(--red);}
-    .mpill.floor{background:#201400;color:var(--amber);}
-    .mpill.bonus{background:#082018;color:var(--green);}
-    .mbar-hint{font-size:10px;color:var(--muted);margin-top:3px;}
-    .scale-outer{position:relative;padding:42px 0 16px;}
-    .scale-track{position:relative;height:9px;border-radius:5px;}
-    .scale-bg{position:absolute;inset:0;border-radius:5px;background:var(--s3);}
-    .scale-red{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;background:linear-gradient(90deg,#3D1010,#5A1A1A);}
-    .scale-amber{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#3A2800,#5A3A00);}
-    .scale-fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transition:width .5s ease;}
-    .scale-cursor{position:absolute;top:-4px;bottom:-4px;width:3px;background:#fff;border-radius:2px;transform:translateX(-50%);transition:left .5s;box-shadow:0 0 8px rgba(255,255,255,.3);}
-    .scale-cursor-lbl{position:absolute;top:calc(100%+4px);left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#fff;background:var(--s2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap;}
+    .mpill{font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;letter-spacing:.03em;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+    .mpill.none{background:rgba(248,113,113,.14);color:#ff9d9d;border:1px solid rgba(248,113,113,.28);}
+    .mpill.floor{background:rgba(245,158,11,.14);color:#ffc04d;border:1px solid rgba(245,158,11,.28);}
+    .mpill.bonus{background:rgba(45,212,160,.16);color:#63ebc0;border:1px solid rgba(45,212,160,.3);}
+    .mbar-hint{font-size:11px;color:#a5b1d3;margin-top:5px;}
+    .scale-outer{position:relative;padding:50px 0 22px;}
+    .scale-track{position:relative;height:18px;border-radius:999px;overflow:visible;}
+    .scale-bg{position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,#242d45,#171d2f);box-shadow:inset 0 2px 6px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.18);}
+    .scale-red{position:absolute;left:0;top:0;bottom:0;border-radius:999px 0 0 999px;background:linear-gradient(90deg,#662020,#f87171);box-shadow:0 0 18px rgba(248,113,113,.16);}
+    .scale-amber{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#7b4c00,#f59e0b);box-shadow:0 0 18px rgba(245,158,11,.18);}
+    .scale-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;transition:width .5s ease;box-shadow:0 0 22px rgba(255,255,255,.08);}
+    .scale-cursor{position:absolute;top:-6px;bottom:-6px;width:6px;background:#fff;border-radius:999px;transform:translateX(-50%);transition:left .5s;box-shadow:0 0 0 4px rgba(255,255,255,.12),0 0 16px rgba(255,255,255,.45);}
+    .scale-cursor-lbl{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:#fff;background:#0f1420;border:1px solid rgba(126,137,175,.24);border-radius:999px;padding:3px 8px;white-space:nowrap;box-shadow:0 10px 20px rgba(0,0,0,.2);}
     .smk{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;}
-    .smk-above{position:absolute;bottom:calc(100% + 5px);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;}
-    .smk-pct-lbl{font-size:9px;font-weight:700;white-space:nowrap;}
-    .smk-val-lbl{font-size:8px;white-space:nowrap;font-family:'DM Mono',monospace;}
-    .smk-line{width:1px;height:9px;background:rgba(255,255,255,.2);}
+    .smk-above{position:absolute;bottom:calc(100% + 8px);display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;}
+    .smk-pct-lbl{font-size:10px;font-weight:800;white-space:nowrap;text-shadow:0 0 10px rgba(255,255,255,.08);}
+    .smk-val-lbl{font-size:9px;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:700;letter-spacing:.01em;}
+    .smk-line{width:2px;height:14px;background:rgba(255,255,255,.26);border-radius:999px;}
 
     /* WEEK PILLS */
-    .wk-pills{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;}
-    .wkp{flex:1;min-width:100px;border-radius:10px;border:1px solid var(--border);background:var(--s1);padding:9px 11px;}
-    .wkp.cur{border-color:var(--blue);background:linear-gradient(135deg,rgba(75,142,245,.07),var(--s1));}
-    .wkp.past{opacity:.55;}
-    .wkp-num{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:3px;}
-    .wkp.cur .wkp-num{color:var(--blue);}
-    .wkp:not(.cur) .wkp-num{color:var(--muted);}
-    .wkp-dates{font-size:11px;font-weight:600;}
-    .wkp-days{font-size:9px;color:var(--muted);margin-top:1px;}
-    .wkp-meta{font-size:9px;font-family:'DM Mono',monospace;margin-top:5px;}
-    .wkp-meta.full{color:var(--green);}
-    .wkp-meta.part{color:var(--amber);}
-    .wkp-ph{font-size:8px;font-weight:700;margin-top:3px;padding:1px 5px;border-radius:8px;display:inline-block;}
-    .wkp-ph.libre{background:#082018;color:var(--green);}
-    .wkp-ph.rank{background:#08101E;color:var(--blue);}
+    .wk-pills{display:flex;gap:10px;margin-bottom:22px;overflow-x:auto;padding:2px 2px 6px;}
+    .wkp{position:relative;flex:1;min-width:128px;border-radius:14px;border:1px solid rgba(126,137,175,.24);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)),var(--s1);padding:12px 13px;box-shadow:0 12px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.05);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;}
+    .wkp::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);}
+    .wkp.cur{border-color:rgba(75,142,245,.72);background:linear-gradient(135deg,rgba(75,142,245,.2),rgba(75,142,245,.05) 42%,rgba(255,255,255,.015)),var(--s1);box-shadow:0 18px 34px rgba(17,30,58,.42),0 0 0 1px rgba(75,142,245,.16),inset 0 1px 0 rgba(255,255,255,.07);}
+    .wkp:hover{transform:translateY(-1px);border-color:rgba(126,137,175,.38);}
+    .wkp.past{opacity:.82;}
+    .wkp-num{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:5px;}
+    .wkp.cur .wkp-num{color:#8fbeff;}
+    .wkp:not(.cur) .wkp-num{color:#b1bbdb;}
+    .wkp-dates{font-size:13px;font-weight:700;color:#f3f6ff;letter-spacing:.01em;}
+    .wkp-days{font-size:10px;color:#a5b1d3;margin-top:3px;}
+    .wkp-meta{font-size:10px;font-family:'DM Mono',monospace;margin-top:6px;font-weight:600;}
+    .wkp-meta.full{color:#5ce5ba;}
+    .wkp-meta.part{color:#ffc04d;}
+    .wkp-ph{font-size:8px;font-weight:800;margin-top:6px;padding:3px 7px;border-radius:999px;display:inline-block;letter-spacing:.06em;text-transform:uppercase;}
+    .wkp-ph.libre{background:rgba(45,212,160,.16);color:#67ebc1;border:1px solid rgba(45,212,160,.26);}
+    .wkp-ph.rank{background:rgba(75,142,245,.16);color:#8fbeff;border:1px solid rgba(75,142,245,.24);}
     .cur-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--blue);margin-left:4px;vertical-align:middle;}
 
     /* NEXT WEEK PANEL */
@@ -91,14 +103,14 @@
     .nw-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
     .nw-title::after{content:'';flex:1;height:1px;background:var(--border);}
     .nw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;}
-    .nw-card{border-radius:11px;padding:12px 14px;border:1px solid var(--border);background:var(--s1);}
-    .nw-card.ok{border-color:rgba(45,212,160,.3);background:linear-gradient(135deg,rgba(45,212,160,.05),var(--s1));}
-    .nw-card.drop{border-color:rgba(248,113,113,.3);background:linear-gradient(135deg,rgba(248,113,113,.05),var(--s1));}
+    .nw-card{border-radius:11px;padding:12px 14px;border:1px solid rgba(126,137,175,.22);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),var(--s1);box-shadow:0 12px 28px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);}
+    .nw-card.ok{border-color:rgba(45,212,160,.42);background:linear-gradient(135deg,rgba(45,212,160,.14),rgba(45,212,160,.03) 40%,var(--s1));}
+    .nw-card.drop{border-color:rgba(248,113,113,.44);background:linear-gradient(135deg,rgba(248,113,113,.14),rgba(248,113,113,.03) 40%,var(--s1));}
     .nw-card.none{border-color:rgba(248,113,113,.5);background:linear-gradient(135deg,#160808,var(--s1));}
     .nw-card.special{border-color:rgba(167,139,250,.3);background:linear-gradient(135deg,rgba(167,139,250,.05),var(--s1));}
     .nw-card.libre-card{border-color:rgba(45,212,160,.2);background:var(--s1);}
-    .nw-name{font-size:12px;font-weight:600;margin-bottom:3px;}
-    .nw-sub{font-size:10px;color:var(--muted);margin-bottom:7px;}
+    .nw-name{font-size:12px;font-weight:700;margin-bottom:3px;color:#f3f6ff;}
+    .nw-sub{font-size:10px;color:#a5b1d3;margin-bottom:7px;}
     .nw-cats{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px;}
     .cc{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
     .cc.A{background:#3B2700;color:var(--cat-a);}
@@ -110,17 +122,17 @@
     .nw-status.ok{color:var(--green);}
     .nw-status.drop{color:var(--red);}
     .nw-status.warn{color:var(--amber);}
-    .nw-pct{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px;}
+    .nw-pct{font-family:'DM Mono',monospace;font-size:10px;color:#c2cae3;margin-top:4px;}
 
     /* MAIN TABLE */
-    .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;}
+    .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid rgba(126,137,175,.22);margin-bottom:14px;box-shadow:0 14px 30px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);}
     .mtbl{width:100%;border-collapse:collapse;min-width:500px;}
-    .mtbl th{background:var(--s1);padding:9px 12px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+    .mtbl th{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015)),var(--s1);padding:9px 12px;font-size:10px;font-weight:700;color:#b7c2e0;text-align:center;border-bottom:1px solid rgba(126,137,175,.18);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
     .mtbl th.lft{text-align:left;min-width:180px;}
     .wth{min-width:110px;}
     .wth-in{display:flex;flex-direction:column;align-items:center;gap:2px;}
     .wth-n{font-size:11px;font-weight:600;color:var(--text);}
-    .wth-d{font-size:9px;color:var(--muted);}
+    .wth-d{font-size:9px;color:#9eabcf;}
     .wth-t{font-family:'DM Mono',monospace;font-size:9px;}
     .wth-t.f{color:var(--green);}
     .wth-t.p{color:var(--amber);}
@@ -129,7 +141,7 @@
     .wth-chip.mid{background:#201400;color:var(--amber);}
     .wth-chip.miss{background:#200808;color:var(--red);}
     .wth-chip.idle{background:var(--s2);color:var(--muted);}
-    .mtbl td{padding:7px 12px;font-size:13px;border-bottom:1px solid rgba(37,45,66,.4);text-align:center;vertical-align:top;}
+    .mtbl td{padding:8px 12px;font-size:13px;border-bottom:1px solid rgba(126,137,175,.12);text-align:center;vertical-align:top;background:rgba(255,255,255,.01);}
     .mtbl td.lft{text-align:left;}
     .mtbl tr:last-child td{border-bottom:none;}
     .mtbl tr.tr-team td{background:var(--s2);border-top:1px solid var(--border);border-bottom:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;}
@@ -155,24 +167,24 @@
     .st-btn.anv{background:#201400;border-color:var(--amber);color:var(--amber);}
     .st-btn.ano{background:#081530;border-color:var(--blue);color:var(--blue);}
     .cell-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;}
-    .wi{min-width:88px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:0;padding:0;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;text-align:center;box-shadow:none;}
-    .wi.met{color:var(--green);}
-    .wi.fail{color:var(--text);}
-    .wi.empty{color:var(--muted);}
-    .cell-pct{font-size:9px;font-family:'DM Mono',monospace;}
-    .cell-pct.ok{color:var(--green);}
-    .cell-pct.no{color:var(--red);}
-    .cell-pct.na{color:var(--muted);}
+    .wi{min-width:88px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.03);border:1px solid rgba(126,137,175,.16);border-radius:9px;padding:4px 8px;color:#f4f7ff;font-family:'DM Mono',monospace;font-size:12px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+    .wi.met{color:#63ebc0;background:rgba(45,212,160,.08);border-color:rgba(45,212,160,.22);}
+    .wi.fail{color:#f4f7ff;}
+    .wi.empty{color:#99a5ca;background:rgba(255,255,255,.02);}
+    .cell-pct{font-size:10px;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:.02em;}
+    .cell-pct.ok{color:#63ebc0;}
+    .cell-pct.no{color:#ff9d9d;}
+    .cell-pct.na{color:#9ba8cb;}
     .mono{font-family:'DM Mono',monospace;}
 
     /* CAT CHAIN */
     .chain-section{margin-bottom:14px;}
     .chain-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
     .chain-title::after{content:'';flex:1;height:1px;background:var(--border);}
-    .chain-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
-    .chain-table th{background:var(--s1);padding:7px 12px;font-size:9px;font-weight:600;color:var(--muted);text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;}
+    .chain-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid rgba(126,137,175,.22);box-shadow:0 14px 30px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);}
+    .chain-table th{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015)),var(--s1);padding:7px 12px;font-size:9px;font-weight:700;color:#b7c2e0;text-align:center;border-bottom:1px solid rgba(126,137,175,.18);text-transform:uppercase;letter-spacing:.05em;}
     .chain-table th.lft{text-align:left;}
-    .chain-table td{padding:7px 12px;font-size:12px;border-bottom:1px solid rgba(37,45,66,.4);text-align:center;}
+    .chain-table td{padding:8px 12px;font-size:12px;border-bottom:1px solid rgba(126,137,175,.12);text-align:center;background:rgba(255,255,255,.01);}
     .chain-table td.lft{text-align:left;font-weight:600;}
     .chain-table tr:last-child td{border-bottom:none;}
     .cat-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;display:inline-block;}
@@ -196,11 +208,12 @@
       .tab-content{padding:12px 2px 14px;}
       .manual-frame{height:calc(100vh - 152px);min-height:520px;}
       body.mag-sistema-agendas-page .mag-theme-shell{width:min(100vw - 8px,1840px);padding:74px 0 12px;}
+      .bonus-config{grid-template-columns:1fr;padding:10px;}
     }
-    .panel{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.22);border-radius:12px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);}
     .ph{padding:12px 16px;border-bottom:1px solid var(--border);}
     .ph h3{font-size:13px;font-weight:600;}
-    .ph p{font-size:11px;color:var(--muted);margin-top:2px;}
+    .ph p{font-size:11px;color:#a4afd1;margin-top:2px;}
     .rank-row{display:flex;align-items:center;gap:9px;padding:9px 16px;border-bottom:1px solid rgba(37,45,66,.4);}
     .rank-row:last-child{border-bottom:none;}
     .rn{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;width:20px;text-align:center;flex-shrink:0;}
@@ -214,7 +227,21 @@
     .rfill{height:100%;border-radius:3px;transition:width .5s;}
     .rpct{font-family:'DM Mono',monospace;font-size:11px;min-width:36px;text-align:right;}
     .rcats{display:flex;gap:3px;flex-shrink:0;}
-    .div-lbl{padding:5px 16px;background:rgba(37,45,66,.4);font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;}
+    .rank-note{padding:10px 16px 0;font-size:10px;line-height:1.5;color:#a5b1d3;}
+    .rank-note b{color:#f3f6ff;}
+    .rank-meta{padding:8px 16px 2px;font-size:10px;color:#92a0c8;}
+    .rank-meta.ok{color:#63ebc0;}
+    .rank-meta.error{color:#ff9d9d;}
+    .rank-cal{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:220px;justify-content:flex-end;}
+    .rank-cal-lbl{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8f9cc4;}
+    .rank-cal-buttons{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+    .rank-cal-btn{min-width:28px;height:24px;border-radius:7px;border:1px solid rgba(126,137,175,.2);background:rgba(255,255,255,.03);color:#b8c3e2;font-size:10px;font-weight:800;cursor:pointer;transition:all .16s ease;}
+    .rank-cal-btn.active{background:linear-gradient(135deg,rgba(75,142,245,.28),rgba(75,142,245,.12));border-color:rgba(75,142,245,.45);color:#f5f8ff;box-shadow:0 0 0 1px rgba(75,142,245,.12);}
+    .rank-cal-btn.readonly{cursor:default;opacity:.86;}
+    .rank-cal-btn:disabled{cursor:not-allowed;opacity:.45;}
+    .rank-row.top-choice{background:linear-gradient(90deg,rgba(45,212,160,.06),transparent);}
+    .rank-top-note{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;color:#63ebc0;background:rgba(45,212,160,.09);border:1px solid rgba(45,212,160,.2);padding:3px 7px;border-radius:999px;}
+    .div-lbl{padding:5px 16px;background:rgba(75,142,245,.08);font-size:9px;font-weight:700;color:#b7c2e0;letter-spacing:.07em;text-transform:uppercase;}
     .cut-line{padding:6px 16px;display:flex;align-items:center;gap:7px;font-size:9px;color:var(--red);}
     .cut-line::before,.cut-line::after{content:'';flex:1;height:1px;background:rgba(248,113,113,.2);}
     .bonus-wk{padding:10px 16px;border-bottom:1px solid rgba(37,45,66,.4);}
@@ -236,19 +263,19 @@
     /* RULES */
     .rg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media(max-width:700px){.rg{grid-template-columns:1fr;}}
-    .rc{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:16px;}
+    .rc{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.22);border-radius:12px;padding:16px;box-shadow:0 14px 28px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.04);}
     .rc h3{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:11px;text-transform:uppercase;letter-spacing:.06em;}
     .il{list-style:none;}
-    .il li{font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:7px;line-height:1.6;}
+    .il li{font-size:12px;color:#aab5d6;padding:6px 0;border-bottom:1px solid rgba(126,137,175,.12);display:flex;gap:7px;line-height:1.6;}
     .il li:last-child{border-bottom:none;}
     .dot{color:var(--blue);font-weight:700;flex-shrink:0;}
-    .bsr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;}
+    .bsr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(126,137,175,.12);font-size:11px;}
     .bsr:last-child{border-bottom:none;}
     .bsr-l{color:var(--muted);}
     .bsr-r{font-family:'DM Mono',monospace;font-weight:700;}
   </style>
-  <link rel="stylesheet" href="/metricas/css/styles.css">
-  <link rel="stylesheet" href="/metricas/css/mag-theme.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/mag-theme.css">
 </head>
 <body class="mag-view mag-sistema-agendas-page">
 <div class="mag-theme-shell">
@@ -279,6 +306,21 @@
     <select class="sel" id="sel-week-progress" onchange="renderAll()"></select>
     <span class="phase-badge" id="phase-badge">—</span>
     <span class="today-lbl" id="today-lbl"></span>
+  </div>
+
+  <div class="bonus-config">
+    <div class="bonus-config-field">
+      <label for="bonus-base-input">Monto base mensual</label>
+      <input id="bonus-base-input" type="number" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="bonus-config-field">
+      <label for="bonus-target-input">Objetivo mensual</label>
+      <input id="bonus-target-input" type="number" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <div class="bonus-config-actions">
+      <button id="bonus-config-save" class="bonus-config-btn" type="button" onclick="saveAgendaBonusConfig()">Guardar configuración</button>
+      <div id="bonus-config-meta" class="bonus-config-meta"></div>
+    </div>
   </div>
 
   <div class="wk-pills" id="wk-pills"></div>
@@ -319,6 +361,8 @@
   <div class="two-col">
     <div class="panel">
       <div class="ph"><h3>Ranking Mensual en Vivo</h3><p>Acumulado del mes → define categorías del mes siguiente</p></div>
+      <div class="rank-note"><b>Criterio:</b> los 3 primeros del ranking pueden elegir qué agendas toman. Además, cada closer queda asociado a un calendario mensual <b>A-E</b> para dejar trazabilidad.</div>
+      <div id="rank-meta" class="rank-meta"></div>
       <div id="rank-body"><div class="empty">Ingresá cash para ver el ranking.</div></div>
     </div>
     <div class="panel" id="bonus-panel">
@@ -346,12 +390,12 @@
     </div>
     <div class="rc">
       <h3>Escala de Bonus Semanal</h3>
-      <div class="bsr"><span class="bsr-l">Bajo el piso (proporcional a días)</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">Piso – Meta</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">$20k base (7 días)</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
-      <div class="bsr"><span class="bsr-l">$25k (7 días)</span><span class="bsr-r" style="color:var(--green)">1,5%</span></div>
-      <div class="bsr"><span class="bsr-l">$30k (7 días)</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
-      <div class="bsr"><span class="bsr-l">Semana parcial (N días)</span><span class="bsr-r" style="color:var(--amber)">Todo × N÷7</span></div>
+      <div class="bsr"><span class="bsr-l">Bajo el monto base semanal</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Base semanal – Objetivo semanal</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Objetivo semanal alcanzado</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Escalón +1</span><span class="bsr-r" style="color:var(--green)">1,5%</span></div>
+      <div class="bsr"><span class="bsr-l">Escalón +2</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Semana parcial (N días dentro del mes)</span><span class="bsr-r" style="color:var(--amber)">Prorrateo automático</span></div>
       <div class="bsr"><span class="bsr-l">Distribución</span><span class="bsr-r" style="color:var(--blue)">Por % de aporte</span></div>
     </div>
     <div class="rc">
@@ -370,7 +414,7 @@
         <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
         <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
         <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
-        <li><span class="dot">→</span> Piso ($16.500) y meta ($20.000) se ajustan: ej. 4 días → meta $11.428</li>
+        <li><span class="dot">→</span> El monto base y el objetivo se cargan por mes y el sistema los reparte por semana según los días de cada tramo</li>
         <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
       </ul>
     </div>
@@ -385,17 +429,17 @@
     </div>
     <iframe
       class="manual-frame"
-      src="/metricas/views/mag-manual-closers.html?embed=1"
+      src="/views/mag-manual-closers.html?embed=1"
       title="Manual de Closers"
       loading="lazy"
     ></iframe>
   </div>
 </div>
 
-<script src="/metricas/js/api/http.js"></script>
-<script src="/metricas/js/api/metricas.api.js"></script>
-<script src="/metricas/js/auth-shell.js"></script>
-<script src="/metricas/js/mag-theme.js"></script>
+<script src="/js/api/http.js"></script>
+<script src="/js/api/metricas.api.js"></script>
+<script src="/js/auth-shell.js"></script>
+<script src="/js/mag-theme.js"></script>
 <script>
 /* ═══ CONSTANTS ═══ */
 const TARGET=20000,FLOOR=16500,STEP=5000;
@@ -418,6 +462,8 @@ const CLOSER_ALIAS_MAP={
 let weeks=[];
 let selectedProgressWeekIndex=null;
 let selectedProgressMonthKey='';
+let agendaBonusConfig=null;
+let agendaCalendarAssignments={};
 let closers=[
   {id:1,name:'Walter Alegre',   status:'walter',startCat:'ABC',weeks:[]},
   {id:2,name:'Carlos Tu',       status:'normal',startCat:'ABC',weeks:[]},
@@ -516,11 +562,26 @@ function canonicalCloserName(value){
   return CLOSER_ALIAS_MAP[normalized] || String(value||'').trim();
 }
 
+function getCloserCalendarLetter(closerName){
+  return agendaCalendarAssignments[normalizeText(closerName)] || null;
+}
+
+function setRankMeta(message='', tone=''){
+  const meta=document.getElementById('rank-meta');
+  if(!meta) return;
+  meta.className=`rank-meta${tone?` ${tone}`:''}`;
+  meta.textContent=message;
+}
+
 function monthRange(year,month){
   const from=`${year}-${String(month).padStart(2,'0')}-01`;
   const toDate=new Date(year,month,0);
   const to=`${year}-${String(month).padStart(2,'0')}-${String(toDate.getDate()).padStart(2,'0')}`;
   return { from, to };
+}
+
+function daysInMonth(year,month){
+  return new Date(year,month,0).getDate();
 }
 
 function effectiveMonthRange(year,month){
@@ -652,21 +713,236 @@ async function loadMonthlyBaseCategories(year,month){
   });
 }
 
+function getLegacyMonthlyAgendaBonus(year,month){
+  const totalDays=daysInMonth(year,month);
+  const weeklyBase=year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR;
+  const weeklyTarget=year===2026 && month===5 ? MAY_2026_TARGET : TARGET;
+  const monthlyFactor=totalDays/7;
+  return {
+    monto_base_mensual: Number((weeklyBase*monthlyFactor).toFixed(2)),
+    objetivo_mensual: Number((weeklyTarget*monthlyFactor).toFixed(2))
+  };
+}
+
+function getSelectedPeriod(){
+  return {
+    year: Number(document.getElementById('sel-yr')?.value || 0),
+    month: Number(document.getElementById('sel-mes')?.value || 0)
+  };
+}
+
+function getAgendaBonusConfig(){
+  const { year, month } = getSelectedPeriod();
+  const fallback=getLegacyMonthlyAgendaBonus(year,month);
+  return {
+    anio: year,
+    mes: month,
+    monto_base_mensual: Number(agendaBonusConfig?.monto_base_mensual ?? fallback.monto_base_mensual ?? 0),
+    objetivo_mensual: Number(agendaBonusConfig?.objetivo_mensual ?? fallback.objetivo_mensual ?? 0),
+    updated_at: agendaBonusConfig?.updated_at || null,
+    updated_by_email: agendaBonusConfig?.updated_by_email || null,
+    is_default: agendaBonusConfig?.is_default !== false
+  };
+}
+
+function setBonusConfigMeta(message, tone=''){
+  const meta=document.getElementById('bonus-config-meta');
+  if(!meta) return;
+  meta.className=`bonus-config-meta${tone?` ${tone}`:''}`;
+  meta.textContent=message || '';
+}
+
+function renderAgendaBonusConfig(){
+  const config=getAgendaBonusConfig();
+  const baseInput=document.getElementById('bonus-base-input');
+  const targetInput=document.getElementById('bonus-target-input');
+  const saveButton=document.getElementById('bonus-config-save');
+  const canEdit=window.metricasAuthPermissions?.canEditAgendaBonusRules !== false;
+
+  if(baseInput) baseInput.value=String(Number(config.monto_base_mensual || 0).toFixed(2));
+  if(targetInput) targetInput.value=String(Number(config.objetivo_mensual || 0).toFixed(2));
+  if(baseInput) baseInput.disabled=!canEdit;
+  if(targetInput) targetInput.disabled=!canEdit;
+  if(saveButton) saveButton.disabled=!canEdit;
+
+  if(!canEdit){
+    setBonusConfigMeta('Modo solo lectura: este usuario puede ver la configuración, pero no editarla.');
+    return;
+  }
+
+  const sourceLabel=config.is_default?'Usando valores heredados del sistema.':'Configuración mensual guardada.';
+  const updatedLabel=config.updated_at
+    ? ` Última actualización: ${new Date(config.updated_at).toLocaleString('es-AR')}${config.updated_by_email?` · ${config.updated_by_email}`:''}`
+    : '';
+  setBonusConfigMeta(`${sourceLabel}${updatedLabel}`);
+}
+
+async function loadAgendaBonusConfig(year,month){
+  if(!window.metricasApi?.fetchAgendaBonusRules){
+    agendaBonusConfig={
+      anio: year,
+      mes: month,
+      ...getLegacyMonthlyAgendaBonus(year,month),
+      updated_at: null,
+      updated_by_email: null,
+      is_default: true
+    };
+    renderAgendaBonusConfig();
+    return;
+  }
+
+  const response=await window.metricasApi.fetchAgendaBonusRules({ anio: year, mes: month });
+  agendaBonusConfig=response?.rules || {
+    anio: year,
+    mes: month,
+    ...getLegacyMonthlyAgendaBonus(year,month),
+    updated_at: null,
+    updated_by_email: null,
+    is_default: true
+  };
+  renderAgendaBonusConfig();
+}
+
+async function loadAgendaCalendarAssignments(year,month){
+  agendaCalendarAssignments={};
+
+  if(!window.metricasApi?.fetchAgendaCalendarAssignments){
+    setRankMeta('No se pudo cargar la trazabilidad mensual de calendarios.', 'error');
+    return;
+  }
+
+  try{
+    const response=await window.metricasApi.fetchAgendaCalendarAssignments({ anio: year, mes: month });
+    (response?.assignments || []).forEach((row)=>{
+      const name=canonicalCloserName(row?.closer_nombre);
+      const letter=String(row?.calendar_letter || '').trim().toUpperCase();
+      if(!name || !['A','B','C','D','E'].includes(letter)) return;
+      agendaCalendarAssignments[normalizeText(name)]=letter;
+    });
+
+    const canEdit=window.metricasAuthPermissions?.canEditAgendaCalendar === true;
+    setRankMeta(
+      canEdit
+        ? 'Calendarios mensuales con trazabilidad activa. Solo Leo y Mati pueden modificarlos.'
+        : 'Calendarios mensuales en modo lectura. Solo Leo y Mati pueden modificarlos.',
+      canEdit ? 'ok' : ''
+    );
+  }catch(error){
+    console.error(error);
+    setRankMeta(error?.message || 'No se pudo cargar la trazabilidad mensual de calendarios.', 'error');
+  }
+}
+
+async function saveAgendaCalendarSelection(closerName, calendarLetter){
+  const canEdit=window.metricasAuthPermissions?.canEditAgendaCalendar === true;
+  if(!canEdit){
+    setRankMeta('Solo Leo o Mati Randazzo pueden editar el calendario mensual.', 'error');
+    return;
+  }
+
+  const { year, month } = getSelectedPeriod();
+  setRankMeta(`Guardando calendario ${calendarLetter} para ${closerName}...`);
+
+  try{
+    const response=await window.metricasApi.saveAgendaCalendarAssignment({
+      anio: year,
+      mes: month,
+      closer_nombre: closerName,
+      calendar_letter: calendarLetter
+    });
+    const savedName=canonicalCloserName(response?.assignment?.closer_nombre || closerName);
+    const savedLetter=String(response?.assignment?.calendar_letter || calendarLetter).trim().toUpperCase();
+    agendaCalendarAssignments[normalizeText(savedName)]=savedLetter;
+    renderRanking();
+    setRankMeta(`Calendario ${savedLetter} guardado para ${savedName}.`, 'ok');
+  }catch(error){
+    console.error(error);
+    setRankMeta(error?.message || 'No se pudo guardar el calendario mensual.', 'error');
+  }
+}
+
+async function saveAgendaBonusConfig(){
+  const canEdit=window.metricasAuthPermissions?.canEditAgendaBonusRules !== false;
+  if(!canEdit){
+    setBonusConfigMeta('Este usuario solo puede visualizar la configuración.', 'error');
+    return;
+  }
+
+  const { year, month } = getSelectedPeriod();
+  const baseInput=document.getElementById('bonus-base-input');
+  const targetInput=document.getElementById('bonus-target-input');
+  const base=Number(baseInput?.value || 0);
+  const target=Number(targetInput?.value || 0);
+
+  if(!Number.isFinite(base) || base<0){
+    setBonusConfigMeta('El monto base mensual debe ser mayor o igual a 0.', 'error');
+    return;
+  }
+  if(!Number.isFinite(target) || target<0){
+    setBonusConfigMeta('El objetivo mensual debe ser mayor o igual a 0.', 'error');
+    return;
+  }
+  if(target<base){
+    setBonusConfigMeta('El objetivo mensual no puede ser menor al monto base mensual.', 'error');
+    return;
+  }
+
+  const saveButton=document.getElementById('bonus-config-save');
+  if(saveButton) saveButton.disabled=true;
+  setBonusConfigMeta('Guardando configuración mensual...');
+
+  try{
+    const response=await window.metricasApi.saveAgendaBonusRules({
+      anio: year,
+      mes: month,
+      monto_base_mensual: base,
+      objetivo_mensual: target
+    });
+    agendaBonusConfig=response?.rules || {
+      anio: year,
+      mes: month,
+      monto_base_mensual: base,
+      objetivo_mensual: target,
+      is_default: false
+    };
+    renderAgendaBonusConfig();
+    renderAll();
+    setBonusConfigMeta('Configuración guardada correctamente.', 'ok');
+  }catch(error){
+    console.error(error);
+    setBonusConfigMeta(error?.message || 'No se pudo guardar la configuración.', 'error');
+  }finally{
+    if(saveButton) saveButton.disabled=!canEdit;
+  }
+}
+
 /* ═══ BONUS MATH ═══ */
 function getMonthlyThresholds(){
-  const month=Number(document.getElementById('sel-mes')?.value || 0);
-  const year=Number(document.getElementById('sel-yr')?.value || 0);
-  if(year===2026 && month===5){
-    return { floor: MAY_2026_FLOOR, target: MAY_2026_TARGET, step: STEP };
-  }
-  return { floor: FLOOR, target: TARGET, step: STEP };
+  const { year, month } = getSelectedPeriod();
+  const totalDays=daysInMonth(year,month) || 30;
+  const config=getAgendaBonusConfig();
+  const legacyStepMonthly=Number((STEP*(totalDays/7)).toFixed(2));
+  return {
+    floorMonthly: Number(config.monto_base_mensual || 0),
+    targetMonthly: Number(config.objetivo_mensual || 0),
+    stepMonthly: legacyStepMonthly,
+    totalDays
+  };
 }
 function adj(days){
-  const f=days/7;
   const thresholds=getMonthlyThresholds();
-  return { floor: thresholds.floor*f, target: thresholds.target*f, step: thresholds.step*f };
+  const ratio=thresholds.totalDays>0 ? days/thresholds.totalDays : 0;
+  return {
+    floor: thresholds.floorMonthly*ratio,
+    target: thresholds.targetMonthly*ratio,
+    step: thresholds.stepMonthly*ratio
+  };
 }
-function bonusPct(cash,days){const{target,step}=adj(days);if(cash<target)return 0;return 0.01+Math.floor((cash-target)/step)*0.005;}
+function bonusPct(cash,days){
+  const{target,step}=adj(days);
+  if(cash<target || step<=0) return 0;
+  return 0.01+Math.floor((cash-target)/step)*0.005;
+}
 function wkStatus(cash,days){const{floor,target}=adj(days);if(!cash)return'idle';if(cash<floor)return'miss';if(cash<target)return'mid';return'hit';}
 
 /* ═══ CATEGORY CHAIN ═══ */
@@ -1072,26 +1348,38 @@ function renderRanking(){
   const top=ranked.filter(c=>c.rank<=3),bot=ranked.filter(c=>c.rank>3);
   if(top.length){
     html+=`<div class="div-lbl">Top ${Math.min(3,ranked.length)} cash collected → A, B, C</div>`;
-    top.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'top','var(--green)',maxCash,['A','B','C'],null));
+    top.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'top','var(--green)',maxCash,['A','B','C'],{ canChoose:true }));
   }
   if(bot.length){
     html+=`<div class="cut-line">Corte</div>`;
     html+=`<div class="div-lbl">Resto → D, E</div>`;
-    bot.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'bot','var(--muted)',maxCash,['D','E'],null));
+    bot.forEach(c=>html+=rrHTML(c,`#${c.rank}`,'bot','var(--muted)',maxCash,['D','E'],{ canChoose:false }));
   }
   body.innerHTML=html;
 }
-function rrHTML(c,num,numCls,barColor,maxCash,cats,specialType){
+function rrHTML(c,num,numCls,barColor,maxCash,cats,options={}){
   const w=maxCash>0?Math.max((c.mt/maxCash)*100,0):0;
-  const chips=specialType==='SP'
-    ?`<span class="cc A">A</span><span class="cc B">B</span><span style="font-size:9px;color:var(--purple);margin-left:2px">★ limitado</span>`
-    :cats?cats.map(x=>`<span class="cc ${x}">${x}</span>`).join(''):'';
-  return`<div class="rank-row">
+  const chips=cats?cats.map(x=>`<span class="cc ${x}">${x}</span>`).join(''):'';
+  const canEditCalendar=window.metricasAuthPermissions?.canEditAgendaCalendar === true;
+  const activeLetter=getCloserCalendarLetter(c.name);
+  const calButtons=['A','B','C','D','E'].map((letter)=>{
+    const active=activeLetter===letter?' active':'';
+    const disabled=canEditCalendar?'':' disabled';
+    const readonly=canEditCalendar?'':' readonly';
+    const click=canEditCalendar?`onclick="saveAgendaCalendarSelection('${String(c.name).replace(/'/g,"\\'")}','${letter}')"`:'';
+    return `<button type="button" class="rank-cal-btn${active}${readonly}" ${click} ${disabled}>${letter}</button>`;
+  }).join('');
+  const topChoiceNote=options.canChoose ? `<span class="rank-top-note">Top 3 elige agendas</span>` : '';
+  return`<div class="rank-row ${options.canChoose?'top-choice':''}">
     <span class="rn ${numCls}">${num}</span>
-    <span class="rname">${c.name}</span>
+    <span class="rname">${c.name}${topChoiceNote}</span>
     <div class="rbar-w"><div class="rtrack"><div class="rfill" style="width:${w}%;background:${barColor}"></div></div>
     <span class="rpct" style="color:${barColor}">${c.pct.toFixed(1)}%</span></div>
     <div class="rcats">${chips}</div>
+    <div class="rank-cal">
+      <span class="rank-cal-lbl">Calendario</span>
+      <div class="rank-cal-buttons">${calButtons}</div>
+    </div>
   </div>`;
 }
 
@@ -1174,6 +1462,8 @@ async function boot(){
 
   try{
     await Promise.all([
+      loadAgendaBonusConfig(yr,mo),
+      loadAgendaCalendarAssignments(yr,mo),
       loadMonthlyBaseCategories(yr,mo),
       loadRealCashByAcreditacion(yr,mo)
     ]);

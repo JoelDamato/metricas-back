@@ -1,5 +1,5 @@
-const DEFAULT_HOME_PATH = '/metricas/dashboard.html';
-const MARKETING_HOME_PATH = '/metricas/views/marketing.html';
+const DEFAULT_HOME_PATH = '/dashboard.html';
+const MARKETING_HOME_PATH = '/views/marketing.html';
 
 function resolveHomePath(response) {
   const explicitHomePath = response?.user?.permissions?.homePath;

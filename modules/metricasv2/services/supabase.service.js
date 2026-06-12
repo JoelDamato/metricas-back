@@ -316,6 +316,258 @@ async function getKpiCloserRules({ anio, mes }) {
   }
 }
 
+function getLegacyAgendaBonusDefaults(year, month) {
+  const safeYear = Number(year);
+  const safeMonth = Number(month);
+  const daysInMonth = new Date(safeYear, safeMonth, 0).getDate();
+  const legacyWeeklyBase = safeYear === 2026 && safeMonth === 5 ? 12500 : 16500;
+  const legacyWeeklyTarget = safeYear === 2026 && safeMonth === 5 ? 16500 : 20000;
+  const multiplier = daysInMonth / 7;
+
+  return {
+    anio: safeYear,
+    mes: safeMonth,
+    monto_base_mensual: Number((legacyWeeklyBase * multiplier).toFixed(2)),
+    objetivo_mensual: Number((legacyWeeklyTarget * multiplier).toFixed(2)),
+    updated_at: null,
+    updated_by_email: null,
+    is_default: true
+  };
+}
+
+async function getAgendaBonusRules({ anio, mes }) {
+  const year = Number(anio);
+  const month = Number(mes);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const error = new Error('Parámetros inválidos para reglas de agenda bonus (anio/mes)');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/agenda_bonus_rules`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: '*',
+        anio: `eq.${year}`,
+        mes: `eq.${month}`,
+        limit: 1
+      }
+    });
+
+    const row = response.data?.[0] || null;
+    if (!row) return getLegacyAgendaBonusDefaults(year, month);
+
+    return {
+      anio: year,
+      mes: month,
+      monto_base_mensual: Number(row.monto_base_mensual || 0),
+      objetivo_mensual: Number(row.objetivo_mensual || 0),
+      updated_at: row.updated_at || null,
+      updated_by_email: row.updated_by_email || null,
+      is_default: false
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error leyendo reglas de agenda bonus: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function upsertAgendaBonusRules(payload, user) {
+  const year = Number(payload.anio);
+  const month = Number(payload.mes);
+  const montoBaseMensual = Number(payload.monto_base_mensual);
+  const objetivoMensual = Number(payload.objetivo_mensual);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const error = new Error('Parámetros inválidos para guardar reglas de agenda bonus (anio/mes)');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!Number.isFinite(montoBaseMensual) || montoBaseMensual < 0) {
+    const error = new Error('El monto base mensual debe ser un número mayor o igual a 0');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!Number.isFinite(objetivoMensual) || objetivoMensual < 0) {
+    const error = new Error('El objetivo mensual debe ser un número mayor o igual a 0');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (objetivoMensual < montoBaseMensual) {
+    const error = new Error('El objetivo mensual no puede ser menor al monto base mensual');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const body = {
+    anio: year,
+    mes: month,
+    monto_base_mensual: montoBaseMensual,
+    objetivo_mensual: objetivoMensual,
+    updated_at: new Date().toISOString(),
+    updated_by_email: String(user?.email || '').trim().toLowerCase() || null
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/agenda_bonus_rules`;
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'anio,mes'
+      }
+    });
+
+    const row = response.data?.[0] || body;
+    return {
+      anio: year,
+      mes: month,
+      monto_base_mensual: Number(row.monto_base_mensual || 0),
+      objetivo_mensual: Number(row.objetivo_mensual || 0),
+      updated_at: row.updated_at || body.updated_at,
+      updated_by_email: row.updated_by_email || body.updated_by_email,
+      is_default: false
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando reglas de agenda bonus: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function listAgendaCalendarAssignments({ anio, mes }) {
+  const year = Number(anio);
+  const month = Number(mes);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const error = new Error('Parámetros inválidos para asignaciones de calendario (anio/mes)');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/agenda_calendar_assignments`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'anio,mes,closer_nombre,calendar_letter,updated_at,updated_by_email',
+        anio: `eq.${year}`,
+        mes: `eq.${month}`,
+        order: 'closer_nombre.asc'
+      }
+    });
+
+    return (response.data || []).map((row) => ({
+      anio: Number(row.anio || year),
+      mes: Number(row.mes || month),
+      closer_nombre: String(row.closer_nombre || '').trim(),
+      calendar_letter: String(row.calendar_letter || '').trim().toUpperCase(),
+      updated_at: row.updated_at || null,
+      updated_by_email: row.updated_by_email || null
+    }));
+  } catch (err) {
+    const details = err.response?.data || null;
+    const message = details?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.agenda_calendar_assignments' in the schema cache");
+    if (isMissingTable) {
+      console.warn('[agenda_calendar_assignments] tabla no disponible en Supabase; devolviendo lista vacia');
+      return [];
+    }
+
+    const error = new Error(`Error leyendo asignaciones de calendario: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = details;
+    throw error;
+  }
+}
+
+async function upsertAgendaCalendarAssignment(payload, user) {
+  const year = Number(payload.anio);
+  const month = Number(payload.mes);
+  const closerNombre = String(payload.closer_nombre || '').trim();
+  const calendarLetter = String(payload.calendar_letter || '').trim().toUpperCase();
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const error = new Error('Parámetros inválidos para guardar asignación de calendario (anio/mes)');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!closerNombre) {
+    const error = new Error('El nombre del closer es obligatorio');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!['A', 'B', 'C', 'D', 'E'].includes(calendarLetter)) {
+    const error = new Error('El calendario debe ser una letra entre A y E');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const body = {
+    anio: year,
+    mes: month,
+    closer_nombre: closerNombre,
+    calendar_letter: calendarLetter,
+    updated_at: new Date().toISOString(),
+    updated_by_email: String(user?.email || '').trim().toLowerCase() || null
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/agenda_calendar_assignments`;
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'anio,mes,closer_nombre'
+      }
+    });
+
+    const row = response.data?.[0] || body;
+    return {
+      anio: Number(row.anio || year),
+      mes: Number(row.mes || month),
+      closer_nombre: String(row.closer_nombre || closerNombre).trim(),
+      calendar_letter: String(row.calendar_letter || calendarLetter).trim().toUpperCase(),
+      updated_at: row.updated_at || body.updated_at,
+      updated_by_email: row.updated_by_email || body.updated_by_email
+    };
+  } catch (err) {
+    const details = err.response?.data || null;
+    const message = details?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.agenda_calendar_assignments' in the schema cache");
+    if (isMissingTable) {
+      const error = new Error('La tabla de asignaciones de calendario todavia no existe en Supabase. Hay que aplicar la migracion 20260606234510_create_agenda_calendar_assignments.sql.');
+      error.statusCode = 503;
+      error.details = details;
+      throw error;
+    }
+
+    const error = new Error(`Error guardando asignación de calendario: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = details;
+    throw error;
+  }
+}
+
 async function upsertKpiCloserRules(payload) {
   const year = Number(payload.anio);
   const month = Number(payload.mes);
@@ -1752,6 +2004,10 @@ module.exports = {
   listRows,
   getKpiCloserRules,
   upsertKpiCloserRules,
+  getAgendaBonusRules,
+  upsertAgendaBonusRules,
+  listAgendaCalendarAssignments,
+  upsertAgendaCalendarAssignment,
   getReportesPremioConfig,
   upsertReportesPremioConfig,
   listReportComments,

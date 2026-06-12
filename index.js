@@ -27,19 +27,34 @@ app.use(authMiddleware.attachAuthUser);
 
 app.use('/contacto-estado', express.static(path.join(__dirname, 'public/contacto-estado'), { index: false, redirect: false }));
 app.use('/metricas-assets', express.static(path.join(__dirname, 'public/metricas-v2/assets'), { index: false, redirect: false }));
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/metricas-v2/login.html'));
+});
+app.get('/unauthorized.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/metricas-v2/unauthorized.html'));
+});
+app.get('/metricas/login.html', (req, res) => {
+  res.redirect('/login.html');
+});
+app.get('/metricas/unauthorized.html', (req, res) => {
+  res.redirect('/unauthorized.html');
+});
+app.use('/metricas', (req, res) => {
+  const nextPath = req.originalUrl.replace(/^\/metricas/, '') || '/index.html';
+  res.redirect(nextPath === '/' ? '/index.html' : nextPath);
+});
 app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
 });
-
-app.get('/metricas', authMiddleware.metricasPageGuard, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/metricas-v2/index.html'));
-});
-app.use('/metricas', authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
 
 app.use('/api', routes);
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
+app.use(authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
 app.use(metricasV2ErrorHandler);
 app.use((error, req, res, next) => {
   const statusCode = error.statusCode || 500;

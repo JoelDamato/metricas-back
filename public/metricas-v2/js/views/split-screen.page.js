@@ -1,25 +1,25 @@
 (function initSplitScreenPage() {
   const PAGE_OPTIONS = [
-    { value: '/metricas/dashboard.html', label: 'Dashboard' },
-    { value: '/metricas', label: 'Central de Métricas' },
-    { value: '/metricas/views/ranking.html', label: 'Ranking Closers' },
-    { value: '/metricas/views/agendas-totales.html', label: 'Agendas Totales' },
-    { value: '/metricas/views/agendas-ultimo-origen.html', label: 'Agendas por Último Origen' },
-    { value: '/metricas/views/agendas-detalle-closer.html', label: 'Agendas por Closer' },
-    { value: '/metricas/views/analisis-ventas.html', label: 'Analisis de Ventas' },
-    { value: '/metricas/views/kpi-closers.html', label: 'KPI Closers' },
-    { value: '/metricas/views/reportes.html', label: 'Reportes' },
-    { value: '/metricas/views/alertas-operativas.html', label: 'Alertas Operativas' },
-    { value: '/metricas/views/mag-sistema-agendas.html', label: 'Sistema de Agendas' },
-    { value: '/metricas/views/mag-reporte-closers-2026.html', label: 'Reporte Closers' },
-    { value: '/metricas/views/setting.html', label: 'Setting' },
-    { value: '/metricas/views/marketing.html', label: 'Totales MKT' },
-    { value: '/metricas/views/leads-bdd.html', label: 'Informe Por Respuestas' },
-    { value: '/metricas/views/csm-tiempo.html', label: 'CSM por Tiempo' },
-    { value: '/metricas/views/csm-situacion.html', label: 'CSM por Situación' },
-    { value: '/metricas/views/csm-renovaciones.html', label: 'Renovaciones' },
+    { value: '/dashboard.html', label: 'Dashboard' },
+    { value: '/index.html', label: 'Central de Métricas' },
+    { value: '/views/ranking.html', label: 'Ranking Closers' },
+    { value: '/views/agendas-totales.html', label: 'Agendas Totales' },
+    { value: '/views/agendas-ultimo-origen.html', label: 'Agendas por Último Origen' },
+    { value: '/views/agendas-detalle-closer.html', label: 'Agendas por Closer' },
+    { value: '/views/analisis-ventas.html', label: 'Analisis de Ventas' },
+    { value: '/views/kpi-closers.html', label: 'KPI Closers' },
+    { value: '/views/reportes.html', label: 'Reportes' },
+    { value: '/views/alertas-operativas.html', label: 'Alertas Operativas' },
+    { value: '/views/mag-sistema-agendas.html', label: 'Sistema de Agendas' },
+    { value: '/views/mag-reporte-closers-2026.html', label: 'Reporte Closers' },
+    { value: '/views/setting.html', label: 'Setting' },
+    { value: '/views/marketing.html', label: 'Totales MKT' },
+    { value: '/views/leads-bdd.html', label: 'Informe Por Respuestas' },
+    { value: '/views/csm-tiempo.html', label: 'CSM por Tiempo' },
+    { value: '/views/csm-situacion.html', label: 'CSM por Situación' },
+    { value: '/views/csm-renovaciones.html', label: 'Renovaciones' },
     { value: '/contacto-estado/', label: 'Estado de Contacto' },
-    { value: '/metricas/views/comisiones.html', label: 'Comisiones' }
+    { value: '/views/comisiones.html', label: 'Comisiones' }
   ];
 
   const workspace = document.getElementById('splitScreenWorkspace');
@@ -46,8 +46,8 @@
     return `${url.pathname}${url.search}`;
   };
 
-  const leftDefault = normalizePath(params.get('left')) || '/metricas/views/ranking.html';
-  const rightDefault = normalizePath(params.get('right')) || '/metricas/views/agendas-totales.html';
+  const leftDefault = normalizePath(params.get('left')) || '/views/ranking.html';
+  const rightDefault = normalizePath(params.get('right')) || '/views/agendas-totales.html';
 
   function setOptions(select, selectedValue) {
     select.innerHTML = PAGE_OPTIONS.map((option) => `

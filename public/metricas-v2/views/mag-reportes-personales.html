@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reporte Personal</title>
+  <link rel="icon" type="image/svg+xml" href="/metricas-assets/favicon-mr.svg">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root{
@@ -24,7 +25,12 @@
     .report-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;}
     .report-action-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;text-decoration:none;cursor:pointer;transition:all .2s;}
     .report-action-btn.is-loading{opacity:.72;pointer-events:none;}
-    .report-status{font-size:12px;color:rgba(255,255,255,.58);}
+    .report-status{font-size:12px;color:rgba(255,255,255,.58);flex:1 1 240px;}
+    .prompt-wrap{display:flex;flex-direction:column;gap:8px;width:min(560px,100%);margin-top:4px;}
+    .prompt-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.62);}
+    .prompt-input{width:100%;min-height:80px;resize:vertical;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;outline:none;}
+    .prompt-input::placeholder{color:rgba(255,255,255,.42);}
+    .prompt-help{font-size:11px;color:rgba(255,255,255,.48);}
 
     .report{max-width:840px;margin:0 auto;padding:36px 24px 60px;}
     .report-hero{border-radius:20px;padding:36px 40px;margin-bottom:24px;position:relative;overflow:hidden;}
@@ -90,6 +96,14 @@
     .step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
     .step-text{font-size:13px;color:var(--muted);line-height:1.6;padding-top:2px;}
 
+    .report,
+    .report *,
+    .report *::before,
+    .report *::after{
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+
     .empty{padding:60px 32px;text-align:center;color:var(--muted);}
     .empty-icon{font-size:40px;margin-bottom:12px;}
     .empty-text{font-size:14px;}
@@ -98,13 +112,68 @@
     @keyframes report-spin{to{transform:rotate(360deg);}}
 
     @media print{
+      @page{
+        size:A4;
+        margin:14mm 12mm;
+      }
+      html,body{
+        background:var(--bg)!important;
+      }
       .selector-wrap{display:none;}
-      .report{padding:20px;max-width:100%;}
-      body{background:#fff;}
+      .mag-theme-shell{padding:0!important;background:transparent!important;}
+      .report{
+        padding:0;
+        max-width:100%;
+      }
+      .kpi-grid,
+      .two-col,
+      .steps{
+        break-inside:avoid;
+        page-break-inside:avoid;
+      }
+      .two-col{
+        grid-template-columns:1fr 1fr!important;
+      }
+      .report-hero,
+      .kpi-card,
+      .section-card,
+      .message-box,
+      .step{
+        break-inside:avoid;
+        page-break-inside:avoid;
+      }
+      .report-hero{
+        box-shadow:none!important;
+        border:0!important;
+      }
+      .rh-chip{
+        background:rgba(255,255,255,.18)!important;
+        border-color:rgba(255,255,255,.18)!important;
+        color:rgba(255,255,255,.92)!important;
+      }
+      .kpi-card{
+        box-shadow:none!important;
+      }
+      .message-box.personal{
+        color:#fff!important;
+        background:var(--text)!important;
+        border-color:var(--text)!important;
+      }
+      .message-box.sistema{
+        background:var(--blue-l)!important;
+        border-color:#BDD0FD!important;
+      }
+      .comp-track{
+        background:#E7ECF8!important;
+      }
+      .comp-fill,
+      .step-num{
+        opacity:1!important;
+      }
     }
   </style>
-  <link rel="stylesheet" href="/metricas/css/styles.css">
-  <link rel="stylesheet" href="/metricas/css/mag-theme.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/mag-theme.css">
 </head>
 <body class="mag-view">
 <div class="mag-theme-shell">
@@ -122,7 +191,13 @@
     <input class="month-input" id="reportMonth" type="month" />
     <button class="print-btn" onclick="window.print()">🖨 Imprimir / Exportar</button>
     <div class="report-actions">
-      <button id="generateAiReport" class="report-action-btn" type="button" hidden>Generar con GPT</button>
+      <div class="prompt-wrap">
+        <label class="prompt-label" for="reportExtraPrompt">Prompt adicional para GPT</label>
+        <textarea id="reportExtraPrompt" class="prompt-input" placeholder="Ej: enfocá más el análisis en cierres, objeciones, disciplina comercial o alguna situación puntual del closer."></textarea>
+        <div class="prompt-help">Opcional. Se suma al contexto antes de enviar el reporte a GPT.</div>
+      </div>
+      <button id="generateAiReport" class="report-action-btn" type="button" hidden>Generar individual</button>
+      <button id="generateAllAiReports" class="report-action-btn" type="button" hidden>Generar todos</button>
       <span id="reportStatus" class="report-status">Elegí closer y mes para ver el reporte.</span>
     </div>
   </div>
@@ -135,10 +210,18 @@
   </div>
 </div>
 
-<script src="/metricas/js/api/http.js"></script>
-<script src="/metricas/js/api/metricas.api.js"></script>
+<script src="/js/api/http.js"></script>
+<script src="/js/api/metricas.api.js"></script>
 <script>
 const GENERATED_REPORT_CACHE = new Map();
+const CLOSER_BATCH_OPTIONS = [
+  { key: 'walter', name: 'Walter Alegre' },
+  { key: 'carlos', name: 'Carlos Tu' },
+  { key: 'claudio', name: 'Claudio Nicolini' },
+  { key: 'mauro', name: 'Mauro Gaitan' },
+  { key: 'pablo', name: 'Pablo Butera' },
+  { key: 'patricia', name: 'Patricia Conti' }
+];
 let canGenerateCloserAiReport = false;
 let reportRenderToken = 0;
 
@@ -166,7 +249,8 @@ function getSelectedReportContext() {
   return {
     closerKey: select.value,
     monthValue: document.getElementById('reportMonth').value,
-    closerName: option && select.value ? option.textContent.trim() : ''
+    closerName: option && select.value ? option.textContent.trim() : '',
+    extraPrompt: String(document.getElementById('reportExtraPrompt')?.value || '').trim()
   };
 }
 
@@ -213,11 +297,18 @@ function setReportLoading(message = 'Generando reporte...') {
 }
 
 function setGenerateButtonLoading(isLoading) {
-  const button = document.getElementById('generateAiReport');
-  if (!button) return;
-  button.disabled = isLoading;
-  button.classList.toggle('is-loading', isLoading);
-  button.textContent = isLoading ? 'Generando...' : 'Generar con GPT';
+  const singleButton = document.getElementById('generateAiReport');
+  const allButton = document.getElementById('generateAllAiReports');
+  if (singleButton) {
+    singleButton.disabled = isLoading;
+    singleButton.classList.toggle('is-loading', isLoading);
+    singleButton.textContent = isLoading ? 'Generando...' : 'Generar individual';
+  }
+  if (allButton) {
+    allButton.disabled = isLoading;
+    allButton.classList.toggle('is-loading', isLoading);
+    allButton.textContent = isLoading ? 'Generando lote...' : 'Generar todos';
+  }
 }
 
 function renderGeneratedReport(payload) {
@@ -240,9 +331,9 @@ function renderGeneratedReport(payload) {
 
   const compRows = [
     { lbl:'Cash agendas mes', tuVal:Number(closerMetrics.cashAgendasMes || 0), teamVal:Number(teamAverages.cashTotal || 0), max:Math.max(Number(closerMetrics.cashAgendasMes || 0), Number(teamAverages.cashTotal || 0), 1) * 1.2, invert:false, unit:'$' },
-    { lbl:'Tasa de cierre', tuVal:Number(closerMetrics.cierrePct || 0), teamVal:Number(teamAverages.tasaCierre || 0), max:Math.max(Number(closerMetrics.cierrePct || 0), Number(teamAverages.tasaCierre || 0), 12), invert:false, unit:'%' },
+    { lbl:'Tasa de cierre', tuVal:Number(closerMetrics.cierrePct || closerMetrics.ventasSobreAsistidasPct || 0), teamVal:Number(teamAverages.tasaCierre || 0), max:Math.max(Number(closerMetrics.cierrePct || closerMetrics.ventasSobreAsistidasPct || 0), Number(teamAverages.tasaCierre || 0), 12), invert:false, unit:'%' },
+    { lbl:'Tasa de efectuadas', tuVal:Number(closerMetrics.efectuadasSobreAplicablesPct || 0), teamVal:Number(teamAverages.tasaEfectuadas || 0), max:Math.max(Number(closerMetrics.efectuadasSobreAplicablesPct || 0), Number(teamAverages.tasaEfectuadas || 0), 20), invert:false, unit:'%' },
     { lbl:'No asistidas', tuVal:Number(closerMetrics.noAsistidasPct || 0), teamVal:Number(teamAverages.pctNoAsistidas || 0), max:Math.max(Number(closerMetrics.noAsistidasPct || 0), Number(teamAverages.pctNoAsistidas || 0), 20), invert:true, unit:'%' },
-    { lbl:'% cobro agenda', tuVal:Number(closerMetrics.cashSobreFacturacionPct || 0), teamVal:Number(teamAverages.pctCobroAgenda || 0), max:Math.max(Number(closerMetrics.cashSobreFacturacionPct || 0), Number(teamAverages.pctCobroAgenda || 0), 20), invert:false, unit:'%' },
     { lbl:'Cash por agenda', tuVal:Number(closerMetrics.cashPorAgenda || 0), teamVal:Number(teamAverages.cashPorAgenda || 0), max:Math.max(Number(closerMetrics.cashPorAgenda || 0), Number(teamAverages.cashPorAgenda || 0), 1) * 1.2, invert:false, unit:'$' },
     { lbl:'Ticket promedio', tuVal:Number(closerMetrics.ticketPromedio || 0), teamVal:Number(teamAverages.ticketPromedio || 0), max:Math.max(Number(closerMetrics.ticketPromedio || 0), Number(teamAverages.ticketPromedio || 0), 1) * 1.2, invert:false, unit:'$' }
   ];
@@ -314,7 +405,7 @@ function renderGeneratedReport(payload) {
 
 
 async function generateAiReport() {
-  const { closerKey, monthValue, closerName } = getSelectedReportContext();
+  const { closerKey, monthValue, closerName, extraPrompt } = getSelectedReportContext();
   const status = document.getElementById('reportStatus');
 
   if (!canGenerateCloserAiReport) {
@@ -333,7 +424,8 @@ async function generateAiReport() {
   try {
     const response = await window.metricasApi.generateCloserPersonalReport({
       closer: closerName,
-      month: monthValue
+      month: monthValue,
+      additionalPrompt: extraPrompt
     });
     const report = response.report || null;
     if (!report) throw new Error('No llegó el reporte generado.');
@@ -343,6 +435,60 @@ async function generateAiReport() {
   } catch (error) {
     status.textContent = error.message || 'No pude generar el reporte con GPT.';
     await renderReport();
+  } finally {
+    setGenerateButtonLoading(false);
+  }
+}
+
+async function generateAllAiReports() {
+  const { monthValue, extraPrompt, closerKey, closerName } = getSelectedReportContext();
+  const status = document.getElementById('reportStatus');
+
+  if (!canGenerateCloserAiReport) {
+    status.textContent = 'Solo Matías Randazzo o Leonardo Alaniz pueden generar reportes con GPT.';
+    return;
+  }
+  if (!monthValue) {
+    status.textContent = 'Elegí un mes antes de generar los reportes.';
+    return;
+  }
+
+  setGenerateButtonLoading(true);
+  setReportLoading(`Generando reportes para los ${CLOSER_BATCH_OPTIONS.length} closers de ${getPeriodLabel(monthValue)}...`);
+  status.textContent = 'Generando reportes individuales para todos los closers...';
+
+  let generatedCount = 0;
+
+  try {
+    for (const currentCloser of CLOSER_BATCH_OPTIONS) {
+      status.textContent = `Generando ${generatedCount + 1}/${CLOSER_BATCH_OPTIONS.length}: ${currentCloser.name}...`;
+      const response = await window.metricasApi.generateCloserPersonalReport({
+        closer: currentCloser.name,
+        month: monthValue,
+        additionalPrompt: extraPrompt
+      });
+      const report = response.report || null;
+      if (!report) throw new Error(`No llegó el reporte generado para ${currentCloser.name}.`);
+      GENERATED_REPORT_CACHE.set(getCacheKey(currentCloser.key, monthValue), report);
+      generatedCount += 1;
+    }
+
+    status.textContent = `Se generaron ${generatedCount} reportes para ${getPeriodLabel(monthValue)}.`;
+
+    if (closerKey && closerName) {
+      const cached = GENERATED_REPORT_CACHE.get(getCacheKey(closerKey, monthValue));
+      if (cached) renderGeneratedReport(cached);
+      else await renderReport();
+    } else {
+      setReportEmptyState(`Se generaron ${generatedCount} reportes para ${getPeriodLabel(monthValue)}. Seleccioná un closer para ver el suyo.`, '🤖');
+    }
+  } catch (error) {
+    status.textContent = error.message || 'No pude generar todos los reportes con GPT.';
+    if (closerKey && closerName) {
+      await renderReport();
+    } else {
+      setReportEmptyState(error.message || 'No pude generar todos los reportes con GPT.', '⚠️');
+    }
   } finally {
     setGenerateButtonLoading(false);
   }
@@ -400,6 +546,7 @@ async function renderReport() {
 
 async function initAiPermissions() {
   const button = document.getElementById('generateAiReport');
+  const allButton = document.getElementById('generateAllAiReports');
   try {
     const response = await window.http.getJson('/api/metricas/auth/session');
     canGenerateCloserAiReport = Boolean(response?.user?.permissions?.canGenerateCloserAiReport);
@@ -407,19 +554,21 @@ async function initAiPermissions() {
     canGenerateCloserAiReport = false;
   }
   button.hidden = !canGenerateCloserAiReport;
+  allButton.hidden = !canGenerateCloserAiReport;
 }
 
 document.getElementById('reportMonth').value = getCurrentMonthValue();
 document.getElementById('sel').addEventListener('change', renderReport);
 document.getElementById('reportMonth').addEventListener('change', renderReport);
 document.getElementById('generateAiReport').addEventListener('click', generateAiReport);
+document.getElementById('generateAllAiReports').addEventListener('click', generateAllAiReports);
 
 (async () => {
   await initAiPermissions();
   await renderReport();
 })();
 </script>
-<script src="/metricas/js/auth-shell.js"></script>
-<script src="/metricas/js/mag-theme.js"></script>
+<script src="/js/auth-shell.js"></script>
+<script src="/js/mag-theme.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ function renderCards(resources) {
 
   container.innerHTML = resources
     .map((resource) => {
-      const url = `/metricas/views/view.html?name=${encodeURIComponent(resource)}`;
+      const url = `/views/view.html?name=${encodeURIComponent(resource)}`;
       return `
         <a class="card" href="${url}">
           <h3>${resource}</h3>

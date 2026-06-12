@@ -150,7 +150,7 @@
   }
 
   function isSplitScreenPath(value) {
-    return String(value || '').includes('/metricas/views/split-screen.html');
+    return String(value || '').includes('/views/split-screen.html');
   }
 
   function getCurrentRelativeUrl() {
@@ -228,10 +228,10 @@
     const onlyMarketingAccess = permissions.onlyMarketingAccess === true;
     const allowedPages = Array.isArray(permissions.allowedPages) ? permissions.allowedPages : null;
     const homeHref = permissions.homePath
-      || (onlyMarketingAccess ? '/metricas/views/marketing.html' : '/metricas/dashboard.html');
+      || (onlyMarketingAccess ? '/views/marketing.html' : '/dashboard.html');
     const homeLabel = homeHref.includes('/views/setting.html')
       ? 'Setting'
-      : (homeHref === '/metricas'
+      : (homeHref === '/index.html'
         ? 'Central'
         : (onlyMarketingAccess ? 'Marketing' : 'Dashboard'));
 
@@ -251,7 +251,7 @@
       .toUpperCase() || 'MR';
     const accessLabel = onlyMarketingAccess ? 'marketing' : (String(user.role || '').trim() || 'sin acceso');
     const isSplitScreenPage = window.location.pathname.endsWith('/split-screen.html');
-    const splitBaseUrl = new URL('/metricas/views/split-screen.html', window.location.origin);
+    const splitBaseUrl = new URL('/views/split-screen.html', window.location.origin);
     splitBaseUrl.searchParams.set('left', `${window.location.pathname}${window.location.search}`);
     const splitToggleHref = isSplitScreenPage
       ? (() => {
@@ -263,7 +263,7 @@
     rememberStandardPage();
     const canGoBack = window.history.length > 1;
     const adminLink = permissions.canManageUsers === true
-      ? '<a class="auth-shell-logout-icon auth-shell-link-admin-icon" href="/metricas/views/admin-usuarios.html" aria-label="Administración"><span aria-hidden="true">⚙</span></a>'
+      ? '<a class="auth-shell-logout-icon auth-shell-link-admin-icon" href="/views/admin-usuarios.html" aria-label="Administración"><span aria-hidden="true">⚙</span></a>'
       : '';
     shell.innerHTML = `
       <div class="auth-shell-inner">
@@ -322,7 +322,7 @@
               hasta: firstComment.fecha_hasta || ''
             });
             notice.className = 'auth-shell-notice';
-            notice.href = `/metricas/views/reportes.html?${params.toString()}`;
+            notice.href = `/views/reportes.html?${params.toString()}`;
             notice.textContent = `${unreadComments.length} comentario${unreadComments.length === 1 ? '' : 's'} nuevo${unreadComments.length === 1 ? '' : 's'}`;
             shell.querySelector('.auth-shell-group--secondary')?.prepend(notice);
           }
@@ -344,7 +344,7 @@
     });
 
     if (allowedPages) {
-      document.querySelectorAll('a[href^="/metricas"]').forEach((node) => {
+      document.querySelectorAll('a[href^="/views/"], a[href="/dashboard.html"], a[href="/index.html"]').forEach((node) => {
         const href = node.getAttribute('href') || '';
         const pageName = href.split('/').pop()?.split('?')[0] || '';
         if (!pageName || !pageName.endsWith('.html')) return;
@@ -355,11 +355,11 @@
     }
 
     if (permissions.canAccessLeadsBdd === false) {
-      document.querySelectorAll('a[href="/metricas/views/leads-bdd.html"]').forEach((node) => node.remove());
+      document.querySelectorAll('a[href="/views/leads-bdd.html"]').forEach((node) => node.remove());
     }
 
     if (permissions.canAccessMarketing === false) {
-      document.querySelectorAll('a[href="/metricas/views/marketing.html"]').forEach((node) => node.remove());
+      document.querySelectorAll('a[href="/views/marketing.html"]').forEach((node) => node.remove());
     }
 
     document.getElementById('openDollarMetricas')?.addEventListener('click', async () => {
@@ -406,7 +406,7 @@
 
     document.getElementById('logoutMetricas').addEventListener('click', async () => {
       await fetch('/api/metricas/auth/logout', { method: 'POST', credentials: 'same-origin' });
-      window.location.href = '/metricas/login.html';
+      window.location.href = '/login.html';
     });
 
   } catch (error) {

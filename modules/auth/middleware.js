@@ -33,12 +33,12 @@ async function metricasPageGuard(req, res, next) {
     if (isPublicMetricasPath(req.path)) return next();
 
     if (!req.authUser) {
-      return res.redirect('/metricas/login.html');
+      return res.redirect('/login.html');
     }
 
     const freshUser = await hydrateAuthUser(req);
     if (!freshUser) {
-      return res.redirect('/metricas/login.html');
+      return res.redirect('/login.html');
     }
 
     const pageName = resolvePageName(req.path);
@@ -46,7 +46,7 @@ async function metricasPageGuard(req, res, next) {
       if (pageName === 'index.html' && !access.isMarketingOnlyUser(req.authUser)) {
         return next();
       }
-      return res.redirect('/metricas/unauthorized.html');
+      return res.redirect('/unauthorized.html');
     }
 
     next();
@@ -99,6 +99,20 @@ async function metricasApiGuard(req, res, next) {
     if (reqPath.endsWith('/kpi-closers/rules')) {
       if (!access.canAccessFeatureForUser(req.authUser, 'kpi_closers_rules', { method: req.method })) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para reglas KPI' });
+      }
+      return next();
+    }
+
+    if (reqPath.endsWith('/agenda-bonus/rules')) {
+      if (!access.canAccessFeatureForUser(req.authUser, 'agenda_bonus_rules', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para reglas de agenda bonus' });
+      }
+      return next();
+    }
+
+    if (reqPath.endsWith('/agenda-calendar/assignments')) {
+      if (!access.canAccessFeatureForUser(req.authUser, 'agenda_calendar_assignments', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para asignaciones de calendario' });
       }
       return next();
     }

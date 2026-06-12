@@ -210,6 +210,64 @@ async function saveKpiCloserRules(req, res, next) {
   }
 }
 
+async function getAgendaBonusRules(req, res, next) {
+  try {
+    const rules = await supabaseService.getAgendaBonusRules({
+      anio: req.query.anio,
+      mes: req.query.mes
+    });
+
+    res.json({
+      ok: true,
+      rules
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveAgendaBonusRules(req, res, next) {
+  try {
+    const rules = await supabaseService.upsertAgendaBonusRules(req.body || {}, req.authUser);
+
+    res.json({
+      ok: true,
+      rules
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listAgendaCalendarAssignments(req, res, next) {
+  try {
+    const assignments = await supabaseService.listAgendaCalendarAssignments({
+      anio: req.query.anio,
+      mes: req.query.mes
+    });
+
+    res.json({
+      ok: true,
+      assignments
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveAgendaCalendarAssignment(req, res, next) {
+  try {
+    const assignment = await supabaseService.upsertAgendaCalendarAssignment(req.body || {}, req.authUser);
+
+    res.json({
+      ok: true,
+      assignment
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getReportesPremioConfig(req, res, next) {
   try {
     const config = await supabaseService.getReportesPremioConfig();
@@ -570,7 +628,8 @@ async function generateCloserPersonalReport(req, res, next) {
 
     const report = await closerPersonalReportService.generateAndStoreCloserPersonalReport({
       closer: req.body?.closer,
-      month: req.body?.month
+      month: req.body?.month,
+      additionalPrompt: req.body?.additionalPrompt
     }, req.authUser);
 
     res.json({
@@ -612,6 +671,10 @@ module.exports = {
   getResourceRows,
   getKpiCloserRules,
   saveKpiCloserRules,
+  getAgendaBonusRules,
+  saveAgendaBonusRules,
+  listAgendaCalendarAssignments,
+  saveAgendaCalendarAssignment,
   getReportesPremioConfig,
   saveReportesPremioConfig,
   listReportComments,

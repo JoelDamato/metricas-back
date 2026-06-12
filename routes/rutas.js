@@ -23,7 +23,15 @@ router.get('/contacto-estado/:ghlId?', contactStatusController.getContactStatus)
 // Compatibilidad: reglas KPI Closers vía router principal /api
 router.get('/metricas/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.getKpiCloserRules);
 router.post('/metricas/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.saveKpiCloserRules);
+router.get('/metricas/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.getAgendaBonusRules);
+router.post('/metricas/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.saveAgendaBonusRules);
+router.get('/metricas/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.listAgendaCalendarAssignments);
+router.post('/metricas/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.saveAgendaCalendarAssignment);
 router.get('/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.getKpiCloserRules);
 router.post('/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.saveKpiCloserRules);
+router.get('/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.getAgendaBonusRules);
+router.post('/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.saveAgendaBonusRules);
+router.get('/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.listAgendaCalendarAssignments);
+router.post('/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.saveAgendaCalendarAssignment);
 
 module.exports = router;

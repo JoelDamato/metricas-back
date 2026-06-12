@@ -255,6 +255,7 @@
     const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
     const baseReady = clientReady
       && Boolean(tipo)
+      && Boolean(refs.dniCuit.value.trim())
       && Boolean(refs.medioPago.value)
       && Boolean(refs.tc.value)
       && Boolean(refs.responsableVenta.value);
@@ -333,7 +334,7 @@
       return;
     }
     if (!stepState.baseReady) {
-      refs.submitStatus.textContent = 'Completá tipo, medio de pago, TC y responsable para seguir.';
+      refs.submitStatus.textContent = 'Completá tipo, DNI/CUIT, medio de pago, TC y responsable para seguir.';
       return;
     }
     if (stepState.isVenta && !stepState.ventaReady) {
@@ -557,6 +558,7 @@
     if (!payload.tipo) warnings.push('Falta elegir el tipo.');
     if (!payload.fechaVenta) warnings.push('Falta la fecha de venta / transacción.');
     if (!payload.fechaAcreditacion) warnings.push('Falta la fecha de acreditación.');
+    if (!payload.dniCuit) warnings.push('Falta el DNI / CUIT.');
     if (!payload.tc) warnings.push('Falta la tasa de cambio.');
     if (!payload.cashCollectedArs) warnings.push('Falta el cash collected ARS.');
     if (!payload.medioPago) warnings.push('Falta el medio de pago.');

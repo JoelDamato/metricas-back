@@ -54,12 +54,12 @@ const SPECIAL_ACCESS_OPTIONS = [
 
 const HOME_PATH_OPTIONS = [
   { value: '', label: 'Sin inicio forzado' },
-  { value: '/metricas', label: 'Central' },
-  { value: '/metricas/dashboard.html', label: 'Dashboard' },
-  { value: '/metricas/views/marketing.html', label: 'Marketing' },
-  { value: '/metricas/views/setting.html', label: 'Setting' },
-  { value: '/metricas/views/admin-usuarios.html', label: 'Administracion' },
-  { value: '/metricas/views/csm-tiempo.html', label: 'CSM por tiempo' }
+  { value: '/index.html', label: 'Central' },
+  { value: '/dashboard.html', label: 'Dashboard' },
+  { value: '/views/marketing.html', label: 'Marketing' },
+  { value: '/views/setting.html', label: 'Setting' },
+  { value: '/views/admin-usuarios.html', label: 'Administracion' },
+  { value: '/views/csm-tiempo.html', label: 'CSM por tiempo' }
 ];
 
 const state = {

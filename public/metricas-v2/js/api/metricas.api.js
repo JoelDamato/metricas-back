@@ -60,6 +60,26 @@ async function fetchReportesPremioConfig() {
   return window.http.getJson('/api/metricas/reportes/premio');
 }
 
+async function fetchAgendaBonusRules(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/agenda-bonus/rules${suffix}`);
+}
+
+async function saveAgendaBonusRules(payload = {}) {
+  return window.http.postJson('/api/metricas/agenda-bonus/rules', payload);
+}
+
+async function fetchAgendaCalendarAssignments(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/agenda-calendar/assignments${suffix}`);
+}
+
+async function saveAgendaCalendarAssignment(payload = {}) {
+  return window.http.postJson('/api/metricas/agenda-calendar/assignments', payload);
+}
+
 async function saveReportesPremioConfig(payload = {}) {
   return window.http.postJson('/api/metricas/reportes/premio', payload);
 }
@@ -261,6 +281,10 @@ window.metricasApi = {
   fetchAgendaDetalleDiarioCloser,
   fetchVentasDiarioCloser,
   fetchCashCollectedDiarioCloser,
+  fetchAgendaBonusRules,
+  saveAgendaBonusRules,
+  fetchAgendaCalendarAssignments,
+  saveAgendaCalendarAssignment,
   fetchReportesPremioConfig,
   saveReportesPremioConfig,
   fetchReportComments,

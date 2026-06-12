@@ -408,7 +408,7 @@
   function syncPersonalFrameMonth(monthValue) {
     const frame = document.getElementById('personalReportFrame');
     if (!frame) return;
-    const nextUrl = new URL(frame.getAttribute('src') || '/metricas/views/mag-reportes-personales.html?embed=1', window.location.origin);
+    const nextUrl = new URL(frame.getAttribute('src') || '/views/mag-reportes-personales.html?embed=1', window.location.origin);
     nextUrl.searchParams.set('embed', '1');
     nextUrl.searchParams.set('month', monthValue);
     const nextSrc = `${nextUrl.pathname}${nextUrl.search}`;

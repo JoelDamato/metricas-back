@@ -970,7 +970,7 @@ function normalizePayload(payload = {}, user) {
   const tc = requiredNumber(payload.tc, 'la tasa de cambio');
   const cashCollectedArs = requiredNumber(payload.cashCollectedArs, 'cash collected ARS');
   const medioPago = requiredString(payload.medioPago, 'el medio de pago');
-  const dniCuit = optionalString(payload.dniCuit);
+  const dniCuit = requiredString(payload.dniCuit, 'el DNI / CUIT');
   const infoComprobantes = optionalString(payload.infoComprobantes);
   const mesesSoporte = payload.mesesSoporte === '' || payload.mesesSoporte === null || payload.mesesSoporte === undefined
     ? null

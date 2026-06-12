@@ -48,6 +48,8 @@ const RESOURCE_ROLE_ACCESS = {
 const FEATURE_ROLE_ACCESS = {
   views: ['total', 'comercial', 'csm'],
   kpi_closers_rules: ['total', 'comercial'],
+  agenda_bonus_rules: ['total', 'comercial'],
+  agenda_calendar_assignments: ['total', 'comercial'],
   reportes_premio: ['total', 'comercial'],
   reportes_comentarios: ['total', 'comercial'],
   marketing_inversion: ['total', 'comercial', 'csm'],
@@ -82,6 +84,11 @@ const REPORTES_PREMIO_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com'
 ]);
 
+const AGENDA_CALENDAR_EDITOR_EMAILS = new Set([
+  'leonardoalaniz19@gmail.com',
+  'matirandazzo@gmail.com'
+]);
+
 const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com',
   'matirandazzo@gmail.com'
@@ -93,13 +100,13 @@ const MARKETING_FORCE_ALLOW_EMAILS = new Set([
 
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
-    homePath: '/metricas/views/setting.html',
+    homePath: '/views/setting.html',
     allowedPages: new Set(['setting.html', 'carga-comprobantes.html']),
     allowedResources: new Set(['setters']),
     allowedFeatures: {}
   },
   'robertoboero83@gmail.com': {
-    homePath: '/metricas',
+    homePath: '/index.html',
     allowedPages: new Set([
       'index.html',
       'ranking.html',
@@ -229,6 +236,13 @@ function canEditReportesPremioForUser(user) {
   return user?.role === 'total' || REPORTES_PREMIO_EDITOR_EMAILS.has(email);
 }
 
+function canEditAgendaCalendarForUser(user) {
+  const configValue = getConfigBoolean(user, 'canEditAgendaCalendar');
+  if (configValue !== null) return configValue;
+  const email = normalizeEmail(user?.email);
+  return AGENDA_CALENDAR_EDITOR_EMAILS.has(email);
+}
+
 function canGenerateCloserAiReportForUser(user) {
   const configValue = getConfigBoolean(user, 'canGenerateCloserAiReport');
   if (configValue !== null) return configValue;
@@ -325,10 +339,25 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
   }
 
   if (
+    isRestrictedCommercialUser(user)
+    && featureName === 'agenda_bonus_rules'
+    && String(options.method || 'GET').toUpperCase() !== 'GET'
+  ) {
+    return false;
+  }
+
+  if (
     featureName === 'reportes_premio'
     && String(options.method || 'GET').toUpperCase() !== 'GET'
   ) {
     return canEditReportesPremioForUser(user);
+  }
+
+  if (
+    featureName === 'agenda_calendar_assignments'
+    && String(options.method || 'GET').toUpperCase() !== 'GET'
+  ) {
+    return canEditAgendaCalendarForUser(user);
   }
 
   if (
@@ -352,6 +381,8 @@ function getUserPermissions(user) {
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
+    canEditAgendaBonusRules: canAccessFeatureForUser(user, 'agenda_bonus_rules', { method: 'POST' }),
+    canEditAgendaCalendar: canAccessFeatureForUser(user, 'agenda_calendar_assignments', { method: 'POST' }),
     canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
     canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' }),
     canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
@@ -371,6 +402,7 @@ function getUserAccessSummary(user) {
       marketingOnly: isMarketingOnlyUser(user),
       restrictedCommercial: isRestrictedCommercialUser(user),
       csmOnly: isCsmOnlyUser(user),
+      canEditAgendaCalendar: canEditAgendaCalendarForUser(user),
       canEditReportesPremio: canEditReportesPremioForUser(user),
       canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
       canManageUsers: canManageUsersForUser(user)
@@ -394,6 +426,7 @@ module.exports = {
   isRestrictedCommercialUser,
   isCsmOnlyUser,
   canEditReportesPremioForUser,
+  canEditAgendaCalendarForUser,
   canGenerateCloserAiReportForUser,
   canManageUsersForUser,
   canAccessPage,

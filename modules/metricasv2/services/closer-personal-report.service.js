@@ -168,7 +168,9 @@ function aggregateByCloser(rows) {
 
   return [...map.values()].map((row) => ({
     ...row,
-    cierrePct: safeDiv(row.ventas * 100, row.agendas),
+    cierrePct: safeDiv(row.ventas * 100, row.efectuadas),
+    efectuadasSobreAplicablesPct: safeDiv(row.efectuadas * 100, row.aplicables),
+    ventasSobreAgendasPct: safeDiv(row.ventas * 100, row.agendas),
     ventasSobreAsistidasPct: safeDiv(row.ventas * 100, row.efectuadas),
     noAsistidasPct: safeDiv(row.noAsistidas * 100, row.aplicables),
     cashPorAgenda: safeDiv(row.cashAgendasMes, row.agendas),
@@ -228,6 +230,7 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
   const teamAvg = {
     cashTotal: averageMetric(teamRows, (row) => row.cashAgendasMes),
     tasaCierre: averageMetric(teamRows, (row) => row.cierrePct),
+    tasaEfectuadas: averageMetric(teamRows, (row) => row.efectuadasSobreAplicablesPct),
     pctNoAsistidas: averageMetric(teamRows, (row) => row.noAsistidasPct),
     pctCobroAgenda: averageMetric(teamRows, (row) => row.cashSobreFacturacionPct),
     cashPorAgenda: averageMetric(teamRows, (row) => row.cashPorAgenda),
@@ -253,10 +256,13 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
     status,
     teamSummary: {
       agendas: summary.agendas,
+      aplicables: summary.aplicables,
+      efectuadas: summary.efectuadas,
       ventas: summary.ventas,
       cashAgendasMes: summary.cashAgendasMes,
       facturacionAgenda: summary.facturacionAgenda,
-      tasaCierrePct: safeDiv(summary.ventas * 100, summary.agendas)
+      tasaCierrePct: safeDiv(summary.ventas * 100, summary.efectuadas),
+      tasaEfectuadasPct: safeDiv(summary.efectuadas * 100, summary.aplicables)
     },
     closerMetrics: {
       agendas: closerRow.agendas,
@@ -266,6 +272,8 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
       noAsistidasPct: closerRow.noAsistidasPct,
       ventas: closerRow.ventas,
       cierrePct: closerRow.cierrePct,
+      efectuadasSobreAplicablesPct: closerRow.efectuadasSobreAplicablesPct,
+      ventasSobreAgendasPct: closerRow.ventasSobreAgendasPct,
       ventasSobreAsistidasPct: closerRow.ventasSobreAsistidasPct,
       paidUpfront: closerRow.paidUpfront,
       paidUpfrontPct: closerRow.paidUpfrontPct,
@@ -315,8 +323,9 @@ function extractResponseText(responseData) {
   return '';
 }
 
-async function generateNarrative(metrics) {
+async function generateNarrative(metrics, options = {}) {
   requireOpenAi();
+  const additionalPrompt = String(options.additionalPrompt || '').trim();
 
   const schema = {
     type: 'object',
@@ -403,6 +412,8 @@ async function generateNarrative(metrics) {
     'No uses markdown, no uses emojis, no uses HTML.',
     'En los textos, escribí los números ya formateados como texto común si hace falta.',
     'Los 6 KPI deben reflejar los datos del closer y sus subtítulos deben explicar el contexto del mes.',
+    'Tomá como tasa de cierre la relación ventas sobre asistidas/efectuadas.',
+    'Tomá como tasa de efectuadas la relación asistidas/efectuadas sobre agendas aplicables.',
     'Los próximos pasos deben ser accionables y concretos.'
   ].join(' ');
 
@@ -411,6 +422,8 @@ Generá un reporte personal para el closer ${metrics.closer} del mes ${metrics.m
 
 Datos base:
 ${JSON.stringify(metrics, null, 2)}
+
+${additionalPrompt ? `\nContexto o pedido adicional del usuario:\n${additionalPrompt}\n` : ''}
 `;
 
   const response = await axios.post(
@@ -447,7 +460,7 @@ ${JSON.stringify(metrics, null, 2)}
   return JSON.parse(text);
 }
 
-async function generateCloserPersonalReport({ closer, month }) {
+async function generateCloserPersonalReport({ closer, month, additionalPrompt }) {
   const closerName = canonicalizeCloserName(closer);
   if (!closerName) {
     const error = new Error('Falta el closer para generar el reporte');
@@ -491,7 +504,8 @@ async function generateCloserPersonalReport({ closer, month }) {
     monthsActive
   });
 
-  const narrative = await generateNarrative(metrics);
+  const normalizedAdditionalPrompt = String(additionalPrompt || '').trim();
+  const narrative = await generateNarrative(metrics, { additionalPrompt: normalizedAdditionalPrompt });
   const style = CLOSER_STYLE_MAP[closerName] || { color: '#3A7BF5', colorDark: '#1A3A8A' };
 
   return {
@@ -509,6 +523,7 @@ async function generateCloserPersonalReport({ closer, month }) {
     },
     style,
     report: narrative,
+    additionalPrompt: normalizedAdditionalPrompt || null,
     generatedAt: new Date().toISOString()
   };
 }
@@ -517,8 +532,8 @@ async function getStoredCloserPersonalReport({ closer, month }) {
   return supabaseService.getStoredCloserPersonalReport({ closer, month });
 }
 
-async function generateAndStoreCloserPersonalReport({ closer, month }, user) {
-  const payload = await generateCloserPersonalReport({ closer, month });
+async function generateAndStoreCloserPersonalReport({ closer, month, additionalPrompt }, user) {
+  const payload = await generateCloserPersonalReport({ closer, month, additionalPrompt });
   const stored = await supabaseService.saveCloserPersonalReport({
     closer: payload.closer,
     month: payload.month
