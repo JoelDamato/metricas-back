@@ -618,6 +618,42 @@ async function createComprobanteManual(req, res, next) {
   }
 }
 
+async function listUtmBuilderPresets(req, res, next) {
+  try {
+    const presets = await supabaseService.listUtmLinkPresets({
+      key: req.query.key
+    });
+
+    res.json({
+      ok: true,
+      presets
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveUtmBuilderPreset(req, res, next) {
+  try {
+    const preset = await supabaseService.upsertUtmLinkPreset(req.body || {}, req.authUser);
+    res.json({
+      ok: true,
+      preset
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteUtmBuilderPreset(req, res, next) {
+  try {
+    const result = await supabaseService.deleteUtmLinkPreset(req.body || {});
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function generateCloserPersonalReport(req, res, next) {
   try {
     if (!access.canGenerateCloserAiReportForUser(req.authUser)) {
@@ -697,6 +733,9 @@ module.exports = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  listUtmBuilderPresets,
+  saveUtmBuilderPreset,
+  deleteUtmBuilderPreset,
   generateCloserPersonalReport,
   getCloserPersonalReport
 };

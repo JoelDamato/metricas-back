@@ -162,6 +162,20 @@ async function fetchMarketingCampaignTotals(options = {}) {
   return window.http.getJson(`/api/metricas/marketing/campaign-totales${suffix}`);
 }
 
+async function fetchUtmBuilderPresets(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/utm-builder/presets${suffix}`);
+}
+
+async function saveUtmBuilderPreset(payload = {}) {
+  return window.http.postJson('/api/metricas/utm-builder/presets', payload);
+}
+
+async function deleteUtmBuilderPreset(payload = {}) {
+  return window.http.deleteJson('/api/metricas/utm-builder/presets', payload);
+}
+
 async function fetchCloserPersonalPdf(options = {}) {
   const qs = queryString(options);
   const suffix = qs ? `?${qs}` : '';
@@ -299,6 +313,9 @@ window.metricasApi = {
   fetchMarketingVentasTotales,
   fetchMarketingCashCollectedAgenda,
   fetchMarketingCampaignTotals,
+  fetchUtmBuilderPresets,
+  saveUtmBuilderPreset,
+  deleteUtmBuilderPreset,
   fetchCloserPersonalPdf,
   uploadCloserPersonalPdf,
   askScalito,

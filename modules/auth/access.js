@@ -24,6 +24,8 @@ const PAGE_ROLE_ACCESS = {
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
   'csm-renovaciones.html': ['total', 'comercial'],
+  'herramientas.html': ['total', 'comercial', 'csm'],
+  'generador-params.html': ['total', 'comercial', 'csm'],
   'view.html': ['total']
 };
 
@@ -53,6 +55,7 @@ const FEATURE_ROLE_ACCESS = {
   reportes_premio: ['total', 'comercial'],
   reportes_comentarios: ['total', 'comercial'],
   marketing_inversion: ['total', 'comercial', 'csm'],
+  utm_builder: ['total', 'comercial', 'csm'],
   alertas_operativas: ['total', 'comercial', 'csm'],
   auth_session: ['total', 'comercial', 'csm'],
   assistant: ['total', 'comercial', 'csm'],
@@ -118,7 +121,9 @@ const USER_ACCESS_OVERRIDES = {
       'mag-manual-closers.html',
       'setting.html',
       'leads-bdd.html',
-      'marketing.html'
+      'marketing.html',
+      'herramientas.html',
+      'generador-params.html'
     ]),
     allowedResources: new Set([
       'ranking_closers_mensual',

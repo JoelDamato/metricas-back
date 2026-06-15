@@ -568,6 +568,296 @@ async function upsertAgendaCalendarAssignment(payload, user) {
   }
 }
 
+function normalizeUtmPresetKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function normalizeUtmPresetParams(rawParams) {
+  if (!rawParams || typeof rawParams !== 'object' || Array.isArray(rawParams)) return {};
+
+  return Object.fromEntries(
+    Object.entries(rawParams)
+      .map(([key, value]) => [String(key || '').trim(), String(value ?? '').trim()])
+      .filter(([key, value]) => key && value)
+  );
+}
+
+function normalizeUtmPresetRecord(rawPreset = {}) {
+  const key = normalizeUtmPresetKey(rawPreset.key || rawPreset.preset_key);
+  const name = String(rawPreset.name || rawPreset.display_name || '').trim();
+  const baseUrl = String(rawPreset.base_url || '').trim();
+  const params = normalizeUtmPresetParams(rawPreset.params);
+
+  if (!key || !name) return null;
+
+  return {
+    id: Number(rawPreset.id || 0) || null,
+    key,
+    name,
+    base_url: baseUrl,
+    params,
+    updated_at: rawPreset.updated_at || null,
+    updated_by_email: rawPreset.updated_by_email || null
+  };
+}
+
+function getUtmPresetsStorageMeta() {
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    objectPath: 'tools/utm-link-presets.json'
+  };
+}
+
+async function readUtmPresetsFromStorage() {
+  const meta = getUtmPresetsStorageMeta();
+  const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders(),
+      responseType: 'json'
+    });
+
+    const raw = response.data;
+    const presets = Array.isArray(raw?.presets)
+      ? raw.presets
+      : (Array.isArray(raw) ? raw : []);
+
+    return presets
+      .map((preset) => normalizeUtmPresetRecord(preset))
+      .filter(Boolean)
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return [];
+    }
+
+    const error = new Error(`Error leyendo presets UTM desde storage: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function saveUtmPresetsToStorage(presets = []) {
+  const meta = getUtmPresetsStorageMeta();
+  await ensureReportesPersonalesDataBucket();
+
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+  const body = Buffer.from(JSON.stringify({
+    presets: presets
+      .map((preset) => normalizeUtmPresetRecord(preset))
+      .filter(Boolean)
+  }, null, 2), 'utf8');
+
+  try {
+    await axios.post(uploadUrl, body, {
+      headers: buildStorageHeaders({
+        'Content-Type': 'application/json',
+        'x-upsert': 'true',
+        'cache-control': '3600'
+      }),
+      maxBodyLength: Infinity
+    });
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando presets UTM en storage: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function listUtmLinkPresets(options = {}) {
+  const key = normalizeUtmPresetKey(options.key);
+  const url = `${env.supabaseUrl}/rest/v1/utm_link_presets`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'id,preset_key,display_name,base_url,params,updated_at,updated_by_email',
+        ...(key ? { preset_key: `eq.${key}` } : {}),
+        order: 'updated_at.desc',
+        limit: key ? 1 : 200
+      }
+    });
+
+    const tablePresets = (response.data || [])
+      .map((row) => normalizeUtmPresetRecord(row))
+      .filter(Boolean);
+    const storagePresets = await readUtmPresetsFromStorage();
+    const merged = new Map();
+
+    [...storagePresets, ...tablePresets].forEach((preset) => {
+      if (!preset?.key) return;
+      merged.set(preset.key, preset);
+    });
+
+    const rows = [...merged.values()]
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+
+    return key ? rows.filter((row) => row.key === key) : rows;
+  } catch (err) {
+    const details = err.response?.data || null;
+    const message = details?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.utm_link_presets' in the schema cache");
+    if (isMissingTable) {
+      console.warn('[utm_link_presets] tabla no disponible en Supabase; usando storage como respaldo');
+      const storagePresets = await readUtmPresetsFromStorage();
+      return key ? storagePresets.filter((row) => row.key === key) : storagePresets;
+    }
+
+    const error = new Error(`Error leyendo presets UTM: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = details;
+    throw error;
+  }
+}
+
+async function upsertUtmLinkPreset(payload, user) {
+  const displayName = String(payload.display_name || payload.origin || payload.origen || '').trim();
+  const presetKey = normalizeUtmPresetKey(payload.preset_key || displayName);
+  const baseUrl = String(payload.base_url || '').trim();
+  const params = normalizeUtmPresetParams(payload.params);
+
+  if (!displayName) {
+    const error = new Error('El origin/origen es obligatorio para guardar el preset UTM');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!presetKey) {
+    const error = new Error('No pude generar una clave válida para ese origin/origen');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const body = {
+    preset_key: presetKey,
+    display_name: displayName,
+    base_url: baseUrl || null,
+    params,
+    updated_at: new Date().toISOString(),
+    updated_by_email: String(user?.email || '').trim().toLowerCase() || null
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/utm_link_presets`;
+  const normalizedRecord = {
+    id: null,
+    key: presetKey,
+    name: displayName,
+    base_url: baseUrl,
+    params,
+    updated_at: body.updated_at,
+    updated_by_email: body.updated_by_email
+  };
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'preset_key'
+      }
+    });
+
+    const row = response.data?.[0] || body;
+    const normalized = normalizeUtmPresetRecord({
+      ...row,
+      preset_key: row.preset_key || presetKey,
+      display_name: row.display_name || displayName,
+      base_url: row.base_url || baseUrl,
+      params: row.params || params,
+      updated_at: row.updated_at || body.updated_at,
+      updated_by_email: row.updated_by_email || body.updated_by_email
+    }) || normalizedRecord;
+
+    const currentStoragePresets = await readUtmPresetsFromStorage();
+    const nextStoragePresets = [
+      normalized,
+      ...currentStoragePresets.filter((preset) => preset.key !== normalized.key)
+    ];
+    await saveUtmPresetsToStorage(nextStoragePresets);
+
+    return normalized;
+  } catch (err) {
+    const details = err.response?.data || null;
+    const message = details?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.utm_link_presets' in the schema cache");
+    if (isMissingTable) {
+      console.warn('[utm_link_presets] tabla no disponible en Supabase; guardando preset en storage');
+      const currentStoragePresets = await readUtmPresetsFromStorage();
+      const nextStoragePresets = [
+        normalizedRecord,
+        ...currentStoragePresets.filter((preset) => preset.key !== normalizedRecord.key)
+      ];
+      await saveUtmPresetsToStorage(nextStoragePresets);
+      return normalizedRecord;
+    }
+
+    const error = new Error(`Error guardando preset UTM: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = details;
+    throw error;
+  }
+}
+
+async function deleteUtmLinkPreset(payload = {}) {
+  const presetKey = normalizeUtmPresetKey(payload.preset_key || payload.key || payload.display_name || payload.origin || payload.origen);
+  if (!presetKey) {
+    const error = new Error('Falta la clave del preset para borrarlo');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/utm_link_presets`;
+  let tableDeleteAttempted = false;
+
+  try {
+    tableDeleteAttempted = true;
+    await axios.delete(url, {
+      headers: buildHeaders(),
+      params: {
+        preset_key: `eq.${presetKey}`
+      }
+    });
+  } catch (err) {
+    const details = err.response?.data || null;
+    const message = details?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.utm_link_presets' in the schema cache");
+    if (!isMissingTable) {
+      const error = new Error(`Error borrando preset UTM: ${message}`);
+      error.statusCode = err.response?.status || 500;
+      error.details = details;
+      throw error;
+    }
+  }
+
+  const currentStoragePresets = await readUtmPresetsFromStorage();
+  const existsInStorage = currentStoragePresets.some((preset) => preset.key === presetKey);
+  const nextStoragePresets = currentStoragePresets.filter((preset) => preset.key !== presetKey);
+
+  if (existsInStorage || !tableDeleteAttempted) {
+    await saveUtmPresetsToStorage(nextStoragePresets);
+  }
+
+  return {
+    ok: true,
+    key: presetKey,
+    deleted: existsInStorage || tableDeleteAttempted
+  };
+}
+
 async function upsertKpiCloserRules(payload) {
   const year = Number(payload.anio);
   const month = Number(payload.mes);
@@ -2008,6 +2298,9 @@ module.exports = {
   upsertAgendaBonusRules,
   listAgendaCalendarAssignments,
   upsertAgendaCalendarAssignment,
+  listUtmLinkPresets,
+  upsertUtmLinkPreset,
+  deleteUtmLinkPreset,
   getReportesPremioConfig,
   upsertReportesPremioConfig,
   listReportComments,

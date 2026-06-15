@@ -260,6 +260,9 @@
         })()
       : splitBaseUrl.toString();
     const splitToggleLabel = isSplitScreenPage ? 'Cerrar dividida' : 'Pantalla dividida';
+    const toolsLink = !onlyMarketingAccess
+      ? '<a class="auth-shell-link auth-shell-link-secondary" href="/views/herramientas.html" aria-label="Herramientas"><span class="auth-shell-link-icon" aria-hidden="true">✦</span></a>'
+      : '';
     rememberStandardPage();
     const canGoBack = window.history.length > 1;
     const adminLink = permissions.canManageUsers === true
@@ -296,6 +299,7 @@
               <span class="auth-shell-access">Acceso: <strong>${accessLabel}</strong></span>
             </span>
           </div>
+          ${toolsLink}
           ${adminLink}
           <button id="logoutMetricas" class="auth-shell-logout-icon" type="button" aria-label="Salir">
             <span aria-hidden="true">⇱</span>

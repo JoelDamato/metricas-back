@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generador de params | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+      .tools-page .tools-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(320px, .9fr);
+        gap: 24px;
+        align-items: stretch;
+      }
+      .tools-page .tools-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(58, 123, 245, .12);
+        color: #2854b3;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .02em;
+        margin-bottom: 18px;
+      }
+      .tools-page .tools-copy {
+        max-width: 620px;
+      }
+      .tools-page .tools-copy p {
+        color: var(--muted-text, #4b5b79);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+      .tools-page .tools-side-card,
+      .tools-page .tools-main-card {
+        background: rgba(255, 255, 255, .94);
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 28px;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, .10);
+      }
+      .tools-page .tools-side-card {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .tools-page .tools-side-card h2,
+      .tools-page .tools-main-card h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 24px;
+        letter-spacing: -.02em;
+      }
+      .tools-page .tools-side-card p {
+        color: var(--muted-text, #4b5b79);
+        line-height: 1.65;
+      }
+      .tools-page .tools-shell {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr);
+        gap: 24px;
+      }
+      .tools-page .tools-main-card {
+        padding: 28px;
+      }
+      .tools-page .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .tools-page .tools-field,
+      .tools-page .tools-field-full {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .tools-page .tools-field-full {
+        grid-column: 1 / -1;
+      }
+      .tools-page label span,
+      .tools-page .tools-block-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #22304d;
+      }
+      .tools-page input,
+      .tools-page textarea,
+      .tools-page select {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, .35);
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: rgba(255, 255, 255, .96);
+        color: #162033;
+        font: inherit;
+      }
+      .tools-page textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .tools-page .tools-help {
+        margin-top: 6px;
+        color: #5e6c86;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .tools-page .tools-param-block {
+        margin-top: 22px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(148, 163, 184, .18);
+      }
+      .tools-page .tools-param-row {
+        display: grid;
+        grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) auto;
+        gap: 10px;
+        margin-top: 10px;
+        align-items: start;
+      }
+      .tools-page .tools-param-key {
+        position: relative;
+      }
+      .tools-page .tools-param-meta {
+        margin-top: 6px;
+        color: #5e6c86;
+        font-size: 12px;
+        line-height: 1.45;
+        min-height: 18px;
+      }
+      .tools-page .tools-param-suggestions {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .98);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, .14);
+        max-height: 280px;
+        overflow: auto;
+      }
+      .tools-page .tools-param-suggestion {
+        border: 0;
+        background: rgba(239, 244, 255, .88);
+        border-radius: 12px;
+        padding: 10px 12px;
+        text-align: left;
+        cursor: pointer;
+        color: #162033;
+      }
+      .tools-page .tools-param-suggestion strong {
+        display: block;
+        font-size: 13px;
+      }
+      .tools-page .tools-param-suggestion span {
+        display: block;
+        margin-top: 3px;
+        color: #5e6c86;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .tools-page .tools-actions {
+        margin-top: 24px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .tools-page .tools-button,
+      .tools-page .tools-button-secondary,
+      .tools-page .tools-button-ghost {
+        border: 0;
+        border-radius: 16px;
+        padding: 14px 18px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .tools-page .tools-button {
+        background: linear-gradient(135deg, #2b63f4, #5b88ff);
+        color: #fff;
+      }
+      .tools-page .tools-button-secondary {
+        background: #eaf1ff;
+        color: #244eb1;
+      }
+      .tools-page .tools-button-ghost {
+        background: rgba(148, 163, 184, .12);
+        color: #30415f;
+      }
+      .tools-page .tools-status {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(58, 123, 245, .10);
+        color: #244eb1;
+        font-size: 14px;
+      }
+      .tools-page .tools-status[data-tone="error"] {
+        background: rgba(220, 38, 38, .10);
+        color: #b42318;
+      }
+      .tools-page .tools-status[data-tone="ok"] {
+        background: rgba(22, 184, 122, .10);
+        color: #0b7a4d;
+      }
+      .tools-page .tools-output {
+        margin-top: 22px;
+        padding-top: 22px;
+        border-top: 1px solid rgba(148, 163, 184, .18);
+      }
+      .tools-page .tools-output-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .tools-page .tools-preset-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .tools-page .tools-preset-card {
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: rgba(247, 249, 252, .9);
+      }
+      .tools-page .tools-preset-card button {
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        color: inherit;
+        font: inherit;
+      }
+      .tools-page .tools-preset-card-actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .tools-page .tools-preset-delete {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: rgba(220, 38, 38, .10);
+        color: #b42318;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .tools-page .tools-preset-card strong {
+        display: block;
+        color: #172338;
+        margin-bottom: 4px;
+      }
+      .tools-page .tools-preset-meta {
+        color: #5e6c86;
+        font-size: 13px;
+        line-height: 1.55;
+        word-break: break-word;
+      }
+      .tools-page .tools-empty {
+        padding: 18px;
+        border-radius: 18px;
+        background: rgba(148, 163, 184, .10);
+        color: #5e6c86;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      @media (max-width: 980px) {
+        .tools-page .tools-hero,
+        .tools-page .tools-shell {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 720px) {
+        .tools-page .tools-grid,
+        .tools-page .tools-param-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      :root[data-theme='dark'] .tools-page .tools-side-card,
+      :root[data-theme='dark'] .tools-page .tools-main-card {
+        background: rgba(12, 18, 31, .92);
+        border-color: rgba(96, 125, 177, .22);
+        box-shadow: 0 32px 90px rgba(2, 6, 23, .48);
+      }
+      :root[data-theme='dark'] .tools-page .tools-kicker {
+        background: rgba(59, 130, 246, .18);
+        color: #9cc1ff;
+      }
+      :root[data-theme='dark'] .tools-page .tools-copy p,
+      :root[data-theme='dark'] .tools-page .tools-side-card p,
+      :root[data-theme='dark'] .tools-page .tools-help,
+      :root[data-theme='dark'] .tools-page .tools-preset-meta,
+      :root[data-theme='dark'] .tools-page .tools-empty {
+        color: #a8b5cb;
+      }
+      :root[data-theme='dark'] .tools-page .tools-side-card h2,
+      :root[data-theme='dark'] .tools-page .tools-main-card h2,
+      :root[data-theme='dark'] .tools-page label span,
+      :root[data-theme='dark'] .tools-page .tools-block-title,
+      :root[data-theme='dark'] .tools-page .tools-preset-card strong {
+        color: #f6f8ff;
+      }
+      :root[data-theme='dark'] .tools-page input,
+      :root[data-theme='dark'] .tools-page textarea,
+      :root[data-theme='dark'] .tools-page select {
+        background: rgba(10, 15, 26, .92);
+        border-color: rgba(96, 125, 177, .28);
+        color: #eef3ff;
+      }
+      :root[data-theme='dark'] .tools-page .tools-button-secondary {
+        background: rgba(36, 78, 177, .22);
+        color: #c8d9ff;
+      }
+      :root[data-theme='dark'] .tools-page .tools-button-ghost,
+      :root[data-theme='dark'] .tools-page .tools-preset-card,
+      :root[data-theme='dark'] .tools-page .tools-empty {
+        background: rgba(255, 255, 255, .04);
+        color: #d7e1f4;
+      }
+      :root[data-theme='dark'] .tools-page .tools-preset-delete {
+        background: rgba(220, 38, 38, .18);
+        color: #ffb4b4;
+      }
+      :root[data-theme='dark'] .tools-page .tools-status {
+        background: rgba(59, 130, 246, .16);
+        color: #b8d1ff;
+      }
+      :root[data-theme='dark'] .tools-page .tools-param-meta,
+      :root[data-theme='dark'] .tools-page .tools-param-suggestion span {
+        color: #9fb0cc;
+      }
+      :root[data-theme='dark'] .tools-page .tools-param-suggestions {
+        background: rgba(10, 15, 26, .98);
+        border-color: rgba(96, 125, 177, .24);
+        box-shadow: 0 18px 44px rgba(2, 6, 23, .55);
+      }
+      :root[data-theme='dark'] .tools-page .tools-param-suggestion {
+        background: rgba(255, 255, 255, .05);
+        color: #eef3ff;
+      }
+    </style>
+  </head>
+  <body class="ranking-page tools-page">
+    <main class="container">
+      <section class="ranking-hero tools-hero">
+        <div class="tools-copy">
+          <span class="tools-kicker">Herramientas internas</span>
+          <h1>Generador de params</h1>
+          <p>Armá URLs con UTM y parámetros extra, buscá campos custom de GHL y guardá presets reutilizables por `origin`.</p>
+        </div>
+        <aside class="tools-side-card">
+          <h2>Cómo funciona</h2>
+          <p>Escribís la URL base, completás los UTM que quieras y sumás parámetros extra sin límite.</p>
+          <p>Si agregás `origin` dentro de los extras, al generar el link se guarda ese preset en base con los parámetros usados.</p>
+        </aside>
+      </section>
+
+      <section class="tools-shell">
+        <article class="tools-main-card">
+          <h2>Generador de params</h2>
+          <p class="tools-help">Si dejás vacío <code>utm_source</code>, se completa automáticamente con el valor del parámetro extra <code>origin</code> si existe. Usá los extras para sumar <code>origin</code> y cualquier otro campo custom.</p>
+
+          <div class="tools-grid">
+            <label class="tools-field-full">
+              <span>URL base</span>
+              <input id="utmBaseUrl" type="url" placeholder="https://tusitio.com/landing" autocomplete="off" />
+            </label>
+            <label class="tools-field">
+              <span>Nombre del preset</span>
+              <input id="utmPresetName" type="text" placeholder="Ej: WhatsApp junio org" autocomplete="off" />
+            </label>
+            <label class="tools-field">
+              <span>Preset guardado</span>
+              <select id="utmPresetSelect">
+                <option value="">Elegir preset...</option>
+              </select>
+            </label>
+            <label class="tools-field">
+              <span>utm_source</span>
+              <input id="utmSource" type="text" placeholder="Se completa con el extra origin si lo dejás vacío" autocomplete="off" />
+            </label>
+            <label class="tools-field">
+              <span>utm_medium</span>
+              <input id="utmMedium" type="text" placeholder="Ej: whatsapp" autocomplete="off" />
+            </label>
+            <label class="tools-field">
+              <span>utm_campaign</span>
+              <input id="utmCampaign" type="text" placeholder="Ej: junio_lanzamiento" autocomplete="off" />
+            </label>
+            <label class="tools-field">
+              <span>utm_content</span>
+              <input id="utmContent" type="text" placeholder="Ej: boton_header" autocomplete="off" />
+            </label>
+            <label class="tools-field tools-field-full">
+              <span>utm_term</span>
+              <input id="utmTerm" type="text" placeholder="Opcional" autocomplete="off" />
+            </label>
+          </div>
+
+          <div class="tools-param-block">
+            <div class="tools-block-title">Parámetros extra</div>
+            <div class="tools-help">Podés agregar todos los que quieras. Si un parámetro ya existe en la URL base, se reemplaza por el nuevo valor.</div>
+            <div id="utmCustomParams"></div>
+            <div class="tools-actions">
+              <button id="addUtmParam" class="tools-button-ghost" type="button">Agregar parámetro</button>
+              <button id="clearUtmForm" class="tools-button-ghost" type="button">Limpiar</button>
+            </div>
+          </div>
+
+          <div class="tools-actions">
+            <button id="generateUtmLink" class="tools-button" type="button">Generar link</button>
+            <button id="saveUtmPreset" class="tools-button-secondary" type="button">Guardar preset</button>
+          </div>
+
+          <div id="utmStatus" class="tools-status">Completá la URL y armá el link que quieras usar.</div>
+
+          <div class="tools-output">
+            <label class="tools-field-full">
+              <span>Link final</span>
+              <textarea id="utmOutput" placeholder="Acá va a aparecer la URL generada" readonly></textarea>
+            </label>
+            <div class="tools-output-actions">
+              <button id="copyUtmLink" class="tools-button-secondary" type="button">Copiar link</button>
+            </div>
+          </div>
+        </article>
+
+        <aside class="tools-side-card">
+          <h2>Presets guardados</h2>
+          <p>Se guardan por origin para que reutilices campañas o estructuras ya estandarizadas.</p>
+          <div id="utmPresetList" class="tools-preset-list"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/js/api/http.js"></script>
+    <script src="/js/api/metricas.api.js"></script>
+    <script src="/js/auth-shell.js"></script>
+    <script src="/js/views/herramientas.page.js"></script>
+  </body>
+</html>

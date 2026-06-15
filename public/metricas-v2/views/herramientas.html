@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Herramientas | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+      .tools-home-page .tools-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(58, 123, 245, .12);
+        color: #2854b3;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: .02em;
+        margin-bottom: 18px;
+      }
+      .tools-home-page .tools-copy {
+        max-width: 620px;
+      }
+      .tools-home-page .tools-copy p,
+      .tools-home-page .tools-page-card p {
+        color: var(--muted-text, #4b5b79);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+      .tools-home-page .tools-page-card {
+        background: rgba(255, 255, 255, .94);
+        border: 1px solid rgba(148, 163, 184, .2);
+        border-radius: 28px;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, .10);
+      }
+      .tools-home-page .tools-page-card h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 24px;
+        letter-spacing: -.02em;
+      }
+      .tools-home-page .tools-pages {
+        margin-top: 26px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 340px));
+        gap: 18px;
+      }
+      .tools-home-page .tools-page-card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        padding: 22px 24px;
+      }
+      .tools-home-page .tools-page-card span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(58, 123, 245, .12);
+        color: #2854b3;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 14px;
+      }
+      .tools-home-page .tools-page-card h2 {
+        margin-bottom: 8px;
+      }
+      :root[data-theme='dark'] .tools-home-page .tools-page-card {
+        background: rgba(12, 18, 31, .92);
+        border-color: rgba(96, 125, 177, .22);
+        box-shadow: 0 32px 90px rgba(2, 6, 23, .48);
+      }
+      :root[data-theme='dark'] .tools-home-page .tools-kicker,
+      :root[data-theme='dark'] .tools-home-page .tools-page-card span {
+        background: rgba(59, 130, 246, .18);
+        color: #9cc1ff;
+      }
+      :root[data-theme='dark'] .tools-home-page .tools-copy p,
+      :root[data-theme='dark'] .tools-home-page .tools-page-card p {
+        color: #a8b5cb;
+      }
+      :root[data-theme='dark'] .tools-home-page .tools-page-card h2 {
+        color: #f6f8ff;
+      }
+    </style>
+  </head>
+  <body class="ranking-page tools-home-page">
+    <main class="container">
+      <section class="ranking-hero">
+        <div class="tools-copy">
+          <span class="tools-kicker">Herramientas internas</span>
+          <h1>Herramientas</h1>
+          <p>Espacio para utilidades que no encajan en otro panel. Acá solo elegís la página que necesitás y entrás a trabajar ahí.</p>
+        </div>
+      </section>
+
+      <section class="tools-pages" aria-label="Páginas de herramientas">
+        <a class="tools-page-card" href="/views/generador-params.html">
+          <span>Página 1</span>
+          <h2>Generador de params</h2>
+          <p>Armá URLs con UTMs, buscá campos custom de GHL, agregá parámetros extra y guardá presets reutilizables.</p>
+        </a>
+      </section>
+    </main>
+
+    <script src="/js/auth-shell.js"></script>
+  </body>
+</html>

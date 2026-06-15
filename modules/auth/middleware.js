@@ -164,6 +164,13 @@ async function metricasApiGuard(req, res, next) {
       return next();
     }
 
+    if (reqPath === '/utm-builder/presets') {
+      if (!access.canAccessFeatureForUser(req.authUser, 'utm_builder', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para usar herramientas UTM' });
+      }
+      return next();
+    }
+
     if (reqPath === '/auth/users' || reqPath.startsWith('/auth/users/')) {
       if (!access.canAccessFeatureForUser(req.authUser, 'user_admin', { method: req.method })) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para administrar usuarios' });

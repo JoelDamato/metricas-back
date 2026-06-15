@@ -19,7 +19,9 @@
     { value: '/views/csm-situacion.html', label: 'CSM por Situación' },
     { value: '/views/csm-renovaciones.html', label: 'Renovaciones' },
     { value: '/contacto-estado/', label: 'Estado de Contacto' },
-    { value: '/views/comisiones.html', label: 'Comisiones' }
+    { value: '/views/comisiones.html', label: 'Comisiones' },
+    { value: '/views/herramientas.html', label: 'Herramientas' },
+    { value: '/views/generador-params.html', label: 'Generador de params' }
   ];
 
   const workspace = document.getElementById('splitScreenWorkspace');

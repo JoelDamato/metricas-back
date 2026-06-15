@@ -18,6 +18,8 @@ const PAGE_OPTIONS = [
   { value: 'marketing.html', label: 'Marketing' },
   { value: 'comisiones.html', label: 'Comisiones' },
   { value: 'carga-comprobantes.html', label: 'Carga de comprobantes' },
+  { value: 'herramientas.html', label: 'Herramientas' },
+  { value: 'generador-params.html', label: 'Generador de params' },
   { value: 'estado-contacto-comisiones.html', label: 'Estado de contacto comisiones' },
   { value: 'csm-tiempo.html', label: 'CSM por tiempo' },
   { value: 'csm-situacion.html', label: 'CSM por situacion' },
