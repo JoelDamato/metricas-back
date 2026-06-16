@@ -654,6 +654,18 @@ async function deleteUtmBuilderPreset(req, res, next) {
   }
 }
 
+async function receiveContactoInstagramWebhook(req, res, next) {
+  try {
+    const contact = await supabaseService.upsertContactoInstagramWebhook(req.body || {});
+    res.json({
+      ok: true,
+      contact
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function generateCloserPersonalReport(req, res, next) {
   try {
     if (!access.canGenerateCloserAiReportForUser(req.authUser)) {
@@ -736,6 +748,7 @@ module.exports = {
   listUtmBuilderPresets,
   saveUtmBuilderPreset,
   deleteUtmBuilderPreset,
+  receiveContactoInstagramWebhook,
   generateCloserPersonalReport,
   getCloserPersonalReport
 };

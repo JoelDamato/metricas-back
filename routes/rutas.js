@@ -19,6 +19,7 @@ router.post('/comprobantes', webhookController6.handleWebhook);
 router.post('/distribuidor', webhookDistribuidor.handleWebhook);
 router.get('/distribuidor/last-verification', webhookDistribuidor.getLastVerification);
 router.get('/contacto-estado/:ghlId?', contactStatusController.getContactStatus);
+router.post('/contacto-instagram-webhook', metricasController.receiveContactoInstagramWebhook);
 
 // Compatibilidad: reglas KPI Closers vía router principal /api
 router.get('/metricas/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.getKpiCloserRules);

@@ -614,6 +614,13 @@ function getUtmPresetsStorageMeta() {
   };
 }
 
+function getContactoInstagramWebhookStorageMeta(id) {
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    objectPath: `webhooks/contacto-instagram/${encodeURIComponent(String(id || '').trim())}.json`
+  };
+}
+
 async function readUtmPresetsFromStorage() {
   const meta = getUtmPresetsStorageMeta();
   const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
@@ -856,6 +863,103 @@ async function deleteUtmLinkPreset(payload = {}) {
     key: presetKey,
     deleted: existsInStorage || tableDeleteAttempted
   };
+}
+
+async function upsertContactoInstagramWebhook(payload = {}) {
+  const id = String(payload.id || '').trim();
+  const name = String(payload.name || '').trim() || null;
+  const email = String(payload.email || '').trim() || null;
+  const phone = String(payload.phone || '').trim() || null;
+  const instagram = String(payload.instagram || '').trim() || null;
+
+  if (!id) {
+    const error = new Error('El campo id es obligatorio');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const body = {
+    id,
+    name,
+    email,
+    phone,
+    instagram,
+    payload: {
+      id,
+      name,
+      email,
+      phone,
+      instagram
+    }
+  };
+
+  const url = `${env.supabaseUrl}/rest/v1/contacto_instagram_webhook`;
+  const normalizedContact = {
+    id,
+    name,
+    email,
+    phone,
+    instagram
+  };
+
+  try {
+    const response = await axios.post(url, body, {
+      headers: buildHeaders({
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      }),
+      params: {
+        on_conflict: 'id'
+      }
+    });
+
+    const row = response.data?.[0] || body;
+    return {
+      id: String(row.id || id).trim(),
+      name: row.name || null,
+      email: row.email || null,
+      phone: row.phone || null,
+      instagram: row.instagram || null,
+      created_at: row.created_at || null,
+      updated_at: row.updated_at || null
+    };
+  } catch (err) {
+    const message = String(err.response?.data?.message || err.message || '');
+    const isMissingTable = message.includes("Could not find the table 'public.contacto_instagram_webhook' in the schema cache");
+
+    if (isMissingTable) {
+      console.warn('[contacto_instagram_webhook] tabla no disponible en Supabase; usando storage como respaldo');
+      await ensureReportesPersonalesDataBucket();
+
+      const meta = getContactoInstagramWebhookStorageMeta(id);
+      const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+      const timestamp = new Date().toISOString();
+      const storageBody = Buffer.from(JSON.stringify({
+        ...normalizedContact,
+        payload: body.payload,
+        savedAt: timestamp
+      }, null, 2), 'utf8');
+
+      await axios.post(uploadUrl, storageBody, {
+        headers: buildStorageHeaders({
+          'Content-Type': 'application/json',
+          'x-upsert': 'true',
+          'cache-control': '3600'
+        }),
+        maxBodyLength: Infinity
+      });
+
+      return {
+        ...normalizedContact,
+        created_at: timestamp,
+        updated_at: timestamp
+      };
+    }
+
+    const error = new Error(`Error guardando contacto instagram webhook: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
 }
 
 async function upsertKpiCloserRules(payload) {
@@ -2301,6 +2405,7 @@ module.exports = {
   listUtmLinkPresets,
   upsertUtmLinkPreset,
   deleteUtmLinkPreset,
+  upsertContactoInstagramWebhook,
   getReportesPremioConfig,
   upsertReportesPremioConfig,
   listReportComments,
