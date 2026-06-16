@@ -656,6 +656,16 @@ async function deleteUtmBuilderPreset(req, res, next) {
 
 async function receiveContactoInstagramWebhook(req, res, next) {
   try {
+    if (String(req.body?.action || '').trim().toLowerCase() === 'search') {
+      const result = await supabaseService.searchContactoInstagramWebhook(req.body || {});
+      res.json({
+        ok: true,
+        exists: result.exists,
+        contact: result.contact
+      });
+      return;
+    }
+
     const contact = await supabaseService.upsertContactoInstagramWebhook(req.body || {});
     res.json({
       ok: true,

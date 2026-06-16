@@ -621,6 +621,21 @@ function getContactoInstagramWebhookStorageMeta(id) {
   };
 }
 
+function normalizeWebhookNullableString(value) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+  if (lower === 'null' || lower === 'undefined') return null;
+
+  return normalized;
+}
+
+function normalizeWebhookInstagram(value) {
+  const normalized = normalizeWebhookNullableString(value);
+  return normalized ? normalized.toLowerCase() : null;
+}
+
 async function readUtmPresetsFromStorage() {
   const meta = getUtmPresetsStorageMeta();
   const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
@@ -867,10 +882,10 @@ async function deleteUtmLinkPreset(payload = {}) {
 
 async function upsertContactoInstagramWebhook(payload = {}) {
   const id = String(payload.id || '').trim();
-  const name = String(payload.name || '').trim() || null;
-  const email = String(payload.email || '').trim() || null;
-  const phone = String(payload.phone || '').trim() || null;
-  const instagram = String(payload.instagram || '').trim() || null;
+  const name = normalizeWebhookNullableString(payload.name);
+  const email = normalizeWebhookNullableString(payload.email);
+  const phone = normalizeWebhookNullableString(payload.phone);
+  const instagram = normalizeWebhookInstagram(payload.instagram);
 
   if (!id) {
     const error = new Error('El campo id es obligatorio');
@@ -956,6 +971,150 @@ async function upsertContactoInstagramWebhook(payload = {}) {
     }
 
     const error = new Error(`Error guardando contacto instagram webhook: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function readContactoInstagramWebhookFromStorageById(id) {
+  const normalizedId = String(id || '').trim();
+  if (!normalizedId) return null;
+
+  const meta = getContactoInstagramWebhookStorageMeta(normalizedId);
+  const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders(),
+      responseType: 'json'
+    });
+
+    const row = response.data || {};
+    return {
+      id: String(row.id || normalizedId).trim(),
+      name: normalizeWebhookNullableString(row.name),
+      email: normalizeWebhookNullableString(row.email),
+      phone: normalizeWebhookNullableString(row.phone),
+      instagram: normalizeWebhookInstagram(row.instagram),
+      created_at: row.created_at || row.savedAt || null,
+      updated_at: row.updated_at || row.savedAt || null
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return null;
+    }
+
+    const error = new Error(`Error leyendo contacto instagram webhook desde storage: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function searchContactoInstagramWebhookInStorage(payload = {}) {
+  const id = String(payload.id || '').trim();
+  const instagram = normalizeWebhookInstagram(payload.instagram);
+
+  if (id) {
+    const foundById = await readContactoInstagramWebhookFromStorageById(id);
+    if (foundById) return foundById;
+  }
+
+  if (!instagram) return null;
+
+  const listUrl = `${env.supabaseUrl}/storage/v1/object/list/${env.reportesPersonalesDataBucket}`;
+
+  try {
+    const response = await axios.post(listUrl, {
+      prefix: 'webhooks/contacto-instagram',
+      limit: 1000,
+      sortBy: {
+        column: 'created_at',
+        order: 'desc'
+      }
+    }, {
+      headers: buildStorageHeaders({ 'Content-Type': 'application/json' })
+    });
+
+    const files = Array.isArray(response.data) ? response.data : [];
+
+    for (const file of files) {
+      const objectName = String(file?.name || '').trim();
+      if (!objectName) continue;
+
+      const objectId = objectName.replace(/\.json$/i, '');
+      const contact = await readContactoInstagramWebhookFromStorageById(decodeURIComponent(objectId));
+      if (contact?.instagram && contact.instagram === instagram) {
+        return contact;
+      }
+    }
+
+    return null;
+  } catch (err) {
+    const message = String(err.response?.data?.message || err.message || '');
+    const error = new Error(`Error buscando contacto instagram webhook en storage: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function searchContactoInstagramWebhook(payload = {}) {
+  const id = String(payload.id || '').trim();
+  const instagram = normalizeWebhookInstagram(payload.instagram);
+
+  if (!id && !instagram) {
+    const error = new Error('Para buscar necesitás enviar id o instagram');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const url = `${env.supabaseUrl}/rest/v1/contacto_instagram_webhook`;
+
+  try {
+    const filters = [];
+    if (id) filters.push(`id.eq.${id}`);
+    if (instagram) filters.push(`instagram.eq.${instagram}`);
+
+    const response = await axios.get(url, {
+      headers: buildHeaders(),
+      params: {
+        select: 'id,name,email,phone,instagram,created_at,updated_at',
+        or: `(${filters.join(',')})`,
+        order: 'updated_at.desc',
+        limit: 1
+      }
+    });
+
+    const row = response.data?.[0] || null;
+    return {
+      exists: Boolean(row),
+      contact: row ? {
+        id: String(row.id || '').trim(),
+        name: normalizeWebhookNullableString(row.name),
+        email: normalizeWebhookNullableString(row.email),
+        phone: normalizeWebhookNullableString(row.phone),
+        instagram: normalizeWebhookInstagram(row.instagram),
+        created_at: row.created_at || null,
+        updated_at: row.updated_at || null
+      } : null
+    };
+  } catch (err) {
+    const message = String(err.response?.data?.message || err.message || '');
+    const isMissingTable = message.includes("Could not find the table 'public.contacto_instagram_webhook' in the schema cache");
+
+    if (isMissingTable) {
+      const contact = await searchContactoInstagramWebhookInStorage({ id, instagram });
+      return {
+        exists: Boolean(contact),
+        contact
+      };
+    }
+
+    const error = new Error(`Error buscando contacto instagram webhook: ${message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;
     throw error;
@@ -2406,6 +2565,7 @@ module.exports = {
   upsertUtmLinkPreset,
   deleteUtmLinkPreset,
   upsertContactoInstagramWebhook,
+  searchContactoInstagramWebhook,
   getReportesPremioConfig,
   upsertReportesPremioConfig,
   listReportComments,
