@@ -1506,6 +1506,44 @@ const PAGE_BUILDERS = {
   renovaciones: buildRenewalsPage
 };
 
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    const existing = Array.from(document.scripts || []).find((script) => script.src === src);
+    if (existing) {
+      if (existing.dataset.loaded === 'true') {
+        resolve();
+        return;
+      }
+
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error(`No pude cargar ${src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.addEventListener('load', () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', () => reject(new Error(`No pude cargar ${src}`)), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureMetricasApi() {
+  if (window.metricasApi?.fetchAllRows) return window.metricasApi;
+  await loadScriptOnce('/js/api/http.js');
+  await loadScriptOnce('/js/api/metricas.api.js');
+
+  if (!window.metricasApi?.fetchAllRows) {
+    throw new Error('No se pudo inicializar metricasApi para cargar CSM.');
+  }
+
+  return window.metricasApi;
+}
+
 async function initCsmPage() {
   const pageKey = document.body.dataset.csmPage;
   const builder = PAGE_BUILDERS[pageKey];
@@ -1521,6 +1559,7 @@ async function initCsmPage() {
     status.textContent = 'Cargando metricas de CSM...';
 
     try {
+      const api = await ensureMetricasApi();
       const filters = pageKey === 'renovaciones' ? getRenewalFilters() : getCsmPeriodFilters();
 
       if (pageKey === 'renovaciones' && filters.from && filters.to && filters.from > filters.to) {
@@ -1529,9 +1568,9 @@ async function initCsmPage() {
       }
 
       const [csmResponse, comprobantesResponse] = await Promise.all([
-        window.metricasApi.fetchAllRows('csm', { limit: 1000 }),
+        api.fetchAllRows('csm', { limit: 1000 }),
         pageKey === 'renovaciones'
-          ? window.metricasApi.fetchAllRows('comprobantes', { limit: 1000 })
+          ? api.fetchAllRows('comprobantes', { limit: 1000 })
           : Promise.resolve({ rows: [] })
       ]);
       const enrichedRows = enrichRows(csmResponse.rows || []);
