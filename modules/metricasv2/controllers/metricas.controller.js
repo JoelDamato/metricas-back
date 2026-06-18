@@ -618,6 +618,22 @@ async function createComprobanteManual(req, res, next) {
   }
 }
 
+async function listMyComprobantes(req, res, next) {
+  try {
+    const result = await comprobantesLoaderService.listMyComprobantes(req.authUser, {
+      limit: req.query.limit
+    });
+    res.json({
+      ok: true,
+      responsibleName: result.responsibleName,
+      count: result.rows.length,
+      rows: result.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function listUtmBuilderPresets(req, res, next) {
   try {
     const presets = await supabaseService.listUtmLinkPresets({
@@ -755,6 +771,7 @@ module.exports = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  listMyComprobantes,
   listUtmBuilderPresets,
   saveUtmBuilderPreset,
   deleteUtmBuilderPreset,

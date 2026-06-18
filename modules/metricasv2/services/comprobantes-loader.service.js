@@ -994,6 +994,12 @@ function normalizePayload(payload = {}, user) {
 
   attachmentFiles.forEach((file) => ensureFileSize(file));
 
+  if (!attachmentFiles.length) {
+    const error = new Error('Debés adjuntar el comprobante para crear el registro');
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (mesesSoporte !== null && mesesSoporte < 0) {
     const error = new Error('Meses de soporte no puede ser negativo');
     error.statusCode = 400;
@@ -1256,9 +1262,44 @@ async function createComprobante(payload, user) {
   }
 }
 
+async function listMyComprobantes(user, options = {}) {
+  const responsibleName = standardizeResponsibleVenta(user);
+  if (!responsibleName) {
+    return {
+      responsibleName: '',
+      rows: []
+    };
+  }
+
+  const pageSize = Math.min(Math.max(Number(options.limit || 500), 1), 1000);
+  const rows = [];
+  let offset = 0;
+
+  while (true) {
+    const response = await supabaseRequest('comprobantes', {
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ars,estado,creado_por',
+      creado_por: `eq.${responsibleName}`,
+      order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
+      limit: pageSize,
+      offset
+    });
+
+    const chunk = response.data || [];
+    rows.push(...chunk);
+    if (chunk.length < pageSize) break;
+    offset += pageSize;
+  }
+
+  return {
+    responsibleName,
+    rows
+  };
+}
+
 module.exports = {
   getBootstrap,
   lookupClientByGhlId,
   lookupRelatedSaleById,
-  createComprobante
+  createComprobante,
+  listMyComprobantes
 };

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comprobantes | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script defer src="/js/auth-shell.js"></script>
+    <script defer src="/js/views/comprobantes.page.js"></script>
+  </head>
+  <body class="carga-comprobantes-page comprobantes-hub-page">
+    <main class="container carga-comprobantes-layout">
+      <section class="metric-page-hero carga-comprobantes-hero">
+        <div class="metric-page-hero-copy">
+          <span class="metric-page-eyebrow">Operación Comercial</span>
+          <h1>Comprobantes</h1>
+          <p>Elegí si querés cargar un comprobante nuevo o revisar únicamente los comprobantes que subiste vos.</p>
+          <div class="metric-page-hero-meta">
+            <span class="metric-chip">Carga manual</span>
+            <span class="metric-chip">Vista por responsable</span>
+            <span class="metric-chip">Lectura directa de Supabase</span>
+          </div>
+        </div>
+        <div class="carga-comprobantes-hero-card">
+          <div class="carga-comprobantes-hero-icon">⌘</div>
+          <h2>Accesos rápidos</h2>
+          <ol>
+            <li>Cargar comprobante nuevo en Notion.</li>
+            <li>Ver los comprobantes subidos por tu usuario.</li>
+            <li>Buscar por cliente y revisar estado o montos.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="carga-comprobantes-panel comprobantes-hub-panel">
+        <div class="carga-comprobantes-toolbar">
+          <div class="carga-comprobantes-toolbar-copy">
+            <strong>Elegí cómo querés trabajar</strong>
+            <p id="comprobantesHubHint">Preparando accesos...</p>
+          </div>
+        </div>
+
+        <div class="comprobantes-hub-grid">
+          <a class="comprobantes-hub-card" href="/views/carga-comprobantes.html">
+            <span class="comprobantes-hub-card-icon" aria-hidden="true">↗</span>
+            <strong>Cargar comprobante</strong>
+            <p>Alta manual de ventas, cobranzas o devoluciones con adjunto obligatorio.</p>
+          </a>
+
+          <a class="comprobantes-hub-card" href="/views/mis-comprobantes.html">
+            <span class="comprobantes-hub-card-icon" aria-hidden="true">▦</span>
+            <strong>Ver mis comprobantes</strong>
+            <p>Lista de comprobantes filtrados por el responsable que los cargó en Notion.</p>
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

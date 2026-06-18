@@ -187,6 +187,14 @@
     });
   }
 
+  function bindDigitsOnlyInput(node) {
+    if (!node || node.dataset.digitsOnlyBound === 'true') return;
+    node.dataset.digitsOnlyBound = 'true';
+    node.addEventListener('input', () => {
+      node.value = String(node.value || '').replace(/\D/g, '');
+    });
+  }
+
   function readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -274,9 +282,10 @@
       && chequeRows.length === chequeCount
       && chequeRows.every((row) => Boolean(String(row.montoArs || '').trim()))
     );
+    const attachmentReady = state.attachments.length > 0;
     const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución' || (isVenta && isCheque);
     const relationReady = !needsRelatedSale || Boolean(refs.latestSaleId.value);
-    const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady;
+    const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady && attachmentReady;
 
     return {
       tipo,
@@ -288,6 +297,7 @@
       ventaReady,
       cashReady,
       chequeReady,
+      attachmentReady,
       relationReady,
       readyToReview
     };
@@ -325,6 +335,7 @@
         && stepState.relationReady
         && stepState.cashReady
         && stepState.chequeReady
+        && stepState.attachmentReady
     );
 
     refs.submitBtn.disabled = !stepState.readyToReview;
@@ -351,6 +362,10 @@
     }
     if (!stepState.chequeReady) {
       refs.submitStatus.textContent = 'Completá todos los cheques para seguir.';
+      return;
+    }
+    if (!stepState.attachmentReady) {
+      refs.submitStatus.textContent = 'Adjuntá el comprobante para seguir.';
       return;
     }
     refs.submitStatus.textContent = 'Todo completo. Ya podés revisar antes de enviar.';
@@ -563,6 +578,7 @@
     if (!payload.cashCollectedArs) warnings.push('Falta el cash collected ARS.');
     if (!payload.medioPago) warnings.push('Falta el medio de pago.');
     if (!payload.responsableVenta) warnings.push('Falta el responsable de venta.');
+    if (!Array.isArray(payload.attachmentFiles) || !payload.attachmentFiles.length) warnings.push('Falta adjuntar el comprobante.');
 
     if (payload.tipo === 'Venta') {
       if (!payload.productName) warnings.push('Falta elegir el producto adquirido.');
@@ -979,6 +995,7 @@
   bindFormattedNumberInput(refs.tc);
   bindFormattedNumberInput(refs.cashCollectedArs);
   bindFormattedNumberInput(refs.facturacionUsd);
+  bindDigitsOnlyInput(refs.dniCuit);
   refs.chequeCount?.addEventListener('input', () => {
     renderChequeRows();
     updateStepFlow();

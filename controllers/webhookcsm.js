@@ -23,6 +23,15 @@ function normalizeDate(dateValue) {
   }
 }
 
+function normalizeCloser(value) {
+  return String(value || '').trim();
+}
+
+function isAnonymousCloser(value) {
+  const normalized = normalizeCloser(value).toLowerCase();
+  return !normalized || ['anonymous', 'anonimo', 'anónimo'].includes(normalized);
+}
+
 // Función para guardar logs en Supabase (safe stringify y created_at Argentina)
 function safeStringify(obj) {
   const seen = new WeakSet();
@@ -84,6 +93,46 @@ async function saveLog(logData) {
     console.error('📋 Status:', err.response?.status);
     console.error('📋 Error details:', JSON.stringify(err.response?.data, null, 2));
   }
+}
+
+async function fetchSupabaseSingle(resource, params = {}) {
+  const response = await axios.get(`${SUPABASE_URL}/rest/v1/${resource}`, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`
+    },
+    params: {
+      ...params,
+      limit: 1
+    }
+  });
+
+  return Array.isArray(response.data) ? response.data[0] || null : null;
+}
+
+async function resolveFallbackCloser(ghlid) {
+  const normalizedGhlid = String(ghlid || '').trim();
+  if (!normalizedGhlid) return null;
+
+  const comprobante = await fetchSupabaseSingle('comprobantes', {
+    select: 'responsable_venta,creado_por',
+    ghlid: `eq.${normalizedGhlid}`,
+    order: 'f_venta.desc.nullslast,f_acreditacion.desc.nullslast,created_at.desc.nullslast'
+  }).catch(() => null);
+
+  const comprobanteCloser = normalizeCloser(comprobante?.responsable_venta || comprobante?.creado_por);
+  if (!isAnonymousCloser(comprobanteCloser)) return comprobanteCloser;
+
+  const lead = await fetchSupabaseSingle('leads_raw', {
+    select: 'closer,responsable',
+    ghlid: `eq.${normalizedGhlid}`,
+    order: 'fecha_creada.desc.nullslast,created_time.desc.nullslast'
+  }).catch(() => null);
+
+  const leadCloser = normalizeCloser(lead?.closer || lead?.responsable);
+  if (!isAnonymousCloser(leadCloser)) return leadCloser;
+
+  return null;
 }
 
 function mapToSupabase(payload) {
@@ -324,6 +373,14 @@ async function sendToSupabase(payload) {
   
   const row = mapToSupabase(payload);
 
+  if (isAnonymousCloser(row.closer)) {
+    const fallbackCloser = await resolveFallbackCloser(row.ghlid);
+    if (fallbackCloser) {
+      row.closer = fallbackCloser;
+      console.log(`🔁 Closer recuperado para CSM ${row.ghlid}: ${fallbackCloser}`);
+    }
+  }
+
   // Log simple: campos y valores que se envían a Supabase
   console.log('\n📤 Enviando a Supabase (CSM) – campos y valores:');
   Object.keys(row).forEach((key) => {
@@ -462,6 +519,27 @@ exports.handleWebhook = async (req, res) => {
   try {
     console.log('📥 Webhook recibido (CSM)');
     const payload = req.body;
+
+    try {
+      const traceData = payload?.data || payload || {};
+      const traceProps = traceData.properties || {};
+      const traceGhlId = traceProps['GHL ID']?.formula?.string
+        || traceProps['GHL ID']?.rich_text?.[0]?.plain_text
+        || traceProps['GHL ID']?.title?.[0]?.plain_text
+        || traceData.ghlid
+        || null;
+
+      await saveLog({
+        webhook_type: 'csm',
+        type: 'received',
+        message: 'Webhook CSM recibido',
+        notion_id: traceData.id || payload?.entity?.id || null,
+        ghl_id: traceGhlId,
+        payload
+      });
+    } catch (traceError) {
+      console.error('⚠️ No pude guardar traza inicial de CSM:', traceError.message);
+    }
 
     const isValidPayload =
       (payload.data && payload.data.object === 'page') ||

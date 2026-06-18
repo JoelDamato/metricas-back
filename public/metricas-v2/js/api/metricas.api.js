@@ -102,6 +102,12 @@ async function fetchComprobantes(options = {}) {
   return fetchRows('comprobantes', options);
 }
 
+async function fetchMyComprobantes(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/comprobantes-loader/mine${suffix}`);
+}
+
 async function fetchLeadsRaw(options = {}) {
   return fetchRows('leads_raw', options);
 }
@@ -305,6 +311,7 @@ window.metricasApi = {
   saveReportComment,
   markReportCommentRead,
   fetchComprobantes,
+  fetchMyComprobantes,
   fetchLeadsRaw,
   fetchKpiMarketingDiario,
   fetchMarketingInvestment,

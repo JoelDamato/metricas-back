@@ -33,6 +33,9 @@ app.get('/', (req, res) => {
 app.get('/login.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/metricas-v2/login.html'));
 });
+app.get('/favicon.ico', (req, res) => {
+  res.redirect('/metricas-assets/favicon-m.svg');
+});
 app.get('/unauthorized.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/metricas-v2/unauthorized.html'));
 });

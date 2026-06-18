@@ -1,5 +1,25 @@
 (function initComisionesPage() {
   const ALL_PEOPLE_VALUE = '__ALL__';
+  const PIN_NONE_VALUE = '';
+  const PERSON_PIN_OPTIONS = [
+    { value: '', label: 'Ninguna' },
+    { value: '1', label: 'Fecha' },
+    { value: '2', label: 'Tipo' },
+    { value: '5', label: 'Producto' },
+    { value: '6', label: 'Nombre cliente' },
+    { value: '11', label: 'Origen' },
+    { value: '20', label: 'Setter' },
+    { value: '24', label: 'ID' }
+  ];
+  const AGENDA_PIN_OPTIONS = [
+    { value: '', label: 'Ninguna' },
+    { value: '1', label: 'Fecha agenda' },
+    { value: '2', label: 'Cliente' },
+    { value: '3', label: 'Setter' },
+    { value: '4', label: 'Closer' },
+    { value: '5', label: 'Origen' },
+    { value: '16', label: 'GHL ID' }
+  ];
   const state = {
     month: '',
     dashboard: null,
@@ -7,6 +27,8 @@
     selectedPerson: '',
     clientSearch: '',
     reconciliationFilter: '',
+    pinnedPersonColumn: '',
+    pinnedAgendaColumn: '',
     agendaFilters: {
       setter: '',
       from: '',
@@ -14,6 +36,7 @@
       origin: '',
       quality: [],
       model: '',
+      aplica: '',
       call: ''
     },
     configMeta: null,
@@ -25,9 +48,11 @@
   const monthInput = document.getElementById('commissionsMonth');
   const personSelect = document.getElementById('commissionPersonSelect');
   const clientSearchInput = document.getElementById('commissionClientSearch');
+  const pinnedPersonColumnSelect = document.getElementById('commissionPinnedColumnSelect');
   const reconciliationFilterSelect = document.getElementById('commissionReconciliationFilter');
   const agendaDateFromInput = document.getElementById('commissionAgendaDateFrom');
   const agendaDateToInput = document.getElementById('commissionAgendaDateTo');
+  const pinnedAgendaColumnSelect = document.getElementById('commissionAgendaPinnedColumnSelect');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -36,6 +61,18 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function renderGhlIdCell(ghlId) {
+    const normalizedId = String(ghlId || '').trim();
+    if (!normalizedId) return '-';
+    if (window.metricasGhl?.buildContactUrl) {
+      const url = window.metricasGhl.buildContactUrl(normalizedId);
+      if (url) {
+        return `<a class="comisiones-external-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(normalizedId)}</a>`;
+      }
+    }
+    return escapeHtml(normalizedId);
   }
 
   function normalizeText(value) {
@@ -150,6 +187,27 @@
     });
     document.querySelectorAll('.comisiones-panel').forEach((panel) => {
       panel.classList.toggle('is-active', panel.dataset.panel === tabKey);
+    });
+  }
+
+  function fillPinnedColumnSelect(selectNode, options, selectedValue) {
+    if (!selectNode) return;
+    selectNode.innerHTML = (options || [])
+      .map((option) => `<option value="${escapeHtml(option.value)}"${String(option.value) === String(selectedValue || '') ? ' selected' : ''}>${escapeHtml(option.label)}</option>`)
+      .join('');
+  }
+
+  function applyPinnedColumn(tableRoot, columnValue) {
+    if (!tableRoot) return;
+    const columnIndex = Number(columnValue || 0);
+    tableRoot.querySelectorAll('.comisiones-pinned-cell').forEach((cell) => {
+      cell.classList.remove('comisiones-pinned-cell', 'is-header');
+    });
+    if (!Number.isInteger(columnIndex) || columnIndex < 1) return;
+
+    tableRoot.querySelectorAll(`tr > *:nth-child(${columnIndex})`).forEach((cell) => {
+      cell.classList.add('comisiones-pinned-cell');
+      if (cell.tagName === 'TH') cell.classList.add('is-header');
     });
   }
 
@@ -357,6 +415,7 @@
         if (!allowedQualities.includes(normalizeText(row.quality))) return false;
       }
       if (filters.model && normalizeText(row.model) !== normalizeText(filters.model)) return false;
+      if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
       if (filters.call && normalizeText(row.llamada) !== normalizeText(filters.call)) return false;
       return true;
     });
@@ -828,6 +887,8 @@
       </div>
     `;
 
+    applyPinnedColumn(detailNode.querySelector('table'), state.pinnedPersonColumn);
+
     summaryNode.querySelectorAll('[data-agenda-person]').forEach((button) => {
       button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson));
     });
@@ -926,25 +987,29 @@
                 <td>${escapeHtml(row.clubStage || '-')}</td>
                 <td>${escapeHtml(formatDetailDate(row.callDate))}</td>
                 <td>${escapeHtml(row.productSold || '-')}</td>
-                <td>${escapeHtml(row.ghlid || '-')}</td>
+                <td>${renderGhlIdCell(row.ghlid)}</td>
               </tr>
             `).join('') : '<tr><td colspan="16">No hay agendas para los filtros seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
     `;
+
+    applyPinnedColumn(detailNode.querySelector('table'), state.pinnedAgendaColumn);
   }
 
   function syncAgendaFilterControls() {
     const setterSelect = document.getElementById('commissionAgendaSetterSelect');
     const originSelect = document.getElementById('commissionAgendaOriginSelect');
     const modelSelect = document.getElementById('commissionAgendaModelSelect');
+    const aplicaSelect = document.getElementById('commissionAgendaAplicaSelect');
     const callSelect = document.getElementById('commissionAgendaCallSelect');
 
     fillSimpleSelect(setterSelect, uniqueSortedValues(state.agendaRows, 'setter'), state.agendaFilters.setter);
     fillSimpleSelect(originSelect, uniqueSortedValues(state.agendaRows, 'origin'), state.agendaFilters.origin);
     renderAgendaQualityChecks();
     fillSimpleSelect(modelSelect, uniqueSortedValues(state.agendaRows, 'model'), state.agendaFilters.model);
+    fillSimpleSelect(aplicaSelect, uniqueSortedValues(state.agendaRows, 'aplica'), state.agendaFilters.aplica);
     fillSimpleSelect(callSelect, uniqueSortedValues(state.agendaRows, 'llamada'), state.agendaFilters.call);
     if (agendaDateFromInput) agendaDateFromInput.value = state.agendaFilters.from || '';
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
@@ -1167,6 +1232,8 @@
 
   function refreshCommissionViews() {
     const filteredPeople = buildPeopleFromDetails(getFilteredCommissionDetails());
+    fillPinnedColumnSelect(pinnedPersonColumnSelect, PERSON_PIN_OPTIONS, state.pinnedPersonColumn);
+    fillPinnedColumnSelect(pinnedAgendaColumnSelect, AGENDA_PIN_OPTIONS, state.pinnedAgendaColumn);
     renderSheetOverview(state.dashboard);
     fillPersonSelect(filteredPeople);
     if (
@@ -1255,6 +1322,11 @@
     setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Filtro: ${getReconciliationFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
   });
 
+  pinnedPersonColumnSelect?.addEventListener('change', () => {
+    state.pinnedPersonColumn = pinnedPersonColumnSelect.value || PIN_NONE_VALUE;
+    renderPersonPanel();
+  });
+
   reconciliationFilterSelect?.addEventListener('change', () => {
     state.reconciliationFilter = reconciliationFilterSelect.value || '';
     refreshCommissionViews();
@@ -1268,12 +1340,18 @@
     ['commissionAgendaDateTo', 'to'],
     ['commissionAgendaOriginSelect', 'origin'],
     ['commissionAgendaModelSelect', 'model'],
+    ['commissionAgendaAplicaSelect', 'aplica'],
     ['commissionAgendaCallSelect', 'call']
   ].forEach(([id, key]) => {
     document.getElementById(id)?.addEventListener('change', (event) => {
       state.agendaFilters[key] = event.target.value || '';
       renderAgendaPanel();
     });
+  });
+
+  pinnedAgendaColumnSelect?.addEventListener('change', () => {
+    state.pinnedAgendaColumn = pinnedAgendaColumnSelect.value || PIN_NONE_VALUE;
+    renderAgendaPanel();
   });
 
   monthInput.value = getCurrentMonthValue();

@@ -4797,6 +4797,13 @@ th {
   vertical-align: top;
 }
 
+.comisiones-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #eef4ff;
+}
+
 .comisiones-inline-link {
   border: 0;
   background: none;
@@ -4844,6 +4851,21 @@ th {
   background: rgba(255, 255, 255, 0.96);
   color: #163f72;
   font: inherit;
+}
+
+.comisiones-pinned-cell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #05070c;
+  color: #f5f9ff;
+  box-shadow: 10px 0 18px rgba(16, 39, 83, 0.12);
+}
+
+.comisiones-pinned-cell.is-header {
+  z-index: 3;
+  background: #05070c;
+  color: #f5f9ff;
 }
 
 .comisiones-agendas-toolbar label {
@@ -5482,6 +5504,105 @@ th {
   backdrop-filter: blur(18px);
 }
 
+.comprobantes-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.comprobantes-hub-card {
+  display: grid;
+  gap: 14px;
+  padding: 26px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 247, 255, 0.92));
+  border: 1px solid rgba(125, 164, 243, 0.16);
+  box-shadow: 0 14px 28px rgba(62, 93, 167, 0.08);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.comprobantes-hub-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 34px rgba(62, 93, 167, 0.14);
+  border-color: rgba(83, 130, 239, 0.3);
+}
+
+.comprobantes-hub-card-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #3c89ff, #2d58ed);
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  box-shadow: 0 16px 26px rgba(41, 89, 221, 0.28);
+}
+
+.comprobantes-hub-card strong {
+  color: #102764;
+  font-size: 1.2rem;
+}
+
+.comprobantes-hub-card p {
+  margin: 0;
+  color: #6275a2;
+}
+
+.mis-comprobantes-toolbar {
+  align-items: flex-end;
+}
+
+.mis-comprobantes-toolbar-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.mis-comprobantes-toolbar-actions input {
+  min-width: 280px;
+  border: 1px solid rgba(108, 148, 234, 0.22);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: rgba(249, 251, 255, 0.92);
+  color: #13306d;
+  font: inherit;
+}
+
+.mis-comprobantes-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+  margin-bottom: 22px;
+}
+
+.mis-comprobantes-summary-card {
+  display: grid;
+  gap: 8px;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 247, 255, 0.92));
+  border: 1px solid rgba(125, 164, 243, 0.16);
+  box-shadow: 0 14px 28px rgba(62, 93, 167, 0.08);
+}
+
+.mis-comprobantes-summary-card span {
+  color: #6275a2;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mis-comprobantes-summary-card strong {
+  color: #102764;
+  font-size: 1.4rem;
+}
+
 .carga-comprobantes-toolbar {
   display: flex;
   justify-content: space-between;
@@ -5930,6 +6051,7 @@ th {
 :root[data-theme='dark'] .setting-table td,
 :root[data-theme='dark'] .sales-analysis-page td,
 :root[data-theme='dark'] .agenda-page td,
+:root[data-theme='dark'] .csm-table td,
 :root[data-theme='dark'] .kpi-table td,
 :root[data-theme='dark'] .comisiones-table td {
   background: rgba(12, 23, 41, 0.9);
@@ -5940,6 +6062,7 @@ th {
 :root[data-theme='dark'] .ranking-page tr:nth-child(even) td,
 :root[data-theme='dark'] .sales-analysis-page tr:nth-child(even) td,
 :root[data-theme='dark'] .agenda-page tr:nth-child(even) td,
+:root[data-theme='dark'] .csm-table tr:nth-child(even) td,
 :root[data-theme='dark'] .kpi-table tr:nth-child(even) td,
 :root[data-theme='dark'] .comisiones-table tr:nth-child(even) td {
   background: rgba(15, 28, 49, 0.96);
@@ -5948,6 +6071,7 @@ th {
 :root[data-theme='dark'] .ranking-page th,
 :root[data-theme='dark'] .sales-analysis-page th,
 :root[data-theme='dark'] .agenda-page th,
+:root[data-theme='dark'] .csm-table th,
 :root[data-theme='dark'] .kpi-table th,
 :root[data-theme='dark'] .setting-table thead th,
 :root[data-theme='dark'] .comisiones-table th {
@@ -5962,6 +6086,8 @@ th {
 :root[data-theme='dark'] .central-group[open],
 :root[data-theme='dark'] .alertas-summary-card,
 :root[data-theme='dark'] .alertas-area-card,
+:root[data-theme='dark'] .comprobantes-hub-card,
+:root[data-theme='dark'] .mis-comprobantes-summary-card,
 :root[data-theme='dark'] .comisiones-summary-card,
 :root[data-theme='dark'] .comisiones-rule-card,
 :root[data-theme='dark'] .comisiones-person-card {
@@ -5973,6 +6099,7 @@ th {
 :root[data-theme='dark'] .ranking-page .table-wrap,
 :root[data-theme='dark'] .sales-analysis-page .table-wrap,
 :root[data-theme='dark'] .agenda-page .table-wrap,
+:root[data-theme='dark'] .csm-table-wrap,
 :root[data-theme='dark'] .setting-table,
 :root[data-theme='dark'] .comisiones-table-wrap {
   background: rgba(9, 18, 34, 0.92);
@@ -5989,6 +6116,8 @@ th {
 :root[data-theme='dark'] .comisiones-area-head h3,
 :root[data-theme='dark'] .comisiones-person-card h3,
 :root[data-theme='dark'] .comisiones-rule-card h3,
+:root[data-theme='dark'] .comprobantes-hub-card strong,
+:root[data-theme='dark'] .mis-comprobantes-summary-card strong,
 :root[data-theme='dark'] .carga-section-head h2,
 :root[data-theme='dark'] .carga-comprobantes-toolbar-copy strong,
 :root[data-theme='dark'] .carga-field span,
@@ -6016,6 +6145,8 @@ th {
 :root[data-theme='dark'] .kpi-closers-page .kpi-rule-card--facturacion p,
 :root[data-theme='dark'] .comisiones-summary-card span,
 :root[data-theme='dark'] .comisiones-summary-card p,
+:root[data-theme='dark'] .comprobantes-hub-card p,
+:root[data-theme='dark'] .mis-comprobantes-summary-card span,
 :root[data-theme='dark'] .comisiones-area-head p,
 :root[data-theme='dark'] .comisiones-rule-note,
 :root[data-theme='dark'] .comisiones-lock-state,
@@ -6058,6 +6189,18 @@ th {
   background: rgba(126, 161, 219, 0.12);
   color: var(--text);
   border-color: rgba(126, 161, 219, 0.18);
+}
+
+:root[data-theme='dark'] .mis-comprobantes-toolbar-actions input {
+  background: rgba(12, 21, 40, 0.92);
+  border-color: rgba(83, 116, 184, 0.28);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .comisiones-pinned-cell {
+  background: #05070c;
+  color: #f5f9ff;
+  box-shadow: 10px 0 18px rgba(3, 8, 20, 0.38);
 }
 
 :root[data-theme='dark'] .metric-info-search,
@@ -6319,6 +6462,7 @@ th {
 :root[data-theme='dark'] .comisiones-sheet-table th,
 :root[data-theme='dark'] .comisiones-sheet-summary th,
 :root[data-theme='dark'] .comisiones-table th {
+  background: rgba(17, 29, 49, 0.98);
   border-color: rgba(126, 161, 219, 0.16);
 }
 
@@ -6591,6 +6735,10 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .mis-comprobantes-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .carga-grid--three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6611,6 +6759,21 @@ th {
   .carga-grid--two,
   .carga-grid--three {
     grid-template-columns: 1fr;
+  }
+
+  .comprobantes-hub-grid,
+  .mis-comprobantes-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .mis-comprobantes-toolbar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mis-comprobantes-toolbar-actions input {
+    min-width: 0;
   }
 
   .carga-preview-grid {

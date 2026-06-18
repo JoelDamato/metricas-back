@@ -230,6 +230,61 @@ function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function isAnonymousCloser(value) {
+  const normalized = normalizeText(value);
+  return !normalized || normalized === 'anonymous' || normalized === 'anonimo' || normalized === 'anónimo';
+}
+
+function pickFirstNamedCloser(...values) {
+  for (const value of values) {
+    if (!isAnonymousCloser(value)) return String(value).trim();
+  }
+  return '';
+}
+
+function buildRenewalCloserLookup(rows = [], context = {}) {
+  const lookup = new Map();
+  const nameLookup = new Map();
+
+  function registerLookup(ghlid, rawName, rawCloser) {
+    const closer = pickFirstNamedCloser(rawCloser);
+    const name = String(rawName || '').trim();
+    const normalizedName = normalizeText(name);
+    const normalizedGhlid = String(ghlid || '').trim();
+    if (normalizedGhlid && closer && !lookup.has(normalizedGhlid)) {
+      lookup.set(normalizedGhlid, closer);
+    }
+    if (normalizedName && closer && !nameLookup.has(normalizedName)) {
+      nameLookup.set(normalizedName, closer);
+    }
+  }
+
+  (rows || []).forEach((row) => {
+    registerLookup(row?.ghlid, row?.nombre, row?.closer);
+  });
+
+  (context.comprobanteRows || []).forEach((row) => {
+    registerLookup(row?.ghlid, row?.nombre || row?.cliente_format, pickFirstNamedCloser(row?.responsable_venta, row?.creado_por));
+  });
+
+  (context.leadRows || []).forEach((row) => {
+    registerLookup(row?.ghlid || row?.contact_id || row?.id, row?.nombre, pickFirstNamedCloser(row?.closer, row?.responsable));
+  });
+
+  return {
+    byGhlid: lookup,
+    byName: nameLookup
+  };
+}
+
+function resolveRenewalCloser(row, closerLookup) {
+  return pickFirstNamedCloser(
+    row?.closer,
+    closerLookup?.byGhlid?.get(String(row?.ghlid || '').trim()),
+    closerLookup?.byName?.get(normalizeText(row?.nombre))
+  ) || 'Sin closer';
+}
+
 function isAbandonmentActivity(row) {
   const abandono = normalizeText(row?.abandono);
   return abandono.includes('abandono');
@@ -350,9 +405,22 @@ function createContactCell(label, ghlid) {
   };
 }
 
+function createGhlLinkCell(ghlid, label = 'Ir a GHL') {
+  return {
+    type: 'ghl-link',
+    label,
+    ghlid: ghlid || ''
+  };
+}
+
 function renderDetailCell(cell) {
   if (cell && typeof cell === 'object' && cell.type === 'ghl-contact') {
     return window.metricasGhl?.renderContactCell(cell.label, cell.ghlid) || escapeHtml(cell.label);
+  }
+  if (cell && typeof cell === 'object' && cell.type === 'ghl-link') {
+    const url = window.metricasGhl?.buildContactUrl?.(cell.ghlid || '');
+    if (!url) return escapeHtml(cell.label || 'Ir a GHL');
+    return `<a class="metricas-ghl-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(cell.label || 'Ir a GHL')}</a>`;
   }
   return escapeHtml(cell);
 }
@@ -1326,24 +1394,31 @@ function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
 }
 
 function buildRenewalsPage(rows, context = {}) {
+  const closerLookup = buildRenewalCloserLookup(rows, context);
+  const today = new Date();
+  const currentMonth = today.getUTCMonth();
+  const currentYear = today.getUTCFullYear();
   const renewable30Rows = rows.filter((row) => {
     if (row.renewalCompletedDate) return false;
     const daysToRenewal = calendarDaysUntil(row.fecha_final);
-    return daysToRenewal !== null && daysToRenewal >= 0 && daysToRenewal <= 30;
+    return daysToRenewal !== null && daysToRenewal >= 1 && daysToRenewal <= 30;
   });
   const renewable15Rows = rows.filter((row) => {
     if (row.renewalCompletedDate) return false;
     const daysToRenewal = calendarDaysUntil(row.fecha_final);
-    return daysToRenewal !== null && daysToRenewal >= 0 && daysToRenewal <= 15;
+    return daysToRenewal !== null && daysToRenewal >= 1 && daysToRenewal <= 15;
   });
   const overdueUnrenewedRows = rows.filter((row) => {
     if (row.renewalCompletedDate) return false;
     const daysToRenewal = calendarDaysUntil(row.fecha_final);
-    return daysToRenewal !== null && daysToRenewal < 0;
+    return daysToRenewal !== null && daysToRenewal <= 0;
   });
+  const overdueCurrentMonthRows = overdueUnrenewedRows.filter((row) => (
+    row.finalDate instanceof Date
+    && row.finalDate.getUTCFullYear() === currentYear
+    && row.finalDate.getUTCMonth() === currentMonth
+  ));
   const renewedRows = rows.filter((row) => row.renewalCompletedDate);
-  const renewalBase = renewable15Rows.length || renewable30Rows.length;
-  const renewalRate = safeDiv(renewedRows.length * 100, renewalBase);
   const renewable30Ids = new Set(renewable30Rows.map((row) => row.id));
   const renewable15Ids = new Set(renewable15Rows.map((row) => row.id));
   const renewalFinancials = buildRenewalFinancialMetrics(context.comprobanteRows || [], context.filters || {});
@@ -1370,29 +1445,33 @@ function buildRenewalsPage(rows, context = {}) {
     .sort((a, b) => a[0].localeCompare(b[0]))
     .slice(-8);
 
-  const detailColumns = ['Cliente', 'Closer', 'Fecha final', 'Dias al cierre', 'GHL ID'];
+  const detailColumns = ['Cliente', 'Closer', 'Fecha final', 'Dias al cierre', 'GHL'];
   const toDetailRows = (detailRows) => detailRows
     .map((row) => {
       const daysToRenewal = calendarDaysUntil(row.fecha_final);
+      const closer = resolveRenewalCloser(row, closerLookup);
       return [
         createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
-        row.closer || 'Sin closer',
+        closer,
         formatDate(row.fecha_final),
         daysToRenewal === null ? '-' : formatInteger(daysToRenewal),
-        row.ghlid || '-'
+        createGhlLinkCell(row.ghlid || '', 'Ir a GHL')
       ];
     })
     .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[2]).localeCompare(String(b[2])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
-  const renewedDetailColumns = ['Cliente', 'Closer', 'Fecha final', 'Fecha renovacion', 'GHL ID'];
+  const renewedDetailColumns = ['Cliente', 'Closer', 'Fecha final', 'Fecha renovacion', 'GHL'];
   const renewedDetailRows = renewedRows
-    .map((row) => [
-      createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
-      row.closer || 'Sin closer',
-      formatDate(row.fecha_final),
-      formatDate(row.fecha_final_renovacion),
-      row.ghlid || '-'
-    ])
+    .map((row) => {
+      const closer = resolveRenewalCloser(row, closerLookup);
+      return [
+        createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
+        closer,
+        formatDate(row.fecha_final),
+        formatDate(row.fecha_final_renovacion),
+        createGhlLinkCell(row.ghlid || '', 'Ir a GHL')
+      ];
+    })
     .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[3]).localeCompare(String(b[3])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const operationalMetrics = [
@@ -1404,7 +1483,7 @@ function buildRenewalsPage(rows, context = {}) {
       note: 'La ventana 30D se reconstruye por fecha final para no depender de flags desactualizados.',
       dateLabel: '"fecha_final" comparada contra hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 30 días inclusive.',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre mañana y los próximos 30 días inclusive.',
       detailColumns,
       detailRows: toDetailRows(renewable30Rows)
     }),
@@ -1416,7 +1495,7 @@ function buildRenewalsPage(rows, context = {}) {
       note: 'La ventana 15D se reconstruye por fecha final para seguir la misma base que Notion.',
       dateLabel: '"fecha_final" comparada contra hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre hoy y los próximos 15 días inclusive.',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" cae entre mañana y los próximos 15 días inclusive.',
       detailColumns,
       detailRows: toDetailRows(renewable15Rows)
     }),
@@ -1437,22 +1516,24 @@ function buildRenewalsPage(rows, context = {}) {
       label: 'Clientes ya vencidos sin renovar',
       value: formatInteger(overdueUnrenewedRows.length),
       base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'Detecta clientes cuya fecha final ya pasó y todavía no tienen fecha de renovación.',
-      dateLabel: '"fecha_final" menor a hoy',
+      note: 'Incluye también los que vencen hoy para que no queden mezclados en 15 y 30 días.',
+      dateLabel: '"fecha_final" menor o igual a hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" ya quedó atrás.',
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" ya quedó atrás o vence hoy.',
       detailColumns,
       detailRows: toDetailRows(overdueUnrenewedRows)
     }),
     buildMetricRow({
-      key: 'renewal_rate',
-      label: '% renovaciones sobre renovables',
-      value: formatPercent(renewalRate),
-      base: `${formatInteger(renewalBase)} clientes en base renovable`,
-      note: 'Uso primero la base 15D; si está vacía, tomo la 30D.',
-      dateLabel: 'Ventanas recalculadas por "fecha_final" y cierre de renovación',
+      key: 'renewals_overdue_current_month',
+      label: 'Vencidos este mes',
+      value: formatInteger(overdueCurrentMonthRows.length),
+      base: `${formatInteger(overdueUnrenewedRows.length)} clientes vencidos sin renovar`,
+      note: 'Recorta solo los vencidos del mes calendario actual que todavía no renovaron.',
+      dateLabel: '"fecha_final" en el mes actual y menor o igual a hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Calculo renovaciones concretadas sobre la base renovable más cercana a cierre: primero la ventana recalculada de 15 días y, si no hay base, la de 30 días.'
+      logic: 'Cuenta clientes no renovados cuya "fecha_final" pertenece al mes actual y ya quedó atrás o vence hoy.',
+      detailColumns,
+      detailRows: toDetailRows(overdueCurrentMonthRows)
     })
   ];
 
@@ -1477,20 +1558,27 @@ function buildRenewalsPage(rows, context = {}) {
   return {
     metrics,
     tableMetrics: operationalMetrics,
-    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewals_overdue', 'renewal_rate'],
+    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewals_overdue', 'renewals_overdue_current_month'],
     chart: {
       title: 'Embudo de Renovación',
-      description: 'Lectura rápida de la base renovable, cierres y clientes vencidos sin renovar.',
-      labels: ['30 dias', '15 dias', 'Renovadas', 'Vencidas sin renovar'],
+      description: 'Lectura rápida de la base renovable, cierres, vencidos y el recorte del mes actual.',
+      labels: ['30 dias', '15 dias', 'Renovadas', 'Vencidas', 'Vencidas este mes'],
       datasets: [
         {
           label: 'Clientes',
-          data: [renewable30Rows.length, renewable15Rows.length, renewedRows.length, overdueUnrenewedRows.length],
+          data: [
+            renewable30Rows.length,
+            renewable15Rows.length,
+            renewedRows.length,
+            overdueUnrenewedRows.length,
+            overdueCurrentMonthRows.length
+          ],
           backgroundColor: [
             'rgba(37, 99, 235, 0.72)',
             'rgba(59, 130, 246, 0.72)',
             'rgba(16, 185, 129, 0.72)',
-            'rgba(239, 68, 68, 0.72)'
+            'rgba(239, 68, 68, 0.72)',
+            'rgba(245, 158, 11, 0.72)'
           ],
           borderRadius: 8
         }
@@ -1567,13 +1655,19 @@ async function initCsmPage() {
         return;
       }
 
-      const [csmResponse, comprobantesResponse] = await Promise.all([
+      const [csmResponse, comprobantesResponse, leadsResponse] = await Promise.all([
         api.fetchAllRows('csm', { limit: 1000 }),
         pageKey === 'renovaciones'
           ? api.fetchAllRows('comprobantes', { limit: 1000 })
-          : Promise.resolve({ rows: [] })
+          : Promise.resolve([]),
+        pageKey === 'renovaciones'
+          ? api.fetchAllRows('leads_raw', { limit: 1000 })
+          : Promise.resolve([])
       ]);
-      const enrichedRows = enrichRows(csmResponse.rows || []);
+      const csmRows = Array.isArray(csmResponse) ? csmResponse : (csmResponse.rows || []);
+      const comprobanteRows = Array.isArray(comprobantesResponse) ? comprobantesResponse : (comprobantesResponse.rows || []);
+      const leadRows = Array.isArray(leadsResponse) ? leadsResponse : (leadsResponse.rows || []);
+      const enrichedRows = enrichRows(csmRows);
 
       if (pageKey !== 'renovaciones' && !csmPeriodFiltersInitialized) {
         setupCsmPeriodFilters(enrichedRows);
@@ -1584,7 +1678,8 @@ async function initCsmPage() {
         : filterRowsByPayAccessPeriod(enrichedRows, filters);
 
       const page = builder(rows, {
-        comprobanteRows: comprobantesResponse.rows || [],
+        comprobanteRows,
+        leadRows,
         filters
       });
       const infoMap = Object.fromEntries(page.metrics.map((metric) => [metric.key, metric.info]));

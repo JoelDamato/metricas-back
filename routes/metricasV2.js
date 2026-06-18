@@ -49,6 +49,7 @@ router.get('/reportes-personales/pdf', controller.getCloserPersonalPdf);
 router.post('/reportes-personales/pdf', express.raw({ type: ['application/pdf', 'application/octet-stream'], limit: '20mb' }), controller.uploadCloserPersonalPdf);
 router.get('/dolar-hoy', controller.getDollarQuotes);
 router.get('/comprobantes-loader/bootstrap', controller.getComprobantesLoaderBootstrap);
+router.get('/comprobantes-loader/mine', controller.listMyComprobantes);
 router.get('/comprobantes-loader/cliente', controller.lookupComprobantesLoaderClient);
 router.get('/comprobantes-loader/venta-relacionada', controller.lookupComprobantesLoaderRelatedSale);
 router.post('/comprobantes-loader', controller.createComprobanteManual);

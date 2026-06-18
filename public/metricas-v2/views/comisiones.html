@@ -24,14 +24,6 @@
             <span>Mes</span>
             <input id="commissionsMonth" type="month" />
           </label>
-          <label class="comisiones-hero-field">
-            <span>Conciliación</span>
-            <select id="commissionReconciliationFilter">
-              <option value="">Todos</option>
-              <option value="conciliated">Conciliados</option>
-              <option value="not_conciliated">No conciliados</option>
-            </select>
-          </label>
           <button id="reloadCommissions" type="button">Actualizar</button>
         </div>
       </section>
@@ -39,7 +31,7 @@
       <section class="comisiones-shell">
         <div class="comisiones-tabs" role="tablist" aria-label="Vistas de comisiones">
           <button class="comisiones-tab is-active" type="button" data-tab="overview">Vista general</button>
-          <button class="comisiones-tab" type="button" data-tab="person">Detalle</button>
+          <button class="comisiones-tab" type="button" data-tab="person">Comprobantes</button>
           <button class="comisiones-tab" type="button" data-tab="agendas">Agendas</button>
           <button class="comisiones-tab" type="button" data-tab="rules">Configuración</button>
         </div>
@@ -59,6 +51,18 @@
             <label>
               <span>Buscar cliente</span>
               <input id="commissionClientSearch" type="search" placeholder="Ej: Juan Perez" />
+            </label>
+            <label>
+              <span>Conciliación</span>
+              <select id="commissionReconciliationFilter">
+                <option value="">Todas</option>
+                <option value="conciliated">Conciliadas</option>
+                <option value="not_conciliated">No conciliadas</option>
+              </select>
+            </label>
+            <label>
+              <span>Inmovilizar columna</span>
+              <select id="commissionPinnedColumnSelect"></select>
             </label>
           </div>
           <div id="commissionPersonSummary" class="comisiones-person-summary"></div>
@@ -92,8 +96,16 @@
               <select id="commissionAgendaModelSelect"></select>
             </label>
             <label>
+              <span>Aplica</span>
+              <select id="commissionAgendaAplicaSelect"></select>
+            </label>
+            <label>
               <span>Llamada</span>
               <select id="commissionAgendaCallSelect"></select>
+            </label>
+            <label>
+              <span>Inmovilizar columna</span>
+              <select id="commissionAgendaPinnedColumnSelect"></select>
             </label>
           </div>
           <div id="commissionAgendaSummary" class="comisiones-person-summary"></div>

@@ -319,19 +319,94 @@ async function getKpiCloserRules({ anio, mes }) {
 function getLegacyAgendaBonusDefaults(year, month) {
   const safeYear = Number(year);
   const safeMonth = Number(month);
-  const daysInMonth = new Date(safeYear, safeMonth, 0).getDate();
   const legacyWeeklyBase = safeYear === 2026 && safeMonth === 5 ? 12500 : 16500;
   const legacyWeeklyTarget = safeYear === 2026 && safeMonth === 5 ? 16500 : 20000;
-  const multiplier = daysInMonth / 7;
 
   return {
     anio: safeYear,
     mes: safeMonth,
-    monto_base_mensual: Number((legacyWeeklyBase * multiplier).toFixed(2)),
-    objetivo_mensual: Number((legacyWeeklyTarget * multiplier).toFixed(2)),
+    monto_base_mensual: Number(legacyWeeklyBase.toFixed(2)),
+    objetivo_mensual: Number(legacyWeeklyTarget.toFixed(2)),
     updated_at: null,
     updated_by_email: null,
     is_default: true
+  };
+}
+
+function getAgendaBonusRulesStorageMeta({ anio, mes }) {
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    objectPath: `config/agendas/bonus/${anio}-${String(mes).padStart(2, '0')}.json`
+  };
+}
+
+async function readAgendaBonusRulesFromStorage({ anio, mes }) {
+  await ensureReportesPersonalesDataBucket();
+  const meta = getAgendaBonusRulesStorageMeta({ anio, mes });
+  const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders(),
+      responseType: 'text'
+    });
+    const raw = typeof response.data === 'string'
+      ? response.data
+      : Buffer.isBuffer(response.data)
+        ? response.data.toString('utf8')
+        : JSON.stringify(response.data || {});
+    const row = JSON.parse(raw || '{}');
+
+    return {
+      anio: Number(row.anio || anio),
+      mes: Number(row.mes || mes),
+      monto_base_mensual: Number(row.monto_base_mensual || 0),
+      objetivo_mensual: Number(row.objetivo_mensual || 0),
+      updated_at: row.updated_at || row.savedAt || null,
+      updated_by_email: row.updated_by_email || row.savedBy || null,
+      is_default: row.is_default === true
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return null;
+    }
+
+    const error = new Error(`Error leyendo reglas de agenda bonus desde storage: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function saveAgendaBonusRulesToStorage(config = {}, user) {
+  await ensureReportesPersonalesDataBucket();
+  const meta = getAgendaBonusRulesStorageMeta(config);
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+  const body = Buffer.from(JSON.stringify({
+    ...config,
+    savedAt: new Date().toISOString(),
+    savedBy: String(user?.email || '').trim().toLowerCase() || null
+  }, null, 2), 'utf8');
+
+  await axios.post(uploadUrl, body, {
+    headers: buildStorageHeaders({
+      'Content-Type': 'application/json',
+      'x-upsert': 'true',
+      'cache-control': '3600'
+    }),
+    maxBodyLength: Infinity
+  });
+
+  return {
+    anio: Number(config.anio || 0),
+    mes: Number(config.mes || 0),
+    monto_base_mensual: Number(config.monto_base_mensual || 0),
+    objetivo_mensual: Number(config.objetivo_mensual || 0),
+    updated_at: config.updated_at || null,
+    updated_by_email: config.updated_by_email || null,
+    is_default: config.is_default === true
   };
 }
 
@@ -359,7 +434,10 @@ async function getAgendaBonusRules({ anio, mes }) {
     });
 
     const row = response.data?.[0] || null;
-    if (!row) return getLegacyAgendaBonusDefaults(year, month);
+    if (!row) {
+      const storageConfig = await readAgendaBonusRulesFromStorage({ anio: year, mes: month });
+      return storageConfig || getLegacyAgendaBonusDefaults(year, month);
+    }
 
     return {
       anio: year,
@@ -372,6 +450,13 @@ async function getAgendaBonusRules({ anio, mes }) {
     };
   } catch (err) {
     const message = err.response?.data?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.agenda_bonus_rules' in the schema cache");
+    if (isMissingTable) {
+      console.warn('[agenda_bonus_rules] tabla no disponible en Supabase; usando storage como respaldo');
+      const storageConfig = await readAgendaBonusRulesFromStorage({ anio: year, mes: month });
+      return storageConfig || getLegacyAgendaBonusDefaults(year, month);
+    }
+
     const error = new Error(`Error leyendo reglas de agenda bonus: ${message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;
@@ -392,19 +477,19 @@ async function upsertAgendaBonusRules(payload, user) {
   }
 
   if (!Number.isFinite(montoBaseMensual) || montoBaseMensual < 0) {
-    const error = new Error('El monto base mensual debe ser un número mayor o igual a 0');
+    const error = new Error('El monto base semanal debe ser un número mayor o igual a 0');
     error.statusCode = 400;
     throw error;
   }
 
   if (!Number.isFinite(objetivoMensual) || objetivoMensual < 0) {
-    const error = new Error('El objetivo mensual debe ser un número mayor o igual a 0');
+    const error = new Error('El objetivo semanal debe ser un número mayor o igual a 0');
     error.statusCode = 400;
     throw error;
   }
 
   if (objetivoMensual < montoBaseMensual) {
-    const error = new Error('El objetivo mensual no puede ser menor al monto base mensual');
+    const error = new Error('El objetivo semanal no puede ser menor al monto base semanal');
     error.statusCode = 400;
     throw error;
   }
@@ -431,7 +516,7 @@ async function upsertAgendaBonusRules(payload, user) {
     });
 
     const row = response.data?.[0] || body;
-    return {
+    const normalized = {
       anio: year,
       mes: month,
       monto_base_mensual: Number(row.monto_base_mensual || 0),
@@ -440,8 +525,24 @@ async function upsertAgendaBonusRules(payload, user) {
       updated_by_email: row.updated_by_email || body.updated_by_email,
       is_default: false
     };
+    await saveAgendaBonusRulesToStorage(normalized, user);
+    return normalized;
   } catch (err) {
     const message = err.response?.data?.message || err.message;
+    const isMissingTable = String(message || '').includes("Could not find the table 'public.agenda_bonus_rules' in the schema cache");
+    if (isMissingTable) {
+      console.warn('[agenda_bonus_rules] tabla no disponible en Supabase; guardando config en storage');
+      return saveAgendaBonusRulesToStorage({
+        anio: year,
+        mes: month,
+        monto_base_mensual: montoBaseMensual,
+        objetivo_mensual: objetivoMensual,
+        updated_at: body.updated_at,
+        updated_by_email: body.updated_by_email,
+        is_default: false
+      }, user);
+    }
+
     const error = new Error(`Error guardando reglas de agenda bonus: ${message}`);
     error.statusCode = err.response?.status || 500;
     error.details = err.response?.data || null;

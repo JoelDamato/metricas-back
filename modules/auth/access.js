@@ -19,7 +19,9 @@ const PAGE_ROLE_ACCESS = {
   'leads-bdd.html': ['total', 'comercial', 'csm'],
   'marketing.html': ['total', 'comercial', 'csm'],
   'comisiones.html': ['total', 'comercial', 'csm'],
+  'comprobantes.html': ['total', 'comercial', 'csm'],
   'carga-comprobantes.html': ['total', 'comercial', 'csm'],
+  'mis-comprobantes.html': ['total', 'comercial', 'csm'],
   'estado-contacto-comisiones.html': ['total', 'comercial'],
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
@@ -101,10 +103,15 @@ const MARKETING_FORCE_ALLOW_EMAILS = new Set([
   'nahuerandazzo@gmail.com'
 ]);
 
+const COMMISSIONS_ALLOWED_EMAILS = new Set([
+  'matirandazzo@gmail.com',
+  'nadia.cavallini@gmail.com'
+]);
+
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/views/setting.html',
-    allowedPages: new Set(['setting.html', 'carga-comprobantes.html']),
+    allowedPages: new Set(['setting.html', 'comprobantes.html', 'carga-comprobantes.html', 'mis-comprobantes.html']),
     allowedResources: new Set(['setters']),
     allowedFeatures: {}
   },
@@ -122,6 +129,9 @@ const USER_ACCESS_OVERRIDES = {
       'setting.html',
       'leads-bdd.html',
       'marketing.html',
+      'comprobantes.html',
+      'carga-comprobantes.html',
+      'mis-comprobantes.html',
       'herramientas.html',
       'generador-params.html'
     ]),
@@ -152,6 +162,14 @@ const MARKETING_ONLY_ALLOWED_FEATURES = new Set(['views', 'marketing_inversion']
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function canAccessCommissionsForUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+
+  return COMMISSIONS_ALLOWED_EMAILS.has(email);
 }
 
 function hasForcedMarketingAccess(userOrEmail) {
@@ -280,6 +298,7 @@ function canAccessFeature(role, featureName) {
 
 function canAccessPageForUser(user, pageName) {
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
+  if (pageName === 'comisiones.html') return canAccessCommissionsForUser(user);
   if (hasForcedMarketingAccess(user) && pageName === 'marketing.html') return true;
   const override = getUserAccessOverride(user);
   if (override) return override.allowedPages.has(pageName);
@@ -383,6 +402,7 @@ function getUserPermissions(user) {
     allowedPages: override ? Array.from(override.allowedPages) : null,
     allowedResources: override ? Array.from(override.allowedResources) : null,
     allowedFeatures: override ? override.allowedFeatures : null,
+    canAccessComisiones: canAccessPageForUser(user, 'comisiones.html'),
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
@@ -426,6 +446,7 @@ module.exports = {
   RESTRICTED_COMMERCIAL_EMAILS,
   CSM_ONLY_EMAILS,
   USER_ACCESS_OVERRIDES,
+  canAccessCommissionsForUser,
   getUserAccessOverride,
   isMarketingOnlyUser,
   isRestrictedCommercialUser,

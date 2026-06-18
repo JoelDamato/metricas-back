@@ -310,11 +310,11 @@
 
   <div class="bonus-config">
     <div class="bonus-config-field">
-      <label for="bonus-base-input">Monto base mensual</label>
+      <label for="bonus-base-input">Monto base semanal</label>
       <input id="bonus-base-input" type="number" min="0" step="0.01" inputmode="decimal">
     </div>
     <div class="bonus-config-field">
-      <label for="bonus-target-input">Objetivo mensual</label>
+      <label for="bonus-target-input">Objetivo semanal</label>
       <input id="bonus-target-input" type="number" min="0" step="0.01" inputmode="decimal">
     </div>
     <div class="bonus-config-actions">
@@ -414,7 +414,7 @@
         <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
         <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
         <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
-        <li><span class="dot">→</span> El monto base y el objetivo se cargan por mes y el sistema los reparte por semana según los días de cada tramo</li>
+        <li><span class="dot">→</span> El monto base y el objetivo se cargan de forma semanal y se evalúan igual para cada semana activa</li>
         <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
       </ul>
     </div>
@@ -713,14 +713,12 @@ async function loadMonthlyBaseCategories(year,month){
   });
 }
 
-function getLegacyMonthlyAgendaBonus(year,month){
-  const totalDays=daysInMonth(year,month);
+function getLegacyWeeklyAgendaBonus(year,month){
   const weeklyBase=year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR;
   const weeklyTarget=year===2026 && month===5 ? MAY_2026_TARGET : TARGET;
-  const monthlyFactor=totalDays/7;
   return {
-    monto_base_mensual: Number((weeklyBase*monthlyFactor).toFixed(2)),
-    objetivo_mensual: Number((weeklyTarget*monthlyFactor).toFixed(2))
+    monto_base_mensual: Number(weeklyBase.toFixed(2)),
+    objetivo_mensual: Number(weeklyTarget.toFixed(2))
   };
 }
 
@@ -733,7 +731,7 @@ function getSelectedPeriod(){
 
 function getAgendaBonusConfig(){
   const { year, month } = getSelectedPeriod();
-  const fallback=getLegacyMonthlyAgendaBonus(year,month);
+  const fallback=getLegacyWeeklyAgendaBonus(year,month);
   return {
     anio: year,
     mes: month,
@@ -770,7 +768,7 @@ function renderAgendaBonusConfig(){
     return;
   }
 
-  const sourceLabel=config.is_default?'Usando valores heredados del sistema.':'Configuración mensual guardada.';
+  const sourceLabel=config.is_default?'Usando valores semanales heredados del sistema.':'Configuración semanal guardada.';
   const updatedLabel=config.updated_at
     ? ` Última actualización: ${new Date(config.updated_at).toLocaleString('es-AR')}${config.updated_by_email?` · ${config.updated_by_email}`:''}`
     : '';
@@ -782,7 +780,7 @@ async function loadAgendaBonusConfig(year,month){
     agendaBonusConfig={
       anio: year,
       mes: month,
-      ...getLegacyMonthlyAgendaBonus(year,month),
+      ...getLegacyWeeklyAgendaBonus(year,month),
       updated_at: null,
       updated_by_email: null,
       is_default: true
@@ -795,7 +793,7 @@ async function loadAgendaBonusConfig(year,month){
   agendaBonusConfig=response?.rules || {
     anio: year,
     mes: month,
-    ...getLegacyMonthlyAgendaBonus(year,month),
+    ...getLegacyWeeklyAgendaBonus(year,month),
     updated_at: null,
     updated_by_email: null,
     is_default: true
@@ -875,21 +873,21 @@ async function saveAgendaBonusConfig(){
   const target=Number(targetInput?.value || 0);
 
   if(!Number.isFinite(base) || base<0){
-    setBonusConfigMeta('El monto base mensual debe ser mayor o igual a 0.', 'error');
+    setBonusConfigMeta('El monto base semanal debe ser mayor o igual a 0.', 'error');
     return;
   }
   if(!Number.isFinite(target) || target<0){
-    setBonusConfigMeta('El objetivo mensual debe ser mayor o igual a 0.', 'error');
+    setBonusConfigMeta('El objetivo semanal debe ser mayor o igual a 0.', 'error');
     return;
   }
   if(target<base){
-    setBonusConfigMeta('El objetivo mensual no puede ser menor al monto base mensual.', 'error');
+    setBonusConfigMeta('El objetivo semanal no puede ser menor al monto base semanal.', 'error');
     return;
   }
 
   const saveButton=document.getElementById('bonus-config-save');
   if(saveButton) saveButton.disabled=true;
-  setBonusConfigMeta('Guardando configuración mensual...');
+  setBonusConfigMeta('Guardando configuración semanal...');
 
   try{
     const response=await window.metricasApi.saveAgendaBonusRules({
@@ -917,25 +915,20 @@ async function saveAgendaBonusConfig(){
 }
 
 /* ═══ BONUS MATH ═══ */
-function getMonthlyThresholds(){
-  const { year, month } = getSelectedPeriod();
-  const totalDays=daysInMonth(year,month) || 30;
+function getWeeklyThresholds(){
   const config=getAgendaBonusConfig();
-  const legacyStepMonthly=Number((STEP*(totalDays/7)).toFixed(2));
   return {
-    floorMonthly: Number(config.monto_base_mensual || 0),
-    targetMonthly: Number(config.objetivo_mensual || 0),
-    stepMonthly: legacyStepMonthly,
-    totalDays
+    floorWeekly: Number(config.monto_base_mensual || 0),
+    targetWeekly: Number(config.objetivo_mensual || 0),
+    stepWeekly: Number(STEP || 0)
   };
 }
 function adj(days){
-  const thresholds=getMonthlyThresholds();
-  const ratio=thresholds.totalDays>0 ? days/thresholds.totalDays : 0;
+  const thresholds=getWeeklyThresholds();
   return {
-    floor: thresholds.floorMonthly*ratio,
-    target: thresholds.targetMonthly*ratio,
-    step: thresholds.stepMonthly*ratio
+    floor: thresholds.floorWeekly,
+    target: thresholds.targetWeekly,
+    step: thresholds.stepWeekly
   };
 }
 function bonusPct(cash,days){

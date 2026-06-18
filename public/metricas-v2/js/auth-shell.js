@@ -1,6 +1,22 @@
 (async function initAuthShell() {
   const GHL_CONTACT_BASE_URL = 'https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/';
   const THEME_STORAGE_KEY = 'metricas-theme';
+  const FAVICON_URL = '/metricas-assets/favicon-m.svg';
+
+  function ensureFavicon() {
+    if (!document.head) return;
+    let link = document.querySelector('link[data-metricas-favicon="true"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('data-metricas-favicon', 'true');
+      link.rel = 'icon';
+      link.type = 'image/svg+xml';
+      document.head.appendChild(link);
+    }
+    link.href = FAVICON_URL;
+  }
+
+  ensureFavicon();
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -357,6 +373,12 @@
         }
       });
     }
+
+    document.querySelectorAll('[data-requires-permission="comisiones"]').forEach((node) => {
+      if (permissions.canAccessComisiones !== true) {
+        node.remove();
+      }
+    });
 
     if (permissions.canAccessLeadsBdd === false) {
       document.querySelectorAll('a[href="/views/leads-bdd.html"]').forEach((node) => node.remove());
