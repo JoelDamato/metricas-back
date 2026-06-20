@@ -478,6 +478,8 @@ th {
 .metric-info-detail .table-wrap {
   max-height: calc(100vh - 320px);
   overflow: auto;
+  padding-bottom: 16px;
+  box-sizing: border-box;
 }
 
 .metricas-ghl-cell {
@@ -514,13 +516,22 @@ th {
 }
 
 .metric-info-actions {
-  margin: 14px -16px -16px;
-  padding: 14px 16px 16px;
+  margin: 12px -16px -16px;
+  padding: 10px 16px 12px;
   background: #ffffff;
   border-top: 1px solid rgba(20, 101, 192, 0.12);
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
+}
+
+.metric-info-actions button {
+  width: auto;
+  min-width: 92px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .metric-info-card h3 {
@@ -4789,7 +4800,15 @@ th {
 }
 
 .comisiones-table-wrap {
+  position: relative;
   overflow: auto;
+  max-height: calc(100vh - 260px);
+  border-radius: 18px;
+}
+
+.comisiones-table {
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .comisiones-table td,
@@ -4800,8 +4819,16 @@ th {
 .comisiones-table thead th {
   position: sticky;
   top: 0;
-  z-index: 4;
+  z-index: 8;
   background: #eef4ff;
+}
+
+.comisiones-pin-header {
+  cursor: pointer;
+}
+
+.comisiones-pin-header:hover {
+  filter: brightness(0.98);
 }
 
 .comisiones-inline-link {
@@ -4826,6 +4853,46 @@ th {
 
 .comisiones-external-link:hover {
   text-decoration: underline;
+}
+
+.comisiones-cheque-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(31, 83, 165, 0.2);
+  background: linear-gradient(180deg, #f7fbff 0%, #e5efff 100%);
+  color: #1c56b0;
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.comisiones-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.comisiones-status-badge.is-ok {
+  color: #0f9f63;
+}
+
+.comisiones-status-badge.is-rejected {
+  color: #d83b3b;
+}
+
+.comisiones-status-badge.is-pending {
+  color: #b47b12;
 }
 
 .comisiones-detail-toolbar {
@@ -6470,6 +6537,25 @@ th {
 :root[data-theme='dark'] .comisiones-sheet-summary tbody tr:hover td,
 :root[data-theme='dark'] .comisiones-table tbody tr:hover td {
   background: rgba(44, 91, 166, 0.22);
+}
+
+:root[data-theme='dark'] .comisiones-cheque-badge {
+  border-color: rgba(118, 166, 255, 0.24);
+  background: linear-gradient(180deg, rgba(34, 58, 96, 0.96), rgba(21, 39, 67, 0.94));
+  color: #dce9ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme='dark'] .comisiones-status-badge.is-ok {
+  color: #5fe0a2;
+}
+
+:root[data-theme='dark'] .comisiones-status-badge.is-rejected {
+  color: #ff7d7d;
+}
+
+:root[data-theme='dark'] .comisiones-status-badge.is-pending {
+  color: #ffcf6c;
 }
 
 :root[data-theme='dark'] .comisiones-sheet-total-row td,

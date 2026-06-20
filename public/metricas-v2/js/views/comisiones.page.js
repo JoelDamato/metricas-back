@@ -1,25 +1,6 @@
 (function initComisionesPage() {
   const ALL_PEOPLE_VALUE = '__ALL__';
   const PIN_NONE_VALUE = '';
-  const PERSON_PIN_OPTIONS = [
-    { value: '', label: 'Ninguna' },
-    { value: '1', label: 'Fecha' },
-    { value: '2', label: 'Tipo' },
-    { value: '5', label: 'Producto' },
-    { value: '6', label: 'Nombre cliente' },
-    { value: '11', label: 'Origen' },
-    { value: '20', label: 'Setter' },
-    { value: '24', label: 'ID' }
-  ];
-  const AGENDA_PIN_OPTIONS = [
-    { value: '', label: 'Ninguna' },
-    { value: '1', label: 'Fecha agenda' },
-    { value: '2', label: 'Cliente' },
-    { value: '3', label: 'Setter' },
-    { value: '4', label: 'Closer' },
-    { value: '5', label: 'Origen' },
-    { value: '16', label: 'GHL ID' }
-  ];
   const state = {
     month: '',
     dashboard: null,
@@ -27,6 +8,8 @@
     selectedPerson: '',
     clientSearch: '',
     reconciliationFilter: '',
+    clubFilter: '',
+    typeFilter: '',
     pinnedPersonColumn: '',
     pinnedAgendaColumn: '',
     agendaFilters: {
@@ -50,6 +33,8 @@
   const clientSearchInput = document.getElementById('commissionClientSearch');
   const pinnedPersonColumnSelect = document.getElementById('commissionPinnedColumnSelect');
   const reconciliationFilterSelect = document.getElementById('commissionReconciliationFilter');
+  const clubFilterSelect = document.getElementById('commissionClubFilter');
+  const typeFilterSelect = document.getElementById('commissionTypeFilter');
   const agendaDateFromInput = document.getElementById('commissionAgendaDateFrom');
   const agendaDateToInput = document.getElementById('commissionAgendaDateTo');
   const pinnedAgendaColumnSelect = document.getElementById('commissionAgendaPinnedColumnSelect');
@@ -145,8 +130,66 @@
     return value ? 'TRUE' : '';
   }
 
+  function renderChequeBadge(value) {
+    if (!value) return '';
+    return '<span class="comisiones-cheque-badge" aria-label="Cheque" title="Cheque"><span aria-hidden="true">▭</span></span>';
+  }
+
   function formatDetailText(value) {
     return String(value || '').trim();
+  }
+
+  function formatComprobanteProduct(detail) {
+    if (normalizeText(detail?.tipo) === 'cobranza') return '-';
+    return formatDetailText(detail?.product) || '-';
+  }
+
+  function renderComprobanteStatusBadge(value) {
+    const status = normalizeText(value);
+    if (status.includes('rebot')) {
+      return '<span class="comisiones-status-badge is-rejected" aria-label="Rebotado" title="Rebotado"><span aria-hidden="true">●</span></span>';
+    }
+    if (status.includes('concili')) {
+      return '<span class="comisiones-status-badge is-ok" aria-label="Conciliado" title="Conciliado"><span aria-hidden="true">✓</span></span>';
+    }
+    return '<span class="comisiones-status-badge is-pending" aria-label="Pendiente" title="Pendiente"><span aria-hidden="true">◷</span></span>';
+  }
+
+  function buildDisplayComprobanteRows(details, isAllView) {
+    if (!isAllView) return details;
+
+    const groups = new Map();
+    details.forEach((detail) => {
+      const key = String(detail.transactionId || detail.id || '').trim();
+      if (!key) return;
+      const current = groups.get(key) || { primary: null, setter: null };
+      if (detail.role === 'Setter') {
+        current.setter = detail;
+      } else if (!current.primary || current.primary.role === 'Setter') {
+        current.primary = detail;
+      }
+      if (!current.primary) current.primary = detail;
+      groups.set(key, current);
+    });
+
+    return details.reduce((acc, detail) => {
+      const key = String(detail.transactionId || detail.id || '').trim();
+      if (!key) {
+        acc.push(detail);
+        return acc;
+      }
+
+      const group = groups.get(key);
+      if (!group || group.primary !== detail) return acc;
+
+      acc.push({
+        ...detail,
+        setter: group.setter?.person || detail.setter || '',
+        setterPctDisplay: Number(group.setter?.commissionPct || 0),
+        setterCommissionDisplay: Number(group.setter?.commissionAmount || 0)
+      });
+      return acc;
+    }, []);
   }
 
   function buildNotionPageUrl(pageId) {
@@ -157,7 +200,6 @@
 
   function getCurrentMonthValue() {
     const now = new Date();
-    now.setMonth(now.getMonth() - 1);
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
@@ -197,6 +239,17 @@
       .join('');
   }
 
+  function buildPinnedOptionsFromTable(tableRoot) {
+    const headers = Array.from(tableRoot?.querySelectorAll('thead th') || []);
+    return [
+      { value: PIN_NONE_VALUE, label: 'Ninguna' },
+      ...headers.map((header, index) => ({
+        value: String(index + 1),
+        label: header.textContent.trim() || `Columna ${index + 1}`
+      }))
+    ];
+  }
+
   function applyPinnedColumn(tableRoot, columnValue) {
     if (!tableRoot) return;
     const columnIndex = Number(columnValue || 0);
@@ -208,6 +261,20 @@
     tableRoot.querySelectorAll(`tr > *:nth-child(${columnIndex})`).forEach((cell) => {
       cell.classList.add('comisiones-pinned-cell');
       if (cell.tagName === 'TH') cell.classList.add('is-header');
+    });
+  }
+
+  function bindPinnedColumnHeaders(tableRoot, selectNode, stateKey) {
+    if (!tableRoot) return;
+    tableRoot.querySelectorAll('thead th').forEach((header, index) => {
+      const columnValue = String(index + 1);
+      header.classList.add('comisiones-pin-header');
+      header.title = 'Click para inmovilizar esta columna';
+      header.addEventListener('click', () => {
+        state[stateKey] = state[stateKey] === columnValue ? PIN_NONE_VALUE : columnValue;
+        fillPinnedColumnSelect(selectNode, buildPinnedOptionsFromTable(tableRoot), state[stateKey]);
+        applyPinnedColumn(tableRoot, state[stateKey]);
+      });
     });
   }
 
@@ -324,10 +391,18 @@
       : state.reconciliationFilter === 'not_conciliated'
         ? details.filter((detail) => !isConciliatedDetail(detail))
         : details;
+    const clubFiltered = state.clubFilter === 'only'
+      ? reconciliationFiltered.filter((detail) => normalizeText(detail.category) === 'club')
+      : state.clubFilter === 'exclude'
+        ? reconciliationFiltered.filter((detail) => normalizeText(detail.category) !== 'club')
+        : reconciliationFiltered;
+    const typeFiltered = state.typeFilter
+      ? clubFiltered.filter((detail) => normalizeText(detail.tipo) === state.typeFilter)
+      : clubFiltered;
 
     const search = normalizeText(state.clientSearch);
-    if (!search) return reconciliationFiltered;
-    return reconciliationFiltered.filter((detail) => normalizeText(detail.clientName).includes(search));
+    if (!search) return typeFiltered;
+    return typeFiltered.filter((detail) => normalizeText(detail.clientName).includes(search));
   }
 
   function buildPeopleFromDetails(details) {
@@ -364,6 +439,23 @@
     if (state.reconciliationFilter === 'conciliated') return 'conciliados';
     if (state.reconciliationFilter === 'not_conciliated') return 'no conciliados';
     return 'todos';
+  }
+
+  function getClubFilterLabel() {
+    if (state.clubFilter === 'only') return 'solo club';
+    if (state.clubFilter === 'exclude') return 'sin club';
+    return 'todo';
+  }
+
+  function getTypeFilterLabel() {
+    if (state.typeFilter === 'venta') return 'venta';
+    if (state.typeFilter === 'cobranza') return 'cobranza';
+    return 'todo';
+  }
+
+  function updateCommissionsStatus() {
+    const filteredDetails = getFilteredCommissionDetails();
+    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Conciliación: ${getReconciliationFilterLabel()} | Club: ${getClubFilterLabel()} | Tipo: ${getTypeFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
   }
 
   function uniqueSortedValues(rows, field) {
@@ -773,6 +865,7 @@
     const details = isAllView
       ? allDetails
       : allDetails.filter((row) => row.person === state.selectedPerson);
+    const displayDetails = buildDisplayComprobanteRows(details, isAllView);
 
     if (isAllView) {
       const uniqueTransactions = new Set(details.map((detail) => detail.transactionId).filter(Boolean));
@@ -784,7 +877,7 @@
             <span><strong>${formatCurrency(details.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0))}</strong> comisión total</span>
             <span><strong>${formatCurrency(details.reduce((sum, detail) => sum + Number(detail.baseAmount || 0), 0))}</strong> CC tomado</span>
             <span><strong>${formatInteger(uniqueTransactions.size)}</strong> comprobantes únicos</span>
-            <span><strong>${formatInteger(details.length)}</strong> líneas de comisión</span>
+            <span><strong>${formatInteger(displayDetails.length)}</strong> filas visibles</span>
             <span><strong>${formatInteger(filteredPeople.length)}</strong> personas con comisión</span>
           </div>
         </div>
@@ -813,81 +906,80 @@
     }
 
     detailNode.innerHTML = `
-      <div class="comisiones-table-wrap">
         <table class="csm-table comisiones-table">
           <thead>
             <tr>
-              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Fecha de venta</th>
               <th>Tipo</th>
               <th>Cheque</th>
               <th>F.acreditación</th>
               <th>Producto</th>
               <th>Nombre cliente</th>
-              <th>Monto CC</th>
+              <th>Responsable venta</th>
+              <th>Cash collected ARS</th>
               <th>Fact</th>
               <th>Porcentaje</th>
               <th>TC</th>
               <th>Origen</th>
               <th>Calendario</th>
-              <th>CC Pesos</th>
+              <th>Cash USD</th>
               <th>IVA</th>
               <th>Comisiones</th>
               <th>Total neto</th>
-              <th>Base MEG ARS</th>
-              <th>Base CLUB ARS</th>
               <th>Comisión final ARS</th>
               <th>Setter</th>
               <th>% Setter</th>
               <th>Comisión Setter</th>
-              <th>Estado comprobante</th>
               <th>ID</th>
             </tr>
           </thead>
           <tbody>
-            ${details.length ? details.map((detail) => {
+            ${displayDetails.length ? displayDetails.map((detail) => {
               const notionUrl = buildNotionPageUrl(detail.transactionId);
               const isSetter = detail.role === 'Setter';
-              const isCloserMeg = detail.role === 'Closer' && detail.category === 'MEG';
-              const isCloserClub = detail.role === 'Closer' && detail.category === 'Club';
-              const commissionMegBaseArs = isCloserMeg ? Number(detail.netTotalArs || 0) : 0;
-              const commissionClubBaseArs = isCloserClub ? Number(detail.netTotalArs || 0) : 0;
-              const setterPct = isSetter ? Number(detail.commissionPct || 0) : 0;
-              const setterCommission = isSetter ? Number(detail.commissionAmount || 0) : 0;
+              const setterPct = isSetter
+                ? Number(detail.commissionPct || 0)
+                : Number(detail.setterPctDisplay || 0);
+              const setterCommission = isSetter
+                ? Number(detail.commissionAmount || 0)
+                : Number(detail.setterCommissionDisplay || 0);
               return `
                 <tr>
+                  <td>${renderComprobanteStatusBadge(detail.status)}</td>
                   <td>${escapeHtml(formatDetailDate(detail.date))}</td>
                   <td>${escapeHtml(formatDetailText(detail.tipo))}</td>
-                  <td>${escapeHtml(formatDetailBoolean(detail.cheque))}</td>
+                  <td>${renderChequeBadge(detail.cheque)}</td>
                   <td>${escapeHtml(formatDetailDate(detail.acreditacionDate))}</td>
-                  <td>${escapeHtml(formatDetailText(detail.product))}</td>
+                  <td>${escapeHtml(formatComprobanteProduct(detail))}</td>
                   <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
-                  <td>${formatDetailUsd(detail.cashUsd)}</td>
+                  <td>${escapeHtml(formatDetailText(detail.closer))}</td>
+                  <td>${formatDetailCurrency(detail.cashArs)}</td>
                   <td>${formatDetailUsd(detail.facturacionUsd)}</td>
                   <td>${formatDetailPercent(detail.commissionPct)}</td>
                   <td>${formatDetailCurrency(detail.tc)}</td>
                   <td>${escapeHtml(formatDetailText(detail.origin))}</td>
                   <td>${escapeHtml(formatDetailText(detail.calendar))}</td>
-                  <td>${formatDetailCurrency(detail.cashArs)}</td>
+                  <td>${formatDetailUsd(detail.cashUsd)}</td>
                   <td>${formatDetailCurrency(detail.ivaArs)}</td>
                   <td>${formatDetailCurrency(detail.externalCommissionsArs)}</td>
                   <td>${formatDetailCurrency(detail.netTotalArs)}</td>
-                  <td>${formatDetailCurrency(commissionMegBaseArs)}</td>
-                  <td>${formatDetailCurrency(commissionClubBaseArs)}</td>
                   <td>${formatDetailCurrency(detail.commissionAmount)}</td>
                   <td>${escapeHtml(formatDetailText(detail.setter))}</td>
                   <td>${formatDetailPercent(setterPct)}</td>
                   <td>${formatDetailCurrency(setterCommission)}</td>
-                  <td>${escapeHtml(formatDetailText(detail.status))}</td>
                   <td>${notionUrl ? `<a class="comisiones-external-link" href="${escapeHtml(notionUrl)}" target="_blank" rel="noreferrer">${escapeHtml(detail.transactionId || '')}</a>` : ''}</td>
                 </tr>
               `;
-            }).join('') : `<tr><td colspan="24">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
+            }).join('') : `<tr><td colspan="22">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
           </tbody>
         </table>
-      </div>
     `;
 
-    applyPinnedColumn(detailNode.querySelector('table'), state.pinnedPersonColumn);
+    const personTable = detailNode.querySelector('table');
+    fillPinnedColumnSelect(pinnedPersonColumnSelect, buildPinnedOptionsFromTable(personTable), state.pinnedPersonColumn);
+    applyPinnedColumn(personTable, state.pinnedPersonColumn);
+    bindPinnedColumnHeaders(personTable, pinnedPersonColumnSelect, 'pinnedPersonColumn');
 
     summaryNode.querySelectorAll('[data-agenda-person]').forEach((button) => {
       button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson));
@@ -995,7 +1087,10 @@
       </div>
     `;
 
-    applyPinnedColumn(detailNode.querySelector('table'), state.pinnedAgendaColumn);
+    const agendaTable = detailNode.querySelector('table');
+    fillPinnedColumnSelect(pinnedAgendaColumnSelect, buildPinnedOptionsFromTable(agendaTable), state.pinnedAgendaColumn);
+    applyPinnedColumn(agendaTable, state.pinnedAgendaColumn);
+    bindPinnedColumnHeaders(agendaTable, pinnedAgendaColumnSelect, 'pinnedAgendaColumn');
   }
 
   function syncAgendaFilterControls() {
@@ -1232,8 +1327,6 @@
 
   function refreshCommissionViews() {
     const filteredPeople = buildPeopleFromDetails(getFilteredCommissionDetails());
-    fillPinnedColumnSelect(pinnedPersonColumnSelect, PERSON_PIN_OPTIONS, state.pinnedPersonColumn);
-    fillPinnedColumnSelect(pinnedAgendaColumnSelect, AGENDA_PIN_OPTIONS, state.pinnedAgendaColumn);
     renderSheetOverview(state.dashboard);
     fillPersonSelect(filteredPeople);
     if (
@@ -1257,8 +1350,7 @@
     state.dashboard = response;
     refreshCommissionViews();
     if (state.rulesDraft) renderRulesEditor();
-    const filteredDetails = getFilteredCommissionDetails();
-    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Filtro: ${getReconciliationFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
+    updateCommissionsStatus();
   }
 
   async function loadPage() {
@@ -1318,8 +1410,7 @@
   clientSearchInput?.addEventListener('input', () => {
     state.clientSearch = clientSearchInput.value || '';
     refreshCommissionViews();
-    const filteredDetails = getFilteredCommissionDetails();
-    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Filtro: ${getReconciliationFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
+    updateCommissionsStatus();
   });
 
   pinnedPersonColumnSelect?.addEventListener('change', () => {
@@ -1330,8 +1421,19 @@
   reconciliationFilterSelect?.addEventListener('change', () => {
     state.reconciliationFilter = reconciliationFilterSelect.value || '';
     refreshCommissionViews();
-    const filteredDetails = getFilteredCommissionDetails();
-    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Filtro: ${getReconciliationFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
+    updateCommissionsStatus();
+  });
+
+  clubFilterSelect?.addEventListener('change', () => {
+    state.clubFilter = clubFilterSelect.value || '';
+    refreshCommissionViews();
+    updateCommissionsStatus();
+  });
+
+  typeFilterSelect?.addEventListener('change', () => {
+    state.typeFilter = typeFilterSelect.value || '';
+    refreshCommissionViews();
+    updateCommissionsStatus();
   });
 
   [

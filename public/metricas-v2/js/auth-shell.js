@@ -41,6 +41,12 @@
     return `${GHL_CONTACT_BASE_URL}${encodeURIComponent(normalized)}`;
   }
 
+  function syncShellOffset() {
+    const shell = document.querySelector('.auth-shell');
+    const height = shell ? Math.ceil(shell.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--metricas-shell-offset', `${height}px`);
+  }
+
   function renderGhlContactCell(label, ghlId) {
     const safeLabel = escapeHtml(label || 'Sin nombre');
     const url = buildGhlContactUrl(ghlId);
@@ -49,12 +55,6 @@
     return `
       <div class="metricas-ghl-cell">
         <span class="metricas-ghl-name">${safeLabel}</span>
-        <a
-          class="metricas-ghl-link"
-          href="${url}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >Ver GHL</a>
       </div>
     `;
   }
@@ -324,6 +324,13 @@
       </div>
     `;
     document.body.prepend(shell);
+    syncShellOffset();
+    window.addEventListener('resize', syncShellOffset);
+    window.addEventListener('load', syncShellOffset);
+    if (typeof ResizeObserver !== 'undefined') {
+      const shellObserver = new ResizeObserver(() => syncShellOffset());
+      shellObserver.observe(shell);
+    }
     syncThemeToggleButton();
 
     if (user.role !== 'total' && !onlyMarketingAccess) {

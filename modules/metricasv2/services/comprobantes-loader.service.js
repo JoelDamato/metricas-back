@@ -1277,7 +1277,7 @@ async function listMyComprobantes(user, options = {}) {
 
   while (true) {
     const response = await supabaseRequest('comprobantes', {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ars,estado,creado_por',
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ars,estado,creado_por,responsable_venta',
       creado_por: `eq.${responsibleName}`,
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,

@@ -112,8 +112,19 @@ const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/views/setting.html',
     allowedPages: new Set(['setting.html', 'comprobantes.html', 'carga-comprobantes.html', 'mis-comprobantes.html']),
-    allowedResources: new Set(['setters']),
-    allowedFeatures: {}
+    allowedResources: new Set(['setters', 'comprobantes']),
+    allowedFeatures: {
+      views: ['GET']
+    }
+  },
+  'nahuerandazzo@gmail.com': {
+    homePath: '/views/comprobantes.html',
+    allowedPages: new Set(['comprobantes.html', 'carga-comprobantes.html', 'mis-comprobantes.html', 'herramientas.html', 'generador-params.html']),
+    allowedResources: new Set(['comprobantes']),
+    allowedFeatures: {
+      views: ['GET'],
+      utm_builder: ['GET', 'POST', 'DELETE']
+    }
   },
   'robertoboero83@gmail.com': {
     homePath: '/index.html',

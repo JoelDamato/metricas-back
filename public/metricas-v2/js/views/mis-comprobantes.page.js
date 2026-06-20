@@ -160,6 +160,7 @@
           <thead>
             <tr>
               <th>Cliente</th>
+              <th>Responsable de venta</th>
               <th>Tipo</th>
               <th>Producto</th>
               <th>Fecha</th>
@@ -174,6 +175,7 @@
             ${state.filteredRows.map((row) => `
               <tr>
                 <td>${renderDetailCell(row.cliente_format || 'Sin nombre', row.ghlid || '')}</td>
+                <td>${escapeHtml(row.responsable_venta || row.creado_por || '-')}</td>
                 <td>${escapeHtml(row.tipo || '-')}</td>
                 <td>${escapeHtml(row.producto_format || '-')}</td>
                 <td>${escapeHtml(formatDate(row.f_venta || row.f_acreditacion || row.fecha_creado || row.created_at))}</td>
