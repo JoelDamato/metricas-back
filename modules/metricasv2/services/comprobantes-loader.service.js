@@ -672,14 +672,34 @@ async function lookupClientByGhlId(rawGhlInput) {
     throw error;
   }
 
-  const response = await supabaseRequest('leads_raw', {
+  const leadsResponse = await supabaseRequest('leads_raw', {
     select: 'id,ghlid,nombre,mail,telefono,etapa',
     ghlid: `eq.${ghlId}`,
     order: 'last_edited_time.desc',
     limit: 5
   });
 
-  const row = (response.data || [])[0];
+  let row = (leadsResponse.data || [])[0] || null;
+  let source = 'leads_raw';
+
+  if (!row) {
+    const csmResponse = await supabaseRequest('csm', {
+      select: 'id,ghlid,nombre,mail,telefono,actividad',
+      ghlid: `eq.${ghlId}`,
+      order: 'updated_at.desc.nullslast,created_at.desc.nullslast',
+      limit: 5
+    });
+
+    const csmRow = (csmResponse.data || [])[0] || null;
+    if (csmRow) {
+      row = {
+        ...csmRow,
+        etapa: csmRow.actividad || ''
+      };
+      source = 'csm';
+    }
+  }
+
   if (!row) {
     const error = new Error('No encontré un cliente con ese GHL ID');
     error.statusCode = 404;
@@ -695,6 +715,7 @@ async function lookupClientByGhlId(rawGhlInput) {
     mail: row.mail || '',
     telefono: row.telefono || '',
     etapa: row.etapa || '',
+    source,
     latestSale
   };
 }

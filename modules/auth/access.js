@@ -109,9 +109,40 @@ const COMMISSIONS_ALLOWED_EMAILS = new Set([
 
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
-    homePath: '/views/setting.html',
-    allowedPages: new Set(['setting.html', 'comprobantes.html', 'carga-comprobantes.html', 'mis-comprobantes.html']),
-    allowedResources: new Set(['setters', 'comprobantes']),
+    homePath: '/dashboard.html',
+    allowedPages: new Set([
+      'dashboard.html',
+      'index.html',
+      'split-screen.html',
+      'ranking.html',
+      'agendas-totales.html',
+      'agendas-ultimo-origen.html',
+      'agendas-detalle-closer.html',
+      'analisis-ventas.html',
+      'kpi-closers.html',
+      'setting.html',
+      'reportes.html',
+      'mag-sistema-agendas.html',
+      'mag-reportes-personales.html',
+      'mag-reporte-closers-2026.html',
+      'mag-manual-closers.html',
+      'comprobantes.html',
+      'carga-comprobantes.html',
+      'mis-comprobantes.html'
+    ]),
+    allowedResources: new Set([
+      'ranking_closers_mensual',
+      'agenda_totales',
+      'agenda_totales_ultimo_origen',
+      'agenda_detalle_por_origen_closer',
+      'kpi_closers_mensual',
+      'setters',
+      'setting',
+      'agenda_detalle_diario_closer',
+      'ventas_diario_closer',
+      'cash_collected_diario_closer',
+      'comprobantes'
+    ]),
     allowedFeatures: {
       views: ['GET']
     }
