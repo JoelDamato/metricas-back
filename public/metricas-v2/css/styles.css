@@ -2397,7 +2397,7 @@ th {
   list-style: none;
   cursor: pointer;
   color: #111111;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
   font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
@@ -2410,6 +2410,8 @@ th {
   background: rgba(255, 255, 255, 0.78);
   text-shadow: none;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  width: fit-content;
+  max-width: 100%;
 }
 
 .ads-collapse > summary::-webkit-details-marker {

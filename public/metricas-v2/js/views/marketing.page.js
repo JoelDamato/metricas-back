@@ -293,6 +293,9 @@ function ensureMarketingViewStyles() {
     }
 
     .ads-collapse > summary {
+      display: flex;
+      width: fit-content;
+      max-width: 100%;
       color: #111111;
       background: rgba(255, 255, 255, 0.78);
       text-shadow: none;
@@ -517,6 +520,50 @@ function showLoading(message) {
   const popup = document.getElementById('loadingPopup');
   document.getElementById('loadingMessage').textContent = message || 'Cargando...';
   popup.hidden = false;
+}
+
+function syncMarketingCollapseState(root = document) {
+  root.querySelectorAll('.ads-collapse > summary').forEach((summary) => {
+    const details = summary.parentElement;
+    if (!(details instanceof HTMLDetailsElement)) return;
+    summary.setAttribute('role', 'button');
+    summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+  });
+}
+
+function toggleMarketingCollapse(summary) {
+  const details = summary?.parentElement;
+  if (!(details instanceof HTMLDetailsElement)) return;
+  details.open = !details.open;
+  summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+}
+
+function bindMarketingCollapseFallback() {
+  if (document.body?.dataset.marketingCollapseBound === 'true') return;
+  document.body.dataset.marketingCollapseBound = 'true';
+
+  document.addEventListener('click', (event) => {
+    const summary = event.target.closest('.ads-collapse > summary');
+    if (!summary) return;
+    event.preventDefault();
+    toggleMarketingCollapse(summary);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const summary = event.target.closest('.ads-collapse > summary');
+    if (!summary) return;
+    event.preventDefault();
+    toggleMarketingCollapse(summary);
+  });
+
+  document.addEventListener('toggle', (event) => {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.classList.contains('ads-collapse')) return;
+    const summary = details.querySelector(':scope > summary');
+    if (!summary) return;
+    summary.setAttribute('aria-expanded', details.open ? 'true' : 'false');
+  }, true);
 }
 
 function hideLoading() {
@@ -903,6 +950,7 @@ function renderCampaignTotalsTable(rows) {
         </div>
       </details>
     `;
+    syncMarketingCollapseState(container);
     return;
   }
 
@@ -966,6 +1014,7 @@ function renderCampaignTotalsTable(rows) {
     </details>
   `;
 
+  syncMarketingCollapseState(container);
   attachMarketingSortHandlers(container, 'campaign', () => renderCampaignTotalsTable(MARKETING_SORT_STATE.campaign.rows));
 }
 
@@ -1025,6 +1074,7 @@ function renderAdsMetricsTable(rows) {
         </div>
       </details>
     `;
+    syncMarketingCollapseState(container);
     return;
   }
 
@@ -1058,6 +1108,7 @@ function renderAdsMetricsTable(rows) {
     </details>
   `;
 
+  syncMarketingCollapseState(container);
   attachMarketingSortHandlers(container, 'ads', () => renderAdsMetricsTable(MARKETING_SORT_STATE.ads.rows));
 }
 
@@ -1116,6 +1167,7 @@ function renderQualityMetricsTable(rows) {
         </div>
       </details>
     `;
+    syncMarketingCollapseState(container);
     return;
   }
 
@@ -1165,6 +1217,7 @@ function renderQualityMetricsTable(rows) {
     </details>
   `;
 
+  syncMarketingCollapseState(container);
   attachMarketingSortHandlers(container, 'quality', () => renderQualityMetricsTable(MARKETING_SORT_STATE.quality.rows));
 }
 
@@ -1412,6 +1465,7 @@ function renderTraceabilityTable(rows) {
         </div>
       </details>
     `;
+    syncMarketingCollapseState(container);
     return;
   }
 
@@ -1461,6 +1515,7 @@ function renderTraceabilityTable(rows) {
     </details>
   `;
 
+  syncMarketingCollapseState(container);
   attachMarketingSortHandlers(container, 'traceability', () => renderTraceabilityTable(MARKETING_SORT_STATE.traceability.rows));
 }
 
@@ -1705,6 +1760,7 @@ async function saveCreditBalance() {
 
 async function init() {
   ensureMarketingViewStyles();
+  bindMarketingCollapseFallback();
   setDefaultDates();
   await loadOrigins();
   await loadDashboard();
