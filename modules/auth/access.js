@@ -99,13 +99,12 @@ const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'matirandazzo@gmail.com'
 ]);
 
-const MARKETING_FORCE_ALLOW_EMAILS = new Set([
-  'nahuerandazzo@gmail.com'
-]);
+const MARKETING_FORCE_ALLOW_EMAILS = new Set([]);
 
 const COMMISSIONS_ALLOWED_EMAILS = new Set([
   'matirandazzo@gmail.com',
-  'nadia.cavallini@gmail.com'
+  'nadia.cavallini@gmail.com',
+  'nahuerandazzo@gmail.com'
 ]);
 
 const USER_ACCESS_OVERRIDES = {
@@ -118,13 +117,12 @@ const USER_ACCESS_OVERRIDES = {
     }
   },
   'nahuerandazzo@gmail.com': {
-    homePath: '/views/comprobantes.html',
-    allowedPages: new Set(['comprobantes.html', 'carga-comprobantes.html', 'mis-comprobantes.html', 'herramientas.html', 'generador-params.html']),
-    allowedResources: new Set(['comprobantes']),
-    allowedFeatures: {
-      views: ['GET'],
-      utm_builder: ['GET', 'POST', 'DELETE']
-    }
+    homePath: '/dashboard.html',
+    allowedPages: new Set(Object.keys(PAGE_ROLE_ACCESS)),
+    allowedResources: new Set(Object.keys(RESOURCE_ROLE_ACCESS)),
+    allowedFeatures: Object.fromEntries(
+      Object.keys(FEATURE_ROLE_ACCESS).map((feature) => [feature, ['GET', 'POST', 'PATCH', 'DELETE']])
+    )
   },
   'robertoboero83@gmail.com': {
     homePath: '/index.html',
