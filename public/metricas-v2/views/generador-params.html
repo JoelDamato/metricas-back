@@ -360,19 +360,19 @@
         <div class="tools-copy">
           <span class="tools-kicker">Herramientas internas</span>
           <h1>Generador de params</h1>
-          <p>Armá URLs con UTM y parámetros extra, buscá campos custom de GHL y guardá presets reutilizables por `origin`.</p>
+          <p>Armá URLs con UTM y parámetros extra, buscá campos custom de GHL y guardá presets reutilizables por `origen_actual`.</p>
         </div>
         <aside class="tools-side-card">
           <h2>Cómo funciona</h2>
           <p>Escribís la URL base, completás los UTM que quieras y sumás parámetros extra sin límite.</p>
-          <p>Si agregás `origin` dentro de los extras, al generar el link se guarda ese preset en base con los parámetros usados.</p>
+          <p>Completás `origen_actual`, opcionalmente sumás `Contact_id`, y al generar el link se guarda ese preset con los parámetros usados.</p>
         </aside>
       </section>
 
       <section class="tools-shell">
         <article class="tools-main-card">
           <h2>Generador de params</h2>
-          <p class="tools-help">Si dejás vacío <code>utm_source</code>, se completa automáticamente con el valor del parámetro extra <code>origin</code> si existe. Usá los extras para sumar <code>origin</code> y cualquier otro campo custom.</p>
+          <p class="tools-help">Si dejás vacío <code>utm_source</code>, se completa automáticamente con el valor de <code>origen_actual</code>. También podés sumar cualquier otro campo custom y elegir si querés agregar <code>Contact_id={{contact.id}}</code>.</p>
 
           <div class="tools-grid">
             <label class="tools-field-full">
@@ -390,8 +390,12 @@
               </select>
             </label>
             <label class="tools-field">
+              <span>origen_actual</span>
+              <input id="utmCurrentOrigin" type="text" placeholder="Obligatorio" autocomplete="off" />
+            </label>
+            <label class="tools-field">
               <span>utm_source</span>
-              <input id="utmSource" type="text" placeholder="Se completa con el extra origin si lo dejás vacío" autocomplete="off" />
+              <input id="utmSource" type="text" placeholder="Se completa con origen_actual si lo dejás vacío" autocomplete="off" />
             </label>
             <label class="tools-field">
               <span>utm_medium</span>
@@ -414,6 +418,12 @@
           <div class="tools-param-block">
             <div class="tools-block-title">Parámetros extra</div>
             <div class="tools-help">Podés agregar todos los que quieras. Si un parámetro ya existe en la URL base, se reemplaza por el nuevo valor.</div>
+            <label class="tools-field-full" style="margin-top:14px;">
+              <span style="display:flex;align-items:center;gap:10px;">
+                <input id="utmIncludeContactId" type="checkbox" style="width:auto;" />
+                <span>Agregar <code>Contact_id={{contact.id}}</code></span>
+              </span>
+            </label>
             <div id="utmCustomParams"></div>
             <div class="tools-actions">
               <button id="addUtmParam" class="tools-button-ghost" type="button">Agregar parámetro</button>

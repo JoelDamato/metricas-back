@@ -251,36 +251,41 @@
       .filter((row) => row.key && row.value);
   }
 
-  function getOriginFromCustomParams(customParams = []) {
-    const match = (customParams || []).find((row) => normalizeSearchText(row.key) === 'origin');
-    return String(match?.value || '').trim();
-  }
-
   function collectFormValues() {
     const customParams = collectCustomParams();
-    const origin = getOriginFromCustomParams(customParams);
+    const currentOrigin = String(document.getElementById('utmCurrentOrigin')?.value || '').trim();
     const presetName = String(document.getElementById('utmPresetName')?.value || '').trim();
     const params = {};
-    const source = String(document.getElementById('utmSource')?.value || '').trim() || origin;
+    const source = String(document.getElementById('utmSource')?.value || '').trim() || currentOrigin;
     const medium = String(document.getElementById('utmMedium')?.value || '').trim();
     const campaign = String(document.getElementById('utmCampaign')?.value || '').trim();
     const content = String(document.getElementById('utmContent')?.value || '').trim();
     const term = String(document.getElementById('utmTerm')?.value || '').trim();
+    const includeContactId = document.getElementById('utmIncludeContactId')?.checked === true;
 
+    if (!currentOrigin) {
+      throw new Error('Completá origen_actual antes de generar o guardar el link.');
+    }
+
+    params.origen_actual = currentOrigin;
     if (source) params.utm_source = source;
     if (medium) params.utm_medium = medium;
     if (campaign) params.utm_campaign = campaign;
     if (content) params.utm_content = content;
     if (term) params.utm_term = term;
+    if (includeContactId) params.Contact_id = '{{contact.id}}';
 
     customParams.forEach((row) => {
+      if (normalizeSearchText(row.key) === 'origen_actual') return;
+      if (normalizeSearchText(row.key) === 'contact_id' && includeContactId) return;
       params[row.key] = row.value;
     });
 
     return {
       baseUrl: String(document.getElementById('utmBaseUrl')?.value || '').trim(),
       presetName,
-      origin,
+      origin: currentOrigin,
+      includeContactId,
       params
     };
   }
@@ -290,14 +295,16 @@
     const params = preset.params || {};
     document.getElementById('utmBaseUrl').value = preset.base_url || '';
     document.getElementById('utmPresetName').value = preset.name || '';
+    document.getElementById('utmCurrentOrigin').value = String(params.origen_actual || '').trim();
     document.getElementById('utmSource').value = String(params.utm_source || '').trim();
     document.getElementById('utmMedium').value = String(params.utm_medium || '').trim();
     document.getElementById('utmCampaign').value = String(params.utm_campaign || '').trim();
     document.getElementById('utmContent').value = String(params.utm_content || '').trim();
     document.getElementById('utmTerm').value = String(params.utm_term || '').trim();
+    document.getElementById('utmIncludeContactId').checked = String(params.Contact_id || '').trim() === '{{contact.id}}';
 
     const customRows = Object.entries(params)
-      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && String(value || '').trim())
+      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && key !== 'origen_actual' && key !== 'Contact_id' && String(value || '').trim())
       .map(([key, value]) => ({ key, value: String(value || '').trim() }));
 
     resetCustomParamRows(customRows);
@@ -319,7 +326,7 @@
     if (!container) return;
 
     if (!state.presets.length) {
-      container.innerHTML = '<div class="tools-empty">Todavía no hay presets guardados. El primero se guarda cuando generás o guardás un link con el extra origin.</div>';
+      container.innerHTML = '<div class="tools-empty">Todavía no hay presets guardados. El primero se guarda cuando generás o guardás un link con origen_actual.</div>';
       return;
     }
 
@@ -328,7 +335,7 @@
         <button type="button" data-preset-key="${escapeHtml(preset.key)}">
           <strong>${escapeHtml(preset.name)}</strong>
           <div class="tools-preset-meta">${escapeHtml(preset.base_url || 'Sin URL base guardada')}</div>
-          <div class="tools-preset-meta">${escapeHtml(String(preset.params?.origin || 'Sin origin'))}</div>
+          <div class="tools-preset-meta">${escapeHtml(String(preset.params?.origen_actual || 'Sin origen_actual'))}</div>
           <div class="tools-preset-meta">${Object.keys(preset.params || {}).length} parámetros guardados</div>
         </button>
         <div class="tools-preset-card-actions">
@@ -425,11 +432,13 @@
   function clearForm() {
     document.getElementById('utmBaseUrl').value = '';
     document.getElementById('utmPresetName').value = '';
+    document.getElementById('utmCurrentOrigin').value = '';
     document.getElementById('utmSource').value = '';
     document.getElementById('utmMedium').value = '';
     document.getElementById('utmCampaign').value = '';
     document.getElementById('utmContent').value = '';
     document.getElementById('utmTerm').value = '';
+    document.getElementById('utmIncludeContactId').checked = false;
     document.getElementById('utmPresetSelect').value = '';
     document.getElementById('utmOutput').value = '';
     resetCustomParamRows();

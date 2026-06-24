@@ -847,7 +847,7 @@ async function listUtmLinkPresets(options = {}) {
 }
 
 async function upsertUtmLinkPreset(payload, user) {
-  const displayName = String(payload.display_name || payload.origin || payload.origen || '').trim();
+  const displayName = String(payload.display_name || payload.origen_actual || payload.origin || payload.origen || payload.params?.origen_actual || '').trim();
   const presetKey = normalizeUtmPresetKey(payload.preset_key || displayName);
   const baseUrl = String(payload.base_url || '').trim();
   const params = normalizeUtmPresetParams(payload.params);
