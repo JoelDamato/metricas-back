@@ -147,6 +147,25 @@ const USER_ACCESS_OVERRIDES = {
       views: ['GET']
     }
   },
+  'sofiangallardod@gmail.com': {
+    homePath: '/views/csm-tiempo.html',
+    allowedPages: new Set([
+      'csm-tiempo.html',
+      'csm-situacion.html',
+      'csm-renovaciones.html',
+      'comprobantes.html',
+      'carga-comprobantes.html',
+      'mis-comprobantes.html'
+    ]),
+    allowedResources: new Set([
+      'csm',
+      'comprobantes',
+      'leads_raw'
+    ]),
+    allowedFeatures: {
+      views: ['GET']
+    }
+  },
   'nahuerandazzo@gmail.com': {
     homePath: '/dashboard.html',
     allowedPages: new Set(Object.keys(PAGE_ROLE_ACCESS)),

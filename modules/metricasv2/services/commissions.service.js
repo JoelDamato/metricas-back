@@ -18,10 +18,9 @@ const DEFAULT_CONFIG = {
     { min: 35, pct: 0.06 }
   ],
   setterSalesScale: [
-    { min: 0, pct: 0.045 },
-    { min: 5, pct: 0.05 },
-    { min: 10, pct: 0.055 },
-    { min: 15, pct: 0.06 }
+    { min: 0, pct: 0.08 },
+    { min: 5, pct: 0.09 },
+    { min: 10, pct: 0.1 }
   ],
   clubScale: [
     { min: 1, pct: 0.5 },
@@ -619,6 +618,23 @@ function buildSetterMegSalesCountMap(rows) {
   return map;
 }
 
+function buildCloserMegSalesCountMap(rows, monthKey) {
+  const groups = new Map();
+  rows
+    .filter((row) => matchesMonth(row.f_acreditacion_only || row.f_venta_only, monthKey))
+    .filter((row) => normalizeText(row.tipo) === 'venta' && !isClubProduct(row.producto_format))
+    .sort((a, b) => String(a.f_acreditacion_only || a.f_venta_only || '').localeCompare(String(b.f_acreditacion_only || b.f_venta_only || '')) || a.id.localeCompare(b.id))
+    .forEach((row) => {
+      const closerKey = normalizeText(row.responsable_venta || row.creado_por);
+      if (!closerKey) return;
+      const current = groups.get(closerKey) || 0;
+      groups.set(`${closerKey}:${row.id}`, current + 1);
+      groups.set(closerKey, current + 1);
+    });
+
+  return groups;
+}
+
 function buildCloserClubSequenceMap(rows, monthKey) {
   const groups = new Map();
   rows
@@ -658,6 +674,7 @@ function resolveCloserMegCommission(row, context) {
     config,
     saleIndex,
     transactionIndex,
+    closerMegSalesMap,
     closerMegCache,
     visited = new Set()
   } = context;
@@ -742,9 +759,9 @@ function resolveCloserMegCommission(row, context) {
   }
 
   const payload = {
-    pct: config.global.defaultCloserPct,
-    sourceRule: 'Base closer MEG',
-    sourceRuleNote: 'No hubo regla especial ni fija, así que se tomó el porcentaje base del closer.'
+    pct: pickScalePct(config.setterSalesScale, Number(closerMegSalesMap?.get(`${normalizeText(closerName)}:${row.id}`) || 0), config.global.defaultCloserPct),
+    sourceRule: 'Escalera closer MEG',
+    sourceRuleNote: `No hubo regla especial ni fija. Se aplicó la escalera por ventas MEG del mes para ${closerName}.`
   };
   closerMegCache.set(row.id, payload);
   return payload;
@@ -770,6 +787,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const transactionIndex = buildHistoricalTransactionIndex(normalizedRows);
   const clubSequenceMap = buildClubSequenceMap(activeRows, monthKey);
   const closerClubSequenceMap = buildCloserClubSequenceMap(activeRows, monthKey);
+  const closerMegSalesMap = buildCloserMegSalesCountMap(activeRows, monthKey);
   const areaMap = buildAreaMap(config);
   const roleMap = buildRoleMap(config);
   const details = [];
@@ -838,6 +856,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
           config,
           saleIndex,
           transactionIndex,
+          closerMegSalesMap,
           closerMegCache
         });
         if (baseAmount > 0 && closerResult?.pct > 0) {

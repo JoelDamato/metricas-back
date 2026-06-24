@@ -100,24 +100,20 @@
               <input id="commissionAgendaDateTo" type="date" />
             </label>
             <label>
-              <span>Origen</span>
-              <select id="commissionAgendaOriginSelect"></select>
+              <span>Último origen</span>
+              <select id="commissionAgendaLastOriginSelect"></select>
             </label>
             <div class="comisiones-checkgroup">
               <span>Calidad</span>
               <div id="commissionAgendaQualityChecks" class="comisiones-checkgroup-options"></div>
             </div>
             <label>
-              <span>Modelo</span>
-              <select id="commissionAgendaModelSelect"></select>
+              <span>Calendario agendado</span>
+              <select id="commissionAgendaCalendarSelect"></select>
             </label>
             <label>
               <span>Aplica</span>
               <select id="commissionAgendaAplicaSelect"></select>
-            </label>
-            <label>
-              <span>Llamada</span>
-              <select id="commissionAgendaCallSelect"></select>
             </label>
             <label>
               <span>Inmovilizar columna</span>
@@ -191,10 +187,22 @@
 
             <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
-                <h3>Escalera de porcentaje según agendas</h3>
+                <h3>Escalera setter por agendas APSET / RT</h3>
                 <button id="addAgendaScaleRow" type="button" class="button-secondary">Agregar tramo</button>
               </div>
               <div id="commissionAgendaScaleRows" class="comisiones-scale-list"></div>
+            </section>
+
+            <section class="card comisiones-rule-card">
+              <div class="comisiones-rule-head">
+                <h3>Escalera closers ventas MEG</h3>
+              </div>
+              <div class="comisiones-rule-note">
+                <p>Los closers de ventas MEG arrancan en <strong>8%</strong>.</p>
+                <p>Al llegar a la <strong>venta 5</strong> del mes pasan a <strong>9%</strong>.</p>
+                <p>Al llegar a la <strong>venta 10</strong> del mes pasan a <strong>10%</strong>.</p>
+              </div>
+              <div id="commissionSetterSalesScaleRows" class="comisiones-scale-list"></div>
             </section>
 
             <section class="card comisiones-rule-card">

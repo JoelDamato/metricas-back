@@ -16,11 +16,10 @@
       setter: '',
       from: '',
       to: '',
-      origin: '',
+      lastOrigin: '',
       quality: [],
-      model: '',
       aplica: '',
-      call: ''
+      calendar: ''
     },
     configMeta: null,
     rulesDraft: null,
@@ -66,6 +65,12 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
+  }
+
+  function matchesApsetOrRt(value) {
+    const normalized = normalizeText(value);
+    if (!normalized) return false;
+    return normalized.includes('apset') || /(^|[^a-z])rt([^a-z]|$)/.test(normalized);
   }
 
   function formatInteger(value) {
@@ -478,8 +483,9 @@
         callDate: String(row.fecha_llamada || '').trim().slice(0, 10),
         origin: String(row.origen || row.primer_origen || '').trim(),
         firstOrigin: String(row.primer_origen || '').trim(),
+        lastOrigin: String(row.ultimo_origen || '').trim(),
+        calendar: String(row.calendario_agendado || '').trim(),
         quality: String(row.calidad_lead || '').trim(),
-        model: String(row.modelo_negocio || '').trim(),
         strategy: String(row.estrategia_a || '').trim(),
         agendo: String(row.agendo || '').trim(),
         aplica: String(row.aplica || '').trim(),
@@ -492,6 +498,7 @@
         mail: String(row.mail || '').trim(),
         phone: String(row.telefono || row.whatsapp || '').trim()
       }))
+      .filter((row) => matchesApsetOrRt(row.lastOrigin) || matchesApsetOrRt(row.calendar))
       .filter((row) => row.setter && row.agendaDate && normalizeText(row.agendo) === 'agendo')
       .sort((a, b) => String(b.agendaDate || '').localeCompare(String(a.agendaDate || '')) || a.clientName.localeCompare(b.clientName, 'es'));
   }
@@ -501,14 +508,13 @@
       if (filters.setter && normalizeText(row.setter) !== normalizeText(filters.setter)) return false;
       if (filters.from && row.agendaDate && row.agendaDate < filters.from) return false;
       if (filters.to && row.agendaDate && row.agendaDate > filters.to) return false;
-      if (filters.origin && normalizeText(row.origin) !== normalizeText(filters.origin)) return false;
+      if (filters.lastOrigin && normalizeText(row.lastOrigin) !== normalizeText(filters.lastOrigin)) return false;
       if (Array.isArray(filters.quality) && filters.quality.length) {
         const allowedQualities = filters.quality.map((value) => normalizeText(value));
         if (!allowedQualities.includes(normalizeText(row.quality))) return false;
       }
-      if (filters.model && normalizeText(row.model) !== normalizeText(filters.model)) return false;
       if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
-      if (filters.call && normalizeText(row.llamada) !== normalizeText(filters.call)) return false;
+      if (filters.calendar && normalizeText(row.calendar) !== normalizeText(filters.calendar)) return false;
       return true;
     });
   }
@@ -991,12 +997,12 @@
     const detailNode = document.getElementById('commissionAgendaDetails');
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
-    const uniqueOrigins = new Set(filteredRows.map((row) => row.origin).filter(Boolean));
+    const uniqueOrigins = new Set(filteredRows.map((row) => row.lastOrigin).filter(Boolean));
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
-    const uniqueModels = new Set(filteredRows.map((row) => row.model).filter(Boolean));
+    const uniqueCalendars = new Set(filteredRows.map((row) => row.calendar).filter(Boolean));
     const nahuelRows = filteredRows.filter((row) => isNahuelSetter(row.setter));
     const topOriginEntry = [...filteredRows.reduce((map, row) => {
-      const key = row.origin || 'Sin origen';
+      const key = row.lastOrigin || 'Sin último origen';
       map.set(key, Number(map.get(key) || 0) + 1);
       return map;
     }, new Map()).entries()].sort((a, b) => b[1] - a[1])[0] || null;
@@ -1006,7 +1012,7 @@
         <div class="comisiones-agendas-head">
           <div>
             <h3>${escapeHtml(setterLabel)}</h3>
-            <p>Base de agendas del mes por <strong>fecha_agenda</strong>. Podés recortar por rango de fechas y origen.</p>
+            <p>Base de agendas del mes por <strong>fecha_agenda</strong>, tomando solo filas con <strong>último origen</strong> o <strong>calendario agendado</strong> en APSET / RT.</p>
           </div>
           <div class="comisiones-agendas-period">
             <span>${escapeHtml(state.agendaFilters.from || '-')}</span>
@@ -1025,13 +1031,13 @@
             <p>Dentro del filtro activo.</p>
           </article>
           <article class="comisiones-summary-card">
-            <span>Orígenes visibles</span>
+            <span>Últimos orígenes</span>
             <strong>${formatInteger(uniqueOrigins.size)}</strong>
             <p>${topOriginEntry ? `Principal: ${escapeHtml(topOriginEntry[0])}` : 'Sin origen dominante.'}</p>
           </article>
           <article class="comisiones-summary-card">
-            <span>Calidades / modelos</span>
-            <strong>${formatInteger(uniqueQualities.size)} / ${formatInteger(uniqueModels.size)}</strong>
+            <span>Calidades / calendarios</span>
+            <strong>${formatInteger(uniqueQualities.size)} / ${formatInteger(uniqueCalendars.size)}</strong>
             <p>Dimensiones activas en el filtro.</p>
           </article>
         </div>
@@ -1047,12 +1053,10 @@
               <th>Cliente</th>
               <th>Setter</th>
               <th>Closer</th>
-              <th>Origen</th>
-              <th>Primer origen</th>
+              <th>Último origen</th>
+              <th>Calendario agendado</th>
               <th>Calidad</th>
-              <th>Modelo</th>
               <th>Aplica</th>
-              <th>Llamada</th>
               <th>Interés</th>
               <th>Embudo MEG</th>
               <th>Embudo Club</th>
@@ -1068,12 +1072,10 @@
                 <td>${escapeHtml(row.clientName)}</td>
                 <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.closer || '-')}</td>
-                <td>${escapeHtml(row.origin || '-')}</td>
-                <td>${escapeHtml(row.firstOrigin || '-')}</td>
+                <td>${escapeHtml(row.lastOrigin || '-')}</td>
+                <td>${escapeHtml(row.calendar || '-')}</td>
                 <td>${escapeHtml(row.quality || '-')}</td>
-                <td>${escapeHtml(row.model || '-')}</td>
                 <td>${escapeHtml(row.aplica || '-')}</td>
-                <td>${escapeHtml(row.llamada || '-')}</td>
                 <td>${escapeHtml(row.productInterest || '-')}</td>
                 <td>${escapeHtml(row.megStage || '-')}</td>
                 <td>${escapeHtml(row.clubStage || '-')}</td>
@@ -1081,7 +1083,7 @@
                 <td>${escapeHtml(row.productSold || '-')}</td>
                 <td>${renderGhlIdCell(row.ghlid)}</td>
               </tr>
-            `).join('') : '<tr><td colspan="16">No hay agendas para los filtros seleccionados.</td></tr>'}
+            `).join('') : '<tr><td colspan="14">No hay agendas para los filtros seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1095,17 +1097,15 @@
 
   function syncAgendaFilterControls() {
     const setterSelect = document.getElementById('commissionAgendaSetterSelect');
-    const originSelect = document.getElementById('commissionAgendaOriginSelect');
-    const modelSelect = document.getElementById('commissionAgendaModelSelect');
+    const lastOriginSelect = document.getElementById('commissionAgendaLastOriginSelect');
+    const calendarSelect = document.getElementById('commissionAgendaCalendarSelect');
     const aplicaSelect = document.getElementById('commissionAgendaAplicaSelect');
-    const callSelect = document.getElementById('commissionAgendaCallSelect');
 
     fillSimpleSelect(setterSelect, uniqueSortedValues(state.agendaRows, 'setter'), state.agendaFilters.setter);
-    fillSimpleSelect(originSelect, uniqueSortedValues(state.agendaRows, 'origin'), state.agendaFilters.origin);
+    fillSimpleSelect(lastOriginSelect, uniqueSortedValues(state.agendaRows, 'lastOrigin'), state.agendaFilters.lastOrigin);
     renderAgendaQualityChecks();
-    fillSimpleSelect(modelSelect, uniqueSortedValues(state.agendaRows, 'model'), state.agendaFilters.model);
+    fillSimpleSelect(calendarSelect, uniqueSortedValues(state.agendaRows, 'calendar'), state.agendaFilters.calendar);
     fillSimpleSelect(aplicaSelect, uniqueSortedValues(state.agendaRows, 'aplica'), state.agendaFilters.aplica);
-    fillSimpleSelect(callSelect, uniqueSortedValues(state.agendaRows, 'llamada'), state.agendaFilters.call);
     if (agendaDateFromInput) agendaDateFromInput.value = state.agendaFilters.from || '';
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
   }
@@ -1236,6 +1236,8 @@
 
     document.getElementById('commissionAgendaScaleRows').innerHTML = (config.agendaScale || [])
       .map((row, index) => createScaleRowMarkup('agendaScale', index, row)).join('');
+    document.getElementById('commissionSetterSalesScaleRows').innerHTML = (config.setterSalesScale || [])
+      .map((row, index) => createScaleRowMarkup('setterSalesScale', index, row)).join('');
     document.getElementById('commissionClubScaleRows').innerHTML = (config.clubScale || [])
       .map((row, index) => createScaleRowMarkup('clubScale', index, row)).join('');
     document.getElementById('commissionOverrideRows').innerHTML = (config.fixedOverrides || [])
@@ -1292,6 +1294,7 @@
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
       },
       agendaScale: readScaleRows('commissionAgendaScaleRows'),
+      setterSalesScale: readScaleRows('commissionSetterSalesScaleRows'),
       clubScale: readScaleRows('commissionClubScaleRows'),
       fixedOverrides: readOverrideRows(),
       closerRules: Array.isArray(state.rulesDraft?.closerRules) ? state.rulesDraft.closerRules : [],
@@ -1311,7 +1314,7 @@
   async function loadAgendaRows() {
     const { from, to } = getMonthRange(state.month);
     const response = await window.metricasApi.fetchAllRows('leads_raw', {
-      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen,primer_origen,calidad_lead,modelo_negocio,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
+      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen,primer_origen,ultimo_origen,calendario_agendado,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
       from,
       to,
       dateField: 'fecha_agenda',
@@ -1389,6 +1392,9 @@
     state.rulesDraft.agendaScale.push({ min: 0, pct: 0 });
     renderRulesEditor();
   });
+  document.getElementById('commissionSetterSalesScaleRows')?.addEventListener('change', () => {
+    state.rulesDraft.setterSalesScale = readScaleRows('commissionSetterSalesScaleRows');
+  });
   document.getElementById('addClubScaleRow').addEventListener('click', () => {
     state.rulesDraft.clubScale.push({ min: 0, pct: 0 });
     renderRulesEditor();
@@ -1440,10 +1446,9 @@
     ['commissionAgendaSetterSelect', 'setter'],
     ['commissionAgendaDateFrom', 'from'],
     ['commissionAgendaDateTo', 'to'],
-    ['commissionAgendaOriginSelect', 'origin'],
-    ['commissionAgendaModelSelect', 'model'],
-    ['commissionAgendaAplicaSelect', 'aplica'],
-    ['commissionAgendaCallSelect', 'call']
+    ['commissionAgendaLastOriginSelect', 'lastOrigin'],
+    ['commissionAgendaCalendarSelect', 'calendar'],
+    ['commissionAgendaAplicaSelect', 'aplica']
   ].forEach(([id, key]) => {
     document.getElementById(id)?.addEventListener('change', (event) => {
       state.agendaFilters[key] = event.target.value || '';
