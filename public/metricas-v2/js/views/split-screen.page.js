@@ -12,6 +12,7 @@
     { value: '/views/alertas-operativas.html', label: 'Alertas Operativas' },
     { value: '/views/mag-sistema-agendas.html', label: 'Sistema de Agendas' },
     { value: '/views/mag-reporte-closers-2026.html', label: 'Reporte Closers' },
+    { value: '/views/reporte_mayo_checkpoints_strikes.html', label: 'Strike y Checkpoints' },
     { value: '/views/setting.html', label: 'Setting' },
     { value: '/views/marketing.html', label: 'Totales MKT' },
     { value: '/views/leads-bdd.html', label: 'Informe Por Respuestas' },

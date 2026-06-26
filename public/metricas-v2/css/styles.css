@@ -5672,6 +5672,12 @@ th {
   font-size: 1.4rem;
 }
 
+.mis-comprobantes-page .table-wrap,
+.mis-comprobantes-page .csm-table-wrap {
+  overflow: visible;
+  max-height: none;
+}
+
 .carga-comprobantes-toolbar {
   display: flex;
   justify-content: space-between;

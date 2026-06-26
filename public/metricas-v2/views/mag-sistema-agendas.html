@@ -288,6 +288,8 @@
   <button class="tb active" onclick="showTab('mes',this)">Mes en Curso</button>
   <button class="tb" onclick="showTab('reg',this)">Reglas del Sistema</button>
   <button class="tb" onclick="showTab('manual',this)">Manual Closers</button>
+  <button class="tb" onclick="showTab('reportes-closers',this)">Reporte Closers</button>
+  <button class="tb" onclick="showTab('strike-checkpoints',this)">Strike y Checkpoints</button>
 </div>
 
 <div id="tab-mes" class="tab-content active">
@@ -431,6 +433,36 @@
       class="manual-frame"
       src="/views/mag-manual-closers.html?embed=1"
       title="Manual de Closers"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<div id="tab-reportes-closers" class="tab-content">
+  <div class="manual-frame-wrap">
+    <div class="manual-frame-head">
+      <h3>Reporte Closers</h3>
+      <p>Análisis extendido de rentabilidad, cash, cierres, calidad comercial y reportes personales.</p>
+    </div>
+    <iframe
+      class="manual-frame"
+      src="/views/mag-reporte-closers-2026.html?embed=1"
+      title="Reporte Closers"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<div id="tab-strike-checkpoints" class="tab-content">
+  <div class="manual-frame-wrap">
+    <div class="manual-frame-head">
+      <h3>Strike y Checkpoints</h3>
+      <p>Reporte mensual con puntajes, KPIs, bonus, ranking final y consecuencias del sistema.</p>
+    </div>
+    <iframe
+      class="manual-frame"
+      src="/views/reporte_mayo_checkpoints_strikes.html?embed=1"
+      title="Strike y Checkpoints"
       loading="lazy"
     ></iframe>
   </div>

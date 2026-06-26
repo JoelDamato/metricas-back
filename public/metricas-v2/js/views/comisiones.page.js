@@ -16,10 +16,10 @@
       setter: '',
       from: '',
       to: '',
-      lastOrigin: '',
+      lastOrigin: [],
       quality: [],
       aplica: '',
-      calendar: ''
+      calendar: []
     },
     configMeta: null,
     rulesDraft: null,
@@ -355,15 +355,53 @@
   }
 
   function renderAgendaQualityChecks() {
-    const container = document.getElementById('commissionAgendaQualityChecks');
+    renderAgendaCheckgroup({
+      containerId: 'commissionAgendaQualityChecks',
+      values: uniqueSortedValues(state.agendaRows, 'quality'),
+      selectedValues: state.agendaFilters.quality,
+      emptyLabel: 'Sin calidades',
+      onChange: (values) => {
+        state.agendaFilters.quality = values;
+        renderAgendaPanel();
+      }
+    });
+  }
+
+  function renderAgendaLastOriginChecks() {
+    renderAgendaCheckgroup({
+      containerId: 'commissionAgendaLastOriginChecks',
+      values: uniqueSortedValues(state.agendaRows, 'originFilter'),
+      selectedValues: state.agendaFilters.lastOrigin,
+      emptyLabel: 'Sin orígenes',
+      onChange: (values) => {
+        state.agendaFilters.lastOrigin = values;
+        renderAgendaPanel();
+      }
+    });
+  }
+
+  function renderAgendaCalendarChecks() {
+    renderAgendaCheckgroup({
+      containerId: 'commissionAgendaCalendarChecks',
+      values: uniqueSortedValues(state.agendaRows, 'calendar'),
+      selectedValues: state.agendaFilters.calendar,
+      emptyLabel: 'Sin calendarios',
+      onChange: (values) => {
+        state.agendaFilters.calendar = values;
+        renderAgendaPanel();
+      }
+    });
+  }
+
+  function renderAgendaCheckgroup({ containerId, values, selectedValues, emptyLabel, onChange }) {
+    const container = document.getElementById(containerId);
     if (!container) return;
-    const values = uniqueSortedValues(state.agendaRows, 'quality');
-    if (!values.length) {
-      container.innerHTML = '<span class="comisiones-checkgroup-empty">Sin calidades</span>';
+    if (!(values || []).length) {
+      container.innerHTML = `<span class="comisiones-checkgroup-empty">${escapeHtml(emptyLabel || 'Sin opciones')}</span>`;
       return;
     }
 
-    const selected = new Set((state.agendaFilters.quality || []).map((value) => normalizeText(value)));
+    const selected = new Set((selectedValues || []).map((value) => normalizeText(value)));
     container.innerHTML = values.map((value) => `
       <label class="comisiones-checkpill">
         <input type="checkbox" value="${escapeHtml(value)}" ${selected.has(normalizeText(value)) ? 'checked' : ''} />
@@ -373,8 +411,7 @@
 
     container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
       input.addEventListener('change', () => {
-        state.agendaFilters.quality = [...container.querySelectorAll('input[type="checkbox"]:checked')].map((node) => node.value || '');
-        renderAgendaPanel();
+        onChange?.([...container.querySelectorAll('input[type="checkbox"]:checked')].map((node) => node.value || ''));
       });
     });
   }
@@ -484,6 +521,7 @@
         origin: String(row.origen || row.primer_origen || '').trim(),
         firstOrigin: String(row.primer_origen || '').trim(),
         lastOrigin: String(row.ultimo_origen || '').trim(),
+        originFilter: String(row.ultimo_origen || row.origen || row.primer_origen || '').trim(),
         calendar: String(row.calendario_agendado || '').trim(),
         quality: String(row.calidad_lead || '').trim(),
         strategy: String(row.estrategia_a || '').trim(),
@@ -498,7 +536,7 @@
         mail: String(row.mail || '').trim(),
         phone: String(row.telefono || row.whatsapp || '').trim()
       }))
-      .filter((row) => matchesApsetOrRt(row.lastOrigin) || matchesApsetOrRt(row.calendar))
+      .filter((row) => matchesApsetOrRt(row.originFilter) || matchesApsetOrRt(row.calendar))
       .filter((row) => row.setter && row.agendaDate && normalizeText(row.agendo) === 'agendo')
       .sort((a, b) => String(b.agendaDate || '').localeCompare(String(a.agendaDate || '')) || a.clientName.localeCompare(b.clientName, 'es'));
   }
@@ -508,13 +546,19 @@
       if (filters.setter && normalizeText(row.setter) !== normalizeText(filters.setter)) return false;
       if (filters.from && row.agendaDate && row.agendaDate < filters.from) return false;
       if (filters.to && row.agendaDate && row.agendaDate > filters.to) return false;
-      if (filters.lastOrigin && normalizeText(row.lastOrigin) !== normalizeText(filters.lastOrigin)) return false;
+      if (Array.isArray(filters.lastOrigin) && filters.lastOrigin.length) {
+        const allowedOrigins = filters.lastOrigin.map((value) => normalizeText(value));
+        if (!allowedOrigins.includes(normalizeText(row.originFilter))) return false;
+      }
       if (Array.isArray(filters.quality) && filters.quality.length) {
         const allowedQualities = filters.quality.map((value) => normalizeText(value));
         if (!allowedQualities.includes(normalizeText(row.quality))) return false;
       }
       if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
-      if (filters.calendar && normalizeText(row.calendar) !== normalizeText(filters.calendar)) return false;
+      if (Array.isArray(filters.calendar) && filters.calendar.length) {
+        const allowedCalendars = filters.calendar.map((value) => normalizeText(value));
+        if (!allowedCalendars.includes(normalizeText(row.calendar))) return false;
+      }
       return true;
     });
   }
@@ -837,10 +881,7 @@
 
     node.querySelectorAll('[data-person]').forEach((button) => {
       button.addEventListener('click', () => {
-        state.selectedPerson = button.dataset.person;
-        personSelect.value = state.selectedPerson;
-        setActiveTab('person');
-        renderPersonPanel();
+        openPersonComprobantes(button.dataset.person);
       });
     });
 
@@ -997,12 +1038,12 @@
     const detailNode = document.getElementById('commissionAgendaDetails');
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
-    const uniqueOrigins = new Set(filteredRows.map((row) => row.lastOrigin).filter(Boolean));
+    const uniqueOrigins = new Set(filteredRows.map((row) => row.originFilter).filter(Boolean));
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
     const uniqueCalendars = new Set(filteredRows.map((row) => row.calendar).filter(Boolean));
     const nahuelRows = filteredRows.filter((row) => isNahuelSetter(row.setter));
     const topOriginEntry = [...filteredRows.reduce((map, row) => {
-      const key = row.lastOrigin || 'Sin último origen';
+      const key = row.originFilter || 'Sin origen';
       map.set(key, Number(map.get(key) || 0) + 1);
       return map;
     }, new Map()).entries()].sort((a, b) => b[1] - a[1])[0] || null;
@@ -1012,7 +1053,7 @@
         <div class="comisiones-agendas-head">
           <div>
             <h3>${escapeHtml(setterLabel)}</h3>
-            <p>Base de agendas del mes por <strong>fecha_agenda</strong>, tomando solo filas con <strong>último origen</strong> o <strong>calendario agendado</strong> en APSET / RT.</p>
+            <p>Base de agendas del mes por <strong>fecha_agenda</strong>, tomando solo filas con <strong>origen</strong> o <strong>calendario agendado</strong> en APSET / RT.</p>
           </div>
           <div class="comisiones-agendas-period">
             <span>${escapeHtml(state.agendaFilters.from || '-')}</span>
@@ -1031,7 +1072,7 @@
             <p>Dentro del filtro activo.</p>
           </article>
           <article class="comisiones-summary-card">
-            <span>Últimos orígenes</span>
+            <span>Orígenes</span>
             <strong>${formatInteger(uniqueOrigins.size)}</strong>
             <p>${topOriginEntry ? `Principal: ${escapeHtml(topOriginEntry[0])}` : 'Sin origen dominante.'}</p>
           </article>
@@ -1053,7 +1094,7 @@
               <th>Cliente</th>
               <th>Setter</th>
               <th>Closer</th>
-              <th>Último origen</th>
+              <th>Origen</th>
               <th>Calendario agendado</th>
               <th>Calidad</th>
               <th>Aplica</th>
@@ -1072,7 +1113,7 @@
                 <td>${escapeHtml(row.clientName)}</td>
                 <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.closer || '-')}</td>
-                <td>${escapeHtml(row.lastOrigin || '-')}</td>
+                <td>${escapeHtml(row.originFilter || '-')}</td>
                 <td>${escapeHtml(row.calendar || '-')}</td>
                 <td>${escapeHtml(row.quality || '-')}</td>
                 <td>${escapeHtml(row.aplica || '-')}</td>
@@ -1097,14 +1138,12 @@
 
   function syncAgendaFilterControls() {
     const setterSelect = document.getElementById('commissionAgendaSetterSelect');
-    const lastOriginSelect = document.getElementById('commissionAgendaLastOriginSelect');
-    const calendarSelect = document.getElementById('commissionAgendaCalendarSelect');
     const aplicaSelect = document.getElementById('commissionAgendaAplicaSelect');
 
     fillSimpleSelect(setterSelect, uniqueSortedValues(state.agendaRows, 'setter'), state.agendaFilters.setter);
-    fillSimpleSelect(lastOriginSelect, uniqueSortedValues(state.agendaRows, 'lastOrigin'), state.agendaFilters.lastOrigin);
+    renderAgendaLastOriginChecks();
     renderAgendaQualityChecks();
-    fillSimpleSelect(calendarSelect, uniqueSortedValues(state.agendaRows, 'calendar'), state.agendaFilters.calendar);
+    renderAgendaCalendarChecks();
     fillSimpleSelect(aplicaSelect, uniqueSortedValues(state.agendaRows, 'aplica'), state.agendaFilters.aplica);
     if (agendaDateFromInput) agendaDateFromInput.value = state.agendaFilters.from || '';
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
@@ -1115,6 +1154,19 @@
     syncAgendaFilterControls();
     renderAgendaPanel();
     setActiveTab('agendas');
+  }
+
+  function openPersonComprobantes(person = '') {
+    state.selectedPerson = person || '';
+    if (personSelect) personSelect.value = state.selectedPerson;
+    setActiveTab('person');
+    renderPersonPanel();
+    window.requestAnimationFrame(() => {
+      document.getElementById('commissionPersonDetails')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    });
   }
 
   function createScaleRowMarkup(type, index, row) {
@@ -1446,8 +1498,6 @@
     ['commissionAgendaSetterSelect', 'setter'],
     ['commissionAgendaDateFrom', 'from'],
     ['commissionAgendaDateTo', 'to'],
-    ['commissionAgendaLastOriginSelect', 'lastOrigin'],
-    ['commissionAgendaCalendarSelect', 'calendar'],
     ['commissionAgendaAplicaSelect', 'aplica']
   ].forEach(([id, key]) => {
     document.getElementById(id)?.addEventListener('change', (event) => {

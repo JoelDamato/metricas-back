@@ -14,6 +14,7 @@ const PAGE_OPTIONS = [
   { value: 'mag-reportes-personales.html', label: 'Reportes personales de closers' },
   { value: 'mag-reporte-closers-2026.html', label: 'Reporte closers' },
   { value: 'mag-manual-closers.html', label: 'Manual closers' },
+  { value: 'reporte_mayo_checkpoints_strikes.html', label: 'Strike y checkpoints' },
   { value: 'leads-bdd.html', label: 'Informe por respuestas' },
   { value: 'marketing.html', label: 'Marketing' },
   { value: 'comisiones.html', label: 'Comisiones' },

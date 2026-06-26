@@ -15,6 +15,7 @@ const PAGE_ROLE_ACCESS = {
   'mag-reportes-personales.html': ['total', 'comercial'],
   'mag-reporte-closers-2026.html': ['total', 'comercial'],
   'mag-manual-closers.html': ['total', 'comercial'],
+  'reporte_mayo_checkpoints_strikes.html': ['total', 'comercial'],
   'admin-usuarios.html': ['total'],
   'leads-bdd.html': ['total', 'comercial', 'csm'],
   'marketing.html': ['total', 'comercial', 'csm'],
@@ -126,6 +127,7 @@ const USER_ACCESS_OVERRIDES = {
       'mag-reportes-personales.html',
       'mag-reporte-closers-2026.html',
       'mag-manual-closers.html',
+      'reporte_mayo_checkpoints_strikes.html',
       'comprobantes.html',
       'carga-comprobantes.html',
       'mis-comprobantes.html'
@@ -185,6 +187,7 @@ const USER_ACCESS_OVERRIDES = {
       'mag-reportes-personales.html',
       'mag-reporte-closers-2026.html',
       'mag-manual-closers.html',
+      'reporte_mayo_checkpoints_strikes.html',
       'setting.html',
       'leads-bdd.html',
       'marketing.html',
