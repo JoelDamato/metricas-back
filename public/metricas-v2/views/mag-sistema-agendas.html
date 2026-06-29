@@ -416,7 +416,7 @@
         <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
         <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
         <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
-        <li><span class="dot">→</span> El monto base y el objetivo se cargan de forma semanal y se evalúan igual para cada semana activa</li>
+        <li><span class="dot">→</span> El monto base, el objetivo y los escalones del bonus se prorratean automáticamente según los días activos de cada semana</li>
         <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
       </ul>
     </div>
@@ -955,12 +955,16 @@ function getWeeklyThresholds(){
     stepWeekly: Number(STEP || 0)
   };
 }
+function roundMoney(value){
+  return Math.round(Number(value || 0) * 100) / 100;
+}
 function adj(days){
   const thresholds=getWeeklyThresholds();
+  const ratio=Math.max(0, Number(days || 0)) / 7;
   return {
-    floor: thresholds.floorWeekly,
-    target: thresholds.targetWeekly,
-    step: thresholds.stepWeekly
+    floor: roundMoney(thresholds.floorWeekly * ratio),
+    target: roundMoney(thresholds.targetWeekly * ratio),
+    step: roundMoney(thresholds.stepWeekly * ratio)
   };
 }
 function bonusPct(cash,days){
@@ -1083,7 +1087,7 @@ function renderMilestoneBar(){
   const activeWeek=activeIndex>=0?weeks[activeIndex]:null;
   const weeklyTotal=activeIndex>=0?(tots[activeIndex]||0):0;
   const activeDays=activeWeek?.days || 7;
-  const { floor, target } = adj(activeDays);
+  const { floor, target, step } = adj(activeDays);
 
   document.getElementById('mbar-val').textContent=fmt(weeklyTotal);
 
@@ -1109,8 +1113,8 @@ function renderMilestoneBar(){
     hint.textContent=`${hint.textContent} · Faltan ${fmt(target-weeklyTotal)} para bonus 1%`;
   }else{
     const pct=bonusPct(weeklyTotal,activeDays);
-    const steps=Math.floor((weeklyTotal-target)/STEP);
-    const nextVal=target+(steps+1)*STEP;
+    const steps=step>0?Math.floor((weeklyTotal-target)/step):0;
+    const nextVal=target+((steps+1)*step);
     pill.className='mpill bonus';pill.textContent=`Bonus acumulado ${(pct*100).toFixed(1)}%`;
     hint.textContent=`${hint.textContent} · ${fmt(nextVal-weeklyTotal)} más → ${((pct+0.005)*100).toFixed(1)}%`;
   }
@@ -1124,9 +1128,9 @@ function renderMilestoneBar(){
   const milestones=[
     {val:floor,       label:`${fmtK(floor)} · Piso`, color:'#F59E0B',pct:null},
     {val:target,      label:`${fmtK(target)} · Meta`,color:'#2DD4A0',pct:'1%'},
-    {val:target+STEP, label:fmtK(target+STEP),       color:'#2DD4A0',pct:'1.5%'},
-    {val:target+STEP*2,label:fmtK(target+STEP*2),    color:'#2DD4A0',pct:'2%'},
-    {val:target+STEP*3,label:fmtK(target+STEP*3),    color:'#2DD4A0',pct:'2.5%'},
+    {val:target+step, label:fmtK(target+step),       color:'#2DD4A0',pct:'1.5%'},
+    {val:target+step*2,label:fmtK(target+step*2),    color:'#2DD4A0',pct:'2%'},
+    {val:target+step*3,label:fmtK(target+step*3),    color:'#2DD4A0',pct:'2.5%'},
   ];
   const marksHTML=milestones.map(m=>{
     const mp=(m.val/SCALE_MAX)*100;

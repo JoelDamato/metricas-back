@@ -77,6 +77,34 @@
       line-height:1.65;
       font-size:15px;
     }
+    .hero-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:18px;
+      flex-wrap:wrap;
+    }
+    .month-picker{
+      display:grid;
+      gap:6px;
+      min-width:220px;
+    }
+    .month-picker label{
+      font-size:11px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-weight:700;
+    }
+    .month-picker input{
+      height:44px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(8,17,31,.6);
+      color:var(--text);
+      padding:0 14px;
+      font:inherit;
+    }
     .hero-actions{
       display:flex;
       gap:10px;
@@ -351,6 +379,24 @@
       font-size:12px;
       line-height:1.6;
     }
+    .empty-state{
+      margin-top:24px;
+      background:linear-gradient(180deg, rgba(18,31,52,.96), rgba(12,22,38,.96));
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:36px 24px;
+      text-align:center;
+    }
+    .empty-state h2{
+      margin:0 0 10px;
+      font-size:1.4rem;
+    }
+    .empty-state p{
+      margin:0;
+      color:var(--muted);
+      line-height:1.65;
+    }
     @media (max-width: 1080px){
       .summary-grid,
       .closers-grid,
@@ -370,423 +416,292 @@
 </head>
 <body>
   <main class="page">
-    <section class="hero">
-      <div class="eyebrow">Reporte Mensual - Mayo 2026</div>
-      <h1>Checkpoints, Strikes, KPIs y Bonus</h1>
-      <p>Lectura mensual del equipo de closers con foco en consistencia operativa, calidad de ejecución, resultado semanal, desempeño individual y consecuencias directas del sistema de checks y strikes.</p>
-      <div class="hero-actions">
-        <a class="btn primary" href="/views/reporte_mayo_checkpoints_strikes.html" download="reporte_mayo_checkpoints_strikes.html">Descargar HTML</a>
-        <button class="btn" type="button" onclick="window.print()">Imprimir / Exportar</button>
-      </div>
-      <div class="summary-grid">
-        <article class="stat">
-          <div class="stat-label">Cash Total del Mes</div>
-          <div class="stat-value">US$ 57.878,27</div>
-        </article>
-        <article class="stat">
-          <div class="stat-label">Bonus Total Generado</div>
-          <div class="stat-value">US$ 199,91</div>
-        </article>
-        <article class="stat">
-          <div class="stat-label">Mejor Semana</div>
-          <div class="stat-value">Semana 4</div>
-        </article>
-        <article class="stat">
-          <div class="stat-label">Peor Semana</div>
-          <div class="stat-value">Semana 1</div>
-        </article>
-        <article class="stat">
-          <div class="stat-label">Semana con Bonus</div>
-          <div class="stat-value">Solo Semana 4</div>
-        </article>
-      </div>
-    </section>
-
-    <section class="section two-col">
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Resumen Ejecutivo</h2>
-            <p>Panorama general del mes y lectura rápida del sistema.</p>
-          </div>
-        </div>
-        <ul class="exec-list">
-          <li><span class="dot"></span><span>Mayo fue un mes irregular, con un inicio flojo y una recuperación fuerte sobre la mitad final.</span></li>
-          <li><span class="dot"></span><span>La semana 1 quedó muy por debajo del piso esperado y marcó el tono de arranque del mes.</span></li>
-          <li><span class="dot"></span><span>La semana 4 fue el mejor momento del equipo, con US$ 19.990,54 y la única generación de bonus del período.</span></li>
-          <li><span class="dot"></span><span>Patricia Conti y Pablo Butera lideraron el cash collected mensual, combinando volumen y mejor lectura operativa.</span></li>
-          <li><span class="dot"></span><span>Carlos Tu sostuvo volumen comercial, pero su puntaje quedó neutralizado por los strikes por carga de datos.</span></li>
-          <li><span class="dot"></span><span>La principal oportunidad del equipo es ganar consistencia semanal, reducir errores de carga y sostener alta disponibilidad de agenda.</span></li>
-        </ul>
-      </div>
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Sistema de Puntaje</h2>
-            <p>Base usada para el ranking y las consecuencias.</p>
-          </div>
-        </div>
-        <div class="chips">
-          <span class="chip check">Checkpoint = +1 punto</span>
-          <span class="chip strike">Strike = -1 punto</span>
-          <span class="chip bonus">Bonus = premio económico</span>
-          <span class="chip neutral">Puntaje final = checks - strikes</span>
-        </div>
-        <p class="footnote">El sistema no solo ordena el ranking del mes: también impacta en comisiones, premios por KPIs y nivel de agenda disponible según el puntaje final alcanzado.</p>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <h2>Checkpoints y Strikes por Closer</h2>
-          <p>Motivos individuales con su puntaje final.</p>
-        </div>
-      </div>
-      <div class="closers-grid">
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Pablo Butera</h3>
-            <span class="score-pill score-positive">+1</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list">
-              <li>+1 por tener más de 8 de disponibilidad en agenda.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-        </article>
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Patricia Conti</h3>
-            <span class="score-pill score-positive">+2</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list">
-              <li>+1 por tener más de 8 de disponibilidad en agenda.</li>
-              <li>+1 por estar entre quienes tuvieron menos errores en la carga de datos.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-        </article>
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Carlos Tu</h3>
-            <span class="score-pill score-neutral">0</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list">
-              <li>+1 por tener más de 8 de disponibilidad en agenda.</li>
-              <li>+1 por organizar los recursos en Notion.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list">
-              <li>-2 por tener más errores en la carga de datos.</li>
-            </ul>
-          </div>
-        </article>
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Walter Alegre</h3>
-            <span class="score-pill score-negative">-1</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list">
-              <li>-1 por ser el segundo con más errores en la carga de datos.</li>
-            </ul>
-          </div>
-        </article>
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Claudio Nicolini</h3>
-            <span class="score-pill score-positive">+1</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list">
-              <li>+1 por estar entre quienes tuvieron menos errores en la carga de datos.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-        </article>
-        <article class="closer-card">
-          <div class="closer-top">
-            <h3 class="closer-name">Mauro Gaitan</h3>
-            <span class="score-pill score-neutral">0</span>
-          </div>
-          <div class="subblock">
-            <h3>Checks</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-          <div class="subblock">
-            <h3>Strikes</h3>
-            <ul class="reason-list empty">
-              <li>Ninguno.</li>
-            </ul>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <section class="section two-col">
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Ranking Final de Puntos</h2>
-            <p>Resultado final del sistema de checkpoints y strikes.</p>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="ranking-table">
-            <thead>
-              <tr>
-                <th>Puesto</th>
-                <th>Closer</th>
-                <th class="align-r">Puntaje</th>
-                <th>Resultado</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span class="rank-badge">1</span></td>
-                <td>Patricia Conti</td>
-                <td class="align-r">+2</td>
-                <td><span class="chip neutral">Sin premio asignado</span></td>
-              </tr>
-              <tr>
-                <td><span class="rank-badge">2</span></td>
-                <td>Pablo Butera</td>
-                <td class="align-r">+1</td>
-                <td><span class="chip neutral">Sin premio asignado</span></td>
-              </tr>
-              <tr>
-                <td><span class="rank-badge">2</span></td>
-                <td>Claudio Nicolini</td>
-                <td class="align-r">+1</td>
-                <td><span class="chip neutral">Sin premio asignado</span></td>
-              </tr>
-              <tr>
-                <td><span class="rank-badge">4</span></td>
-                <td>Carlos Tu</td>
-                <td class="align-r">0</td>
-                <td><span class="chip neutral">Sin premio asignado</span></td>
-              </tr>
-              <tr>
-                <td><span class="rank-badge">4</span></td>
-                <td>Mauro Gaitan</td>
-                <td class="align-r">0</td>
-                <td><span class="chip neutral">Sin premio asignado</span></td>
-              </tr>
-              <tr>
-                <td><span class="rank-badge">6</span></td>
-                <td>Walter Alegre</td>
-                <td class="align-r">-1</td>
-                <td><span class="chip strike">No cobra premios por KPIs</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>KPIs Logrados por Closer</h2>
-            <p>Cantidad y tipo de indicadores cumplidos.</p>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Closer</th>
-                <th>KPIs</th>
-                <th class="align-r">Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Carlos Tu</td><td>Ninguno</td><td class="align-r">0</td></tr>
-              <tr><td>Claudio Nicolini</td><td>CC 3m %</td><td class="align-r">1</td></tr>
-              <tr><td>Mauro Gaitan</td><td>Cierre seg. llamada</td><td class="align-r">1</td></tr>
-              <tr><td>Pablo Butera</td><td>Cierre seg. llamada, Asistencia seg. llamada, Tasa asistencia</td><td class="align-r">3</td></tr>
-              <tr><td>Patricia Conti</td><td>Cierre seg. llamada, Asistencia seg. llamada, Tasa asistencia, Tasa cierre</td><td class="align-r">4</td></tr>
-              <tr><td>Walter Alegre</td><td>Ninguno</td><td class="align-r">0</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <h2>Resultados Semanales - Mayo</h2>
-          <p>Desempeño del equipo y generación de bonus por semana.</p>
-        </div>
-      </div>
-      <div class="panel table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Semana</th>
-              <th>Fechas</th>
-              <th class="align-r">Resultado Equipo</th>
-              <th>Estado</th>
-              <th class="align-r">Bonus</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Semana 1</td><td>1-3 mayo</td><td class="align-r">US$ 1.025,50</td><td><span class="chip strike">Bajo piso</span></td><td class="align-r">US$ 0</td></tr>
-            <tr><td>Semana 2</td><td>4-10 mayo</td><td class="align-r">US$ 9.017,59</td><td><span class="chip strike">Bajo piso</span></td><td class="align-r">US$ 0</td></tr>
-            <tr><td>Semana 3</td><td>11-17 mayo</td><td class="align-r">US$ 13.220,51</td><td><span class="chip neutral">Sin bonus</span></td><td class="align-r">US$ 0</td></tr>
-            <tr><td>Semana 4</td><td>18-24 mayo</td><td class="align-r">US$ 19.990,54</td><td><span class="chip bonus">Meta superada</span></td><td class="align-r">US$ 199,91</td></tr>
-            <tr><td>Semana 5</td><td>25-31 mayo</td><td class="align-r">US$ 14.624,14</td><td><span class="chip neutral">Sin bonus</span></td><td class="align-r">US$ 0</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="section two-col">
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Resultado Mensual por Closer</h2>
-            <p>Cash collected acumulado del mes.</p>
-          </div>
-        </div>
-        <div class="bar-list">
-          <div class="bar-row">
-            <div class="bar-head"><strong>Patricia Conti</strong><span>US$ 15.563,49</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-head"><strong>Pablo Butera</strong><span>US$ 15.237,35</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:97.9%"></div></div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-head"><strong>Carlos Tu</strong><span>US$ 12.728,86</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:81.8%"></div></div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-head"><strong>Mauro Gaitan</strong><span>US$ 5.817,25</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:37.4%"></div></div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-head"><strong>Claudio Nicolini</strong><span>US$ 4.525,00</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:29.1%"></div></div>
-          </div>
-          <div class="bar-row">
-            <div class="bar-head"><strong>Walter Alegre</strong><span>US$ 4.006,33</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:25.7%"></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="section-head">
-          <div>
-            <h2>Bonus Generado y Distribución</h2>
-            <p>La única semana con bonus fue la semana 4.</p>
-          </div>
-        </div>
-        <div class="bonus-callout">
-          <div class="callout">
-            <span class="stat-label">Bonus Total</span>
-            <strong>US$ 199,91</strong>
-          </div>
-          <div class="callout">
-            <span class="stat-label">Pool Semana 4</span>
-            <strong>US$ 19.990,54</strong>
-          </div>
-          <div class="callout">
-            <span class="stat-label">% Aplicado</span>
-            <strong>1%</strong>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Closer</th>
-                <th class="align-r">Bonus Semana 4</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Walter Alegre</td><td class="align-r">US$ 24,38</td></tr>
-              <tr><td>Carlos Tu</td><td class="align-r">US$ 51,50</td></tr>
-              <tr><td>Claudio Nicolini</td><td class="align-r">US$ 40,50</td></tr>
-              <tr><td>Mauro Gaitan</td><td class="align-r">US$ 37,04</td></tr>
-              <tr><td>Pablo Butera</td><td class="align-r">US$ 46,48</td></tr>
-              <tr><td>Patricia Conti</td><td class="align-r">US$ 0</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <h2>Tabla de Premios y Consecuencias</h2>
-          <p>Regla completa del sistema para convertir puntaje en impacto económico.</p>
-        </div>
-      </div>
-      <div class="panel table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="align-r">Puntaje</th>
-              <th>Premio / Consecuencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td class="align-r">10</td><td>10% comisión en todas las ventas + Día de Spa</td></tr>
-            <tr><td class="align-r">9</td><td>1% más comisión en todas las ventas</td></tr>
-            <tr><td class="align-r">8</td><td>7 + 1% más comisión de ventas de escala 5 a 9 ventas. Pasa a 10%</td></tr>
-            <tr><td class="align-r">7</td><td>1% más comisión de ventas de escala 1 a 4 ventas. Pasa a 9%</td></tr>
-            <tr><td class="align-r">6</td><td>80 USD</td></tr>
-            <tr><td class="align-r">5</td><td>$80.000</td></tr>
-            <tr><td class="align-r">4</td><td>$45.000</td></tr>
-            <tr><td class="align-r">3</td><td>$30.000</td></tr>
-            <tr><td class="align-r">2</td><td>-</td></tr>
-            <tr><td class="align-r">1</td><td>-</td></tr>
-            <tr><td class="align-r">0</td><td>-</td></tr>
-            <tr><td class="align-r">-1</td><td>No cobra premios por cumplimientos de KPIs</td></tr>
-            <tr><td class="align-r">-2</td><td>No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos semanales y mensuales</td></tr>
-            <tr><td class="align-r">-3</td><td>-1, -2 y 1% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 7%</td></tr>
-            <tr><td class="align-r">-4</td><td>-1, -2 y 2% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 6%</td></tr>
-            <tr><td class="align-r">-5</td><td>-1, -2, 2% menos del porcentaje comisionable y tomar solo agendas calidad D</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <div id="reportRoot"></div>
   </main>
+  <script>
+    const REPORTS_BY_MONTH = {
+      '2026-05': {
+        monthLabel: 'Mayo 2026',
+        title: 'Checkpoints, Strikes, KPIs y Bonus',
+        description: 'Lectura mensual del equipo de closers con foco en consistencia operativa, calidad de ejecucion, resultado semanal, desempeno individual y consecuencias directas del sistema de checks y strikes.',
+        summary: [
+          ['Cash Total del Mes', 'US$ 57.878,27'],
+          ['Bonus Total Generado', 'US$ 199,91'],
+          ['Mejor Semana', 'Semana 4'],
+          ['Peor Semana', 'Semana 1'],
+          ['Semana con Bonus', 'Solo Semana 4']
+        ],
+        executive: [
+          'Mayo fue un mes irregular, con un inicio flojo y una recuperacion fuerte sobre la mitad final.',
+          'La semana 1 quedo muy por debajo del piso esperado y marco el tono de arranque del mes.',
+          'La semana 4 fue el mejor momento del equipo, con US$ 19.990,54 y la unica generacion de bonus del periodo.',
+          'Patricia Conti y Pablo Butera lideraron el cash collected mensual, combinando volumen y mejor lectura operativa.',
+          'Carlos Tu sostuvo volumen comercial, pero su puntaje quedo neutralizado por los strikes por carga de datos.',
+          'La principal oportunidad del equipo es ganar consistencia semanal, reducir errores de carga y sostener alta disponibilidad de agenda.'
+        ],
+        closers: [
+          { name:'Pablo Butera', score:'+1', tone:'positive', checks:['+1 por tener mas de 8 de disponibilidad en agenda.'], strikes:['Ninguno.'] },
+          { name:'Patricia Conti', score:'+2', tone:'positive', checks:['+1 por tener mas de 8 de disponibilidad en agenda.','+1 por estar entre quienes tuvieron menos errores en la carga de datos.'], strikes:['Ninguno.'] },
+          { name:'Carlos Tu', score:'0', tone:'neutral', checks:['+1 por tener mas de 8 de disponibilidad en agenda.','+1 por organizar los recursos en Notion.'], strikes:['-2 por tener mas errores en la carga de datos.'] },
+          { name:'Walter Alegre', score:'-1', tone:'negative', checks:['Ninguno.'], strikes:['-1 por ser el segundo con mas errores en la carga de datos.'] },
+          { name:'Claudio Nicolini', score:'+1', tone:'positive', checks:['+1 por estar entre quienes tuvieron menos errores en la carga de datos.'], strikes:['Ninguno.'] },
+          { name:'Mauro Gaitan', score:'0', tone:'neutral', checks:['Ninguno.'], strikes:['Ninguno.'] }
+        ],
+        ranking: [
+          ['1','Patricia Conti','+2','Sin premio asignado','neutral'],
+          ['2','Pablo Butera','+1','Sin premio asignado','neutral'],
+          ['2','Claudio Nicolini','+1','Sin premio asignado','neutral'],
+          ['4','Carlos Tu','0','Sin premio asignado','neutral'],
+          ['4','Mauro Gaitan','0','Sin premio asignado','neutral'],
+          ['6','Walter Alegre','-1','No cobra premios por KPIs','strike']
+        ],
+        kpis: [
+          ['Carlos Tu','Ninguno','0'],
+          ['Claudio Nicolini','CC 3m %','1'],
+          ['Mauro Gaitan','Cierre seg. llamada','1'],
+          ['Pablo Butera','Cierre seg. llamada, Asistencia seg. llamada, Tasa asistencia','3'],
+          ['Patricia Conti','Cierre seg. llamada, Asistencia seg. llamada, Tasa asistencia, Tasa cierre','4'],
+          ['Walter Alegre','Ninguno','0']
+        ],
+        weeks: [
+          ['Semana 1','1-3 mayo','US$ 1.025,50','Bajo piso','US$ 0','strike'],
+          ['Semana 2','4-10 mayo','US$ 9.017,59','Bajo piso','US$ 0','strike'],
+          ['Semana 3','11-17 mayo','US$ 13.220,51','Sin bonus','US$ 0','neutral'],
+          ['Semana 4','18-24 mayo','US$ 19.990,54','Meta superada','US$ 199,91','bonus'],
+          ['Semana 5','25-31 mayo','US$ 14.624,14','Sin bonus','US$ 0','neutral']
+        ],
+        monthlyTotals: [
+          ['Patricia Conti','US$ 15.563,49',100],
+          ['Pablo Butera','US$ 15.237,35',97.9],
+          ['Carlos Tu','US$ 12.728,86',81.8],
+          ['Mauro Gaitan','US$ 5.817,25',37.4],
+          ['Claudio Nicolini','US$ 4.525,00',29.1],
+          ['Walter Alegre','US$ 4.006,33',25.7]
+        ],
+        bonusCallouts: [
+          ['Bonus Total','US$ 199,91'],
+          ['Pool Semana 4','US$ 19.990,54'],
+          ['% Aplicado','1%']
+        ],
+        bonusRows: [
+          ['Walter Alegre','US$ 24,38'],
+          ['Carlos Tu','US$ 51,50'],
+          ['Claudio Nicolini','US$ 40,50'],
+          ['Mauro Gaitan','US$ 37,04'],
+          ['Pablo Butera','US$ 46,48'],
+          ['Patricia Conti','US$ 0']
+        ],
+        rewards: [
+          ['10','10% comision en todas las ventas + Dia de Spa'],
+          ['9','1% mas comision en todas las ventas'],
+          ['8','7 + 1% mas comision de ventas de escala 5 a 9 ventas. Pasa a 10%'],
+          ['7','1% mas comision de ventas de escala 1 a 4 ventas. Pasa a 9%'],
+          ['6','80 USD'],
+          ['5','$80.000'],
+          ['4','$45.000'],
+          ['3','$30.000'],
+          ['2','-'],
+          ['1','-'],
+          ['0','-'],
+          ['-1','No cobra premios por cumplimientos de KPIs'],
+          ['-2','No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos semanales y mensuales'],
+          ['-3','-1, -2 y 1% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 7%'],
+          ['-4','-1, -2 y 2% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 6%'],
+          ['-5','-1, -2, 2% menos del porcentaje comisionable y tomar solo agendas calidad D']
+        ]
+      }
+    };
+
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderEmpty(monthValue){
+      return `
+        <section class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="eyebrow">Reporte Mensual - Sin datos</div>
+              <h1>Checkpoints, Strikes, KPIs y Bonus</h1>
+              <p>Todavia no hay un reporte cargado para el mes seleccionado.</p>
+            </div>
+            <div class="month-picker">
+              <label for="reportMonth">Mes del reporte</label>
+              <input id="reportMonth" type="month" value="${escapeHtml(monthValue)}" />
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="btn primary" href="/views/reporte_mayo_checkpoints_strikes.html" download="reporte_mayo_checkpoints_strikes.html">Descargar HTML</a>
+            <button class="btn" type="button" onclick="window.print()">Imprimir / Exportar</button>
+          </div>
+        </section>
+        <section class="empty-state">
+          <h2>No hay datos para ${escapeHtml(monthValue || 'ese mes')}</h2>
+          <p>Por ahora esta vista tiene cargado el reporte de <strong>mayo 2026</strong>. La estructura ya quedo preparada para sumar otros meses despues.</p>
+        </section>
+      `;
+    }
+
+    function renderReport(monthValue, data){
+      return `
+        <section class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="eyebrow">Reporte Mensual - ${escapeHtml(data.monthLabel)}</div>
+              <h1>${escapeHtml(data.title)}</h1>
+              <p>${escapeHtml(data.description)}</p>
+            </div>
+            <div class="month-picker">
+              <label for="reportMonth">Mes del reporte</label>
+              <input id="reportMonth" type="month" value="${escapeHtml(monthValue)}" />
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="btn primary" href="/views/reporte_mayo_checkpoints_strikes.html" download="reporte_mayo_checkpoints_strikes.html">Descargar HTML</a>
+            <button class="btn" type="button" onclick="window.print()">Imprimir / Exportar</button>
+          </div>
+          <div class="summary-grid">
+            ${data.summary.map(([label, value]) => `
+              <article class="stat">
+                <div class="stat-label">${escapeHtml(label)}</div>
+                <div class="stat-value">${escapeHtml(value)}</div>
+              </article>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="section two-col">
+          <div class="panel">
+            <div class="section-head"><div><h2>Resumen Ejecutivo</h2><p>Panorama general del mes y lectura rapida del sistema.</p></div></div>
+            <ul class="exec-list">
+              ${data.executive.map((item) => `<li><span class="dot"></span><span>${escapeHtml(item)}</span></li>`).join('')}
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>Sistema de Puntaje</h2><p>Base usada para el ranking y las consecuencias.</p></div></div>
+            <div class="chips">
+              <span class="chip check">Checkpoint = +1 punto</span>
+              <span class="chip strike">Strike = -1 punto</span>
+              <span class="chip bonus">Bonus = premio economico</span>
+              <span class="chip neutral">Puntaje final = checks - strikes</span>
+            </div>
+            <p class="footnote">El sistema no solo ordena el ranking del mes: tambien impacta en comisiones, premios por KPIs y nivel de agenda disponible segun el puntaje final alcanzado.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><div><h2>Checkpoints y Strikes por Closer</h2><p>Motivos individuales con su puntaje final.</p></div></div>
+          <div class="closers-grid">
+            ${data.closers.map((closer) => `
+              <article class="closer-card">
+                <div class="closer-top">
+                  <h3 class="closer-name">${escapeHtml(closer.name)}</h3>
+                  <span class="score-pill score-${escapeHtml(closer.tone)}">${escapeHtml(closer.score)}</span>
+                </div>
+                <div class="subblock">
+                  <h3>Checks</h3>
+                  <ul class="reason-list ${closer.checks.length === 1 && closer.checks[0] === 'Ninguno.' ? 'empty' : ''}">
+                    ${closer.checks.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+                  </ul>
+                </div>
+                <div class="subblock">
+                  <h3>Strikes</h3>
+                  <ul class="reason-list ${closer.strikes.length === 1 && closer.strikes[0] === 'Ninguno.' ? 'empty' : ''}">
+                    ${closer.strikes.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+                  </ul>
+                </div>
+              </article>
+            `).join('')}
+          </div>
+        </section>
+
+        <section class="section two-col">
+          <div class="panel">
+            <div class="section-head"><div><h2>Ranking Final de Puntos</h2><p>Resultado final del sistema de checkpoints y strikes.</p></div></div>
+            <div class="table-wrap"><table class="ranking-table"><thead><tr><th>Puesto</th><th>Closer</th><th class="align-r">Puntaje</th><th>Resultado</th></tr></thead><tbody>
+              ${data.ranking.map(([rank, closer, score, result, tone]) => `
+                <tr>
+                  <td><span class="rank-badge">${escapeHtml(rank)}</span></td>
+                  <td>${escapeHtml(closer)}</td>
+                  <td class="align-r">${escapeHtml(score)}</td>
+                  <td><span class="chip ${escapeHtml(tone)}">${escapeHtml(result)}</span></td>
+                </tr>
+              `).join('')}
+            </tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>KPIs Logrados por Closer</h2><p>Cantidad y tipo de indicadores cumplidos.</p></div></div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Closer</th><th>KPIs</th><th class="align-r">Cantidad</th></tr></thead><tbody>
+              ${data.kpis.map(([closer, kpi, qty]) => `<tr><td>${escapeHtml(closer)}</td><td>${escapeHtml(kpi)}</td><td class="align-r">${escapeHtml(qty)}</td></tr>`).join('')}
+            </tbody></table></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><div><h2>Resultados Semanales - ${escapeHtml(data.monthLabel.split(' ')[0])}</h2><p>Desempeno del equipo y generacion de bonus por semana.</p></div></div>
+          <div class="panel table-wrap"><table class="data-table"><thead><tr><th>Semana</th><th>Fechas</th><th class="align-r">Resultado Equipo</th><th>Estado</th><th class="align-r">Bonus</th></tr></thead><tbody>
+            ${data.weeks.map(([week, dates, total, status, bonus, tone]) => `<tr><td>${escapeHtml(week)}</td><td>${escapeHtml(dates)}</td><td class="align-r">${escapeHtml(total)}</td><td><span class="chip ${escapeHtml(tone)}">${escapeHtml(status)}</span></td><td class="align-r">${escapeHtml(bonus)}</td></tr>`).join('')}
+          </tbody></table></div>
+        </section>
+
+        <section class="section two-col">
+          <div class="panel">
+            <div class="section-head"><div><h2>Resultado Mensual por Closer</h2><p>Cash collected acumulado del mes.</p></div></div>
+            <div class="bar-list">
+              ${data.monthlyTotals.map(([closer, total, width]) => `
+                <div class="bar-row">
+                  <div class="bar-head"><strong>${escapeHtml(closer)}</strong><span>${escapeHtml(total)}</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${Number(width)}%"></div></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>Bonus Generado y Distribucion</h2><p>La unica semana con bonus fue la semana 4.</p></div></div>
+            <div class="bonus-callout">
+              ${data.bonusCallouts.map(([label, value]) => `<div class="callout"><span class="stat-label">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('')}
+            </div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Closer</th><th class="align-r">Bonus Semana 4</th></tr></thead><tbody>
+              ${data.bonusRows.map(([closer, bonus]) => `<tr><td>${escapeHtml(closer)}</td><td class="align-r">${escapeHtml(bonus)}</td></tr>`).join('')}
+            </tbody></table></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head"><div><h2>Tabla de Premios y Consecuencias</h2><p>Regla completa del sistema para convertir puntaje en impacto economico.</p></div></div>
+          <div class="panel table-wrap"><table class="data-table"><thead><tr><th class="align-r">Puntaje</th><th>Premio / Consecuencia</th></tr></thead><tbody>
+            ${data.rewards.map(([score, consequence]) => `<tr><td class="align-r">${escapeHtml(score)}</td><td>${escapeHtml(consequence)}</td></tr>`).join('')}
+          </tbody></table></div>
+        </section>
+      `;
+    }
+
+    function bindMonthPicker(){
+      const input = document.getElementById('reportMonth');
+      if(!input) return;
+      input.addEventListener('change', () => {
+        const next = new URL(window.location.href);
+        next.searchParams.set('month', input.value);
+        window.history.replaceState({}, '', next);
+        renderPage(input.value);
+      });
+    }
+
+    function renderPage(monthValue){
+      const root = document.getElementById('reportRoot');
+      const selectedMonth = monthValue || '2026-05';
+      const report = REPORTS_BY_MONTH[selectedMonth];
+      root.innerHTML = report ? renderReport(selectedMonth, report) : renderEmpty(selectedMonth);
+      bindMonthPicker();
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    renderPage(params.get('month') || '2026-05');
+  </script>
 </body>
 </html>
