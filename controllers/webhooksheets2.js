@@ -27,11 +27,9 @@ function normalizeDate(dateValue) {
   }
 }
 
-// Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
-function argentinaNowISO() {
-  const now = new Date();
-  const argentinaNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
-  return argentinaNow.toISOString().replace(/\.\d{3}Z$/, 'Z');
+// Para logs conviene guardar UTC real y convertir a Argentina en la UI.
+function nowISO() {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 // Función para safe stringify (evita errores con objetos circulares)
@@ -78,7 +76,7 @@ async function saveLog(logData) {
 
     // Establecer created_at con la hora actual de Argentina si no se proporciona
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      processedData.created_at = argentinaNowISO();
+      processedData.created_at = nowISO();
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {

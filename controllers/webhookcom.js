@@ -58,8 +58,8 @@ function normalizeDate(dateValue) {
   }
 }
 
-// Helper para hora actual de Argentina (UTC-3) en ISO sin milisegundos
-function argentinaNowISO() {
+// Para logs conviene guardar UTC real y convertir a Argentina en la UI.
+function nowISO() {
   return formatIsoNoMillis(new Date());
 }
 
@@ -105,9 +105,9 @@ async function saveLog(logData) {
       }
     }
 
-    // Establecer created_at con la hora actual de Argentina si no se proporciona
+    // Guardamos UTC real; la vista lo convierte a hora argentina.
     if (!Object.prototype.hasOwnProperty.call(processedData, 'created_at')) {
-      processedData.created_at = argentinaNowISO();
+      processedData.created_at = nowISO();
     }
 
     await axios.post(`${SUPABASE_URL}/rest/v1/webhook_logs`, processedData, {

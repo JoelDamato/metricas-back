@@ -16,7 +16,11 @@ async function loadViewRows() {
   title.textContent = `Vista: ${resource}`;
 
   const limit = Number(document.getElementById('limit').value || 100);
-  const orderBy = document.getElementById('orderBy').value.trim();
+  const orderByInput = document.getElementById('orderBy');
+  if (resource === 'webhook_logs' && orderByInput && !orderByInput.value.trim()) {
+    orderByInput.value = 'created_at';
+  }
+  const orderBy = orderByInput.value.trim();
 
   status.textContent = `Cargando datos de ${resource}...`;
 
@@ -27,7 +31,7 @@ async function loadViewRows() {
       orderDir: 'desc'
     });
 
-    window.tableRender.renderTable('tableContainer', response.rows);
+    window.tableRender.renderTable('tableContainer', response.rows, { resourceName: resource });
     status.textContent = `Filas cargadas: ${response.count}`;
   } catch (error) {
     status.textContent = error.message;

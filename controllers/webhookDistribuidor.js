@@ -30,7 +30,7 @@ async function guardarLog(tipo, mensaje, datos = {}) {
       ghl_id: datos.notionId || null,  // Mismo que notion_id
       attempted_data: datos.resultados ? JSON.stringify(datos.resultados) : null,
       payload: datos.payload ? JSON.stringify(datos.payload) : null,
-      created_at: new Date().toISOString(),
+      created_at: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
       notionid: datos.notionId || null
     };
 
