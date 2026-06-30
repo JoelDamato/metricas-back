@@ -1,5 +1,14 @@
 (function initHerramientasPage() {
   const STANDARD_PARAM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+  const BUILTIN_GHL_FIELDS = [
+    {
+      key: 'phone',
+      name: 'Teléfono del contacto',
+      mergeTag: '{{contact.phone}}',
+      fullKey: 'contact.phone',
+      dataType: 'TEXT'
+    }
+  ];
   const state = {
     presets: [],
     presetMap: new Map(),
@@ -111,9 +120,21 @@
         return Object.fromEntries(header.map((key, index) => [key, cols[index] ?? '']));
       });
 
-      state.ghlFields = rows
+      const csvFields = rows
         .map(normalizeGhlField)
         .filter((row) => row.key);
+      const builtinFields = BUILTIN_GHL_FIELDS.map(normalizeGhlField);
+      const mergedFields = [...builtinFields, ...csvFields];
+      const uniqueFields = [];
+      const seenKeys = new Set();
+
+      mergedFields.forEach((field) => {
+        if (!field.key || seenKeys.has(field.key)) return;
+        seenKeys.add(field.key);
+        uniqueFields.push(field);
+      });
+
+      state.ghlFields = uniqueFields;
       state.ghlFieldMap = new Map(state.ghlFields.map((field) => [field.key, field]));
 
       document.querySelectorAll('.tools-param-row').forEach((row) => syncCustomParamMeta(row));
