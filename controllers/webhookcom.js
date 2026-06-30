@@ -427,15 +427,6 @@ async function processQueue() {
   } catch (error) {
     console.error("❌ Error al procesar Google Sheets:", error.message);
     console.error("⚠️  Continuando con Supabase de todos modos...");
-    
-    // Log del error de Sheets
-    await saveLog({
-      webhook_type: 'com',
-      type: 'google_sheets_error',
-      message: error.message,
-      http_status: error.response?.status,
-      payload: payload
-    });
   }
   
   // Procesar Supabase (independiente de Sheets)

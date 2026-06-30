@@ -492,21 +492,22 @@ async function processQueue() {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000
     });
-    
+  } catch (error) {
+    console.error("❌ Error al procesar Google Sheets (CSM):", error.message);
+    console.error("⚠️  Continuando con Supabase de todos modos...");
+  }
+
+  try {
     console.log("⏳ Procesando Supabase (CSM)...");
     await sendToSupabase(payload);
   } catch (error) {
-    console.error("❌ Error en flujo de CSM:", error.message);
-    
-    // Log de error general en el flujo
-    const errorLog = {
+    console.error("❌ Error al procesar Supabase (CSM):", error.message);
+    await saveLog({
       webhook_type: 'csm',
-      type: 'process_queue_error',
+      type: 'supabase_process_error',
       message: error.message,
       payload: payload
-    };
-    
-    await saveLog(errorLog);
+    });
   } finally {
     isProcessing = false;
     if (queue.length > 0) setImmediate(processQueue);
