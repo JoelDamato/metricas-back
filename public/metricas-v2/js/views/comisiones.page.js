@@ -342,6 +342,13 @@
     return normalized === 'nahuel iasci' || normalized === 'nahue' || normalized === 'nahuel';
   }
 
+  function isQualifiedAgendaRow(row) {
+    if (!row?.setter || !row?.agendaDate) return false;
+    if (normalizeText(row.agendo) !== 'agendo') return false;
+    if (normalizeText(row.aplica) !== 'aplica') return false;
+    return matchesApsetOrRt(row.originFilter) || matchesApsetOrRt(row.calendar);
+  }
+
   function fillSimpleSelect(selectNode, values, selectedValue = '') {
     if (!selectNode) return;
     const options = ['<option value="">Todos</option>'];
@@ -426,8 +433,12 @@
     return statusValues.some((value) => value.includes('concili'));
   }
 
+  function getAllCommissionDetails() {
+    return state.dashboard?.details || [];
+  }
+
   function getFilteredCommissionDetails() {
-    const details = state.dashboard?.details || [];
+    const details = getAllCommissionDetails();
     const reconciliationFiltered = state.reconciliationFilter === 'conciliated'
       ? details.filter(isConciliatedDetail)
       : state.reconciliationFilter === 'not_conciliated'
@@ -496,8 +507,8 @@
   }
 
   function updateCommissionsStatus() {
-    const filteredDetails = getFilteredCommissionDetails();
-    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(filteredDetails.length)} líneas de comisión. Conciliación: ${getReconciliationFilterLabel()} | Club: ${getClubFilterLabel()} | Tipo: ${getTypeFilterLabel()}${state.clientSearch ? ` | Cliente: ${state.clientSearch}` : ''}.`);
+    const details = getAllCommissionDetails();
+    setStatus(`Comisiones cargadas para ${getMonthLabel(state.month)}. ${formatInteger(new Set(details.map((detail) => detail.transactionId).filter(Boolean)).size)} transacciones y ${formatInteger(details.length)} líneas de comisión.`);
   }
 
   function uniqueSortedValues(rows, field) {
@@ -536,8 +547,7 @@
         mail: String(row.mail || '').trim(),
         phone: String(row.telefono || row.whatsapp || '').trim()
       }))
-      .filter((row) => matchesApsetOrRt(row.originFilter) || matchesApsetOrRt(row.calendar))
-      .filter((row) => row.setter && row.agendaDate && normalizeText(row.agendo) === 'agendo')
+      .filter((row) => isQualifiedAgendaRow(row))
       .sort((a, b) => String(b.agendaDate || '').localeCompare(String(a.agendaDate || '')) || a.clientName.localeCompare(b.clientName, 'es'));
   }
 
@@ -546,21 +556,36 @@
       if (filters.setter && normalizeText(row.setter) !== normalizeText(filters.setter)) return false;
       if (filters.from && row.agendaDate && row.agendaDate < filters.from) return false;
       if (filters.to && row.agendaDate && row.agendaDate > filters.to) return false;
-      if (Array.isArray(filters.lastOrigin) && filters.lastOrigin.length) {
-        const allowedOrigins = filters.lastOrigin.map((value) => normalizeText(value));
-        if (!allowedOrigins.includes(normalizeText(row.originFilter))) return false;
-      }
       if (Array.isArray(filters.quality) && filters.quality.length) {
         const allowedQualities = filters.quality.map((value) => normalizeText(value));
         if (!allowedQualities.includes(normalizeText(row.quality))) return false;
       }
       if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
-      if (Array.isArray(filters.calendar) && filters.calendar.length) {
-        const allowedCalendars = filters.calendar.map((value) => normalizeText(value));
-        if (!allowedCalendars.includes(normalizeText(row.calendar))) return false;
+      const allowedOrigins = Array.isArray(filters.lastOrigin) ? filters.lastOrigin.map((value) => normalizeText(value)) : [];
+      const allowedCalendars = Array.isArray(filters.calendar) ? filters.calendar.map((value) => normalizeText(value)) : [];
+      const hasOriginFilters = allowedOrigins.length > 0;
+      const hasCalendarFilters = allowedCalendars.length > 0;
+      if (hasOriginFilters || hasCalendarFilters) {
+        const matchesOrigin = hasOriginFilters && allowedOrigins.includes(normalizeText(row.originFilter));
+        const matchesCalendar = hasCalendarFilters && allowedCalendars.includes(normalizeText(row.calendar));
+        if (!matchesOrigin && !matchesCalendar) return false;
       }
       return true;
     });
+  }
+
+  function getApsetRtOriginFilterValues() {
+    return uniqueSortedValues(
+      state.agendaRows.filter((row) => matchesApsetOrRt(row.originFilter)),
+      'originFilter'
+    );
+  }
+
+  function getApsetRtCalendarFilterValues() {
+    return uniqueSortedValues(
+      state.agendaRows.filter((row) => matchesApsetOrRt(row.calendar)),
+      'calendar'
+    );
   }
 
   function groupPeopleByRole(people) {
@@ -718,9 +743,15 @@
 
   function renderSheetOverview(dashboard) {
     const node = document.getElementById('commissionsSheetOverview');
-    const filteredDetails = getFilteredCommissionDetails();
+    const filteredDetails = getAllCommissionDetails();
     const rows = buildSheetRows(filteredDetails);
     const commercialSummaryRows = buildAreaCommercialSummary(filteredDetails);
+    const uniqueTransactions = new Map();
+    filteredDetails.forEach((detail) => {
+      const transactionId = String(detail.transactionId || '').trim();
+      if (!transactionId || uniqueTransactions.has(transactionId)) return;
+      uniqueTransactions.set(transactionId, detail);
+    });
     const summary = {
       transactionCount: new Set(filteredDetails.map((detail) => detail.transactionId).filter(Boolean)).size,
       commissionLineCount: filteredDetails.length
@@ -735,6 +766,15 @@
     const totalMegCommission = rows.reduce((sum, row) => sum + Number(row.comisionMegArs || 0) + Number(row.comisionSetting || 0), 0);
     const totalCommission = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
     const nahuelAgendaCount = state.agendaRows.filter((row) => isNahuelSetter(row.setter)).length;
+    const uniqueTransactionRows = [...uniqueTransactions.values()];
+    const totalFacturacionUsd = uniqueTransactionRows
+      .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
+      .reduce((sum, detail) => sum + Number(detail.facturacionUsd || 0), 0);
+    const totalFacturacionArs = uniqueTransactionRows
+      .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
+      .reduce((sum, detail) => sum + Number(detail.facturacionArs || 0), 0);
+    const totalCashUsd = uniqueTransactionRows.reduce((sum, detail) => sum + Number(detail.cashUsd || 0), 0);
+    const totalCashArs = uniqueTransactionRows.reduce((sum, detail) => sum + Number(detail.cashArs || 0), 0);
 
     node.innerHTML = `
       <section class="card comisiones-sheet-card">
@@ -763,8 +803,18 @@
                   <p>Total a cobrar</p>
                 </article>
                 <article class="comisiones-overview-kpi is-agendas">
+                  <span>Facturación</span>
+                  <strong>${formatUsd(totalFacturacionUsd)}</strong>
+                  <p>${formatCurrency(totalFacturacionArs)} total facturado</p>
+                </article>
+                <article class="comisiones-overview-kpi is-meg">
+                  <span>Cash Collected</span>
+                  <strong>${formatUsd(totalCashUsd)}</strong>
+                  <p>${formatCurrency(totalCashArs)} cash del mes</p>
+                </article>
+                <article class="comisiones-overview-kpi is-agendas">
                   <span>Agendas Nahuel</span>
-                  <strong>${formatInteger(nahuelAgendaCount)}</strong>
+                  <strong>${nahuelAgendaCount > 0 ? `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="Nahuel Iasci" data-agenda-preset="nahuel">${formatInteger(nahuelAgendaCount)}</button>` : formatInteger(nahuelAgendaCount)}</strong>
                   <p>Total del mes por fecha de agendamiento</p>
                 </article>
               </div>
@@ -791,17 +841,16 @@
                   <tr>
                     <th>Tipo</th>
                     <th>Integrante</th>
-                    <th>Ventas MEG</th>
-                    <th>Ventas CLUB</th>
-                    <th>Ventas setting</th>
+                    <th>Meg</th>
+                    <th>Club</th>
+                    <th>Setting</th>
                     <th>Agendas</th>
                     <th>% Setting</th>
                     <th>Facturacion</th>
                     <th>CC</th>
-                    <th>Comision MEG US</th>
-                    <th>Comision MEG ARS</th>
-                    <th>Comision CLUB ARS</th>
-                    <th>Comision Setting</th>
+                    <th>Comisión<br>Meg</th>
+                    <th>Comisión<br>Club</th>
+                    <th>Comisión<br>Setting</th>
                     <th>Total a cobrar</th>
                   </tr>
                 </thead>
@@ -817,7 +866,6 @@
                       <td>${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
                       <td>${formatSheetCurrency(row.facturacion)}</td>
                       <td>${formatSheetCurrency(row.cc)}</td>
-                      <td>${formatSheetCurrency(row.comisionMegUsd)}</td>
                       <td>${formatSheetCurrency(row.comisionMegArs)}</td>
                       <td>${formatSheetCurrency(row.comisionClubArs)}</td>
                       <td>${formatSheetCurrency(row.comisionSetting)}</td>
@@ -833,7 +881,6 @@
                     <td></td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.facturacion, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.cc, 0))}</td>
-                    <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionMegUsd, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionMegArs, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionClubArs, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionSetting, 0))}</td>
@@ -965,12 +1012,12 @@
               <th>Nombre cliente</th>
               <th>Responsable venta</th>
               <th>Cash collected ARS</th>
-              <th>Fact</th>
+              <th>Cash USD</th>
+              <th>Facturación USD</th>
               <th>Porcentaje</th>
               <th>TC</th>
               <th>Origen</th>
               <th>Calendario</th>
-              <th>Cash USD</th>
               <th>IVA</th>
               <th>Comisiones</th>
               <th>Total neto</th>
@@ -1002,12 +1049,12 @@
                   <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
                   <td>${escapeHtml(formatDetailText(detail.closer))}</td>
                   <td>${formatDetailCurrency(detail.cashArs)}</td>
+                  <td>${formatDetailUsd(detail.cashUsd)}</td>
                   <td>${formatDetailUsd(detail.facturacionUsd)}</td>
                   <td>${formatDetailPercent(detail.commissionPct)}</td>
                   <td>${formatDetailCurrency(detail.tc)}</td>
                   <td>${escapeHtml(formatDetailText(detail.origin))}</td>
                   <td>${escapeHtml(formatDetailText(detail.calendar))}</td>
-                  <td>${formatDetailUsd(detail.cashUsd)}</td>
                   <td>${formatDetailCurrency(detail.ivaArs)}</td>
                   <td>${formatDetailCurrency(detail.externalCommissionsArs)}</td>
                   <td>${formatDetailCurrency(detail.netTotalArs)}</td>
@@ -1029,7 +1076,10 @@
     bindPinnedColumnHeaders(personTable, pinnedPersonColumnSelect, 'pinnedPersonColumn');
 
     summaryNode.querySelectorAll('[data-agenda-person]').forEach((button) => {
-      button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson));
+      button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson, button.dataset.agendaPreset));
+    });
+    detailNode.querySelectorAll('[data-agenda-person]').forEach((button) => {
+      button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson, button.dataset.agendaPreset));
     });
   }
 
@@ -1149,11 +1199,22 @@
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
   }
 
-  function openAgendaPanel(person = '') {
+  function openAgendaPanel(person = '', preset = '') {
     state.agendaFilters.setter = person || '';
+    if (preset === 'nahuel') {
+      state.agendaFilters.aplica = 'Aplica';
+      state.agendaFilters.lastOrigin = getApsetRtOriginFilterValues();
+      state.agendaFilters.calendar = getApsetRtCalendarFilterValues();
+    }
     syncAgendaFilterControls();
     renderAgendaPanel();
     setActiveTab('agendas');
+    window.requestAnimationFrame(() => {
+      document.getElementById('commissionAgendaDetails')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    });
   }
 
   function openPersonComprobantes(person = '') {
@@ -1381,7 +1442,7 @@
   }
 
   function refreshCommissionViews() {
-    const filteredPeople = buildPeopleFromDetails(getFilteredCommissionDetails());
+    const filteredPeople = buildPeopleFromDetails(getAllCommissionDetails());
     renderSheetOverview(state.dashboard);
     fillPersonSelect(filteredPeople);
     if (

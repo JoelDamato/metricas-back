@@ -621,11 +621,15 @@ async function createComprobanteManual(req, res, next) {
 async function listMyComprobantes(req, res, next) {
   try {
     const result = await comprobantesLoaderService.listMyComprobantes(req.authUser, {
-      limit: req.query.limit
+      limit: req.query.limit,
+      responsible: req.query.responsible
     });
     res.json({
       ok: true,
       responsibleName: result.responsibleName,
+      canViewAll: result.canViewAll === true,
+      selectedResponsible: result.selectedResponsible || result.responsibleName,
+      responsibleOptions: result.responsibleOptions || [],
       count: result.rows.length,
       rows: result.rows
     });

@@ -266,6 +266,8 @@ function isMissingColumnError(error) {
 
 async function fetchComprobantesRowsForCommissions() {
   const selectAttempts = [
+    'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,iva_ars,comisiones,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
+    'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,iva_ars,comisiones,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar'
@@ -418,27 +420,32 @@ function isBclRtCase(row) {
 }
 
 function selectCashBase(row) {
-  const ars = safeNumber(row.cash_collected_ars);
+  const ars = safeNumber(row.cash_collected_ar);
   if (ars > 0) return ars;
-  const total = safeNumber(row.cash_collected_total);
-  if (total > 0) return total;
+  const legacyArs = safeNumber(row.cash_collected_ars);
+  if (legacyArs > 0) return legacyArs;
   return safeNumber(row.cash_collected);
 }
 
 function selectCashUsd(row) {
-  const total = safeNumber(row.cash_collected_total);
-  if (total > 0) return total;
-  return safeNumber(row.cash_collected);
+  const primaryAr = safeNumber(row.cash_collected_ar);
+  const legacyArs = safeNumber(row.cash_collected_ars);
+  const tc = safeNumber(row.tc);
+  const ars = primaryAr > 0 ? primaryAr : legacyArs;
+  if (ars > 0 && tc > 0) return ars / tc;
+  const currentCash = safeNumber(row.cash_collected);
+  if (currentCash > 0) return currentCash;
+  return 0;
 }
 
 function selectCashArs(row) {
-  const ars = safeNumber(row.cash_collected_ars);
-  if (ars > 0) return ars;
+  const primaryAr = safeNumber(row.cash_collected_ar);
+  if (primaryAr > 0) return primaryAr;
+  const legacyArs = safeNumber(row.cash_collected_ars);
+  if (legacyArs > 0) return legacyArs;
   const usd = safeNumber(row.cash_collected);
   const tc = safeNumber(row.tc);
   if (usd > 0 && tc > 0) return usd * tc;
-  const total = safeNumber(row.cash_collected_total);
-  if (total > 0) return total;
   return 0;
 }
 
@@ -460,8 +467,10 @@ function selectFacturacionArs(row) {
 }
 
 function resolveGrossTotalArs(row) {
-  const cashArs = safeNumber(row.cash_collected_ars);
+  const cashArs = safeNumber(row.cash_collected_ar);
   if (cashArs > 0) return cashArs;
+  const legacyCashArs = safeNumber(row.cash_collected_ars);
+  if (legacyCashArs > 0) return legacyCashArs;
   const facturacionArs = safeNumber(row.facturacion_ars);
   if (facturacionArs > 0) return facturacionArs;
   return safeNumber(row.monto_pesos);
@@ -527,6 +536,7 @@ function normalizeComprobanteRows(rows = []) {
     facturacion: safeNumber(row.facturacion),
     facturacion_ars: safeNumber(row.facturacion_ars),
     monto_pesos: safeNumber(row.monto_pesos),
+    cash_collected_ar: selectCashArs(row),
     cash_collected_ars: selectCashArs(row),
     facturacion_display_ars: selectFacturacionArs(row),
     cash_usd: selectCashUsd(row),

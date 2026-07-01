@@ -19,7 +19,7 @@
         <div class="metric-page-hero-copy">
           <span class="metric-page-eyebrow">Operación Comercial</span>
           <h1>Mis comprobantes</h1>
-          <p>Vista filtrada por el responsable que cargó el comprobante en Notion, con búsqueda rápida por cliente.</p>
+          <p>Vista filtrada por el responsable de venta asignado en cada comprobante, con búsqueda rápida por cliente.</p>
           <div class="metric-page-hero-meta">
             <span id="misComprobantesOwnerChip" class="metric-chip">Responsable: cargando...</span>
             <span class="metric-chip">Filtro por cliente</span>
@@ -30,7 +30,7 @@
           <div class="carga-comprobantes-hero-icon">✓</div>
           <h2>Qué ves acá</h2>
           <ol>
-            <li>Solo comprobantes con tu nombre en "Creado por".</li>
+            <li>Solo comprobantes donde figurás como responsable de venta.</li>
             <li>Totales rápidos de cantidad, facturación y cash.</li>
             <li>Búsqueda por cliente o GHL ID sin salir de la vista.</li>
           </ol>
@@ -44,6 +44,9 @@
             <p id="misComprobantesHint">Preparando tus comprobantes...</p>
           </div>
           <div class="mis-comprobantes-toolbar-actions">
+            <select id="misComprobantesResponsibleFilter" hidden>
+              <option value="">Todos los responsables</option>
+            </select>
             <input id="misComprobantesMonth" type="month" />
             <select id="misComprobantesReconciliationFilter">
               <option value="all">Todas</option>

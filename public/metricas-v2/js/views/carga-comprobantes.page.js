@@ -121,6 +121,10 @@
       .toLowerCase();
   }
 
+  function isClubProduct(value) {
+    return normalizeText(value) === 'club';
+  }
+
   function parseLocaleNumber(value) {
     const raw = String(value || '').trim();
     if (!raw) return 0;
@@ -260,10 +264,11 @@
     const isVenta = tipo === 'Venta';
     const isDevolucion = tipo === 'Devolución';
     const isCheque = normalizeText(refs.medioPago.value) === 'cheque';
+    const isClubSale = isVenta && isClubProduct(refs.productName.value);
     const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
     const baseReady = clientReady
       && Boolean(tipo)
-      && Boolean(refs.dniCuit.value.trim())
+      && (isClubSale || Boolean(refs.dniCuit.value.trim()))
       && Boolean(refs.medioPago.value)
       && Boolean(refs.tc.value)
       && Boolean(refs.responsableVenta.value);
@@ -504,6 +509,7 @@
     setSectionVisibility(refs.facturacionUsdField, isVenta || isDevolucion);
 
     refs.productName.disabled = !isVenta;
+    refs.dniCuit.required = !(isVenta && isClubProduct(refs.productName.value));
     refs.cantidadPagos.disabled = !isVenta;
     refs.latestSaleId.readOnly = !isDevolucion;
     if (refs.searchRelatedSaleBtn) refs.searchRelatedSaleBtn.hidden = !isDevolucion;
@@ -567,13 +573,14 @@
 
   function buildPreviewWarnings(payload) {
     const warnings = [];
+    const isClubSale = payload.tipo === 'Venta' && isClubProduct(payload.productName);
 
     if (!payload.clientName) warnings.push('Falta buscar y vincular el cliente.');
     if (!payload.ghlId) warnings.push('Falta el GHL ID.');
     if (!payload.tipo) warnings.push('Falta elegir el tipo.');
     if (!payload.fechaVenta) warnings.push('Falta la fecha de venta / transacción.');
     if (!payload.fechaAcreditacion) warnings.push('Falta la fecha de acreditación.');
-    if (!payload.dniCuit) warnings.push('Falta el DNI / CUIT.');
+    if (!payload.dniCuit && !isClubSale) warnings.push('Falta el DNI / CUIT.');
     if (!payload.tc) warnings.push('Falta la tasa de cambio.');
     if (!payload.cashCollectedArs) warnings.push('Falta el cash collected ARS.');
     if (!payload.medioPago) warnings.push('Falta el medio de pago.');

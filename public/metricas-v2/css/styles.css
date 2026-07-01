@@ -4359,6 +4359,8 @@ th {
 .comisiones-page .container {
   display: grid;
   gap: 18px;
+  width: min(1520px, 95vw);
+  overflow-x: clip;
 }
 
 .comisiones-hero {
@@ -4378,7 +4380,7 @@ th {
 .comisiones-hero-copy {
   display: grid;
   gap: 8px;
-  max-width: 720px;
+  max-width: 880px;
 }
 
 .comisiones-hero-kicker {
@@ -4486,12 +4488,13 @@ th {
 
 .comisiones-panel.is-active {
   display: grid;
+  min-width: 0;
 }
 
 .comisiones-sheet-card {
   position: relative;
   overflow: hidden;
-  padding: 18px;
+  padding: 20px 22px;
   border-radius: 26px;
   background:
     linear-gradient(#dfe7ee 1px, transparent 1px),
@@ -4594,17 +4597,17 @@ th {
   display: block;
   margin-top: 8px;
   color: #173d70;
-  font-size: clamp(1.15rem, 1vw + 0.85rem, 1.7rem);
-  line-height: 1.05;
-  white-space: nowrap;
-  word-break: keep-all;
+  font-size: clamp(1rem, 0.6vw + 0.9rem, 1.42rem);
+  line-height: 1.12;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .comisiones-overview-kpi p {
   margin: 8px 0 0;
   color: #5d7898;
-  font-size: 0.8rem;
-  line-height: 1.3;
+  font-size: 0.76rem;
+  line-height: 1.28;
 }
 
 .comisiones-overview-kpi.is-club {
@@ -4681,14 +4684,46 @@ th {
 
 .comisiones-sheet-table-wrap {
   overflow: auto;
+  width: 100%;
 }
 
 .comisiones-sheet-table {
   font-size: 0.84rem;
+  table-layout: fixed;
 }
 
 .comisiones-sheet-table th {
   font-size: 0.72rem;
+}
+
+.comisiones-sheet-table th:nth-child(3),
+.comisiones-sheet-table td:nth-child(3),
+.comisiones-sheet-table th:nth-child(4),
+.comisiones-sheet-table td:nth-child(4) {
+  width: 72px;
+  text-align: center;
+}
+
+.comisiones-sheet-table th:nth-child(5),
+.comisiones-sheet-table td:nth-child(5) {
+  width: 78px;
+  text-align: center;
+}
+
+.comisiones-sheet-table th:nth-child(6),
+.comisiones-sheet-table td:nth-child(6) {
+  width: 84px;
+  text-align: center;
+}
+
+.comisiones-sheet-table th:nth-child(10),
+.comisiones-sheet-table td:nth-child(10),
+.comisiones-sheet-table th:nth-child(11),
+.comisiones-sheet-table td:nth-child(11),
+.comisiones-sheet-table th:nth-child(12),
+.comisiones-sheet-table td:nth-child(12) {
+  width: 112px;
+  text-align: center;
 }
 
 .comisiones-sheet-table td,
@@ -4804,8 +4839,10 @@ th {
 .comisiones-table-wrap {
   position: relative;
   overflow: auto;
-  max-height: calc(100vh - 260px);
+  max-height: calc(100vh - 210px);
   border-radius: 18px;
+  width: 100%;
+  min-width: 0;
 }
 
 .comisiones-table {
@@ -4898,28 +4935,46 @@ th {
 }
 
 .comisiones-detail-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
+  gap: 10px;
+  width: 100%;
 }
 
 .comisiones-detail-toolbar label {
   display: grid;
-  gap: 6px;
-  min-width: 280px;
+  gap: 4px;
+  min-width: 0;
   color: #284d7c;
   font-weight: 700;
+  font-size: 0.84rem;
 }
 
+.comisiones-detail-toolbar input,
 .comisiones-detail-toolbar select {
-  min-height: 44px;
+  width: 100%;
+  min-height: 38px;
   border: 1px solid rgba(111, 149, 224, 0.28);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.96);
   color: #163f72;
   font: inherit;
+}
+
+.comisiones-agendas-toolbar {
+  grid-template-columns: 0.9fr 0.7fr 0.7fr 1.15fr 0.95fr 1.15fr 0.7fr 0.8fr;
+  align-items: start;
+}
+
+.comisiones-checkgroup {
+  min-width: 0;
+}
+
+.comisiones-checkgroup-options {
+  max-height: 124px;
+  overflow: auto;
 }
 
 .comisiones-pinned-cell {
@@ -4938,21 +4993,25 @@ th {
 }
 
 .comisiones-agendas-toolbar label {
-  min-width: 180px;
+  min-width: 0;
 }
 
 .comisiones-checkgroup {
   display: grid;
-  gap: 8px;
-  min-width: 220px;
+  gap: 6px;
+  min-width: 0;
   color: #284d7c;
   font-weight: 700;
+  font-size: 0.84rem;
+  align-content: start;
 }
 
 .comisiones-checkgroup-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .comisiones-checkgroup-empty {
@@ -4962,6 +5021,14 @@ th {
 
 .comisiones-checkpill {
   position: relative;
+}
+
+.comisiones-checkpill span {
+  padding: 6px 8px;
+  font-size: 0.76rem;
+  line-height: 1.15;
+  border-radius: 10px;
+  max-width: 100%;
 }
 
 .comisiones-checkpill input {
@@ -5239,6 +5306,10 @@ th {
     justify-content: space-between;
   }
 
+  .comisiones-page .container {
+    width: min(100%, 94vw);
+  }
+
   .comisiones-sheet-card {
     padding: 12px;
   }
@@ -5257,6 +5328,11 @@ th {
 
   .comisiones-scale-row {
     grid-template-columns: 1fr;
+  }
+
+  .comisiones-detail-toolbar,
+  .comisiones-agendas-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .comisiones-detail-toolbar label {
@@ -5626,19 +5702,34 @@ th {
 }
 
 .mis-comprobantes-toolbar-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
-  align-items: center;
+  align-items: stretch;
+  width: 100%;
 }
 
+.mis-comprobantes-toolbar-actions select,
 .mis-comprobantes-toolbar-actions input {
-  min-width: 280px;
+  width: 100%;
+  min-height: 50px;
+  min-width: 0;
   border: 1px solid rgba(108, 148, 234, 0.22);
   border-radius: 18px;
   padding: 14px 16px;
   background: rgba(249, 251, 255, 0.92);
   color: #13306d;
   font: inherit;
+}
+
+.mis-comprobantes-toolbar-actions select {
+  min-width: 0;
+}
+
+.mis-comprobantes-toolbar-actions button {
+  width: 100%;
+  min-height: 50px;
+  white-space: nowrap;
 }
 
 .mis-comprobantes-summary {
@@ -5674,8 +5765,14 @@ th {
 
 .mis-comprobantes-page .table-wrap,
 .mis-comprobantes-page .csm-table-wrap {
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
   max-height: none;
+  width: 100%;
+}
+
+.mis-comprobantes-page .mis-comprobantes-table {
+  min-width: 1120px;
 }
 
 .carga-comprobantes-toolbar {
@@ -6843,6 +6940,11 @@ th {
     padding-top: 148px;
   }
 
+  .comisiones-detail-toolbar,
+  .comisiones-agendas-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .carga-comprobantes-toolbar,
   .carga-field-row,
   .carga-submit {
@@ -6862,10 +6964,10 @@ th {
 
   .mis-comprobantes-toolbar-actions {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
+  .mis-comprobantes-toolbar-actions select,
   .mis-comprobantes-toolbar-actions input {
     min-width: 0;
   }

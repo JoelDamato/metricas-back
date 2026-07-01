@@ -81,12 +81,45 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+function isClubProduct(value) {
+  return normalizeText(value) === 'club';
+}
+
 function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+function canViewAllComprobantes(user = {}) {
+  return normalizeEmail(user?.email) === 'matirandazzo@gmail.com';
+}
+
+function titleCaseName(value) {
+  const source = String(value || '').trim();
+  if (!source) return '';
+  return source
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function extractResponsibleVenta(infoComprobantes = '') {
+  const raw = String(infoComprobantes || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/responsable venta:\s*([^|]+)/i);
+  return titleCaseName(match?.[1] || '');
+}
+
+function resolveComprobanteResponsible(row = {}) {
+  return titleCaseName(
+    row.responsable_venta
+    || extractResponsibleVenta(row.info_comprobantes)
+    || row.responsable_actual
+    || row.creado_por
+  );
 }
 
 function cleanupSubmissionCache(now = Date.now()) {
@@ -795,7 +828,7 @@ async function findLatestVentaByGhlId(ghlId, clientName = '') {
   let row = null;
   for (const query of saleQueries) {
     const response = await supabaseRequest('comprobantes', {
-      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_ars,cash_collected_total,tipo',
+      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo',
       ...query
     });
     row = (response.data || [])[0] || null;
@@ -815,7 +848,7 @@ async function findLatestVentaByGhlId(ghlId, clientName = '') {
     fechaVenta: row.f_venta || null,
     fechaAcreditacion: row.f_acreditacion || null,
     facturacionUsd: toNumber(row.facturacion),
-    cashCollectedArs: toNumber(row.cash_collected_ars),
+    cashCollectedArs: toNumber(row.cash_collected_ar ?? row.cash_collected_ars),
     cashCollectedTotal: toNumber(row.cash_collected_total)
   };
 }
@@ -856,7 +889,8 @@ async function findLatestVentaInNotion(clientName = '') {
       f_venta: properties['F.venta respaldo']?.date?.start || null,
       f_acreditacion: properties['Fecha de acreditacion']?.date?.start || null,
       facturacion: properties.Facturacion?.number ?? null,
-      cash_collected_ars: properties['Cash collected AR']?.number ?? null
+      cash_collected_ar: properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
+      cash_collected_ars: properties['Cash collected ARS']?.number ?? properties['Cash collected AR']?.number ?? null
     };
   } catch (error) {
     return null;
@@ -991,7 +1025,10 @@ function normalizePayload(payload = {}, user) {
   const tc = requiredNumber(payload.tc, 'la tasa de cambio');
   const cashCollectedArs = requiredNumber(payload.cashCollectedArs, 'cash collected ARS');
   const medioPago = requiredString(payload.medioPago, 'el medio de pago');
-  const dniCuit = requiredString(payload.dniCuit, 'el DNI / CUIT');
+  const rawProductName = optionalString(payload.productName);
+  const dniCuit = tipo === 'Venta' && isClubProduct(rawProductName)
+    ? optionalString(payload.dniCuit)
+    : requiredString(payload.dniCuit, 'el DNI / CUIT');
   const infoComprobantes = optionalString(payload.infoComprobantes);
   const mesesSoporte = payload.mesesSoporte === '' || payload.mesesSoporte === null || payload.mesesSoporte === undefined
     ? null
@@ -1285,9 +1322,13 @@ async function createComprobante(payload, user) {
 
 async function listMyComprobantes(user, options = {}) {
   const responsibleName = standardizeResponsibleVenta(user);
+  const requestedResponsible = titleCaseName(optionalString(options.responsible));
+  const allowAll = canViewAllComprobantes(user);
   if (!responsibleName) {
     return {
       responsibleName: '',
+      canViewAll: allowAll,
+      selectedResponsible: requestedResponsible || '',
       rows: []
     };
   }
@@ -1297,13 +1338,22 @@ async function listMyComprobantes(user, options = {}) {
   let offset = 0;
 
   while (true) {
-    const response = await supabaseRequest('comprobantes', {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ars,estado,creado_por,responsable_venta',
-      creado_por: `eq.${responsibleName}`,
+    const params = {
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,info_comprobantes',
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,
       offset
-    });
+    };
+
+    if (!allowAll) {
+      params.or = `(${[
+        `responsable_venta.eq.${responsibleName}`,
+        `responsable_actual.eq.${responsibleName}`,
+        `creado_por.eq.${responsibleName}`
+      ].join(',')})`;
+    }
+
+    const response = await supabaseRequest('comprobantes', params);
 
     const chunk = response.data || [];
     rows.push(...chunk);
@@ -1311,9 +1361,31 @@ async function listMyComprobantes(user, options = {}) {
     offset += pageSize;
   }
 
+  const normalizedResponsibleName = normalizeText(responsibleName);
+  const selectedResponsible = allowAll
+    ? titleCaseName(requestedResponsible)
+    : responsibleName;
+  const normalizedSelectedResponsible = normalizeText(selectedResponsible);
+  const resolvedRows = rows.filter((row) => {
+    const resolvedResponsible = normalizeText(resolveComprobanteResponsible(row));
+    if (allowAll) {
+      return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible;
+    }
+    return resolvedResponsible === normalizedResponsibleName;
+  });
+
+  const responsibleOptions = uniqueSorted(
+    rows
+      .map((row) => resolveComprobanteResponsible(row))
+      .filter(Boolean)
+  );
+
   return {
     responsibleName,
-    rows
+    canViewAll: allowAll,
+    selectedResponsible,
+    responsibleOptions,
+    rows: resolvedRows
   };
 }
 

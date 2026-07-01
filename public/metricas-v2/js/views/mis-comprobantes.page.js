@@ -4,6 +4,9 @@
 
   const state = {
     ownerName: '',
+    canViewAll: false,
+    selectedResponsible: '',
+    responsibleOptions: [],
     rows: [],
     filteredRows: []
   };
@@ -15,6 +18,7 @@
     table: document.getElementById('misComprobantesTable'),
     reload: document.getElementById('reloadMisComprobantes'),
     month: document.getElementById('misComprobantesMonth'),
+    responsibleFilter: document.getElementById('misComprobantesResponsibleFilter'),
     reconciliationFilter: document.getElementById('misComprobantesReconciliationFilter'),
     clubFilter: document.getElementById('misComprobantesClubFilter'),
     search: document.getElementById('misComprobantesSearch'),
@@ -41,6 +45,13 @@
   function parseNumber(value) {
     const numeric = Number(value || 0);
     return Number.isFinite(numeric) ? numeric : 0;
+  }
+
+  function resolveCashUsd(row) {
+    const tc = parseNumber(row?.tc);
+    const cashAr = parseNumber(row?.cash_collected_ar || row?.cash_collected_ars);
+    if (cashAr > 0 && tc > 0) return cashAr / tc;
+    return parseNumber(row?.cash_collected);
   }
 
   function formatCurrency(value, currency = 'USD') {
@@ -101,6 +112,24 @@
     return 'Todas';
   }
 
+  function renderResponsibleFilter() {
+    if (!refs.responsibleFilter) return;
+    if (!state.canViewAll) {
+      refs.responsibleFilter.hidden = true;
+      return;
+    }
+
+    const options = ['<option value="">Todos los responsables</option>']
+      .concat(
+        state.responsibleOptions.map((name) => (
+          `<option value="${escapeHtml(name)}" ${normalizeText(name) === normalizeText(state.selectedResponsible) ? 'selected' : ''}>${escapeHtml(name)}</option>`
+        ))
+      );
+
+    refs.responsibleFilter.innerHTML = options.join('');
+    refs.responsibleFilter.hidden = false;
+  }
+
   function filterRows() {
     const query = normalizeText(refs.search?.value || '');
     const selectedMonth = String(refs.month?.value || '').trim();
@@ -125,7 +154,7 @@
   function renderSummary() {
     refs.summary.hidden = false;
     const totalFacturacion = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.facturacion), 0);
-    const totalCashUsd = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.cash_collected), 0);
+    const totalCashUsd = state.filteredRows.reduce((sum, row) => sum + resolveCashUsd(row), 0);
     const totalCashArs = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.cash_collected_ars), 0);
 
     refs.summary.innerHTML = `
@@ -180,8 +209,8 @@
                 <td>${escapeHtml(row.producto_format || '-')}</td>
                 <td>${escapeHtml(formatDate(row.f_venta || row.f_acreditacion || row.fecha_creado || row.created_at))}</td>
                 <td>${escapeHtml(row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-')}</td>
-                <td>${escapeHtml(row.cash_collected ? formatCurrency(row.cash_collected, 'USD') : '-')}</td>
-                <td>${escapeHtml(row.cash_collected_ars ? formatCurrency(row.cash_collected_ars, 'ARS') : '-')}</td>
+                <td>${escapeHtml(resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-')}</td>
+                <td>${escapeHtml((row.cash_collected_ar || row.cash_collected_ars) ? formatCurrency(row.cash_collected_ar || row.cash_collected_ars, 'ARS') : '-')}</td>
                 <td>${escapeHtml(row.estado || 'Sin estado')}</td>
                 <td>${escapeHtml(row.ghlid || '-')}</td>
               </tr>
@@ -199,7 +228,10 @@
     const selectedMonth = String(refs.month?.value || '').trim();
     const reconciliationLabel = getReconciliationLabel(String(refs.reconciliationFilter?.value || 'all').trim());
     const clubLabel = refs.clubFilter?.selectedOptions?.[0]?.textContent || 'Todos';
-    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles para ${state.ownerName || 'tu usuario'}${selectedMonth ? ` en ${selectedMonth}` : ''}. Conciliación: ${reconciliationLabel}. Club: ${clubLabel}.`;
+    const scopeLabel = state.canViewAll
+      ? (state.selectedResponsible ? state.selectedResponsible : 'todos los responsables')
+      : (state.ownerName || 'tu usuario');
+    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles para ${scopeLabel}${selectedMonth ? ` en ${selectedMonth}` : ''}. Conciliación: ${reconciliationLabel}. Club: ${clubLabel}.`;
     refs.status.hidden = true;
   }
 
@@ -209,9 +241,18 @@
     refs.reload.disabled = true;
 
     try {
-      const response = await api.fetchMyComprobantes({ limit: 1000 });
+      const response = await api.fetchMyComprobantes({
+        limit: 1000,
+        responsible: state.canViewAll ? (refs.responsibleFilter?.value || '') : ''
+      });
       state.ownerName = String(response?.responsibleName || '').trim();
-      refs.ownerChip.textContent = `Responsable: ${state.ownerName || 'sin asignar'}`;
+      state.canViewAll = response?.canViewAll === true;
+      state.selectedResponsible = String(response?.selectedResponsible || '').trim();
+      state.responsibleOptions = Array.isArray(response?.responsibleOptions) ? response.responsibleOptions : [];
+      refs.ownerChip.textContent = state.canViewAll
+        ? `Vista global: ${state.selectedResponsible || 'todos'}`
+        : `Responsable: ${state.ownerName || 'sin asignar'}`;
+      renderResponsibleFilter();
       state.rows = (response?.rows || [])
         .sort((left, right) => String(right.fecha_creado || right.created_at || '').localeCompare(String(left.fecha_creado || left.created_at || '')));
 
@@ -227,6 +268,7 @@
   }
 
   refs.reload?.addEventListener('click', loadPage);
+  refs.responsibleFilter?.addEventListener('change', loadPage);
   refs.month?.addEventListener('change', renderAll);
   refs.reconciliationFilter?.addEventListener('change', renderAll);
   refs.clubFilter?.addEventListener('change', renderAll);
