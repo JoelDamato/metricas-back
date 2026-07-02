@@ -122,6 +122,13 @@ function resolveComprobanteResponsible(row = {}) {
   );
 }
 
+function resolveComprobanteResponsibleVentaOnly(row = {}) {
+  return titleCaseName(
+    row.responsable_venta
+    || extractResponsibleVenta(row.info_comprobantes)
+  );
+}
+
 function cleanupSubmissionCache(now = Date.now()) {
   for (const [key, entry] of submissionCache.entries()) {
     if (!entry || entry.expiresAt <= now) submissionCache.delete(key);
@@ -1346,11 +1353,7 @@ async function listMyComprobantes(user, options = {}) {
     };
 
     if (!allowAll) {
-      params.or = `(${[
-        `responsable_venta.eq.${responsibleName}`,
-        `responsable_actual.eq.${responsibleName}`,
-        `creado_por.eq.${responsibleName}`
-      ].join(',')})`;
+      params.responsable_venta = `eq.${responsibleName}`;
     }
 
     const response = await supabaseRequest('comprobantes', params);
@@ -1367,7 +1370,7 @@ async function listMyComprobantes(user, options = {}) {
     : responsibleName;
   const normalizedSelectedResponsible = normalizeText(selectedResponsible);
   const resolvedRows = rows.filter((row) => {
-    const resolvedResponsible = normalizeText(resolveComprobanteResponsible(row));
+    const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {
       return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible;
     }
@@ -1376,7 +1379,7 @@ async function listMyComprobantes(user, options = {}) {
 
   const responsibleOptions = uniqueSorted(
     rows
-      .map((row) => resolveComprobanteResponsible(row))
+      .map((row) => resolveComprobanteResponsibleVentaOnly(row))
       .filter(Boolean)
   );
 

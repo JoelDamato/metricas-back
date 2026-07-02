@@ -19,7 +19,8 @@
       lastOrigin: [],
       quality: [],
       aplica: '',
-      calendar: []
+      calendar: [],
+      showMore: false
     },
     configMeta: null,
     rulesDraft: null,
@@ -37,6 +38,8 @@
   const agendaDateFromInput = document.getElementById('commissionAgendaDateFrom');
   const agendaDateToInput = document.getElementById('commissionAgendaDateTo');
   const pinnedAgendaColumnSelect = document.getElementById('commissionAgendaPinnedColumnSelect');
+  const agendaMoreFiltersNode = document.getElementById('commissionAgendaMoreFilters');
+  const agendaToggleMoreButton = document.getElementById('commissionAgendaToggleMore');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -488,6 +491,51 @@
     return [...peopleMap.values()].sort((a, b) => b.totalCommission - a.totalCommission || a.person.localeCompare(b.person, 'es'));
   }
 
+  function buildCloserPeopleFromDetails(details) {
+    const peopleMap = new Map();
+
+    (details || []).forEach((detail) => {
+      const closerName = String(detail.closer || '').trim();
+      if (!closerName) return;
+
+      const key = normalizeText(closerName);
+      const current = peopleMap.get(key) || {
+        area: detail.area || 'Comercial',
+        person: closerName,
+        role: 'Responsable de venta',
+        totalCommission: 0,
+        totalBase: 0,
+        transactionCount: 0,
+        agendas: 0,
+        clubSalesSequential: 0,
+        seenTransactions: new Set()
+      };
+
+      current.totalCommission += Number(detail.commissionAmount || 0);
+      const transactionKey = String(detail.transactionId || detail.id || '').trim();
+      if (transactionKey && !current.seenTransactions.has(transactionKey)) {
+        current.seenTransactions.add(transactionKey);
+        current.totalBase += Number(detail.baseAmount || 0);
+        current.transactionCount += 1;
+      }
+      current.clubSalesSequential = Math.max(current.clubSalesSequential, Number(detail.counters?.clubSalesSequential || 0));
+      peopleMap.set(key, current);
+    });
+
+    return [...peopleMap.values()]
+      .map((person) => ({
+        area: person.area,
+        person: person.person,
+        role: person.role,
+        totalCommission: person.totalCommission,
+        totalBase: person.totalBase,
+        transactionCount: person.transactionCount,
+        agendas: person.agendas,
+        clubSalesSequential: person.clubSalesSequential
+      }))
+      .sort((a, b) => b.totalCommission - a.totalCommission || a.person.localeCompare(b.person, 'es'));
+  }
+
   function getReconciliationFilterLabel() {
     if (state.reconciliationFilter === 'conciliated') return 'conciliados';
     if (state.reconciliationFilter === 'not_conciliated') return 'no conciliados';
@@ -599,16 +647,100 @@
     return [...groups.entries()].map(([role, rows]) => ({ role, rows }));
   }
 
+  function qualifiesForSettingCount(detail) {
+    return matchesApsetOrRt(detail?.origin) || matchesApsetOrRt(detail?.calendar);
+  }
+
+  function getSettingComprobantesForPerson(person) {
+    const normalizedPerson = normalizeText(person);
+    const rows = getAllCommissionDetails().filter((detail) => (
+      normalizeText(detail.person) === normalizedPerson
+      && detail.role === 'Setter'
+      && detail.category === 'MEG'
+      && String(detail.tipo || '').trim().toLowerCase() === 'venta'
+      && qualifiesForSettingCount(detail)
+    ));
+
+    const uniqueRows = new Map();
+    rows.forEach((detail) => {
+      const key = String(detail.transactionId || '').trim();
+      if (!key || uniqueRows.has(key)) return;
+      uniqueRows.set(key, detail);
+    });
+
+    return [...uniqueRows.values()].sort((a, b) => {
+      return String(b.date || '').localeCompare(String(a.date || '')) || String(a.clientName || '').localeCompare(String(b.clientName || ''), 'es');
+    });
+  }
+
+  function renderSettingCountButton(person, count) {
+    const safeCount = Number(count || 0);
+    if (safeCount <= 0) return '';
+    return `<button class="comisiones-inline-link comisiones-setting-link" type="button" data-setting-person="${escapeHtml(person)}">${formatInteger(safeCount)}</button>`;
+  }
+
+  function showSettingComprobantesPopup(person) {
+    const existing = document.getElementById('commissionSettingDetailPopup');
+    if (existing) existing.remove();
+
+    const details = getSettingComprobantesForPerson(person);
+    const itemsHtml = details.length
+      ? `
+        <ol class="sales-analysis-detail-list">
+          ${details.map((detail) => `
+            <li>
+              ${(() => {
+                const contactUrl = window.metricasGhl?.buildContactUrl?.(detail.ghlid);
+                const label = escapeHtml(detail.clientName || 'Sin nombre');
+                return contactUrl
+                  ? `<a class="comisiones-external-link" href="${escapeHtml(contactUrl)}" target="_blank" rel="noreferrer">${label}</a>`
+                  : label;
+              })()}
+              <span class="sales-analysis-detail-meta">
+                ${escapeHtml(formatDetailDate(detail.date))} · ${escapeHtml(detail.product || '-')} · Closer: ${escapeHtml(detail.closer || '-')}
+              </span>
+              <span class="sales-analysis-detail-meta">
+                Origen: ${escapeHtml(detail.origin || '-')} · Calendario: ${escapeHtml(detail.calendar || '-')}
+              </span>
+            </li>
+          `).join('')}
+        </ol>
+      `
+      : '<p>No encontré comprobantes para ese conteo.</p>';
+
+    const popup = document.createElement('div');
+    popup.id = 'commissionSettingDetailPopup';
+    popup.className = 'kpi-popup metric-info-popup';
+    popup.innerHTML = `
+      <div class="kpi-popup-card sales-analysis-detail-card">
+        <h3>Setting · ${escapeHtml(person)}</h3>
+        <p>${formatInteger(details.length)} comprobantes de venta con origen o calendario APSET / RT.</p>
+        ${itemsHtml}
+        <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    const close = () => popup.remove();
+    popup.addEventListener('click', (event) => {
+      if (event.target === popup) close();
+    });
+    document.getElementById('commissionSettingDetailPopupClose')?.addEventListener('click', close);
+  }
+
   function buildSheetRows(details) {
     const rowsMap = new Map();
 
     (details || []).forEach((detail) => {
-      const role = formatRoleLabel(detail.role);
-      const key = `${role}|${detail.person}`;
+      const person = detail.person || '-';
+      const key = normalizeText(person) || person;
       const current = rowsMap.get(key) || {
-        type: role.toLowerCase(),
-        role,
-        person: detail.person || '-',
+        type: 'setters',
+        role: 'Setters',
+        person,
+        hasCloserRole: false,
+        hasSetterRole: false,
         ventasMeg: 0,
         ventasClub: 0,
         ventasSetting: 0,
@@ -623,13 +755,24 @@
         total: 0
       };
 
+      if (detail.role === 'Closer') current.hasCloserRole = true;
+      if (detail.role === 'Setter') current.hasSetterRole = true;
+
       const type = String(detail.tipo || '').trim().toLowerCase();
       const isSale = type === 'venta';
+      const isOwnCloserTransaction = normalizeText(detail.closer) === normalizeText(detail.person);
 
       if (detail.role === 'Closer' && detail.category === 'MEG' && isSale) current.ventasMeg += 1;
       if (detail.role === 'Closer' && detail.category === 'Club' && isSale) current.ventasClub += 1;
-      if (detail.role === 'Setter' && detail.category === 'Club' && isSale) current.ventasClub += 1;
-      if (detail.role === 'Setter' && detail.category === 'MEG' && isSale) current.ventasSetting += 1;
+      if (
+        detail.role === 'Setter'
+        && detail.category === 'Club'
+        && isSale
+        && isOwnCloserTransaction
+      ) current.ventasClub += 1;
+      if (detail.role === 'Setter' && detail.category === 'MEG' && isSale && qualifiesForSettingCount(detail)) {
+        current.ventasSetting += 1;
+      }
 
       if (detail.role === 'Closer' && detail.category === 'MEG') {
         if (isSale) current.facturacion += Number(detail.facturacionArs || 0);
@@ -638,8 +781,8 @@
       }
 
       if (detail.role === 'Setter' && detail.category === 'MEG') {
-        if (isSale) current.facturacion += Number(detail.facturacionArs || 0);
-        current.cc += Number(detail.cashArs || 0);
+        if (isOwnCloserTransaction && isSale) current.facturacion += Number(detail.facturacionArs || 0);
+        if (isOwnCloserTransaction) current.cc += Number(detail.cashArs || 0);
         current.comisionSetting += Number(detail.commissionAmount || 0);
         if (current.settingPct === null && Number(detail.commissionPct || 0) > 0) {
           current.settingPct = Number(detail.commissionPct || 0);
@@ -648,8 +791,8 @@
 
       if (detail.category === 'Club') {
         if (detail.role === 'Setter') {
-          if (isSale) current.facturacion += Number(detail.facturacionArs || 0);
-          current.cc += Number(detail.cashArs || 0);
+          if (isOwnCloserTransaction && isSale) current.facturacion += Number(detail.facturacionArs || 0);
+          if (isOwnCloserTransaction) current.cc += Number(detail.cashArs || 0);
         }
         if (detail.role === 'Closer') {
           if (isSale) current.facturacion += Number(detail.facturacionArs || 0);
@@ -666,8 +809,21 @@
       rowsMap.set(key, current);
     });
 
+    rowsMap.forEach((row) => {
+      if (row.hasCloserRole) {
+        row.type = 'closers';
+        row.role = 'Closers';
+      } else {
+        row.type = 'setters';
+        row.role = 'Setters';
+      }
+    });
+
     const roleOrder = { Closers: 0, Setters: 1 };
     return [...rowsMap.values()].sort((a, b) => {
+      const aIsNahuel = isNahuelSetter(a.person);
+      const bIsNahuel = isNahuelSetter(b.person);
+      if (aIsNahuel !== bIsNahuel) return aIsNahuel ? 1 : -1;
       const roleDiff = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
       if (roleDiff) return roleDiff;
       return a.person.localeCompare(b.person, 'es');
@@ -839,7 +995,6 @@
               <table class="comisiones-sheet-table">
                 <thead>
                   <tr>
-                    <th>Tipo</th>
                     <th>Integrante</th>
                     <th>Meg</th>
                     <th>Club</th>
@@ -855,13 +1010,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  ${rows.map((row, index) => `
+                  ${rows.map((row) => `
                     <tr>
-                      <td>${index === 0 || rows[index - 1].role !== row.role ? `<span class="comisiones-sheet-role">${escapeHtml(row.type)}</span>` : ''}</td>
                       <td><button class="comisiones-inline-link comisiones-sheet-link" type="button" data-person="${escapeHtml(row.person)}">${escapeHtml(row.person)}</button></td>
                       <td>${formatSheetInteger(row.ventasMeg)}</td>
                       <td>${formatSheetInteger(row.ventasClub)}</td>
-                      <td>${formatSheetInteger(row.ventasSetting)}</td>
+                      <td>${renderSettingCountButton(row.person, row.ventasSetting) || formatSheetInteger(row.ventasSetting)}</td>
                       <td>${buildAgendaCountButton(row.person, row.agendas)}</td>
                       <td>${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
                       <td>${formatSheetCurrency(row.facturacion)}</td>
@@ -873,7 +1027,7 @@
                     </tr>
                   `).join('')}
                   <tr class="comisiones-sheet-total-row">
-                    <td colspan="2">Totales</td>
+                    <td>Totales</td>
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasMeg, 0))}</td>
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasClub, 0))}</td>
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasSetting, 0))}</td>
@@ -932,6 +1086,14 @@
       });
     });
 
+    node.querySelectorAll('[data-setting-person]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        showSettingComprobantesPopup(button.dataset.settingPerson);
+      });
+    });
+
     node.querySelectorAll('[data-agenda-person]').forEach((button) => {
       button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson));
     });
@@ -953,16 +1115,16 @@
     const summaryNode = document.getElementById('commissionPersonSummary');
     const detailNode = document.getElementById('commissionPersonDetails');
     const allDetails = getFilteredCommissionDetails();
-    const filteredPeople = buildPeopleFromDetails(allDetails);
+    const filteredPeople = buildCloserPeopleFromDetails(allDetails);
     const isAllView = state.selectedPerson === ALL_PEOPLE_VALUE;
     const person = filteredPeople.find((row) => row.person === state.selectedPerson) || null;
     const details = isAllView
       ? allDetails
-      : allDetails.filter((row) => row.person === state.selectedPerson);
-    const displayDetails = buildDisplayComprobanteRows(details, isAllView);
+      : allDetails.filter((row) => normalizeText(row.closer) === normalizeText(state.selectedPerson));
+    const displayDetails = buildDisplayComprobanteRows(details, true);
+    const uniqueTransactionCount = new Set(details.map((detail) => String(detail.transactionId || '').trim()).filter(Boolean)).size || displayDetails.length;
 
     if (isAllView) {
-      const uniqueTransactions = new Set(details.map((detail) => detail.transactionId).filter(Boolean));
       summaryNode.innerHTML = `
         <div class="card comisiones-person-card">
           <h3>Total comprobantes</h3>
@@ -970,9 +1132,9 @@
           <div class="comisiones-person-kpis">
             <span><strong>${formatCurrency(details.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0))}</strong> comisión total</span>
             <span><strong>${formatCurrency(details.reduce((sum, detail) => sum + Number(detail.baseAmount || 0), 0))}</strong> CC tomado</span>
-            <span><strong>${formatInteger(uniqueTransactions.size)}</strong> comprobantes únicos</span>
+            <span><strong>${formatInteger(uniqueTransactionCount)}</strong> comprobantes únicos</span>
             <span><strong>${formatInteger(displayDetails.length)}</strong> filas visibles</span>
-            <span><strong>${formatInteger(filteredPeople.length)}</strong> personas con comisión</span>
+            <span><strong>${formatInteger(filteredPeople.length)}</strong> responsables de venta</span>
           </div>
         </div>
       `;
@@ -991,7 +1153,7 @@
           <div class="comisiones-person-kpis">
             <span><strong>${formatCurrency(person.totalCommission)}</strong> comisión total</span>
             <span><strong>${formatCurrency(person.totalBase)}</strong> CC tomado</span>
-            <span><strong>${formatInteger(person.transactionCount)}</strong> transacciones</span>
+            <span><strong>${formatInteger(uniqueTransactionCount)}</strong> transacciones</span>
             ${agendaCountMarkup}
             <span><strong>${formatInteger(person.clubSalesSequential)}</strong> ventas Club</span>
           </div>
@@ -1186,6 +1348,12 @@
     bindPinnedColumnHeaders(agendaTable, pinnedAgendaColumnSelect, 'pinnedAgendaColumn');
   }
 
+  function syncAgendaMoreFiltersToggle() {
+    if (!agendaMoreFiltersNode || !agendaToggleMoreButton) return;
+    agendaMoreFiltersNode.hidden = !state.agendaFilters.showMore;
+    agendaToggleMoreButton.textContent = state.agendaFilters.showMore ? 'Mostrar menos filtros' : 'Mostrar más filtros';
+  }
+
   function syncAgendaFilterControls() {
     const setterSelect = document.getElementById('commissionAgendaSetterSelect');
     const aplicaSelect = document.getElementById('commissionAgendaAplicaSelect');
@@ -1197,6 +1365,22 @@
     fillSimpleSelect(aplicaSelect, uniqueSortedValues(state.agendaRows, 'aplica'), state.agendaFilters.aplica);
     if (agendaDateFromInput) agendaDateFromInput.value = state.agendaFilters.from || '';
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
+    syncAgendaMoreFiltersToggle();
+  }
+
+  function resetAgendaFilters() {
+    const { from, to } = getMonthRange(state.month);
+    state.agendaFilters.setter = '';
+    state.agendaFilters.from = from;
+    state.agendaFilters.to = to;
+    state.agendaFilters.lastOrigin = [];
+    state.agendaFilters.quality = [];
+    state.agendaFilters.aplica = '';
+    state.agendaFilters.calendar = [];
+    state.pinnedAgendaColumn = PIN_NONE_VALUE;
+    if (pinnedAgendaColumnSelect) pinnedAgendaColumnSelect.value = PIN_NONE_VALUE;
+    syncAgendaFilterControls();
+    renderAgendaPanel();
   }
 
   function openAgendaPanel(person = '', preset = '') {
@@ -1342,6 +1526,7 @@
 
     document.getElementById('commissionMinimumSetterPct').value = config.global.minimumSetterPct ?? '';
     document.getElementById('commissionClubTransferPct').value = config.global.clubTransferPct ?? '';
+    document.getElementById('commissionClubMercadoPagoPct').value = config.global.clubMercadoPagoPct ?? '';
     document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
     document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
@@ -1402,6 +1587,7 @@
       global: {
         minimumSetterPct: Number(document.getElementById('commissionMinimumSetterPct').value || 0),
         clubTransferPct: Number(document.getElementById('commissionClubTransferPct').value || 0),
+        clubMercadoPagoPct: Number(document.getElementById('commissionClubMercadoPagoPct').value || 0),
         defaultCloserPct: Number(document.getElementById('commissionDefaultCloserPct').value || 0),
         personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value || 0),
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
@@ -1442,7 +1628,7 @@
   }
 
   function refreshCommissionViews() {
-    const filteredPeople = buildPeopleFromDetails(getAllCommissionDetails());
+    const filteredPeople = buildCloserPeopleFromDetails(getFilteredCommissionDetails());
     renderSheetOverview(state.dashboard);
     fillPersonSelect(filteredPeople);
     if (
@@ -1570,6 +1756,15 @@
   pinnedAgendaColumnSelect?.addEventListener('change', () => {
     state.pinnedAgendaColumn = pinnedAgendaColumnSelect.value || PIN_NONE_VALUE;
     renderAgendaPanel();
+  });
+
+  document.getElementById('commissionAgendaClearFilters')?.addEventListener('click', () => {
+    resetAgendaFilters();
+  });
+
+  agendaToggleMoreButton?.addEventListener('click', () => {
+    state.agendaFilters.showMore = !state.agendaFilters.showMore;
+    syncAgendaMoreFiltersToggle();
   });
 
   monthInput.value = getCurrentMonthValue();

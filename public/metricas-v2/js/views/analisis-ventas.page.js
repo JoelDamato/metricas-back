@@ -71,6 +71,27 @@ function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function getSessionResponsibleName() {
+  const user = window.metricasAuthUser || {};
+  return String(user.nombre || '').trim();
+}
+
+async function ensureSessionUser() {
+  if (window.metricasAuthUser) return window.metricasAuthUser;
+  try {
+    const response = await fetch('/api/metricas/auth/session', { credentials: 'same-origin' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data?.user) {
+      window.metricasAuthUser = data.user;
+      return data.user;
+    }
+  } catch (error) {
+    // noop
+  }
+  return null;
+}
+
 function getCurrentYear() {
   return new Date().getFullYear();
 }
@@ -110,6 +131,11 @@ function isValidSaleRow(row, dateField) {
   if (normalizeText(row.tipo) !== 'venta') return false;
   if (!isValidSaleProduct(row.producto_format)) return false;
   return Number.isInteger(parseMonthFromDate(getDateValue(row, dateField)));
+}
+
+function matchesResponsibleVenta(row, responsibleName) {
+  if (!responsibleName) return true;
+  return normalizeText(row?.responsable_venta) === normalizeText(responsibleName);
 }
 
 function getEffectiveCashCollected(row) {
@@ -170,9 +196,14 @@ function buildRowDefinitions(section) {
 }
 
 function buildYearSummary(rows, year, dateField) {
+  const responsibleName = getSessionResponsibleName();
+  const hasResponsibleMatches = responsibleName
+    ? (rows || []).some((row) => matchesResponsibleVenta(row, responsibleName))
+    : false;
   const byMonth = new Map();
   const filteredRows = (rows || []).filter((row) => (
     isValidSaleRow(row, dateField)
+    && (!hasResponsibleMatches || matchesResponsibleVenta(row, responsibleName))
     && parseYearFromDate(getDateValue(row, dateField)) === Number(year)
   ));
 
@@ -429,6 +460,7 @@ async function loadSalesAnalysis() {
   const status = document.getElementById('status');
   const year = Number(document.getElementById('anio').value || getCurrentYear());
   const { from, to } = getYearRange(year);
+  const responsibleName = getSessionResponsibleName();
 
   status.textContent = 'Cargando analisis de ventas...';
 
@@ -456,7 +488,9 @@ async function loadSalesAnalysis() {
     params.set('anio', String(year));
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
 
-    status.textContent = `Año ${year} cargado. Arriba ves el analisis por fecha de agendamiento y abajo el mismo corte por fecha de venta, siempre usando cash total acumulado de la venta.`;
+    status.textContent = responsibleName
+      ? `Año ${year} cargado. Vista filtrada por responsable de venta: ${responsibleName}.`
+      : `Año ${year} cargado. Arriba ves el analisis por fecha de agendamiento y abajo el mismo corte por fecha de venta, siempre usando cash total acumulado de la venta.`;
   } catch (error) {
     document.getElementById('kpiContainer').innerHTML = '';
     document.getElementById('tableContainer').innerHTML = '';
@@ -465,6 +499,7 @@ async function loadSalesAnalysis() {
 }
 
 async function init() {
+  await ensureSessionUser();
   await initYearFilter();
   document.getElementById('reload').addEventListener('click', loadSalesAnalysis);
   document.getElementById('anio').addEventListener('change', loadSalesAnalysis);

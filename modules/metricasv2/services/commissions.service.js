@@ -7,6 +7,7 @@ const DEFAULT_CONFIG = {
   global: {
     minimumSetterPct: 0.045,
     clubTransferPct: 0.4,
+    clubMercadoPagoPct: 0.6,
     includeOnlyVerified: true,
     defaultCloserPct: 0.08,
     personalizedCloserPct: 0.1
@@ -121,6 +122,35 @@ function parseDateOnly(value) {
 }
 
 function safeNumber(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const raw = value.trim();
+    if (!raw) return 0;
+
+    const normalized = raw
+      .replace(/\s/g, '')
+      .replace(/\$/g, '')
+      .replace(/US\$/gi, '')
+      .replace(/ARS/gi, '')
+      .replace(/USD/gi, '');
+
+    const hasComma = normalized.includes(',');
+    const hasDot = normalized.includes('.');
+    let candidate = normalized;
+
+    if (hasComma && hasDot) {
+      candidate = normalized.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma) {
+      candidate = normalized.replace(',', '.');
+    }
+
+    const numeric = Number(candidate);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
 }
@@ -197,6 +227,7 @@ function normalizeConfig(rawConfig = {}) {
     global: {
       minimumSetterPct: Number(config.global?.minimumSetterPct ?? DEFAULT_CONFIG.global.minimumSetterPct),
       clubTransferPct: Number(config.global?.clubTransferPct ?? DEFAULT_CONFIG.global.clubTransferPct),
+      clubMercadoPagoPct: Number(config.global?.clubMercadoPagoPct ?? DEFAULT_CONFIG.global.clubMercadoPagoPct),
       includeOnlyVerified: config.global?.includeOnlyVerified !== false,
       defaultCloserPct: Number(config.global?.defaultCloserPct ?? DEFAULT_CONFIG.global.defaultCloserPct),
       personalizedCloserPct: Number(config.global?.personalizedCloserPct ?? DEFAULT_CONFIG.global.personalizedCloserPct)
@@ -267,8 +298,10 @@ function isMissingColumnError(error) {
 async function fetchComprobantesRowsForCommissions() {
   const selectAttempts = [
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,iva_ars,comisiones,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
+    'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,iva_ars,comisiones,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
+    'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar'
   ];
@@ -407,6 +440,35 @@ function isTransferPayment(value) {
   return normalized.includes('transfer');
 }
 
+function isMercadoPagoPayment(value) {
+  const normalized = normalizeText(value);
+  return normalized.includes('mercado pago') || normalized.includes('mercadopago');
+}
+
+function resolveClubPaymentRule(row, config, fallbackPct) {
+  if (isTransferPayment(row.medios_de_pago)) {
+    return {
+      pct: Number(config.global.clubTransferPct || 0),
+      sourceRule: 'Transferencia Club fija',
+      sourceRuleNote: 'La venta Club pagada por transferencia cobra el porcentaje fijo configurado.'
+    };
+  }
+
+  if (isMercadoPagoPayment(row.medios_de_pago)) {
+    return {
+      pct: Number(config.global.clubMercadoPagoPct || 0),
+      sourceRule: 'Mercado Pago Club fijo',
+      sourceRuleNote: 'La venta Club pagada por Mercado Pago cobra el porcentaje fijo configurado.'
+    };
+  }
+
+  return {
+    pct: fallbackPct,
+    sourceRule: '',
+    sourceRuleNote: ''
+  };
+}
+
 function isVerifiedForCommissions(value) {
   const normalized = normalizeText(value);
   if (!normalized) return true;
@@ -420,32 +482,19 @@ function isBclRtCase(row) {
 }
 
 function selectCashBase(row) {
-  const ars = safeNumber(row.cash_collected_ar);
-  if (ars > 0) return ars;
-  const legacyArs = safeNumber(row.cash_collected_ars);
-  if (legacyArs > 0) return legacyArs;
-  return safeNumber(row.cash_collected);
+  return safeNumber(row.cash_collected_ar);
 }
 
 function selectCashUsd(row) {
   const primaryAr = safeNumber(row.cash_collected_ar);
-  const legacyArs = safeNumber(row.cash_collected_ars);
   const tc = safeNumber(row.tc);
-  const ars = primaryAr > 0 ? primaryAr : legacyArs;
-  if (ars > 0 && tc > 0) return ars / tc;
-  const currentCash = safeNumber(row.cash_collected);
-  if (currentCash > 0) return currentCash;
+  if (primaryAr > 0 && tc > 0) return primaryAr / tc;
   return 0;
 }
 
 function selectCashArs(row) {
   const primaryAr = safeNumber(row.cash_collected_ar);
   if (primaryAr > 0) return primaryAr;
-  const legacyArs = safeNumber(row.cash_collected_ars);
-  if (legacyArs > 0) return legacyArs;
-  const usd = safeNumber(row.cash_collected);
-  const tc = safeNumber(row.tc);
-  if (usd > 0 && tc > 0) return usd * tc;
   return 0;
 }
 
@@ -469,15 +518,40 @@ function selectFacturacionArs(row) {
 function resolveGrossTotalArs(row) {
   const cashArs = safeNumber(row.cash_collected_ar);
   if (cashArs > 0) return cashArs;
-  const legacyCashArs = safeNumber(row.cash_collected_ars);
-  if (legacyCashArs > 0) return legacyCashArs;
-  const facturacionArs = safeNumber(row.facturacion_ars);
-  if (facturacionArs > 0) return facturacionArs;
-  return safeNumber(row.monto_pesos);
+  return 0;
+}
+
+function computeClubNetBreakdown(grossArs) {
+  const safeGross = safeNumber(grossArs);
+  if (safeGross <= 0) {
+    return {
+      grossArs: 0,
+      ivaArs: 0,
+      externalCommissionsArs: 0,
+      netArs: 0
+    };
+  }
+
+  const netBeforeTaxes = safeGross / 1.21;
+  const ivaArs = safeGross - netBeforeTaxes;
+  const iibbArs = netBeforeTaxes * 0.035;
+  const acrediArs = netBeforeTaxes * 0.0629;
+  const externalCommissionsArs = iibbArs + acrediArs;
+  const netArs = Math.max(0, netBeforeTaxes - externalCommissionsArs);
+
+  return {
+    grossArs: safeGross,
+    ivaArs,
+    externalCommissionsArs,
+    netArs
+  };
 }
 
 function computeCommissionBaseArs(row) {
   const grossArs = resolveGrossTotalArs(row);
+  if (isClubProduct(row.producto_format)) {
+    return computeClubNetBreakdown(grossArs).netArs;
+  }
   const ivaArs = safeNumber(row.iva_ars);
   const externalCommissionsArs = safeNumber(row.external_commissions_ars);
   return Math.max(0, grossArs - ivaArs - externalCommissionsArs);
@@ -506,49 +580,54 @@ function buildSettersMonthMap(setterRows, monthKey) {
 }
 
 function normalizeComprobanteRows(rows = []) {
-  return rows.map((row) => ({
-    ...row,
-    id: String(row.id || '').trim(),
-    tipo: titleCaseName(row.tipo),
-    producto_format: String(row.producto_format || '').trim(),
-    cliente_format: String(row.cliente_format || row.cliente || '').trim(),
-    creado_por: titleCaseName(row.creado_por),
-    responsable_venta_db: titleCaseName(row.responsable_venta),
-    responsable_actual: titleCaseName(row.responsable_actual),
-    info_comprobantes: String(row.info_comprobantes || '').trim(),
-    responsable_venta: titleCaseName(
-      row.responsable_venta
-      || extractResponsibleVenta(row.info_comprobantes)
-      || row.responsable_actual
-      || row.creado_por
-    ),
-    setter: titleCaseName(row.setter),
-    origen: String(row.origen || '').trim(),
-    calendario_agendado: String(row.calendario_agendado || '').trim(),
-    medios_de_pago: String(row.medios_de_pago || row.medios_de_pago_format || '').trim(),
-    ghlid: String(row.ghlid || '').trim(),
-    cobranza_relacionada: String(row.cobranza_relacionada || row.venta_relacionada || '').trim(),
-    porcentaje_venta_vieja: safeNumber(row.porcentaje_venta_vieja),
-    tc: safeNumber(row.tc),
-    cheque: safeBoolean(row.cheque),
-    estado: String(row.estado || '').trim(),
-    conciliado: String(row.conciliacion_financiera || row.conciliacion_financiera_2 || row.conciliar || '').trim(),
-    facturacion: safeNumber(row.facturacion),
-    facturacion_ars: safeNumber(row.facturacion_ars),
-    monto_pesos: safeNumber(row.monto_pesos),
-    cash_collected_ar: selectCashArs(row),
-    cash_collected_ars: selectCashArs(row),
-    facturacion_display_ars: selectFacturacionArs(row),
-    cash_usd: selectCashUsd(row),
-    f_acreditacion_only: parseDateOnly(row.f_acreditacion),
-    f_venta_only: parseDateOnly(row.f_venta),
-    cash_base: selectCashBase(row),
-    club_base: selectClubBase(row),
-    iva_ars: safeNumber(row.iva_ars ?? row.iva),
-    external_commissions_ars: safeNumber(row.comisiones_ars ?? row.comisiones),
-    commission_base_ars: 0,
-    verified_for_commissions: isVerifiedForCommissions(row.verificacion_comisiones)
-  })).map((row) => ({
+  return rows.map((row) => {
+    const grossArs = resolveGrossTotalArs(row);
+    const clubBreakdown = isClubProduct(row.producto_format) ? computeClubNetBreakdown(grossArs) : null;
+
+    return {
+      ...row,
+      id: String(row.id || '').trim(),
+      tipo: titleCaseName(row.tipo),
+      producto_format: String(row.producto_format || '').trim(),
+      cliente_format: String(row.cliente_format || row.cliente || '').trim(),
+      creado_por: titleCaseName(row.creado_por),
+      responsable_venta_db: titleCaseName(row.responsable_venta),
+      responsable_actual: titleCaseName(row.responsable_actual),
+      info_comprobantes: String(row.info_comprobantes || '').trim(),
+      responsable_venta: titleCaseName(
+        row.responsable_venta
+        || extractResponsibleVenta(row.info_comprobantes)
+        || row.responsable_actual
+        || row.creado_por
+      ),
+      setter: titleCaseName(row.setter),
+      origen: String(row.origen || '').trim(),
+      calendario_agendado: String(row.calendario_agendado || '').trim(),
+      medios_de_pago: String(row.medios_de_pago || row.medios_de_pago_format || '').trim(),
+      ghlid: String(row.ghlid || '').trim(),
+      cobranza_relacionada: String(row.cobranza_relacionada || row.venta_relacionada || '').trim(),
+      porcentaje_venta_vieja: safeNumber(row.porcentaje_venta_vieja),
+      tc: safeNumber(row.tc),
+      cheque: safeBoolean(row.cheque),
+      estado: String(row.estado || '').trim(),
+      conciliado: String(row.conciliacion_financiera || row.conciliacion_financiera_2 || row.conciliar || '').trim(),
+      facturacion: safeNumber(row.facturacion),
+      facturacion_ars: safeNumber(row.facturacion_ars),
+      monto_pesos: safeNumber(row.monto_pesos),
+      cash_collected_ar: selectCashArs(row),
+      cash_collected_ars: selectCashArs(row),
+      facturacion_display_ars: selectFacturacionArs(row),
+      cash_usd: selectCashUsd(row),
+      f_acreditacion_only: parseDateOnly(row.f_acreditacion),
+      f_venta_only: parseDateOnly(row.f_venta),
+      cash_base: selectCashBase(row),
+      club_base: selectClubBase(row),
+      iva_ars: clubBreakdown?.ivaArs > 0 ? clubBreakdown.ivaArs : safeNumber(row.iva_ars ?? row.iva),
+      external_commissions_ars: clubBreakdown?.externalCommissionsArs > 0 ? clubBreakdown.externalCommissionsArs : safeNumber(row.comisiones_ars ?? row.comisiones),
+      commission_base_ars: 0,
+      verified_for_commissions: isVerifiedForCommissions(row.verificacion_comisiones)
+    };
+  }).map((row) => ({
     ...row,
     commission_base_ars: computeCommissionBaseArs(row)
   }));
@@ -590,9 +669,9 @@ function findRelatedSale(row, saleIndex) {
   }
 
   const candidates = saleIndex.byGhlId.get(row.ghlid) || [];
-  const rowDate = row.f_acreditacion_only || row.f_venta_only;
+  const rowDate = row.f_acreditacion_only;
   const eligible = candidates.filter((sale) => {
-    const saleDate = sale.f_acreditacion_only || sale.f_venta_only;
+    const saleDate = sale.f_acreditacion_only;
     return !rowDate || !saleDate || saleDate <= rowDate;
   });
 
@@ -602,9 +681,9 @@ function findRelatedSale(row, saleIndex) {
 function buildClubSequenceMap(rows, monthKey) {
   const groups = new Map();
   rows
-    .filter((row) => matchesMonth(row.f_acreditacion_only || row.f_venta_only, monthKey))
+    .filter((row) => matchesMonth(row.f_acreditacion_only, monthKey))
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .sort((a, b) => String(a.f_acreditacion_only || a.f_venta_only || '').localeCompare(String(b.f_acreditacion_only || b.f_venta_only || '')) || a.id.localeCompare(b.id))
+    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')) || a.id.localeCompare(b.id))
     .forEach((row) => {
       const setterKey = normalizeText(row.setter || row.creado_por);
       if (!setterKey) return;
@@ -631,9 +710,9 @@ function buildSetterMegSalesCountMap(rows) {
 function buildCloserMegSalesCountMap(rows, monthKey) {
   const groups = new Map();
   rows
-    .filter((row) => matchesMonth(row.f_acreditacion_only || row.f_venta_only, monthKey))
+    .filter((row) => matchesMonth(row.f_acreditacion_only, monthKey))
     .filter((row) => normalizeText(row.tipo) === 'venta' && !isClubProduct(row.producto_format))
-    .sort((a, b) => String(a.f_acreditacion_only || a.f_venta_only || '').localeCompare(String(b.f_acreditacion_only || b.f_venta_only || '')) || a.id.localeCompare(b.id))
+    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')) || a.id.localeCompare(b.id))
     .forEach((row) => {
       const closerKey = normalizeText(row.responsable_venta || row.creado_por);
       if (!closerKey) return;
@@ -648,9 +727,9 @@ function buildCloserMegSalesCountMap(rows, monthKey) {
 function buildCloserClubSequenceMap(rows, monthKey) {
   const groups = new Map();
   rows
-    .filter((row) => matchesMonth(row.f_acreditacion_only || row.f_venta_only, monthKey))
+    .filter((row) => matchesMonth(row.f_acreditacion_only, monthKey))
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .sort((a, b) => String(a.f_acreditacion_only || a.f_venta_only || '').localeCompare(String(b.f_acreditacion_only || b.f_venta_only || '')) || a.id.localeCompare(b.id))
+    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')) || a.id.localeCompare(b.id))
     .forEach((row) => {
       const closerKey = normalizeText(row.responsable_venta || row.creado_por);
       if (!closerKey) return;
@@ -787,7 +866,7 @@ function buildDetailFinancials(row) {
 
 function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
-  const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only || row.f_venta_only, monthKey));
+  const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey));
   const activeRows = config.global.includeOnlyVerified
     ? monthRows.filter((row) => row.verified_for_commissions)
     : monthRows;
@@ -811,20 +890,23 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterName = row.setter || '';
     const closerName = row.responsable_venta || row.creado_por || '';
 
-    if (closerName && isRoleAllowed(roleMap, closerName, 'Closer')) {
+    if (closerName && (isRoleAllowed(roleMap, closerName, 'Closer') || (isClub && type === 'venta'))) {
       const closerArea = getAreaForPerson(areaMap, closerName, 'Comercial');
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
         const sequentialCount = Number(closerClubSequenceMap.get(sequenceKey) || 0);
-        const appliedPct = isTransferPayment(row.medios_de_pago)
-          ? config.global.clubTransferPct
-          : pickScalePct(config.clubScale, sequentialCount, config.global.defaultCloserPct);
+        const clubPaymentRule = resolveClubPaymentRule(
+          row,
+          config,
+          pickScalePct(config.clubScale, sequentialCount, config.global.defaultCloserPct)
+        );
+        const appliedPct = clubPaymentRule.pct;
         const baseAmount = row.commission_base_ars;
         if (baseAmount > 0) {
           details.push({
             id: `${row.id}:closer`,
             transactionId: row.id,
-            date: row.f_acreditacion_only || row.f_venta_only || '',
+            date: row.f_acreditacion_only || '',
             acreditacionDate: row.f_acreditacion_only || '',
             area: closerArea,
             person: closerName,
@@ -850,10 +932,8 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             baseAmount,
             commissionPct: appliedPct,
             commissionAmount: baseAmount * appliedPct,
-            sourceRule: isTransferPayment(row.medios_de_pago) ? 'Transferencia Club fija' : 'Escala Club closer',
-            sourceRuleNote: isTransferPayment(row.medios_de_pago)
-              ? 'Cuenta para la escala, pero el closer cobra el porcentaje fijo de transferencias.'
-              : `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
+            sourceRule: clubPaymentRule.sourceRule || 'Escala Club closer',
+            sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
             counters: {
               agendas: 0,
               clubSalesSequential: sequentialCount
@@ -873,7 +953,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
           details.push({
             id: `${row.id}:closer`,
             transactionId: row.id,
-            date: row.f_acreditacion_only || row.f_venta_only || '',
+            date: row.f_acreditacion_only || '',
             acreditacionDate: row.f_acreditacion_only || '',
             area: closerArea,
             person: closerName,
@@ -918,10 +998,14 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
 
     if (isClub && type === 'venta') {
+      if (normalizeText(setterName) === normalizeText(row.responsable_venta || row.creado_por || '')) {
+        return;
+      }
       const sequenceKey = `${normalizeText(setterName)}:${row.id}`;
       const sequentialCount = Number(clubSequenceMap.get(sequenceKey) || 0);
       const scalePct = pickScalePct(config.setterClubScale, sequentialCount || setterClubSales, config.global.clubTransferPct);
-      const appliedPct = isTransferPayment(row.medios_de_pago) ? config.global.clubTransferPct : scalePct;
+      const clubPaymentRule = resolveClubPaymentRule(row, config, scalePct);
+      const appliedPct = clubPaymentRule.pct;
       const baseAmount = row.commission_base_ars;
       const commissionAmount = baseAmount * appliedPct;
 
@@ -930,7 +1014,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       details.push({
         id: `${row.id}:setter`,
         transactionId: row.id,
-        date: row.f_acreditacion_only || row.f_venta_only || '',
+        date: row.f_acreditacion_only || '',
         acreditacionDate: row.f_acreditacion_only || '',
         area,
         person: setterName,
@@ -956,10 +1040,8 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         baseAmount,
         commissionPct: appliedPct,
         commissionAmount,
-        sourceRule: isTransferPayment(row.medios_de_pago) ? 'Transferencia Club fija' : 'Escala Club setter',
-        sourceRuleNote: isTransferPayment(row.medios_de_pago)
-          ? 'La venta cuenta para la escala, pero cobra el porcentaje fijo de transferencias.'
-          : `Venta Club #${sequentialCount || setterClubSales || 1} del mes para ${setterName}.`,
+        sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
+        sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || setterClubSales || 1} del mes para ${setterName}.`,
         counters: {
           agendas: setterAgendas,
           clubSalesSequential: sequentialCount || setterClubSales
@@ -1003,7 +1085,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     details.push({
       id: `${row.id}:setter`,
       transactionId: row.id,
-      date: row.f_acreditacion_only || row.f_venta_only || '',
+      date: row.f_acreditacion_only || '',
       acreditacionDate: row.f_acreditacion_only || '',
       area,
       person: setterName,

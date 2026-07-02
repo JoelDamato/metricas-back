@@ -86,40 +86,53 @@
         </section>
 
         <section class="comisiones-panel" data-panel="agendas">
-          <div class="comisiones-detail-toolbar comisiones-agendas-toolbar">
-            <label>
-              <span>Setter</span>
-              <select id="commissionAgendaSetterSelect"></select>
-            </label>
-            <label>
-              <span>Desde</span>
-              <input id="commissionAgendaDateFrom" type="date" />
-            </label>
-            <label>
-              <span>Hasta</span>
-              <input id="commissionAgendaDateTo" type="date" />
-            </label>
-            <div class="comisiones-checkgroup">
-              <span>Origen</span>
-              <div id="commissionAgendaLastOriginChecks" class="comisiones-checkgroup-options"></div>
+          <section class="card comisiones-agendas-filters-card">
+            <div class="comisiones-agendas-filters-head">
+              <div>
+                <h3>Filtros</h3>
+              </div>
+              <button id="commissionAgendaClearFilters" type="button" class="button-secondary">Limpiar filtros</button>
             </div>
-            <div class="comisiones-checkgroup">
-              <span>Calidad</span>
-              <div id="commissionAgendaQualityChecks" class="comisiones-checkgroup-options"></div>
+            <div class="comisiones-detail-toolbar comisiones-agendas-toolbar">
+              <label class="comisiones-filter-field">
+                <span>Setter</span>
+                <select id="commissionAgendaSetterSelect"></select>
+              </label>
+              <label class="comisiones-filter-field">
+                <span>Desde</span>
+                <input id="commissionAgendaDateFrom" type="date" />
+              </label>
+              <label class="comisiones-filter-field">
+                <span>Hasta</span>
+                <input id="commissionAgendaDateTo" type="date" />
+              </label>
+              <div class="comisiones-checkgroup comisiones-filter-field">
+                <span>Origen</span>
+                <div id="commissionAgendaLastOriginChecks" class="comisiones-checkgroup-options"></div>
+              </div>
+              <div class="comisiones-checkgroup comisiones-filter-field">
+                <span>Calidad</span>
+                <div id="commissionAgendaQualityChecks" class="comisiones-checkgroup-options"></div>
+              </div>
+              <div class="comisiones-checkgroup comisiones-filter-field">
+                <span>Calendario agendado</span>
+                <div id="commissionAgendaCalendarChecks" class="comisiones-checkgroup-options"></div>
+              </div>
+              <label class="comisiones-filter-field">
+                <span>Aplica</span>
+                <select id="commissionAgendaAplicaSelect"></select>
+              </label>
             </div>
-            <div class="comisiones-checkgroup">
-              <span>Calendario agendado</span>
-              <div id="commissionAgendaCalendarChecks" class="comisiones-checkgroup-options"></div>
+            <div class="comisiones-agendas-filters-more">
+              <button id="commissionAgendaToggleMore" type="button" class="comisiones-inline-link">Mostrar más filtros</button>
             </div>
-            <label>
-              <span>Aplica</span>
-              <select id="commissionAgendaAplicaSelect"></select>
-            </label>
-            <label>
-              <span>Inmovilizar columna</span>
-              <select id="commissionAgendaPinnedColumnSelect"></select>
-            </label>
-          </div>
+            <div id="commissionAgendaMoreFilters" class="comisiones-agendas-toolbar comisiones-agendas-toolbar-more" hidden>
+              <label class="comisiones-filter-field">
+                <span>Inmovilizar columna</span>
+                <select id="commissionAgendaPinnedColumnSelect"></select>
+              </label>
+            </div>
+          </section>
           <div id="commissionAgendaSummary" class="comisiones-person-summary"></div>
           <div id="commissionAgendaDetails" class="table-wrap comisiones-table-wrap"></div>
         </section>
@@ -141,6 +154,10 @@
                 <label>
                   <span>% fijo transferencias Club</span>
                   <input id="commissionClubTransferPct" type="number" min="0" step="0.001" />
+                </label>
+                <label>
+                  <span>% fijo Mercado Pago Club</span>
+                  <input id="commissionClubMercadoPagoPct" type="number" min="0" step="0.001" />
                 </label>
                 <label>
                   <span>% base closer MEG</span>
