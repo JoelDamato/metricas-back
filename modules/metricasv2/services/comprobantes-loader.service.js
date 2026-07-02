@@ -835,7 +835,7 @@ async function findLatestVentaByGhlId(ghlId, clientName = '') {
   let row = null;
   for (const query of saleQueries) {
     const response = await supabaseRequest('comprobantes', {
-      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo',
+      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_ar,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo',
       ...query
     });
     row = (response.data || [])[0] || null;
@@ -855,7 +855,7 @@ async function findLatestVentaByGhlId(ghlId, clientName = '') {
     fechaVenta: row.f_venta || null,
     fechaAcreditacion: row.f_acreditacion || null,
     facturacionUsd: toNumber(row.facturacion),
-    cashCollectedArs: toNumber(row.cash_collected_ar ?? row.cash_collected_ars),
+    cashCollectedArs: toNumber(row.cash_ar ?? row.cash_collected_ar ?? row.cash_collected_ars),
     cashCollectedTotal: toNumber(row.cash_collected_total)
   };
 }
@@ -896,8 +896,9 @@ async function findLatestVentaInNotion(clientName = '') {
       f_venta: properties['F.venta respaldo']?.date?.start || null,
       f_acreditacion: properties['Fecha de acreditacion']?.date?.start || null,
       facturacion: properties.Facturacion?.number ?? null,
-      cash_collected_ar: properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
-      cash_collected_ars: properties['Cash collected ARS']?.number ?? properties['Cash collected AR']?.number ?? null
+      cash_ar: properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
+      cash_collected_ar: properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
+      cash_collected_ars: properties['Cash collected ARS']?.number ?? properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? null
     };
   } catch (error) {
     return null;
@@ -1119,7 +1120,7 @@ function normalizePayload(payload = {}, user) {
     const maxAllowedCash = normalized.facturacionUsd + 5;
     const cashUsd = normalized.cashCollectedArs / tc;
     if (cashUsd > maxAllowedCash) {
-      const error = new Error('Cash collected ARS no puede ser mayor a la facturación con un margen de hasta 5 USD');
+      const error = new Error('Cash AR no puede ser mayor a la facturación con un margen de hasta 5 USD');
       error.statusCode = 400;
       throw error;
     }
@@ -1162,7 +1163,7 @@ function buildDraftOperations(normalized) {
       Productos: notionRelationArrayValue(overrides.productIds || normalized.productIds || []),
       Facturacion: (operationType === 'Venta' || operationType === 'Devolución') ? notionNumberValue(normalized.facturacionUsd) : undefined,
       'Cash collected': notionNumberValue(cashUsd),
-      'Cash collected AR': notionNumberValue(amountArs),
+      'Cash AR': notionNumberValue(amountArs),
       TC: notionNumberValue(normalized.tc),
       'Dni/cuit': notionRichTextValue(normalized.dniCuit),
       'Info Comprobantes': notionRichTextValue(commonInfo),
@@ -1346,7 +1347,7 @@ async function listMyComprobantes(user, options = {}) {
 
   while (true) {
     const params = {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,info_comprobantes',
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,info_comprobantes',
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,
       offset

@@ -628,11 +628,11 @@
       ['DNI / CUIT', payload.dniCuit || '-'],
       ['Medio de pago', payload.medioPago || '-'],
       ['TC', payload.tc || '-'],
-      ['Cash collected ARS', payload.cashCollectedArs ? formatCurrency(parseLocaleNumber(payload.cashCollectedArs), 'ARS') : '-']
+      ['Cash AR', payload.cashCollectedArs ? formatCurrency(parseLocaleNumber(payload.cashCollectedArs), 'ARS') : '-']
     ];
 
     if (payload.tc && payload.cashCollectedArs) {
-      rows.push(['Cash collected USD', formatCurrency(parseLocaleNumber(payload.cashCollectedArs) / parseLocaleNumber(payload.tc))]);
+      rows.push(['Cash USD', formatCurrency(parseLocaleNumber(payload.cashCollectedArs) / parseLocaleNumber(payload.tc))]);
     }
 
     if (payload.tipo === 'Venta' || payload.tipo === 'Devolución') {

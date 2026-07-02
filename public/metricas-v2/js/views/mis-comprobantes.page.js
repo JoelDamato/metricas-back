@@ -47,9 +47,13 @@
     return Number.isFinite(numeric) ? numeric : 0;
   }
 
+  function resolveCashAr(row) {
+    return parseNumber(row?.cash_ar ?? row?.cash_collected_ar ?? row?.cash_collected_ars);
+  }
+
   function resolveCashUsd(row) {
     const tc = parseNumber(row?.tc);
-    const cashAr = parseNumber(row?.cash_collected_ar || row?.cash_collected_ars);
+    const cashAr = resolveCashAr(row);
     if (cashAr > 0 && tc > 0) return cashAr / tc;
     return parseNumber(row?.cash_collected);
   }
@@ -155,7 +159,7 @@
     refs.summary.hidden = false;
     const totalFacturacion = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.facturacion), 0);
     const totalCashUsd = state.filteredRows.reduce((sum, row) => sum + resolveCashUsd(row), 0);
-    const totalCashArs = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.cash_collected_ars), 0);
+    const totalCashArs = state.filteredRows.reduce((sum, row) => sum + resolveCashAr(row), 0);
 
     refs.summary.innerHTML = `
       <article class="mis-comprobantes-summary-card">
@@ -171,7 +175,7 @@
         <strong>${escapeHtml(formatCurrency(totalCashUsd, 'USD'))}</strong>
       </article>
       <article class="mis-comprobantes-summary-card">
-        <span>Cash ARS</span>
+        <span>Cash AR</span>
         <strong>${escapeHtml(formatCurrency(totalCashArs, 'ARS'))}</strong>
       </article>
     `;
@@ -195,7 +199,7 @@
               <th>Fecha</th>
               <th>Facturación USD</th>
               <th>Cash USD</th>
-              <th>Cash ARS</th>
+              <th>Cash AR</th>
               <th>Estado</th>
               <th>GHL ID</th>
             </tr>
@@ -210,7 +214,7 @@
                 <td>${escapeHtml(formatDate(row.f_venta || row.f_acreditacion || row.fecha_creado || row.created_at))}</td>
                 <td>${escapeHtml(row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-')}</td>
                 <td>${escapeHtml(resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-')}</td>
-                <td>${escapeHtml((row.cash_collected_ar || row.cash_collected_ars) ? formatCurrency(row.cash_collected_ar || row.cash_collected_ars, 'ARS') : '-')}</td>
+                <td>${escapeHtml(resolveCashAr(row) ? formatCurrency(resolveCashAr(row), 'ARS') : '-')}</td>
                 <td>${escapeHtml(row.estado || 'Sin estado')}</td>
                 <td>${escapeHtml(row.ghlid || '-')}</td>
               </tr>

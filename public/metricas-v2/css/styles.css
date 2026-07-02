@@ -5269,7 +5269,7 @@ th {
 
 .comisiones-scale-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) auto;
   gap: 12px;
   align-items: end;
   padding: 16px;

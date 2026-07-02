@@ -10,13 +10,15 @@ const DEFAULT_CONFIG = {
     clubMercadoPagoPct: 0.6,
     includeOnlyVerified: true,
     defaultCloserPct: 0.08,
-    personalizedCloserPct: 0.1
+    personalizedCloserPct: 0.1,
+    vslCalendarSetterPct: 0.045
   },
   agendaScale: [
     { min: 0, pct: 0.045 },
-    { min: 15, pct: 0.05 },
-    { min: 25, pct: 0.055 },
-    { min: 35, pct: 0.06 }
+    { min: 11, pct: 0.05 },
+    { min: 16, pct: 0.055 },
+    { min: 31, pct: 0.06, bonusUsd: 100 },
+    { min: 51, pct: 0.07, bonusUsd: 250 }
   ],
   setterSalesScale: [
     { min: 0, pct: 0.08 },
@@ -115,6 +117,14 @@ function getMonthBounds(monthKey) {
   return { year, month, from, to };
 }
 
+function addDays(dateValue, days) {
+  const [year, month, day] = String(dateValue || '').split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return date.toISOString().slice(0, 10);
+}
+
 function parseDateOnly(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -178,15 +188,26 @@ function extractResponsibleVenta(infoComprobantes = '') {
   return titleCaseName(match?.[1] || '');
 }
 
-function normalizeScale(scale = [], fallback = []) {
+function normalizeScale(scale = [], fallback = [], options = {}) {
   const rows = Array.isArray(scale) ? scale : fallback;
-  return rows
+  const normalizedRows = rows
     .map((row) => ({
       min: Math.max(0, Number(row?.min || 0)),
-      pct: Number(row?.pct || 0)
+      pct: Number(row?.pct || 0),
+      bonusUsd: Number(row?.bonusUsd ?? row?.bonus_usd ?? 0)
     }))
     .filter((row) => Number.isFinite(row.min) && Number.isFinite(row.pct))
     .sort((a, b) => a.min - b.min);
+
+  const hasBonus = normalizedRows.some((row) => Number(row.bonusUsd || 0) > 0);
+  if (options.inferAgendaBonus && !hasBonus) {
+    normalizedRows.forEach((row) => {
+      if (row.pct >= 0.07 || row.min >= 51) row.bonusUsd = 250;
+      else if (row.pct >= 0.06 || row.min >= 31) row.bonusUsd = 100;
+    });
+  }
+
+  return normalizedRows;
 }
 
 function normalizeOverrides(overrides = []) {
@@ -230,9 +251,10 @@ function normalizeConfig(rawConfig = {}) {
       clubMercadoPagoPct: Number(config.global?.clubMercadoPagoPct ?? DEFAULT_CONFIG.global.clubMercadoPagoPct),
       includeOnlyVerified: config.global?.includeOnlyVerified !== false,
       defaultCloserPct: Number(config.global?.defaultCloserPct ?? DEFAULT_CONFIG.global.defaultCloserPct),
-      personalizedCloserPct: Number(config.global?.personalizedCloserPct ?? DEFAULT_CONFIG.global.personalizedCloserPct)
+      personalizedCloserPct: Number(config.global?.personalizedCloserPct ?? DEFAULT_CONFIG.global.personalizedCloserPct),
+      vslCalendarSetterPct: Number(config.global?.vslCalendarSetterPct ?? DEFAULT_CONFIG.global.vslCalendarSetterPct)
     },
-    agendaScale: normalizeScale(config.agendaScale, DEFAULT_CONFIG.agendaScale),
+    agendaScale: normalizeScale(config.agendaScale, DEFAULT_CONFIG.agendaScale, { inferAgendaBonus: true }),
     setterSalesScale: normalizeScale(config.setterSalesScale, config.agendaScale || DEFAULT_CONFIG.setterSalesScale),
     clubScale: normalizeScale(config.clubScale, DEFAULT_CONFIG.clubScale),
     fixedOverrides: normalizeOverrides(config.fixedOverrides),
@@ -296,7 +318,7 @@ function isMissingColumnError(error) {
 }
 
 async function fetchComprobantesRowsForCommissions() {
-  const selectAttempts = [
+  const baseSelectAttempts = [
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,iva_ars,comisiones,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
@@ -304,6 +326,10 @@ async function fetchComprobantesRowsForCommissions() {
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva_ars,comisiones_ars,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar',
     'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen,calendario_agendado,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar'
+  ];
+  const selectAttempts = [
+    ...baseSelectAttempts.map((select) => select.replace('f_venta,cash_collected', 'f_venta,cash_ar,cash_collected')),
+    ...baseSelectAttempts
   ];
 
   let lastError = null;
@@ -317,6 +343,18 @@ async function fetchComprobantesRowsForCommissions() {
   }
 
   throw lastError;
+}
+
+async function fetchAgendaRowsForCommissions(monthKey) {
+  const bounds = getMonthBounds(monthKey);
+  return fetchAllRows('leads_raw', {
+    select: 'id,nombre,setter,fecha_agenda,origen,primer_origen,ultimo_origen,calendario_agendado,agendo,aplica',
+    from: bounds.from,
+    to: bounds.to,
+    dateField: 'fecha_agenda',
+    orderBy: 'fecha_agenda',
+    orderDir: 'asc'
+  });
 }
 
 async function fetchAllRows(resource, options = {}) {
@@ -427,6 +465,20 @@ function pickScalePct(scale, count, fallbackPct) {
   return pct;
 }
 
+function pickScaleBonusUsd(scale, count) {
+  const tiers = normalizeScale(scale);
+  return tiers.reduce((sum, tier) => {
+    if (count >= tier.min) return sum + safeNumber(tier.bonusUsd);
+    return sum;
+  }, 0);
+}
+
+function matchesApsetOrRt(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) return false;
+  return normalized.includes('apset') || /(^|[^a-z])rt([^a-z]|$)/.test(normalized);
+}
+
 function isClubProduct(value) {
   return normalizeText(value).includes('club');
 }
@@ -456,9 +508,9 @@ function resolveClubPaymentRule(row, config, fallbackPct) {
 
   if (isMercadoPagoPayment(row.medios_de_pago)) {
     return {
-      pct: Number(config.global.clubMercadoPagoPct || 0),
-      sourceRule: 'Mercado Pago Club fijo',
-      sourceRuleNote: 'La venta Club pagada por Mercado Pago cobra el porcentaje fijo configurado.'
+      pct: fallbackPct > 0 ? fallbackPct : Number(config.global.clubMercadoPagoPct || 0),
+      sourceRule: 'Escala Club Mercado Pago',
+      sourceRuleNote: 'La venta Club pagada por Mercado Pago usa la escalera Club; las transferencias también cuentan para ubicar la venta en esa escalera.'
     };
   }
 
@@ -481,21 +533,36 @@ function isBclRtCase(row) {
   return origen.includes('bcl') && calendario.includes('rt');
 }
 
-function selectCashBase(row) {
+function isVslCalendarSettingCase(row) {
+  return normalizeText(row.origen).includes('vsl') && matchesApsetOrRt(row.calendario_agendado);
+}
+
+function resolveMonthBonusTc(rows = []) {
+  const candidates = rows
+    .filter((row) => safeNumber(row.tc) > 0)
+    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')));
+  return safeNumber(candidates[candidates.length - 1]?.tc);
+}
+
+function selectCashArValue(row) {
+  const cashAr = safeNumber(row.cash_ar);
+  if (cashAr !== 0) return cashAr;
   return safeNumber(row.cash_collected_ar);
 }
 
+function selectCashBase(row) {
+  return selectCashArValue(row);
+}
+
 function selectCashUsd(row) {
-  const primaryAr = safeNumber(row.cash_collected_ar);
+  const primaryAr = selectCashArValue(row);
   const tc = safeNumber(row.tc);
   if (primaryAr > 0 && tc > 0) return primaryAr / tc;
   return 0;
 }
 
 function selectCashArs(row) {
-  const primaryAr = safeNumber(row.cash_collected_ar);
-  if (primaryAr > 0) return primaryAr;
-  return 0;
+  return selectCashArValue(row);
 }
 
 function selectClubBase(row) {
@@ -516,7 +583,7 @@ function selectFacturacionArs(row) {
 }
 
 function resolveGrossTotalArs(row) {
-  const cashArs = safeNumber(row.cash_collected_ar);
+  const cashArs = selectCashArValue(row);
   if (cashArs > 0) return cashArs;
   return 0;
 }
@@ -565,7 +632,48 @@ function getSetterClubSalesCount(settersMap, setterName) {
   return Number(settersMap.get(normalizeText(setterName))?.venta_club || 0);
 }
 
-function buildSettersMonthMap(setterRows, monthKey) {
+function getAgendaOriginFilter(row) {
+  return String(row?.ultimo_origen || row?.origen || row?.primer_origen || '').trim();
+}
+
+function hasCommissionAgendaSignals(row) {
+  if (normalizeText(row?.agendo) !== 'agendo') return false;
+  if (normalizeText(row?.aplica) !== 'aplica') return false;
+  return matchesApsetOrRt(getAgendaOriginFilter(row)) || matchesApsetOrRt(row?.calendario_agendado);
+}
+
+function resolveAgendaDateForMonth(rawDate, monthKey, row) {
+  const bounds = getMonthBounds(monthKey);
+  const raw = String(rawDate || '').trim();
+  const datePart = raw.slice(0, 10);
+  if (!datePart) return '';
+  if (datePart >= bounds.from && datePart < bounds.to) return datePart;
+
+  const isMidnightBoundary = datePart === bounds.to
+    && /^T?00:00:00(?:\.000)?(?:Z)?$/.test(raw.slice(10));
+  if (isMidnightBoundary && hasCommissionAgendaSignals(row)) return addDays(bounds.to, -1);
+
+  return '';
+}
+
+function buildLiveAgendaCountMap(agendaRows, monthKey) {
+  const map = new Map();
+  (agendaRows || []).forEach((row) => {
+    const setter = titleCaseName(row?.setter);
+    if (!setter) return;
+    const agendaDate = resolveAgendaDateForMonth(row?.fecha_agenda, monthKey, row);
+    if (!agendaDate) return;
+    if (!hasCommissionAgendaSignals(row)) return;
+
+    const key = normalizeText(setter);
+    const current = map.get(key) || { setter, agendo: 0 };
+    current.agendo += 1;
+    map.set(key, current);
+  });
+  return map;
+}
+
+function buildSettersMonthMap(setterRows, monthKey, liveAgendaCountMap = new Map()) {
   const map = new Map();
   setterRows
     .filter((row) => `${row.anio}-${String(row.mes).padStart(2, '0')}` === monthKey)
@@ -576,6 +684,15 @@ function buildSettersMonthMap(setterRows, monthKey) {
         ventaClub: safeNumber(row.venta_club)
       });
     });
+  liveAgendaCountMap.forEach((agendaInfo, key) => {
+    const current = map.get(key) || {
+      setter: agendaInfo.setter,
+      agendo: 0,
+      ventaClub: 0
+    };
+    current.agendo = safeNumber(agendaInfo.agendo);
+    map.set(key, current);
+  });
   return map;
 }
 
@@ -614,6 +731,7 @@ function normalizeComprobanteRows(rows = []) {
       facturacion: safeNumber(row.facturacion),
       facturacion_ars: safeNumber(row.facturacion_ars),
       monto_pesos: safeNumber(row.monto_pesos),
+      cash_ar: selectCashArs(row),
       cash_collected_ar: selectCashArs(row),
       cash_collected_ars: selectCashArs(row),
       facturacion_display_ars: selectFacturacionArs(row),
@@ -864,14 +982,15 @@ function buildDetailFinancials(row) {
   };
 }
 
-function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows }) {
+function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey));
   const activeRows = config.global.includeOnlyVerified
     ? monthRows.filter((row) => row.verified_for_commissions)
     : monthRows;
 
-  const settersMap = buildSettersMonthMap(settersRows, monthKey);
+  const liveAgendaCountMap = buildLiveAgendaCountMap(agendaRows, monthKey);
+  const settersMap = buildSettersMonthMap(settersRows, monthKey, liveAgendaCountMap);
   const saleIndex = buildHistoricalSaleIndex(normalizedRows);
   const transactionIndex = buildHistoricalTransactionIndex(normalizedRows);
   const clubSequenceMap = buildClubSequenceMap(activeRows, monthKey);
@@ -881,6 +1000,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const roleMap = buildRoleMap(config);
   const details = [];
   const closerMegCache = new Map();
+  const bonusTc = resolveMonthBonusTc(activeRows);
 
   activeRows.forEach((row) => {
     const type = normalizeText(row.tipo);
@@ -920,6 +1040,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             closer: closerName,
             origin: row.origen || '',
             calendar: row.calendario_agendado || '',
+            paymentMethod: row.medios_de_pago || '',
             tc: row.tc,
             cheque: row.cheque,
             conciliado: row.conciliado || '',
@@ -932,6 +1053,9 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             baseAmount,
             commissionPct: appliedPct,
             commissionAmount: baseAmount * appliedPct,
+            bonusUsd: 0,
+            bonusArs: 0,
+            isBonus: false,
             sourceRule: clubPaymentRule.sourceRule || 'Escala Club closer',
             sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
             counters: {
@@ -967,6 +1091,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             closer: closerName,
             origin: row.origen || '',
             calendar: row.calendario_agendado || '',
+            paymentMethod: row.medios_de_pago || '',
             tc: row.tc,
             cheque: row.cheque,
             conciliado: row.conciliado || '',
@@ -979,6 +1104,9 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             baseAmount,
             commissionPct: closerResult.pct,
             commissionAmount: baseAmount * closerResult.pct,
+            bonusUsd: 0,
+            bonusArs: 0,
+            isBonus: false,
             sourceRule: closerResult.sourceRule,
             sourceRuleNote: closerResult.sourceRuleNote,
             counters: {
@@ -1028,6 +1156,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         closer: row.responsable_venta || row.creado_por || '',
         origin: row.origen || '',
         calendar: row.calendario_agendado || '',
+        paymentMethod: row.medios_de_pago || '',
         tc: row.tc,
         cheque: row.cheque,
         conciliado: row.conciliado || '',
@@ -1040,6 +1169,9 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         baseAmount,
         commissionPct: appliedPct,
         commissionAmount,
+        bonusUsd: 0,
+        bonusArs: 0,
+        isBonus: false,
         sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
         sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || setterClubSales || 1} del mes para ${setterName}.`,
         counters: {
@@ -1065,6 +1197,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       appliedPct = inheritedPct;
       sourceRule = 'Cobranzas heredan porcentaje';
       sourceRuleNote = 'La cobranza toma el porcentaje de la venta madre y no recalcula la escala.';
+    } else if (isVslCalendarSettingCase(row)) {
+      appliedPct = config.global.vslCalendarSetterPct;
+      sourceRule = 'VSL con calendario APSET / RT';
+      sourceRuleNote = 'La operación vino de VSL y fue agendada en calendario APSET / RT: cobra fijo 4,5% y sigue contando para la escalera del mes.';
     } else if (fixedPct !== null) {
       appliedPct = fixedPct;
       sourceRule = 'Porcentaje fijo individual';
@@ -1099,6 +1235,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       closer: row.responsable_venta || row.creado_por || '',
       origin: row.origen || '',
       calendar: row.calendario_agendado || '',
+      paymentMethod: row.medios_de_pago || '',
       tc: row.tc,
       cheque: row.cheque,
       conciliado: row.conciliado || '',
@@ -1111,8 +1248,64 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       baseAmount,
       commissionPct: appliedPct,
       commissionAmount: baseAmount * appliedPct,
+      bonusUsd: 0,
+      bonusArs: 0,
+      isBonus: false,
       sourceRule,
       sourceRuleNote,
+      counters: {
+        agendas: setterAgendas,
+        clubSalesSequential: 0
+      }
+    });
+  });
+
+  settersMap.forEach((setterInfo, setterKey) => {
+    const setterName = setterInfo.setter || titleCaseName(setterKey);
+    if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
+
+    const setterAgendas = safeNumber(setterInfo.agendo);
+    const bonusUsd = pickScaleBonusUsd(config.agendaScale, setterAgendas);
+    if (bonusUsd <= 0) return;
+
+    const bonusArs = bonusUsd * bonusTc;
+    details.push({
+      id: `${monthKey}:${setterKey}:agenda-bonus`,
+      transactionId: '',
+      date: `${monthKey}-01`,
+      acreditacionDate: `${monthKey}-01`,
+      area: getAreaForPerson(areaMap, setterName, 'Comercial'),
+      person: setterName,
+      role: 'Setter',
+      category: 'Bono',
+      tipo: 'Bono',
+      product: 'Bono agendas',
+      clientName: 'Bono por objetivo de agendas',
+      ghlid: '',
+      setter: setterName,
+      closer: setterName,
+      origin: '',
+      calendar: '',
+      paymentMethod: '',
+      tc: bonusTc,
+      cheque: false,
+      conciliado: '',
+      status: 'Bono',
+      facturacionUsd: 0,
+      facturacionArs: 0,
+      cashUsd: 0,
+      cashArs: 0,
+      ivaArs: 0,
+      externalCommissionsArs: 0,
+      netTotalArs: 0,
+      baseAmount: 0,
+      commissionPct: 0,
+      commissionAmount: bonusArs,
+      bonusUsd,
+      bonusArs,
+      isBonus: true,
+      sourceRule: 'Bono por agendas',
+      sourceRuleNote: `Bono acumulativo por ${setterAgendas} agendas del setter en ${monthKey}.`,
       counters: {
         agendas: setterAgendas,
         clubSalesSequential: 0
@@ -1143,7 +1336,7 @@ function summarizeDetails(details) {
 
     current.totalCommission += safeNumber(detail.commissionAmount);
     current.totalBase += safeNumber(detail.baseAmount);
-    current.transactionCount += 1;
+    if (!detail.isBonus) current.transactionCount += 1;
     current.agendas = Math.max(current.agendas, safeNumber(detail.counters?.agendas));
     current.clubSalesSequential = Math.max(current.clubSalesSequential, safeNumber(detail.counters?.clubSalesSequential));
     peopleMap.set(key, current);
@@ -1262,19 +1455,21 @@ async function lockCommissionMonth(monthKey, user) {
 
 async function buildCommissionDashboard(monthKey) {
   const safeMonth = normalizeMonthKey(monthKey);
-  const [{ config, locked }, comprobantesRows, settersRows] = await Promise.all([
+  const [{ config, locked }, comprobantesRows, settersRows, agendaRows] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchComprobantesRowsForCommissions(),
     fetchAllRows('setters', {
       select: 'anio,mes,setter,agendo,venta_club'
-    })
+    }),
+    fetchAgendaRowsForCommissions(safeMonth)
   ]);
 
   const details = buildTransactionDetails({
     monthKey: safeMonth,
     config,
     comprobantesRows,
-    settersRows
+    settersRows,
+    agendaRows
   });
 
   const summary = summarizeDetails(details);

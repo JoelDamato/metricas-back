@@ -196,6 +196,8 @@ function mapToSupabase(payload) {
 
   // Obtener GHL ID (puede ser fórmula o texto)
   const ghlId = getValue(p['GHL ID']);
+  const cashAr = getValue(p['Cash AR']) ?? getValue(p['Cash collected AR']) ?? getValue(p['Cash collected ARS']);
+  const cashCollectedArs = getValue(p['Cash collected ARS']) ?? cashAr;
 
   const row = {
     id: data.id,  // Notion ID como identificador principal
@@ -208,8 +210,9 @@ function mapToSupabase(payload) {
     campaign: getValue(p['Campaign']),
     cantidad_de_pagos: getValue(p['Cantidad de pagos']),
     cash_collected: getValue(p['Cash collected']),
-    cash_collected_ar: getValue(p['Cash collected AR']) ?? getValue(p['Cash collected ARS']),
-    cash_collected_ars: getValue(p['Cash collected ARS']) ?? getValue(p['Cash collected AR']),
+    cash_ar: cashAr,
+    cash_collected_ar: cashAr,
+    cash_collected_ars: cashCollectedArs,
     cash_collected_total: getValue(p['Cash collected Total']),
     cliente: getValue(p['Cliente']),
     cobranza_relacionada: getValue(p['Cobranza relacionada']),

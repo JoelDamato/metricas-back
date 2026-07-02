@@ -110,6 +110,10 @@
     return Number(value || 0) === 0 ? '' : formatCurrency(value);
   }
 
+  function formatSheetUsd(value) {
+    return Number(value || 0) === 0 ? '' : formatUsd(value);
+  }
+
   function formatSheetPercent(value) {
     return Number(value || 0) === 0 ? '' : formatPercent(value);
   }
@@ -154,6 +158,9 @@
 
   function renderComprobanteStatusBadge(value) {
     const status = normalizeText(value);
+    if (status.includes('bono')) {
+      return '<span class="comisiones-status-badge" aria-label="Bono" title="Bono">Bono</span>';
+    }
     if (status.includes('rebot')) {
       return '<span class="comisiones-status-badge is-rejected" aria-label="Rebotado" title="Rebotado"><span aria-hidden="true">●</span></span>';
     }
@@ -224,6 +231,14 @@
     const lastDay = new Date(year, month, 0);
     const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
     return { from, to };
+  }
+
+  function addDays(dateValue, days) {
+    const [year, month, day] = String(dateValue || '').split('-').map(Number);
+    if (!year || !month || !day) return '';
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + Number(days || 0));
+    return date.toISOString().slice(0, 10);
   }
 
   function setStatus(message, tone = '') {
@@ -337,7 +352,7 @@
   function getAgendaRowsCountForPerson(person) {
     const normalizedPerson = normalizeText(person);
     if (!normalizedPerson) return 0;
-    return state.agendaRows.filter((row) => normalizeText(row.setter) === normalizedPerson).length;
+    return state.agendaRows.filter((row) => normalizeText(row.setter) === normalizedPerson && row.commissionQualified).length;
   }
 
   function isNahuelSetter(value) {
@@ -347,6 +362,10 @@
 
   function isQualifiedAgendaRow(row) {
     if (!row?.setter || !row?.agendaDate) return false;
+    return hasCommissionAgendaSignals(row);
+  }
+
+  function hasCommissionAgendaSignals(row) {
     if (normalizeText(row.agendo) !== 'agendo') return false;
     if (normalizeText(row.aplica) !== 'aplica') return false;
     return matchesApsetOrRt(row.originFilter) || matchesApsetOrRt(row.calendar);
@@ -567,35 +586,59 @@
     )].sort((a, b) => a.localeCompare(b, 'es'));
   }
 
-  function normalizeAgendaRows(rows) {
+  function resolveAgendaDateForMonth(rawDate, bounds, row) {
+    const raw = String(rawDate || '').trim();
+    const datePart = raw.slice(0, 10);
+    if (!datePart) return '';
+    if (bounds?.from && bounds?.to && datePart >= bounds.from && datePart <= bounds.to) return datePart;
+
+    const nextMonthBoundary = addDays(bounds?.to, 1);
+    const isMidnightBoundary = nextMonthBoundary
+      && datePart === nextMonthBoundary
+      && /^T?00:00:00(?:\\.000)?(?:Z)?$/.test(raw.slice(10));
+
+    if (isMidnightBoundary && hasCommissionAgendaSignals(row)) return bounds.to;
+    return datePart;
+  }
+
+  function normalizeAgendaRows(rows, bounds = {}) {
     return (rows || [])
+      .map((row) => {
+        const normalized = {
+          id: String(row.id || '').trim(),
+          clientName: String(row.nombre || '').trim() || 'Sin nombre',
+          ghlid: String(row.ghlid || '').trim(),
+          setter: String(row.setter || '').trim(),
+          closer: String(row.closer || '').trim(),
+          agendaDate: '',
+          callDate: String(row.fecha_llamada || '').trim().slice(0, 10),
+          origin: String(row.origen || row.primer_origen || '').trim(),
+          firstOrigin: String(row.primer_origen || '').trim(),
+          lastOrigin: String(row.ultimo_origen || '').trim(),
+          originFilter: String(row.ultimo_origen || row.origen || row.primer_origen || '').trim(),
+          calendar: String(row.calendario_agendado || '').trim(),
+          quality: String(row.calidad_lead || '').trim(),
+          strategy: String(row.estrategia_a || '').trim(),
+          agendo: String(row.agendo || '').trim(),
+          aplica: String(row.aplica || '').trim(),
+          llamada: String(row.llamada_meg || '').trim(),
+          productInterest: String(row.producto_de_interes || '').trim(),
+          productSold: String(row.producto_adq || '').trim(),
+          megStage: String(row.embudo_meg || '').trim(),
+          clubStage: String(row.embudo_club || '').trim(),
+          settingFollowup: String(row.seguimiento_setting || '').trim(),
+          mail: String(row.mail || '').trim(),
+          phone: String(row.telefono || row.whatsapp || '').trim(),
+          commissionQualified: false
+        };
+        normalized.agendaDate = resolveAgendaDateForMonth(row.fecha_agenda, bounds, normalized);
+        return normalized;
+      })
+      .filter((row) => row.agendaDate && (!bounds.from || row.agendaDate >= bounds.from) && (!bounds.to || row.agendaDate <= bounds.to))
       .map((row) => ({
-        id: String(row.id || '').trim(),
-        clientName: String(row.nombre || '').trim() || 'Sin nombre',
-        ghlid: String(row.ghlid || '').trim(),
-        setter: String(row.setter || '').trim(),
-        closer: String(row.closer || '').trim(),
-        agendaDate: String(row.fecha_agenda || '').trim().slice(0, 10),
-        callDate: String(row.fecha_llamada || '').trim().slice(0, 10),
-        origin: String(row.origen || row.primer_origen || '').trim(),
-        firstOrigin: String(row.primer_origen || '').trim(),
-        lastOrigin: String(row.ultimo_origen || '').trim(),
-        originFilter: String(row.ultimo_origen || row.origen || row.primer_origen || '').trim(),
-        calendar: String(row.calendario_agendado || '').trim(),
-        quality: String(row.calidad_lead || '').trim(),
-        strategy: String(row.estrategia_a || '').trim(),
-        agendo: String(row.agendo || '').trim(),
-        aplica: String(row.aplica || '').trim(),
-        llamada: String(row.llamada_meg || '').trim(),
-        productInterest: String(row.producto_de_interes || '').trim(),
-        productSold: String(row.producto_adq || '').trim(),
-        megStage: String(row.embudo_meg || '').trim(),
-        clubStage: String(row.embudo_club || '').trim(),
-        settingFollowup: String(row.seguimiento_setting || '').trim(),
-        mail: String(row.mail || '').trim(),
-        phone: String(row.telefono || row.whatsapp || '').trim()
+        ...row,
+        commissionQualified: isQualifiedAgendaRow(row)
       }))
-      .filter((row) => isQualifiedAgendaRow(row))
       .sort((a, b) => String(b.agendaDate || '').localeCompare(String(a.agendaDate || '')) || a.clientName.localeCompare(b.clientName, 'es'));
   }
 
@@ -752,6 +795,8 @@
         comisionMegArs: 0,
         comisionClubArs: 0,
         comisionSetting: 0,
+        comisionBono: 0,
+        bonoUsd: 0,
         total: 0
       };
 
@@ -761,6 +806,15 @@
       const type = String(detail.tipo || '').trim().toLowerCase();
       const isSale = type === 'venta';
       const isOwnCloserTransaction = normalizeText(detail.closer) === normalizeText(detail.person);
+
+      if (detail.category === 'Bono') {
+        current.agendas = Math.max(current.agendas, Number(detail.counters?.agendas || 0));
+        current.comisionBono += Number(detail.commissionAmount || 0);
+        current.bonoUsd += Number(detail.bonusUsd || 0);
+        current.total += Number(detail.commissionAmount || 0);
+        rowsMap.set(key, current);
+        return;
+      }
 
       if (detail.role === 'Closer' && detail.category === 'MEG' && isSale) current.ventasMeg += 1;
       if (detail.role === 'Closer' && detail.category === 'Club' && isSale) current.ventasClub += 1;
@@ -921,7 +975,7 @@
     const totalClubCommission = rows.reduce((sum, row) => sum + Number(row.comisionClubArs || 0), 0);
     const totalMegCommission = rows.reduce((sum, row) => sum + Number(row.comisionMegArs || 0) + Number(row.comisionSetting || 0), 0);
     const totalCommission = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
-    const nahuelAgendaCount = state.agendaRows.filter((row) => isNahuelSetter(row.setter)).length;
+    const nahuelAgendaCount = state.agendaRows.filter((row) => isNahuelSetter(row.setter) && row.commissionQualified).length;
     const uniqueTransactionRows = [...uniqueTransactions.values()];
     const totalFacturacionUsd = uniqueTransactionRows
       .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
@@ -1006,6 +1060,7 @@
                     <th>Comisión<br>Meg</th>
                     <th>Comisión<br>Club</th>
                     <th>Comisión<br>Setting</th>
+                    <th>Bono<br>USD</th>
                     <th>Total a cobrar</th>
                   </tr>
                 </thead>
@@ -1023,6 +1078,7 @@
                       <td>${formatSheetCurrency(row.comisionMegArs)}</td>
                       <td>${formatSheetCurrency(row.comisionClubArs)}</td>
                       <td>${formatSheetCurrency(row.comisionSetting)}</td>
+                      <td>${formatSheetUsd(row.bonoUsd)}</td>
                       <td>${formatSheetCurrency(row.total)}</td>
                     </tr>
                   `).join('')}
@@ -1038,6 +1094,7 @@
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionMegArs, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionClubArs, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.comisionSetting, 0))}</td>
+                    <td>${formatUsd(rows.reduce((sum, row) => sum + row.bonoUsd, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.total, 0))}</td>
                   </tr>
                 </tbody>
@@ -1114,7 +1171,7 @@
   function renderPersonPanel() {
     const summaryNode = document.getElementById('commissionPersonSummary');
     const detailNode = document.getElementById('commissionPersonDetails');
-    const allDetails = getFilteredCommissionDetails();
+    const allDetails = getFilteredCommissionDetails().filter((detail) => detail.category !== 'Bono');
     const filteredPeople = buildCloserPeopleFromDetails(allDetails);
     const isAllView = state.selectedPerson === ALL_PEOPLE_VALUE;
     const person = filteredPeople.find((row) => row.person === state.selectedPerson) || null;
@@ -1171,9 +1228,10 @@
               <th>Cheque</th>
               <th>F.acreditación</th>
               <th>Producto</th>
+              <th>Medio de pago</th>
               <th>Nombre cliente</th>
               <th>Responsable venta</th>
-              <th>Cash collected ARS</th>
+              <th>Cash AR</th>
               <th>Cash USD</th>
               <th>Facturación USD</th>
               <th>Porcentaje</th>
@@ -1208,6 +1266,7 @@
                   <td>${renderChequeBadge(detail.cheque)}</td>
                   <td>${escapeHtml(formatDetailDate(detail.acreditacionDate))}</td>
                   <td>${escapeHtml(formatComprobanteProduct(detail))}</td>
+                  <td>${escapeHtml(formatDetailText(detail.paymentMethod))}</td>
                   <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
                   <td>${escapeHtml(formatDetailText(detail.closer))}</td>
                   <td>${formatDetailCurrency(detail.cashArs)}</td>
@@ -1227,7 +1286,7 @@
                   <td>${notionUrl ? `<a class="comisiones-external-link" href="${escapeHtml(notionUrl)}" target="_blank" rel="noreferrer">${escapeHtml(detail.transactionId || '')}</a>` : ''}</td>
                 </tr>
               `;
-            }).join('') : `<tr><td colspan="22">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
+            }).join('') : `<tr><td colspan="24">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
           </tbody>
         </table>
     `;
@@ -1253,7 +1312,7 @@
     const uniqueOrigins = new Set(filteredRows.map((row) => row.originFilter).filter(Boolean));
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
     const uniqueCalendars = new Set(filteredRows.map((row) => row.calendar).filter(Boolean));
-    const nahuelRows = filteredRows.filter((row) => isNahuelSetter(row.setter));
+    const qualifiedRows = filteredRows.filter((row) => row.commissionQualified);
     const topOriginEntry = [...filteredRows.reduce((map, row) => {
       const key = row.originFilter || 'Sin origen';
       map.set(key, Number(map.get(key) || 0) + 1);
@@ -1265,7 +1324,7 @@
         <div class="comisiones-agendas-head">
           <div>
             <h3>${escapeHtml(setterLabel)}</h3>
-            <p>Base de agendas del mes por <strong>fecha_agenda</strong>, tomando solo filas con <strong>origen</strong> o <strong>calendario agendado</strong> en APSET / RT.</p>
+            <p>Base de agendas del mes por <strong>fecha_agenda</strong>. Los filtros permiten explorar todas las agendas y el panel marca cuántas son comisionables.</p>
           </div>
           <div class="comisiones-agendas-period">
             <span>${escapeHtml(state.agendaFilters.from || '-')}</span>
@@ -1279,9 +1338,9 @@
             <p>Total del recorte actual.</p>
           </article>
           <article class="comisiones-summary-card">
-            <span>Agendas Nahuel</span>
-            <strong>${formatInteger(nahuelRows.length)}</strong>
-            <p>Dentro del filtro activo.</p>
+            <span>Comisionables</span>
+            <strong>${formatInteger(qualifiedRows.length)}</strong>
+            <p>Agendo + Aplica con origen o calendario APSET / RT.</p>
           </article>
           <article class="comisiones-summary-card">
             <span>Orígenes</span>
@@ -1315,6 +1374,7 @@
               <th>Embudo Club</th>
               <th>Fecha llamada</th>
               <th>Venta</th>
+              <th>Comisionable</th>
               <th>GHL ID</th>
             </tr>
           </thead>
@@ -1334,9 +1394,10 @@
                 <td>${escapeHtml(row.clubStage || '-')}</td>
                 <td>${escapeHtml(formatDetailDate(row.callDate))}</td>
                 <td>${escapeHtml(row.productSold || '-')}</td>
+                <td>${row.commissionQualified ? 'Si' : 'No'}</td>
                 <td>${renderGhlIdCell(row.ghlid)}</td>
               </tr>
-            `).join('') : '<tr><td colspan="14">No hay agendas para los filtros seleccionados.</td></tr>'}
+            `).join('') : '<tr><td colspan="15">No hay agendas para los filtros seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1425,6 +1486,12 @@
           <span>Porcentaje</span>
           <input type="number" data-field="pct" min="0" step="0.001" value="${escapeHtml(row.pct)}" />
         </label>
+        ${type === 'agendaScale' ? `
+          <label>
+            <span>Bono USD</span>
+            <input type="number" data-field="bonusUsd" min="0" step="1" value="${escapeHtml(row.bonusUsd || 0)}" />
+          </label>
+        ` : ''}
         <button type="button" class="button-secondary" data-remove-scale="${escapeHtml(type)}" data-index="${index}">Quitar</button>
       </div>
     `;
@@ -1529,6 +1596,7 @@
     document.getElementById('commissionClubMercadoPagoPct').value = config.global.clubMercadoPagoPct ?? '';
     document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
     document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
+    document.getElementById('commissionVslCalendarSetterPct').value = config.global.vslCalendarSetterPct ?? '';
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
     ensureRoleRows(config);
 
@@ -1556,7 +1624,8 @@
   function readScaleRows(containerId) {
     return Array.from(document.querySelectorAll(`#${containerId} .comisiones-scale-row`)).map((row) => ({
       min: Number(row.querySelector('[data-field="min"]').value || 0),
-      pct: Number(row.querySelector('[data-field="pct"]').value || 0)
+      pct: Number(row.querySelector('[data-field="pct"]').value || 0),
+      bonusUsd: Number(row.querySelector('[data-field="bonusUsd"]')?.value || 0)
     })).filter((row) => Number.isFinite(row.min) && Number.isFinite(row.pct));
   }
 
@@ -1590,6 +1659,7 @@
         clubMercadoPagoPct: Number(document.getElementById('commissionClubMercadoPagoPct').value || 0),
         defaultCloserPct: Number(document.getElementById('commissionDefaultCloserPct').value || 0),
         personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value || 0),
+        vslCalendarSetterPct: Number(document.getElementById('commissionVslCalendarSetterPct').value || 0),
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
       },
       agendaScale: readScaleRows('commissionAgendaScaleRows'),
@@ -1612,15 +1682,16 @@
 
   async function loadAgendaRows() {
     const { from, to } = getMonthRange(state.month);
+    const fetchTo = addDays(to, 1) || to;
     const response = await window.metricasApi.fetchAllRows('leads_raw', {
       select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen,primer_origen,ultimo_origen,calendario_agendado,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
       from,
-      to,
+      to: fetchTo,
       dateField: 'fecha_agenda',
       orderBy: 'fecha_agenda',
       orderDir: 'desc'
     });
-    state.agendaRows = normalizeAgendaRows(response.rows || []);
+    state.agendaRows = normalizeAgendaRows(response.rows || [], { from, to });
     state.agendaFilters.from = from;
     state.agendaFilters.to = to;
     syncAgendaFilterControls();
@@ -1628,7 +1699,7 @@
   }
 
   function refreshCommissionViews() {
-    const filteredPeople = buildCloserPeopleFromDetails(getFilteredCommissionDetails());
+    const filteredPeople = buildCloserPeopleFromDetails(getFilteredCommissionDetails().filter((detail) => detail.category !== 'Bono'));
     renderSheetOverview(state.dashboard);
     fillPersonSelect(filteredPeople);
     if (
@@ -1688,7 +1759,7 @@
   document.getElementById('reloadCommissions').addEventListener('click', loadPage);
   document.getElementById('saveCommissionRules').addEventListener('click', () => saveRules('month'));
   document.getElementById('addAgendaScaleRow').addEventListener('click', () => {
-    state.rulesDraft.agendaScale.push({ min: 0, pct: 0 });
+    state.rulesDraft.agendaScale.push({ min: 0, pct: 0, bonusUsd: 0 });
     renderRulesEditor();
   });
   document.getElementById('commissionSetterSalesScaleRows')?.addEventListener('change', () => {
