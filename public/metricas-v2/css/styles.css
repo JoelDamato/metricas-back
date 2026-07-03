@@ -4864,7 +4864,8 @@ th {
 
 #commissionPersonDetails.comisiones-table-wrap {
   max-height: none;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 #commissionPersonDetails .comisiones-table thead th {
@@ -4876,6 +4877,8 @@ th {
 .comisiones-table {
   border-collapse: separate;
   border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
 }
 
 .comisiones-table td,
