@@ -10,6 +10,10 @@
     reconciliationFilter: '',
     clubFilter: '',
     typeFilter: '',
+    comprobanteSort: {
+      key: 'date',
+      direction: 'asc'
+    },
     pinnedPersonColumn: '',
     pinnedAgendaColumn: '',
     agendaFilters: {
@@ -126,6 +130,37 @@
     return `${day}/${month}/${year}`;
   }
 
+  function formatDetailDateTime(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (raw.includes('T')) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        const parts = new Intl.DateTimeFormat('es-AR', {
+          timeZone: 'America/Argentina/Buenos_Aires',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).formatToParts(parsed).reduce((acc, part) => {
+          acc[part.type] = part.value;
+          return acc;
+        }, {});
+        const date = `${parts.day}/${parts.month}/${parts.year}`;
+        const time = `${parts.hour}:${parts.minute}`;
+        return time === '00:00' ? date : `${date} ${time}`;
+      }
+    }
+    const date = formatDetailDate(raw);
+    const timeMatch = raw.match(/[T\s](\d{2}):(\d{2})/);
+    if (!timeMatch) return date;
+    const time = `${timeMatch[1]}:${timeMatch[2]}`;
+    if (time === '00:00' || time === '03:00') return date;
+    return `${date} ${time}`;
+  }
+
   function formatDetailUsd(value) {
     return Number(value || 0) === 0 ? '' : formatUsd(value);
   }
@@ -207,6 +242,115 @@
     }, []);
   }
 
+  function getDetailSetterPct(detail) {
+    return detail?.role === 'Setter'
+      ? Number(detail.commissionPct || 0)
+      : Number(detail?.setterPctDisplay || 0);
+  }
+
+  function getDetailSetterCommission(detail) {
+    return detail?.role === 'Setter'
+      ? Number(detail.commissionAmount || 0)
+      : Number(detail?.setterCommissionDisplay || 0);
+  }
+
+  function sumDetailRows(rows, fieldName) {
+    return (rows || []).reduce((sum, row) => sum + Number(row?.[fieldName] || 0), 0);
+  }
+
+  function buildComprobantesFooterRow(rows) {
+    const visibleRows = rows || [];
+    return `
+      <tfoot>
+        <tr class="comisiones-detail-total-row">
+          <td colspan="9">Totales visibles (${escapeHtml(formatInteger(visibleRows.length))})</td>
+          <td>${formatCurrency(sumDetailRows(visibleRows, 'cashArs'))}</td>
+          <td>${formatUsd(sumDetailRows(visibleRows, 'cashUsd'))}</td>
+          <td>${formatUsd(sumDetailRows(visibleRows, 'facturacionUsd'))}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td>${formatCurrency(sumDetailRows(visibleRows, 'ivaArs'))}</td>
+          <td>${formatCurrency(sumDetailRows(visibleRows, 'externalCommissionsArs'))}</td>
+          <td>${formatCurrency(sumDetailRows(visibleRows, 'netTotalArs'))}</td>
+          <td>${formatCurrency(sumDetailRows(visibleRows, 'commissionAmount'))}</td>
+          <td></td>
+          <td></td>
+          <td>${formatCurrency(visibleRows.reduce((sum, detail) => sum + getDetailSetterCommission(detail), 0))}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    `;
+  }
+
+  function getComprobanteSortValue(detail, key) {
+    switch (key) {
+      case 'status': return normalizeText(detail?.status);
+      case 'date': return String(detail?.dateTime || detail?.date || '');
+      case 'tipo': return normalizeText(detail?.tipo);
+      case 'cheque': return detail?.cheque ? 1 : 0;
+      case 'acreditacionDate': return String(detail?.acreditacionDateTime || detail?.acreditacionDate || '');
+      case 'product': return normalizeText(formatComprobanteProduct(detail));
+      case 'paymentMethod': return normalizeText(detail?.paymentMethod);
+      case 'clientName': return normalizeText(detail?.clientName);
+      case 'closer': return normalizeText(detail?.closer);
+      case 'cashArs': return Number(detail?.cashArs || 0);
+      case 'cashUsd': return Number(detail?.cashUsd || 0);
+      case 'facturacionUsd': return Number(detail?.facturacionUsd || 0);
+      case 'commissionPct': return Number(detail?.commissionPct || 0);
+      case 'tc': return Number(detail?.tc || 0);
+      case 'origin': return normalizeText(detail?.origin);
+      case 'calendar': return normalizeText(detail?.calendar);
+      case 'ivaArs': return Number(detail?.ivaArs || 0);
+      case 'externalCommissionsArs': return Number(detail?.externalCommissionsArs || 0);
+      case 'netTotalArs': return Number(detail?.netTotalArs || 0);
+      case 'commissionAmount': return Number(detail?.commissionAmount || 0);
+      case 'setter': return normalizeText(detail?.setter);
+      case 'setterPct': return getDetailSetterPct(detail);
+      case 'setterCommission': return getDetailSetterCommission(detail);
+      case 'transactionId': return normalizeText(detail?.transactionId);
+      default: return '';
+    }
+  }
+
+  function compareComprobanteValues(aValue, bValue) {
+    if (typeof aValue === 'number' || typeof bValue === 'number') {
+      return Number(aValue || 0) - Number(bValue || 0);
+    }
+    return String(aValue || '').localeCompare(String(bValue || ''), 'es', { numeric: true, sensitivity: 'base' });
+  }
+
+  function sortComprobanteRows(rows) {
+    const sortKey = state.comprobanteSort?.key;
+    const direction = state.comprobanteSort?.direction === 'asc' ? 1 : -1;
+    if (!sortKey) return rows || [];
+    return [...(rows || [])].sort((a, b) => {
+      const primary = compareComprobanteValues(
+        getComprobanteSortValue(a, sortKey),
+        getComprobanteSortValue(b, sortKey)
+      );
+      if (primary !== 0) return primary * direction;
+      const fallbackDate = compareComprobanteValues(
+        getComprobanteSortValue(a, 'acreditacionDate'),
+        getComprobanteSortValue(b, 'acreditacionDate')
+      );
+      if (fallbackDate !== 0) return fallbackDate * -1;
+      return compareComprobanteValues(a?.transactionId, b?.transactionId);
+    });
+  }
+
+  function renderComprobanteSortHeader(label, key) {
+    const isActive = state.comprobanteSort?.key === key;
+    const direction = isActive ? state.comprobanteSort.direction : '';
+    return `
+      <button class="comisiones-sort-button${isActive ? ' is-active' : ''}" type="button" data-comprobante-sort="${escapeHtml(key)}">
+        <span>${escapeHtml(label)}</span>
+        <small>${isActive ? (direction === 'asc' ? 'Asc' : 'Desc') : ''}</small>
+      </button>
+    `;
+  }
+
   function buildNotionPageUrl(pageId) {
     const id = String(pageId || '').trim();
     if (!id) return '';
@@ -248,7 +392,9 @@
 
   function setActiveTab(tabKey) {
     document.querySelectorAll('.comisiones-tab').forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.tab === tabKey);
+      const isActive = button.dataset.tab === tabKey;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
     document.querySelectorAll('.comisiones-panel').forEach((panel) => {
       panel.classList.toggle('is-active', panel.dataset.panel === tabKey);
@@ -268,7 +414,9 @@
       { value: PIN_NONE_VALUE, label: 'Ninguna' },
       ...headers.map((header, index) => ({
         value: String(index + 1),
-        label: header.textContent.trim() || `Columna ${index + 1}`
+        label: header.querySelector('.comisiones-sort-button > span')?.textContent.trim()
+          || header.textContent.trim()
+          || `Columna ${index + 1}`
       }))
     ];
   }
@@ -293,7 +441,8 @@
       const columnValue = String(index + 1);
       header.classList.add('comisiones-pin-header');
       header.title = 'Click para inmovilizar esta columna';
-      header.addEventListener('click', () => {
+      header.addEventListener('click', (event) => {
+        if (event.target.closest('[data-comprobante-sort]')) return;
         state[stateKey] = state[stateKey] === columnValue ? PIN_NONE_VALUE : columnValue;
         fillPinnedColumnSelect(selectNode, buildPinnedOptionsFromTable(tableRoot), state[stateKey]);
         applyPinnedColumn(tableRoot, state[stateKey]);
@@ -431,16 +580,57 @@
     }
 
     const selected = new Set((selectedValues || []).map((value) => normalizeText(value)));
-    container.innerHTML = values.map((value) => `
-      <label class="comisiones-checkpill">
-        <input type="checkbox" value="${escapeHtml(value)}" ${selected.has(normalizeText(value)) ? 'checked' : ''} />
-        <span>${escapeHtml(value)}</span>
-      </label>
-    `).join('');
+    const selectedCount = (selectedValues || []).length;
+    container.innerHTML = `
+      <details class="comisiones-filter-dropdown">
+        <summary>
+          <span class="comisiones-filter-dropdown-label" data-dropdown-label>${selectedCount ? `${selectedCount} seleccionados` : 'Todos'}</span>
+          <span class="comisiones-filter-dropdown-caret" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="comisiones-filter-dropdown-menu">
+          <button class="comisiones-filter-dropdown-clear" type="button">Limpiar selección</button>
+          <div class="comisiones-filter-dropdown-options">
+            ${values.map((value) => `
+              <label class="comisiones-checkpill">
+                <input type="checkbox" value="${escapeHtml(value)}" ${selected.has(normalizeText(value)) ? 'checked' : ''} />
+                <span>${escapeHtml(value)}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      </details>
+    `;
+
+    const updateDropdownLabel = () => {
+      const checkedCount = container.querySelectorAll('input[type="checkbox"]:checked').length;
+      const label = container.querySelector('[data-dropdown-label]');
+      if (label) label.textContent = checkedCount ? `${checkedCount} seleccionados` : 'Todos';
+    };
+    const emitChange = () => {
+      onChange?.([...container.querySelectorAll('input[type="checkbox"]:checked')].map((node) => node.value || ''));
+      updateDropdownLabel();
+    };
+
+    const dropdown = container.querySelector('.comisiones-filter-dropdown');
+    dropdown?.addEventListener('toggle', () => {
+      if (!dropdown.open) return;
+      document.querySelectorAll('.comisiones-filter-dropdown[open]').forEach((node) => {
+        if (node !== dropdown) node.removeAttribute('open');
+      });
+    });
+
+    container.querySelector('.comisiones-filter-dropdown-clear')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = false;
+      });
+      emitChange();
+    });
 
     container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
       input.addEventListener('change', () => {
-        onChange?.([...container.querySelectorAll('input[type="checkbox"]:checked')].map((node) => node.value || ''));
+        emitChange();
       });
     });
   }
@@ -1179,6 +1369,7 @@
       ? allDetails
       : allDetails.filter((row) => normalizeText(row.closer) === normalizeText(state.selectedPerson));
     const displayDetails = buildDisplayComprobanteRows(details, true);
+    const sortedDisplayDetails = sortComprobanteRows(displayDetails);
     const uniqueTransactionCount = new Set(details.map((detail) => String(detail.transactionId || '').trim()).filter(Boolean)).size || displayDetails.length;
 
     if (isAllView) {
@@ -1222,49 +1413,44 @@
         <table class="csm-table comisiones-table">
           <thead>
             <tr>
-              <th>Estado</th>
-              <th>Fecha de venta</th>
-              <th>Tipo</th>
-              <th>Cheque</th>
-              <th>F.acreditación</th>
-              <th>Producto</th>
-              <th>Medio de pago</th>
-              <th>Nombre cliente</th>
-              <th>Responsable venta</th>
-              <th>Cash AR</th>
-              <th>Cash USD</th>
-              <th>Facturación USD</th>
-              <th>Porcentaje</th>
-              <th>TC</th>
-              <th>Origen</th>
-              <th>Calendario</th>
-              <th>IVA</th>
-              <th>Comisiones</th>
-              <th>Total neto</th>
-              <th>Comisión final ARS</th>
-              <th>Setter</th>
-              <th>% Setter</th>
-              <th>Comisión Setter</th>
-              <th>ID</th>
+              <th>${renderComprobanteSortHeader('Estado', 'status')}</th>
+              <th>${renderComprobanteSortHeader('Fecha de venta', 'date')}</th>
+              <th>${renderComprobanteSortHeader('Tipo', 'tipo')}</th>
+              <th>${renderComprobanteSortHeader('Cheque', 'cheque')}</th>
+              <th>${renderComprobanteSortHeader('F.acreditación', 'acreditacionDate')}</th>
+              <th>${renderComprobanteSortHeader('Producto', 'product')}</th>
+              <th>${renderComprobanteSortHeader('Medio de pago', 'paymentMethod')}</th>
+              <th>${renderComprobanteSortHeader('Nombre cliente', 'clientName')}</th>
+              <th>${renderComprobanteSortHeader('Responsable venta', 'closer')}</th>
+              <th>${renderComprobanteSortHeader('Cash AR', 'cashArs')}</th>
+              <th>${renderComprobanteSortHeader('Cash USD', 'cashUsd')}</th>
+              <th>${renderComprobanteSortHeader('Facturación USD', 'facturacionUsd')}</th>
+              <th>${renderComprobanteSortHeader('Porcentaje', 'commissionPct')}</th>
+              <th>${renderComprobanteSortHeader('TC', 'tc')}</th>
+              <th>${renderComprobanteSortHeader('Origen', 'origin')}</th>
+              <th>${renderComprobanteSortHeader('Calendario', 'calendar')}</th>
+              <th>${renderComprobanteSortHeader('IVA', 'ivaArs')}</th>
+              <th>${renderComprobanteSortHeader('Comisiones', 'externalCommissionsArs')}</th>
+              <th>${renderComprobanteSortHeader('Total neto', 'netTotalArs')}</th>
+              <th>${renderComprobanteSortHeader('Comisión final ARS', 'commissionAmount')}</th>
+              <th>${renderComprobanteSortHeader('Setter', 'setter')}</th>
+              <th>${renderComprobanteSortHeader('% Setter', 'setterPct')}</th>
+              <th>${renderComprobanteSortHeader('Comisión Setter', 'setterCommission')}</th>
+              <th>${renderComprobanteSortHeader('ID', 'transactionId')}</th>
             </tr>
           </thead>
           <tbody>
-            ${displayDetails.length ? displayDetails.map((detail) => {
+            ${sortedDisplayDetails.length ? sortedDisplayDetails.map((detail) => {
               const notionUrl = buildNotionPageUrl(detail.transactionId);
-              const isSetter = detail.role === 'Setter';
-              const setterPct = isSetter
-                ? Number(detail.commissionPct || 0)
-                : Number(detail.setterPctDisplay || 0);
-              const setterCommission = isSetter
-                ? Number(detail.commissionAmount || 0)
-                : Number(detail.setterCommissionDisplay || 0);
+              const setterPct = getDetailSetterPct(detail);
+              const setterCommission = getDetailSetterCommission(detail);
               return `
                 <tr>
                   <td>${renderComprobanteStatusBadge(detail.status)}</td>
-                  <td>${escapeHtml(formatDetailDate(detail.date))}</td>
+                  <td>${escapeHtml(formatDetailDateTime(detail.dateTime || detail.date))}</td>
                   <td>${escapeHtml(formatDetailText(detail.tipo))}</td>
                   <td>${renderChequeBadge(detail.cheque)}</td>
-                  <td>${escapeHtml(formatDetailDate(detail.acreditacionDate))}</td>
+                  <td>${escapeHtml(formatDetailDateTime(detail.acreditacionDateTime || detail.acreditacionDate))}</td>
                   <td>${escapeHtml(formatComprobanteProduct(detail))}</td>
                   <td>${escapeHtml(formatDetailText(detail.paymentMethod))}</td>
                   <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
@@ -1288,10 +1474,25 @@
               `;
             }).join('') : `<tr><td colspan="24">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
           </tbody>
+          ${buildComprobantesFooterRow(sortedDisplayDetails)}
         </table>
     `;
 
     const personTable = detailNode.querySelector('table');
+    detailNode.querySelectorAll('[data-comprobante-sort]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = button.dataset.comprobanteSort || '';
+        if (!key) return;
+        const isSameKey = state.comprobanteSort?.key === key;
+        state.comprobanteSort = {
+          key,
+          direction: isSameKey && state.comprobanteSort.direction === 'asc' ? 'desc' : 'asc'
+        };
+        renderPersonPanel();
+      });
+    });
     fillPinnedColumnSelect(pinnedPersonColumnSelect, buildPinnedOptionsFromTable(personTable), state.pinnedPersonColumn);
     applyPinnedColumn(personTable, state.pinnedPersonColumn);
     bindPinnedColumnHeaders(personTable, pinnedPersonColumnSelect, 'pinnedPersonColumn');
@@ -1831,6 +2032,12 @@
 
   document.getElementById('commissionAgendaClearFilters')?.addEventListener('click', () => {
     resetAgendaFilters();
+  });
+
+  document.addEventListener('click', (event) => {
+    document.querySelectorAll('.comisiones-filter-dropdown[open]').forEach((dropdown) => {
+      if (!dropdown.contains(event.target)) dropdown.removeAttribute('open');
+    });
   });
 
   agendaToggleMoreButton?.addEventListener('click', () => {

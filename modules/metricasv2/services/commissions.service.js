@@ -473,6 +473,21 @@ function pickScaleBonusUsd(scale, count) {
   }, 0);
 }
 
+function getCommissionArrivalValue(row) {
+  return String(
+    row?.f_venta_raw
+    || row?.f_venta_only
+    || row?.f_acreditacion_raw
+    || row?.f_acreditacion_only
+    || ''
+  ).trim();
+}
+
+function compareRowsByArrival(a, b) {
+  return getCommissionArrivalValue(a).localeCompare(getCommissionArrivalValue(b))
+    || String(a?.id || '').localeCompare(String(b?.id || ''));
+}
+
 function matchesApsetOrRt(value) {
   const normalized = normalizeText(value);
   if (!normalized) return false;
@@ -736,6 +751,8 @@ function normalizeComprobanteRows(rows = []) {
       cash_collected_ars: selectCashArs(row),
       facturacion_display_ars: selectFacturacionArs(row),
       cash_usd: selectCashUsd(row),
+      f_acreditacion_raw: String(row.f_acreditacion || '').trim(),
+      f_venta_raw: String(row.f_venta || '').trim(),
       f_acreditacion_only: parseDateOnly(row.f_acreditacion),
       f_venta_only: parseDateOnly(row.f_venta),
       cash_base: selectCashBase(row),
@@ -801,7 +818,7 @@ function buildClubSequenceMap(rows, monthKey) {
   rows
     .filter((row) => matchesMonth(row.f_acreditacion_only, monthKey))
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')) || a.id.localeCompare(b.id))
+    .sort(compareRowsByArrival)
     .forEach((row) => {
       const setterKey = normalizeText(row.setter || row.creado_por);
       if (!setterKey) return;
@@ -847,7 +864,7 @@ function buildCloserClubSequenceMap(rows, monthKey) {
   rows
     .filter((row) => matchesMonth(row.f_acreditacion_only, monthKey))
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .sort((a, b) => String(a.f_acreditacion_only || '').localeCompare(String(b.f_acreditacion_only || '')) || a.id.localeCompare(b.id))
+    .sort(compareRowsByArrival)
     .forEach((row) => {
       const closerKey = normalizeText(row.responsable_venta || row.creado_por);
       if (!closerKey) return;
@@ -1026,8 +1043,11 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
           details.push({
             id: `${row.id}:closer`,
             transactionId: row.id,
-            date: row.f_acreditacion_only || '',
+            date: row.f_venta_only || row.f_acreditacion_only || '',
+            dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
             acreditacionDate: row.f_acreditacion_only || '',
+            acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+            ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
             area: closerArea,
             person: closerName,
             role: 'Closer',
@@ -1077,8 +1097,11 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
           details.push({
             id: `${row.id}:closer`,
             transactionId: row.id,
-            date: row.f_acreditacion_only || '',
+            date: row.f_venta_only || row.f_acreditacion_only || '',
+            dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
             acreditacionDate: row.f_acreditacion_only || '',
+            acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+            ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
             area: closerArea,
             person: closerName,
             role: 'Closer',
@@ -1122,7 +1145,6 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
-    const setterClubSales = getSetterClubSalesCount(settersMap, setterName);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
 
     if (isClub && type === 'venta') {
@@ -1131,7 +1153,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       }
       const sequenceKey = `${normalizeText(setterName)}:${row.id}`;
       const sequentialCount = Number(clubSequenceMap.get(sequenceKey) || 0);
-      const scalePct = pickScalePct(config.setterClubScale, sequentialCount || setterClubSales, config.global.clubTransferPct);
+      const scalePct = pickScalePct(config.clubScale, sequentialCount, config.global.clubMercadoPagoPct);
       const clubPaymentRule = resolveClubPaymentRule(row, config, scalePct);
       const appliedPct = clubPaymentRule.pct;
       const baseAmount = row.commission_base_ars;
@@ -1142,8 +1164,11 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       details.push({
         id: `${row.id}:setter`,
         transactionId: row.id,
-        date: row.f_acreditacion_only || '',
+        date: row.f_venta_only || row.f_acreditacion_only || '',
+        dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
         acreditacionDate: row.f_acreditacion_only || '',
+        acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+        ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
         area,
         person: setterName,
         role: 'Setter',
@@ -1173,10 +1198,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         bonusArs: 0,
         isBonus: false,
         sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
-        sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || setterClubSales || 1} del mes para ${setterName}.`,
+        sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${setterName}.`,
         counters: {
           agendas: setterAgendas,
-          clubSalesSequential: sequentialCount || setterClubSales
+          clubSalesSequential: sequentialCount
         }
       });
       return;
@@ -1221,8 +1246,11 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     details.push({
       id: `${row.id}:setter`,
       transactionId: row.id,
-      date: row.f_acreditacion_only || '',
+      date: row.f_venta_only || row.f_acreditacion_only || '',
+      dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
       acreditacionDate: row.f_acreditacion_only || '',
+      acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+      ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
       area,
       person: setterName,
       role: 'Setter',
@@ -1273,7 +1301,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       id: `${monthKey}:${setterKey}:agenda-bonus`,
       transactionId: '',
       date: `${monthKey}-01`,
+      dateTime: `${monthKey}-01`,
       acreditacionDate: `${monthKey}-01`,
+      acreditacionDateTime: `${monthKey}-01`,
+      ventaDateTime: `${monthKey}-01`,
       area: getAreaForPerson(areaMap, setterName, 'Comercial'),
       person: setterName,
       role: 'Setter',

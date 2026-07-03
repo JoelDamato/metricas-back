@@ -4459,20 +4459,37 @@ th {
   gap: 16px;
 }
 
+.comisiones-subnav {
+  position: sticky;
+  top: 86px;
+  z-index: 18;
+  padding: 10px;
+  border: 1px solid rgba(71, 122, 198, 0.16);
+  border-radius: 20px;
+  background: rgba(248, 251, 255, 0.92);
+  box-shadow: 0 14px 36px rgba(24, 63, 112, 0.1);
+  backdrop-filter: blur(16px);
+}
+
 .comisiones-tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .comisiones-tab {
-  border: 1px solid rgba(71, 122, 198, 0.18);
-  background: #eef4ff;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
   color: #214a80;
-  border-radius: 999px;
-  padding: 10px 16px;
+  border-radius: 14px;
+  padding: 10px 14px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .comisiones-tab.is-active {
@@ -4845,6 +4862,17 @@ th {
   min-width: 0;
 }
 
+#commissionPersonDetails.comisiones-table-wrap {
+  max-height: none;
+  overflow: visible;
+}
+
+#commissionPersonDetails .comisiones-table thead th {
+  top: 154px;
+  z-index: 17;
+  box-shadow: 0 2px 0 rgba(66, 114, 190, 0.18);
+}
+
 .comisiones-table {
   border-collapse: separate;
   border-spacing: 0;
@@ -4860,6 +4888,56 @@ th {
   top: 0;
   z-index: 8;
   background: #eef4ff;
+}
+
+.comisiones-table tfoot td {
+  background: #e9f1ff;
+  color: #173d70;
+  font-weight: 800;
+  border-top: 2px solid rgba(66, 114, 190, 0.28);
+  white-space: nowrap;
+}
+
+.comisiones-detail-total-row td:first-child {
+  text-align: left;
+}
+
+.comisiones-sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.comisiones-sort-button small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(34, 87, 160, 0.1);
+  color: #1d4f91;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.comisiones-sort-button:not(.is-active) small {
+  display: none;
+}
+
+.comisiones-sort-button:hover {
+  background: rgba(34, 87, 160, 0.08);
 }
 
 .comisiones-pin-header {
@@ -4948,6 +5026,7 @@ th {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
   border: 1px solid rgba(90, 133, 214, 0.22);
   box-shadow: 0 18px 40px rgba(31, 81, 158, 0.08);
+  overflow: visible;
 }
 
 .comisiones-agendas-filters-head {
@@ -5008,7 +5087,7 @@ th {
   border: 1px solid rgba(90, 133, 214, 0.2);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 8px 24px rgba(31, 81, 158, 0.04);
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .comisiones-filter-field span {
@@ -5067,9 +5146,8 @@ th {
 }
 
 .comisiones-checkgroup-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  position: relative;
+  display: block;
   max-width: 100%;
   overflow: visible;
 }
@@ -5077,6 +5155,89 @@ th {
 .comisiones-checkgroup-empty {
   color: #57749a;
   font-weight: 600;
+}
+
+.comisiones-filter-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.comisiones-filter-dropdown summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 38px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(90, 133, 214, 0.3);
+  border-radius: 12px;
+  background: #fff;
+  color: #163f72;
+  cursor: pointer;
+  list-style: none;
+  box-shadow: 0 6px 18px rgba(31, 81, 158, 0.06);
+}
+
+.comisiones-filter-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.comisiones-filter-dropdown summary span,
+.comisiones-filter-dropdown-options span {
+  margin-bottom: 0;
+}
+
+.comisiones-filter-dropdown-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+}
+
+.comisiones-filter-dropdown-caret {
+  color: #2b63ad;
+  font-size: 0.9rem;
+  transition: transform 0.16s ease;
+}
+
+.comisiones-filter-dropdown[open] .comisiones-filter-dropdown-caret {
+  transform: rotate(180deg);
+}
+
+.comisiones-filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 35;
+  padding: 8px;
+  border: 1px solid rgba(90, 133, 214, 0.26);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(24, 63, 112, 0.18);
+}
+
+.comisiones-filter-dropdown-clear {
+  width: 100%;
+  min-height: 34px;
+  margin-bottom: 6px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #204f89;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.comisiones-filter-dropdown-options {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .comisiones-checkpill {
@@ -5100,15 +5261,18 @@ th {
 .comisiones-checkpill span {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 8px 12px;
-  border-radius: 999px;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border-radius: 10px;
   border: 1px solid rgba(90, 133, 214, 0.32);
   background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(245, 249, 255, 0.98));
   color: #21497d;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(31, 81, 158, 0.05);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .comisiones-checkpill input:checked + span {
@@ -5395,6 +5559,21 @@ th {
   .comisiones-detail-toolbar,
   .comisiones-agendas-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .comisiones-subnav {
+    top: 74px;
+    border-radius: 16px;
+    padding: 8px;
+  }
+
+  .comisiones-tab {
+    padding: 9px 11px;
+    font-size: 0.9rem;
+  }
+
+  #commissionPersonDetails .comisiones-table thead th {
+    top: 132px;
   }
 
   .comisiones-agendas-filters-head {
@@ -6261,7 +6440,6 @@ th {
 :root[data-theme='dark'] .alertas-area-block-kicker,
 :root[data-theme='dark'] .alertas-area-block-total,
 :root[data-theme='dark'] .alertas-section-total,
-:root[data-theme='dark'] .comisiones-tab,
 :root[data-theme='dark'] .comisiones-person-kpis span,
 :root[data-theme='dark'] .button-secondary,
 :root[data-theme='dark'] .comisiones-scale-row,
@@ -6309,6 +6487,31 @@ th {
 :root[data-theme='dark'] .kpi-table tr:nth-child(even) td,
 :root[data-theme='dark'] .comisiones-table tr:nth-child(even) td {
   background: rgba(15, 28, 49, 0.96);
+}
+
+:root[data-theme='dark'] .comisiones-table tfoot td {
+  background: rgba(33, 58, 96, 0.98);
+  color: #f4f8ff;
+  border-top-color: rgba(126, 161, 219, 0.34);
+}
+
+:root[data-theme='dark'] .comisiones-subnav {
+  background: rgba(10, 19, 35, 0.88);
+  border-color: rgba(126, 161, 219, 0.2);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme='dark'] .comisiones-tab {
+  color: #d8e6ff;
+}
+
+:root[data-theme='dark'] .comisiones-sort-button small {
+  background: rgba(118, 166, 255, 0.18);
+  color: #d8e6ff;
+}
+
+:root[data-theme='dark'] .comisiones-sort-button:hover {
+  background: rgba(126, 161, 219, 0.12);
 }
 
 :root[data-theme='dark'] .ranking-page th,
@@ -6424,7 +6627,6 @@ th {
 
 :root[data-theme='dark'] .metricas-secondary-button,
 :root[data-theme='dark'] .button-secondary,
-:root[data-theme='dark'] .comisiones-tab,
 :root[data-theme='dark'] .sales-analysis-cell-btn,
 :root[data-theme='dark'] .carga-attachments-list button,
 :root[data-theme='dark'] .scalito-chip,
@@ -6717,10 +6919,21 @@ th {
 
 :root[data-theme='dark'] .comisiones-detail-toolbar input,
 :root[data-theme='dark'] .comisiones-detail-toolbar select,
+:root[data-theme='dark'] .comisiones-filter-dropdown summary,
+:root[data-theme='dark'] .comisiones-filter-dropdown-menu,
 :root[data-theme='dark'] .comisiones-checkpill span {
   background: rgba(10, 18, 31, 0.96);
   color: #ecf3ff;
   border-color: rgba(105, 148, 230, 0.24);
+}
+
+:root[data-theme='dark'] .comisiones-filter-dropdown-menu {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme='dark'] .comisiones-filter-dropdown-clear {
+  background: rgba(126, 161, 219, 0.12);
+  color: #e8f1ff;
 }
 
 :root[data-theme='dark'] .comisiones-checkgroup-empty {
