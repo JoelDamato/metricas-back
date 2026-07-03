@@ -323,6 +323,69 @@ function extractResponseText(responseData) {
   return '';
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getOpenAiErrorMessage(err = {}) {
+  const data = err?.response?.data || {};
+  return String(
+    data?.error?.message
+    || data?.message
+    || err?.message
+    || 'Error desconocido de OpenAI'
+  );
+}
+
+function isRetryableOpenAiError(err = {}) {
+  const status = Number(err?.response?.status || 0);
+  return status === 408
+    || status === 409
+    || status === 429
+    || status >= 500
+    || ['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT'].includes(err?.code);
+}
+
+async function requestOpenAiReport(payload) {
+  const maxAttempts = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await axios.post(
+        'https://api.openai.com/v1/responses',
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${env.openAiApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        }
+      );
+    } catch (err) {
+      lastError = err;
+      if (attempt >= maxAttempts || !isRetryableOpenAiError(err)) break;
+      await delay(650 * attempt);
+    }
+  }
+
+  const status = Number(lastError?.response?.status || 0);
+  const providerMessage = getOpenAiErrorMessage(lastError);
+  const error = new Error(
+    status
+      ? `OpenAI respondió ${status} al generar el reporte: ${providerMessage}`
+      : `No pude conectar con OpenAI para generar el reporte: ${providerMessage}`
+  );
+  error.statusCode = 502;
+  error.details = {
+    provider: 'openai',
+    status: status || null,
+    message: providerMessage
+  };
+  throw error;
+}
+
 async function generateNarrative(metrics, options = {}) {
   requireOpenAi();
   const additionalPrompt = String(options.additionalPrompt || '').trim();
@@ -426,29 +489,19 @@ ${JSON.stringify(metrics, null, 2)}
 ${additionalPrompt ? `\nContexto o pedido adicional del usuario:\n${additionalPrompt}\n` : ''}
 `;
 
-  const response = await axios.post(
-    'https://api.openai.com/v1/responses',
-    {
-      model: env.openAiReportModel,
-      instructions,
-      input,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'closer_personal_report',
-          strict: true,
-          schema
-        }
+  const response = await requestOpenAiReport({
+    model: env.openAiReportModel,
+    instructions,
+    input,
+    text: {
+      format: {
+        type: 'json_schema',
+        name: 'closer_personal_report',
+        strict: true,
+        schema
       }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${env.openAiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 45000
     }
-  );
+  });
 
   const text = extractResponseText(response.data);
   if (!text) {
@@ -457,7 +510,14 @@ ${additionalPrompt ? `\nContexto o pedido adicional del usuario:\n${additionalPr
     throw error;
   }
 
-  return JSON.parse(text);
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const error = new Error('OpenAI devolvió un JSON inválido para el reporte');
+    error.statusCode = 502;
+    error.details = { provider: 'openai', message: err.message };
+    throw error;
+  }
 }
 
 async function generateCloserPersonalReport({ closer, month, additionalPrompt }) {

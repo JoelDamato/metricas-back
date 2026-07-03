@@ -4869,9 +4869,10 @@ th {
 }
 
 #commissionPersonDetails .comisiones-table thead th {
-  top: 154px;
-  z-index: 17;
-  box-shadow: 0 2px 0 rgba(66, 114, 190, 0.18);
+  position: static;
+  top: auto;
+  z-index: auto;
+  box-shadow: none;
 }
 
 .comisiones-table {
@@ -5573,10 +5574,6 @@ th {
   .comisiones-tab {
     padding: 9px 11px;
     font-size: 0.9rem;
-  }
-
-  #commissionPersonDetails .comisiones-table thead th {
-    top: 132px;
   }
 
   .comisiones-agendas-filters-head {
