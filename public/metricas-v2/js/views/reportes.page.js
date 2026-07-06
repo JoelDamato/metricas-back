@@ -21,9 +21,9 @@ const REPORTES_BLOCK_INFO = {
   },
   'Cash Collected Diario': {
     title: 'Cash Collected Diario',
-    viewLabel: '"cash_collected_diario_closer"',
+    viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Usa la vista "cash_collected_diario_closer" y agrupa por closer el "cash_collected_total", "cash_collected_ars_total" y "cash_collected_conciliado". El "% CC" muestra qué porcentaje del "cash_collected_conciliado" total del rango aporta cada closer. La fila "Premio" toma el porcentaje configurable sobre el CCC total y lo reparte según esa participación.'
+    logic: 'Lee "comprobantes" por "f_acreditacion" y agrupa por closer sumando "cash_collected". El CCC suma ese mismo campo solo en comprobantes con estado "Conciliado". El "% CC" muestra qué porcentaje del CCC total del rango aporta cada closer. La fila "Premio" toma el porcentaje configurable sobre el CCC total y lo reparte según esa participación.'
   },
   Comprobantes: {
     title: 'Comprobantes',
@@ -71,31 +71,31 @@ const REPORTES_METRIC_INFO = {
   },
   'Cash Collected Diario|CC USD': {
     title: 'Cash Collected Diario · CC USD',
-    viewLabel: '"cash_collected_diario_closer"',
+    viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Suma "cash_collected_total" en "cash_collected_diario_closer", agrupado por closer dentro del rango de "fecha_acreditacion".'
+    logic: 'Suma "cash_collected" en "comprobantes", agrupado por closer dentro del rango de "f_acreditacion".'
   },
   'Cash Collected Diario|CC ARS': {
     title: 'Cash Collected Diario · CC ARS',
-    viewLabel: '"cash_collected_diario_closer"',
+    viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Suma "cash_collected_ars_total" en "cash_collected_diario_closer", agrupado por closer.'
+    logic: 'Suma "cash_collected_ars" en "comprobantes", agrupado por closer.'
   },
   'Cash Collected Diario|CCC': {
     title: 'Cash Collected Diario · CCC',
-    viewLabel: '"cash_collected_diario_closer"',
+    viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Suma "cash_collected_conciliado" en "cash_collected_diario_closer", agrupado por closer.'
+    logic: 'Suma "cash_collected" en "comprobantes" solo cuando el estado es "Conciliado", agrupado por closer.'
   },
   'Cash Collected Diario|% CC': {
     title: 'Cash Collected Diario · % CC',
-    viewLabel: '"cash_collected_diario_closer"',
+    viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
     logic: 'Se calcula como ("cash_collected_conciliado" del closer / "cash_collected_conciliado" total del bloque) * 100 dentro del rango filtrado por "fecha_acreditacion".'
   },
   'Cash Collected Diario|Premio': {
     title: 'Cash Collected Diario · Premio',
-    viewLabel: '"cash_collected_diario_closer" + "reportes_config"',
+    viewLabel: '"comprobantes" + "reportes_config"',
     dateLabel: '"fecha_acreditacion"',
     logic: 'Se calcula como ("cash_collected_conciliado" del closer * porcentaje de premio configurado) / 100. Equivale a repartir la bolsa total del premio, calculada sobre el CCC total del bloque, según el "% CC" aportado por cada closer.'
   }
@@ -333,7 +333,7 @@ function cashFormatter(value, metric) {
     return formatCurrency(value, 'ARS');
   }
   if (
-    metric.key === 'cash_collected_total'
+    metric.key === 'cash_collected_usd'
     || metric.key === 'cash_collected_conciliado'
     || metric.key === 'cash_collected_premio'
   ) {
@@ -525,9 +525,9 @@ function buildReportMarkup(data) {
       title: 'Cash Collected Diario',
       subtitle: 'Cash USD, cash conciliado, participación sobre el CCC total y premio distribuido por closer.',
       rows: data.cashResumen,
-      sortKey: 'cash_collected_total',
+      sortKey: 'cash_collected_usd',
       metrics: [
-        { key: 'cash_collected_total', label: 'CC USD' },
+        { key: 'cash_collected_usd', label: 'CC USD' },
         { key: 'cash_collected_ars_total', label: 'CC ARS' },
         { key: 'cash_collected_conciliado', label: 'CCC' },
         { key: 'cash_collected_pct', label: '% CC' },
@@ -632,37 +632,35 @@ async function fetchCashRows(range) {
     from: range.from,
     to: range.to,
     dateField: 'f_acreditacion',
-    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,cash_collected_ars,estado'
+    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,cash_collected_ars,estado'
   });
 
   return (response.rows || [])
     .filter((row) => !normalizeText(row.producto_format).includes('club'))
     .map((row) => {
-      const total = Number(row.cash_collected_total || 0);
-      const fallbackCash = Number(row.cash_collected || 0);
-      const effectiveCash = total > 0 ? total : fallbackCash;
+      const effectiveCash = Number(row.cash_collected || 0);
       const normalizedState = normalizeText(row.estado);
       const conciliado = normalizedState === 'conciliado' ? effectiveCash : 0;
 
       return {
         closer: getResponsibleCloser(row),
-        cash_collected_total: effectiveCash,
+        cash_collected_usd: effectiveCash,
         cash_collected_ars_total: Number(row.cash_collected_ars || 0),
         cash_collected_conciliado: conciliado
       };
     })
-    .filter((row) => shouldIncludeCloser(row.closer) && Number(row.cash_collected_total || 0) > 0);
+    .filter((row) => shouldIncludeCloser(row.closer) && Number(row.cash_collected_usd || 0) > 0);
 }
 
 function buildCashData(rows, premioPct) {
   const normalizedPremioPct = normalizeCashPremioPct(premioPct);
   const premioFactor = normalizedPremioPct / 100;
   const grouped = groupByCloser(rows || [], (row) => {
-    const total = Number(row.cash_collected_total || 0);
+    const total = Number(row.cash_collected_usd || 0);
     const conciliado = Number(row.cash_collected_conciliado || 0);
 
     return {
-      cash_collected_total: total,
+      cash_collected_usd: total,
       cash_collected_ars_total: Number(row.cash_collected_ars_total || 0),
       cash_collected_conciliado: conciliado
     };
