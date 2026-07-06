@@ -494,6 +494,19 @@ function matchesApsetOrRt(value) {
   return normalized.includes('apset') || /(^|[^a-z])rt([^a-z]|$)/.test(normalized);
 }
 
+function matchesApset(value) {
+  return normalizeText(value).includes('apset');
+}
+
+function isNahuelSetter(value) {
+  const normalized = normalizeText(value);
+  return normalized === 'nahuel iasci' || normalized === 'nahue' || normalized === 'nahuel';
+}
+
+function matchesAgendaCommissionChannel(value, setterName) {
+  return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
+}
+
 function isClubProduct(value) {
   return normalizeText(value).includes('club');
 }
@@ -654,7 +667,8 @@ function getAgendaOriginFilter(row) {
 function hasCommissionAgendaSignals(row) {
   if (normalizeText(row?.agendo) !== 'agendo') return false;
   if (normalizeText(row?.aplica) !== 'aplica') return false;
-  return matchesApsetOrRt(getAgendaOriginFilter(row)) || matchesApsetOrRt(row?.calendario_agendado);
+  return matchesAgendaCommissionChannel(getAgendaOriginFilter(row), row?.setter)
+    || matchesAgendaCommissionChannel(row?.calendario_agendado, row?.setter);
 }
 
 function resolveAgendaDateForMonth(rawDate, monthKey, row) {

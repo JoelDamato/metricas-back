@@ -80,6 +80,14 @@
     return normalized.includes('apset') || /(^|[^a-z])rt([^a-z]|$)/.test(normalized);
   }
 
+  function matchesApset(value) {
+    return normalizeText(value).includes('apset');
+  }
+
+  function matchesAgendaCommissionChannel(value, setterName) {
+    return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
+  }
+
   function formatInteger(value) {
     return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value || 0));
   }
@@ -495,7 +503,8 @@
   function buildAgendaCountButton(person, count) {
     const safeCount = Number(count || 0);
     if (safeCount <= 0) return formatSheetInteger(safeCount);
-    return `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="${escapeHtml(person)}">${formatInteger(safeCount)}</button>`;
+    const preset = isNahuelSetter(person) ? ' data-agenda-preset="nahuel"' : '';
+    return `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="${escapeHtml(person)}"${preset}>${formatInteger(safeCount)}</button>`;
   }
 
   function getAgendaRowsCountForPerson(person) {
@@ -517,7 +526,8 @@
   function hasCommissionAgendaSignals(row) {
     if (normalizeText(row.agendo) !== 'agendo') return false;
     if (normalizeText(row.aplica) !== 'aplica') return false;
-    return matchesApsetOrRt(row.originFilter) || matchesApsetOrRt(row.calendar);
+    return matchesAgendaCommissionChannel(row.originFilter, row.setter)
+      || matchesAgendaCommissionChannel(row.calendar, row.setter);
   }
 
   function fillSimpleSelect(selectNode, values, selectedValue = '') {
@@ -855,16 +865,16 @@
     });
   }
 
-  function getApsetRtOriginFilterValues() {
+  function getCommissionOriginFilterValuesForPerson(person) {
     return uniqueSortedValues(
-      state.agendaRows.filter((row) => matchesApsetOrRt(row.originFilter)),
+      state.agendaRows.filter((row) => matchesAgendaCommissionChannel(row.originFilter, person)),
       'originFilter'
     );
   }
 
-  function getApsetRtCalendarFilterValues() {
+  function getCommissionCalendarFilterValuesForPerson(person) {
     return uniqueSortedValues(
-      state.agendaRows.filter((row) => matchesApsetOrRt(row.calendar)),
+      state.agendaRows.filter((row) => matchesAgendaCommissionChannel(row.calendar, person)),
       'calendar'
     );
   }
@@ -934,6 +944,9 @@
               </span>
               <span class="sales-analysis-detail-meta">
                 Origen: ${escapeHtml(detail.origin || '-')} · Calendario: ${escapeHtml(detail.calendar || '-')}
+              </span>
+              <span class="sales-analysis-detail-meta">
+                Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · ${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}
               </span>
             </li>
           `).join('')}
@@ -1165,7 +1178,11 @@
     const totalClubCommission = rows.reduce((sum, row) => sum + Number(row.comisionClubArs || 0), 0);
     const totalMegCommission = rows.reduce((sum, row) => sum + Number(row.comisionMegArs || 0) + Number(row.comisionSetting || 0), 0);
     const totalCommission = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
-    const nahuelAgendaCount = state.agendaRows.filter((row) => isNahuelSetter(row.setter) && row.commissionQualified).length;
+    const nahuelSheetAgendaCount = rows.find((row) => isNahuelSetter(row.person))?.agendas || 0;
+    const nahuelAgendaCount = Math.max(
+      Number(nahuelSheetAgendaCount || 0),
+      state.agendaRows.filter((row) => isNahuelSetter(row.setter) && row.commissionQualified).length
+    );
     const uniqueTransactionRows = [...uniqueTransactions.values()];
     const totalFacturacionUsd = uniqueTransactionRows
       .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
@@ -1215,7 +1232,7 @@
                 <article class="comisiones-overview-kpi is-agendas">
                   <span>Agendas Nahuel</span>
                   <strong>${nahuelAgendaCount > 0 ? `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="Nahuel Iasci" data-agenda-preset="nahuel">${formatInteger(nahuelAgendaCount)}</button>` : formatInteger(nahuelAgendaCount)}</strong>
-                  <p>Total del mes por fecha de agendamiento</p>
+                  <p>Total APSET del mes por fecha de agendamiento</p>
                 </article>
               </div>
             </section>
@@ -1342,7 +1359,7 @@
     });
 
     node.querySelectorAll('[data-agenda-person]').forEach((button) => {
-      button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson));
+      button.addEventListener('click', () => openAgendaPanel(button.dataset.agendaPerson, button.dataset.agendaPreset));
     });
   }
 
@@ -1510,6 +1527,7 @@
     const detailNode = document.getElementById('commissionAgendaDetails');
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
+    const commissionChannelsLabel = isNahuelSetter(state.agendaFilters.setter) ? 'APSET' : 'APSET / RT';
     const uniqueOrigins = new Set(filteredRows.map((row) => row.originFilter).filter(Boolean));
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
     const uniqueCalendars = new Set(filteredRows.map((row) => row.calendar).filter(Boolean));
@@ -1541,7 +1559,7 @@
           <article class="comisiones-summary-card">
             <span>Comisionables</span>
             <strong>${formatInteger(qualifiedRows.length)}</strong>
-            <p>Agendo + Aplica con origen o calendario APSET / RT.</p>
+            <p>Agendo + Aplica con origen o calendario ${escapeHtml(commissionChannelsLabel)}.</p>
           </article>
           <article class="comisiones-summary-card">
             <span>Orígenes</span>
@@ -1649,8 +1667,8 @@
     state.agendaFilters.setter = person || '';
     if (preset === 'nahuel') {
       state.agendaFilters.aplica = 'Aplica';
-      state.agendaFilters.lastOrigin = getApsetRtOriginFilterValues();
-      state.agendaFilters.calendar = getApsetRtCalendarFilterValues();
+      state.agendaFilters.lastOrigin = getCommissionOriginFilterValuesForPerson(person);
+      state.agendaFilters.calendar = getCommissionCalendarFilterValuesForPerson(person);
     }
     syncAgendaFilterControls();
     renderAgendaPanel();
