@@ -311,6 +311,11 @@
     };
   }
 
+  function encodeGeneratedParamValue(key, value) {
+    if (key === 'Contact_id' && value === '{{contact.id}}') return value;
+    return encodeURIComponent(value);
+  }
+
   function applyPreset(preset) {
     if (!preset) return;
     const params = preset.params || {};
@@ -423,7 +428,7 @@
     }
 
     const queryString = [...mergedParams.entries()]
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeGeneratedParamValue(key, value)}`)
       .join('&');
 
     url.search = queryString ? `?${queryString}` : '';
