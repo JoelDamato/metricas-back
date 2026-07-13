@@ -265,6 +265,7 @@ function mapToSupabase(payload) {
     nps_8: getValue(p['Nps 8']),
     nps_9: getValue(p['Nps 9']),
     nps_10: getValue(p['Nps 10']),
+    engagement: getValue(p['Engagement']) ?? getValue(p['Engagement CSM']) ?? getValue(p['Engang']),
     insatisfecho: getValue(p['Insatisfecho']),
     solicito_devolucion: getValue(p['Solicito Devolucion']),
 

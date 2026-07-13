@@ -80,6 +80,16 @@ async function saveAgendaCalendarAssignment(payload = {}) {
   return window.http.postJson('/api/metricas/agenda-calendar/assignments', payload);
 }
 
+async function fetchAgendaCheckpoints(options = {}) {
+  const qs = queryString(options);
+  const suffix = qs ? `?${qs}` : '';
+  return window.http.getJson(`/api/metricas/agenda-checkpoints${suffix}`);
+}
+
+async function saveAgendaCheckpoint(payload = {}) {
+  return window.http.postJson('/api/metricas/agenda-checkpoints', payload);
+}
+
 async function saveReportesPremioConfig(payload = {}) {
   return window.http.postJson('/api/metricas/reportes/premio', payload);
 }
@@ -305,6 +315,8 @@ window.metricasApi = {
   saveAgendaBonusRules,
   fetchAgendaCalendarAssignments,
   saveAgendaCalendarAssignment,
+  fetchAgendaCheckpoints,
+  saveAgendaCheckpoint,
   fetchReportesPremioConfig,
   saveReportesPremioConfig,
   fetchReportComments,

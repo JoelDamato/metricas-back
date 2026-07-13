@@ -28,11 +28,15 @@ router.get('/metricas/agenda-bonus/rules', authMiddleware.metricasApiGuard, metr
 router.post('/metricas/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.saveAgendaBonusRules);
 router.get('/metricas/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.listAgendaCalendarAssignments);
 router.post('/metricas/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.saveAgendaCalendarAssignment);
+router.get('/metricas/agenda-checkpoints', authMiddleware.metricasApiGuard, metricasController.getAgendaCheckpoints);
+router.post('/metricas/agenda-checkpoints', authMiddleware.metricasApiGuard, metricasController.saveAgendaCheckpoint);
 router.get('/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.getKpiCloserRules);
 router.post('/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.saveKpiCloserRules);
 router.get('/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.getAgendaBonusRules);
 router.post('/agenda-bonus/rules', authMiddleware.metricasApiGuard, metricasController.saveAgendaBonusRules);
 router.get('/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.listAgendaCalendarAssignments);
 router.post('/agenda-calendar/assignments', authMiddleware.metricasApiGuard, metricasController.saveAgendaCalendarAssignment);
+router.get('/agenda-checkpoints', authMiddleware.metricasApiGuard, metricasController.getAgendaCheckpoints);
+router.post('/agenda-checkpoints', authMiddleware.metricasApiGuard, metricasController.saveAgendaCheckpoint);
 
 module.exports = router;

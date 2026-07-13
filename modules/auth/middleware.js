@@ -117,6 +117,13 @@ async function metricasApiGuard(req, res, next) {
       return next();
     }
 
+    if (reqPath.endsWith('/agenda-checkpoints')) {
+      if (!access.canAccessFeatureForUser(req.authUser, 'agenda_checkpoints', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para checks y strikes' });
+      }
+      return next();
+    }
+
     if (reqPath === '/reportes/premio') {
       if (!access.canAccessFeatureForUser(req.authUser, 'reportes_premio', { method: req.method })) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para premio de reportes' });

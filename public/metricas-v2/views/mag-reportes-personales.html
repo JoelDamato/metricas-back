@@ -77,19 +77,32 @@
     .comp-avg-lbl{position:absolute;top:-16px;font-size:8px;color:var(--muted);transform:translateX(-50%);white-space:nowrap;}
 
     .message-box{border-radius:14px;padding:22px 24px;margin-bottom:16px;border:1px solid;}
-    .message-box.personal{background:var(--text);border-color:var(--text);color:#fff;}
+    body.mag-view .report .message-box.personal{background:#173960!important;border-color:#173960!important;color:#fff!important;box-shadow:none;}
     .mb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
-    .message-box.personal .mb-eyebrow{color:rgba(255,255,255,.4);}
+    body.mag-view .report .message-box.personal .mb-eyebrow{color:rgba(255,255,255,.68)!important;}
     .mb-text{font-size:14px;line-height:1.75;}
-    .message-box.personal .mb-text,
-    .message-box.personal .mb-text span,
-    .message-box.personal .mb-text strong,
-    .message-box.personal .mb-text b{
-      color:rgba(255,255,255,.92)!important;
+    body.mag-view .report .message-box.personal .mb-text,
+    body.mag-view .report .message-box.personal .mb-text span,
+    body.mag-view .report .message-box.personal .mb-text strong,
+    body.mag-view .report .message-box.personal .mb-text b{
+      color:#fff!important;
     }
-    .message-box.sistema{background:var(--blue-l);border-color:#BDD0FD;}
-    .message-box.sistema .mb-eyebrow{color:var(--blue);}
-    .message-box.sistema .mb-text{color:#3A4A6A;font-size:13px;}
+    body.mag-view .report .message-box.sistema,
+    body.mag-view .report .message-box.pedido-adicional{background:#EEF3FE!important;border-color:#BDD0FD!important;box-shadow:none;}
+    body.mag-view .report .message-box.sistema .mb-eyebrow,
+    body.mag-view .report .message-box.pedido-adicional .mb-eyebrow{color:#2B73D2!important;}
+    body.mag-view .report .message-box.sistema .mb-text,
+    body.mag-view .report .message-box.pedido-adicional .mb-text{color:#243B5A!important;font-size:13px;}
+    body.mag-view .report .message-box.pedido-adicional .mb-text + .mb-text{margin-top:10px;}
+    body.mag-view .report .message-box.pedido-adicional strong{color:#173960!important;}
+    body.mag-view.mag-theme-dark .report .message-box.personal{background:#0B1D34!important;border-color:rgba(135,187,255,.28)!important;}
+    body.mag-view.mag-theme-dark .report .message-box.pedido-adicional,
+    body.mag-view.mag-theme-dark .report .message-box.sistema{background:#102F52!important;border-color:rgba(135,187,255,.36)!important;}
+    body.mag-view.mag-theme-dark .report .message-box.pedido-adicional .mb-eyebrow,
+    body.mag-view.mag-theme-dark .report .message-box.sistema .mb-eyebrow{color:#9ECBFF!important;}
+    body.mag-view.mag-theme-dark .report .message-box.pedido-adicional .mb-text,
+    body.mag-view.mag-theme-dark .report .message-box.sistema .mb-text{color:#EAF4FF!important;}
+    body.mag-view.mag-theme-dark .report .message-box.pedido-adicional strong{color:#FFFFFF!important;}
 
     .steps{display:flex;flex-direction:column;gap:8px;}
     .step{display:flex;align-items:flex-start;gap:12px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
@@ -364,6 +377,14 @@ function renderGeneratedReport(payload) {
       <div class="step-num" style="background:${escapeHtml(step.color || '#3A7BF5')}">${escapeHtml(step.num || '')}</div>
       <div class="step-text">${escapeTextBlock(step.txt)}</div>
     </div>`).join('');
+  const additionalPrompt = String(payload?.additionalPrompt || '').trim();
+  const pedidoAdicionalRespuesta = String(reportData.pedidoAdicionalRespuesta || '').trim();
+  const pedidoAdicionalHTML = (additionalPrompt || pedidoAdicionalRespuesta) ? `
+    <div class="message-box pedido-adicional">
+      <div class="mb-eyebrow">Pedido adicional</div>
+      ${additionalPrompt ? `<div class="mb-text"><strong>Pedido:</strong> ${escapeTextBlock(additionalPrompt)}</div>` : ''}
+      ${pedidoAdicionalRespuesta ? `<div class="mb-text"><strong>Respuesta:</strong> ${escapeTextBlock(pedidoAdicionalRespuesta)}</div>` : ''}
+    </div>` : '';
 
   el.innerHTML = `
     <div class="report-hero" style="background:linear-gradient(135deg,${colorDark},${color})">
@@ -393,6 +414,7 @@ function renderGeneratedReport(payload) {
       <div class="mb-eyebrow">Mensaje del mes</div>
       <div class="mb-text">${escapeTextBlock(reportData.mensaje)}</div>
     </div>
+    ${pedidoAdicionalHTML}
     <div class="section-card">
       <div class="sc-title"><span class="sc-icon">⬆️</span> Próximos pasos</div>
       <div class="steps">${stepsHTML}</div>

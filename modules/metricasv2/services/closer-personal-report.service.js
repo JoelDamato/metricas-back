@@ -244,6 +244,21 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
   const status = monthsActive < 4
     ? `Closer nuevo · ${monthsActive} ${monthsActive === 1 ? 'mes activo' : 'meses activos'}`
     : `Closer establecido · ${monthsActive} meses activos`;
+  const comparisonClosers = teamRows.map((row, index) => ({
+    closer: row.closer,
+    rankingPosition: index + 1,
+    agendas: row.agendas,
+    aplicables: row.aplicables,
+    efectuadas: row.efectuadas,
+    ventas: row.ventas,
+    cashAgendasMes: row.cashAgendasMes,
+    facturacionAgenda: row.facturacionAgenda,
+    cierrePct: row.cierrePct,
+    efectuadasSobreAplicablesPct: row.efectuadasSobreAplicablesPct,
+    noAsistidasPct: row.noAsistidasPct,
+    cashPorAgenda: row.cashPorAgenda,
+    ticketPromedio: row.ticketPromedio
+  }));
 
   return {
     closer: closerRow.closer,
@@ -264,6 +279,7 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
       tasaCierrePct: safeDiv(summary.ventas * 100, summary.efectuadas),
       tasaEfectuadasPct: safeDiv(summary.efectuadas * 100, summary.aplicables)
     },
+    comparisonClosers,
     closerMetrics: {
       agendas: closerRow.agendas,
       aplicables: closerRow.aplicables,
@@ -393,7 +409,7 @@ async function generateNarrative(metrics, options = {}) {
   const schema = {
     type: 'object',
     additionalProperties: false,
-    required: ['chips', 'kpis', 'fortalezas', 'atencion', 'mensaje', 'pasos', 'sistemaMsg'],
+    required: ['chips', 'kpis', 'fortalezas', 'atencion', 'mensaje', 'pedidoAdicionalRespuesta', 'pasos', 'sistemaMsg'],
     properties: {
       chips: {
         type: 'array',
@@ -446,6 +462,10 @@ async function generateNarrative(metrics, options = {}) {
         }
       },
       mensaje: { type: 'string' },
+      pedidoAdicionalRespuesta: {
+        type: 'string',
+        description: 'Si el usuario envio un pedido adicional, explica en 1 a 3 frases como se incorporo al informe. Si no hubo pedido adicional, devolver string vacio.'
+      },
       pasos: {
         type: 'array',
         minItems: 3,
@@ -477,7 +497,13 @@ async function generateNarrative(metrics, options = {}) {
     'Los 6 KPI deben reflejar los datos del closer y sus subtítulos deben explicar el contexto del mes.',
     'Tomá como tasa de cierre la relación ventas sobre asistidas/efectuadas.',
     'Tomá como tasa de efectuadas la relación asistidas/efectuadas sobre agendas aplicables.',
-    'Los próximos pasos deben ser accionables y concretos.'
+    'Los próximos pasos deben ser accionables y concretos.',
+    'Si el usuario envia un pedido adicional, es obligatorio incorporarlo de forma visible en el informe.',
+    'El pedido adicional debe responderse principalmente en pedidoAdicionalRespuesta.',
+    'No metas comparaciones externas ni situaciones puntuales dentro de mensaje salvo que esten respaldadas por los Datos base.',
+    'Si el pedido adicional requiere comparar contra otro closer, usa comparisonClosers de los Datos base.',
+    'Si ese closer no aparece en comparisonClosers, explicalo en pedidoAdicionalRespuesta y no inventes la comparacion.',
+    'Si el pedido adicional pide mencionar una situacion puntual, mencionarla sin inventar datos ni atribuir hechos no confirmados.'
   ].join(' ');
 
   const input = `
@@ -486,7 +512,7 @@ Generá un reporte personal para el closer ${metrics.closer} del mes ${metrics.m
 Datos base:
 ${JSON.stringify(metrics, null, 2)}
 
-${additionalPrompt ? `\nContexto o pedido adicional del usuario:\n${additionalPrompt}\n` : ''}
+${additionalPrompt ? `\nPEDIDO ADICIONAL DEL USUARIO, OBLIGATORIO DE INTEGRAR EN BLOQUE SEPARADO:\n${additionalPrompt}\n\nInclui una respuesta visible en el campo pedidoAdicionalRespuesta. No mezcles este pedido dentro del mensaje central si es una comparacion, una nota puntual o una aclaracion lateral. Si el pedido no se puede cumplir con los datos base, decilo claramente en pedidoAdicionalRespuesta.\n` : '\nNo hay pedido adicional del usuario. Devolve pedidoAdicionalRespuesta como string vacio.\n'}
 `;
 
   const response = await requestOpenAiReport({

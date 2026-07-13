@@ -28,6 +28,8 @@ router.get('/agenda-bonus/rules', controller.getAgendaBonusRules);
 router.post('/agenda-bonus/rules', controller.saveAgendaBonusRules);
 router.get('/agenda-calendar/assignments', controller.listAgendaCalendarAssignments);
 router.post('/agenda-calendar/assignments', controller.saveAgendaCalendarAssignment);
+router.get('/agenda-checkpoints', controller.getAgendaCheckpoints);
+router.post('/agenda-checkpoints', controller.saveAgendaCheckpoint);
 router.get('/reportes/premio', controller.getReportesPremioConfig);
 router.post('/reportes/premio', controller.saveReportesPremioConfig);
 router.get('/reportes/comentarios', controller.listReportComments);

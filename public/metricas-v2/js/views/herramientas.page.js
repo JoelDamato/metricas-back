@@ -277,7 +277,7 @@
     const currentOrigin = String(document.getElementById('utmCurrentOrigin')?.value || '').trim();
     const presetName = String(document.getElementById('utmPresetName')?.value || '').trim();
     const params = {};
-    const source = String(document.getElementById('utmSource')?.value || '').trim() || currentOrigin;
+    const source = String(document.getElementById('utmSource')?.value || '').trim();
     const medium = String(document.getElementById('utmMedium')?.value || '').trim();
     const campaign = String(document.getElementById('utmCampaign')?.value || '').trim();
     const content = String(document.getElementById('utmContent')?.value || '').trim();
@@ -418,6 +418,9 @@
       if (!key || !String(value || '').trim()) return;
       mergedParams.set(key, String(value || '').trim());
     });
+    if (!Object.prototype.hasOwnProperty.call(params, 'utm_source')) {
+      mergedParams.delete('utm_source');
+    }
 
     const queryString = [...mergedParams.entries()]
       .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)

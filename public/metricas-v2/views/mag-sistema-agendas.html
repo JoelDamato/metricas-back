@@ -256,11 +256,91 @@
     .bwd-val{font-family:'DM Mono',monospace;color:var(--green);}
     .no-bonus-wk{padding:8px 16px;font-size:10px;color:var(--muted);}
     .panel-total{padding:12px 16px;background:var(--s2);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-    .panel-total-lbl{font-size:11px;color:var(--muted);}
-    .panel-total-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--green);}
-    .empty{padding:24px;text-align:center;font-size:12px;color:var(--muted);}
+	    .panel-total-lbl{font-size:11px;color:var(--muted);}
+	    .panel-total-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--green);}
+	    .empty{padding:24px;text-align:center;font-size:12px;color:var(--muted);}
 
-    /* RULES */
+	    /* STRIKES / CHECKPOINTS */
+	    .strike-shell{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 14px 32px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);}
+	    .strike-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+	    .strike-head h3{font-size:14px;font-weight:600;margin-bottom:4px;}
+	    .strike-head p{font-size:12px;color:var(--muted);}
+	    .strike-period{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+	    .strike-period label{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+	    .strike-body{padding:14px 18px 18px;display:flex;flex-direction:column;gap:14px;}
+	    .strike-meta{font-size:10px;color:var(--muted);line-height:1.4;}
+	    .strike-meta.ok{color:var(--green);}
+	    .strike-meta.error{color:var(--red);}
+	    .strike-form{display:grid;grid-template-columns:minmax(160px,.9fr) minmax(120px,.55fr) minmax(280px,1.5fr) auto;gap:10px;align-items:end;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s2);border:1px solid rgba(126,137,175,.2);border-radius:12px;}
+	    .strike-field{display:flex;flex-direction:column;gap:5px;}
+	    .strike-field label{font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+	    .strike-field textarea{min-height:38px;resize:vertical;background:var(--s1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;line-height:1.35;padding:9px 10px;outline:none;}
+	    .strike-field textarea:disabled,.strike-form .sel:disabled{opacity:.52;cursor:not-allowed;}
+	    .strike-btn{height:38px;border:none;border-radius:8px;padding:0 13px;background:linear-gradient(135deg,var(--blue),#6ea8ff);color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;}
+	    .strike-btn:disabled{opacity:.45;cursor:not-allowed;}
+	    .strike-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;}
+	    .strike-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.9fr);gap:14px;align-items:start;}
+	    .strike-card{border:1px solid rgba(126,137,175,.2);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01)),var(--s1);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;}
+	    .strike-card-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
+	    .strike-name{font-size:12px;font-weight:800;color:#f4f7ff;}
+	    .strike-score{font-family:'DM Mono',monospace;font-size:17px;font-weight:800;color:var(--muted);}
+	    .strike-score.positive{color:var(--green);}
+	    .strike-score.negative{color:var(--red);}
+	    .strike-counts{display:flex;gap:6px;flex-wrap:wrap;}
+	    .strike-pill{font-size:10px;font-weight:800;border-radius:999px;padding:4px 8px;}
+	    .strike-pill.check{background:rgba(45,212,160,.13);color:#80f2cf;border:1px solid rgba(45,212,160,.28);}
+	    .strike-pill.strike{background:rgba(248,113,113,.13);color:#ffaaaa;border:1px solid rgba(248,113,113,.28);}
+	    .strike-list{border:1px solid rgba(126,137,175,.2);border-radius:12px;overflow:hidden;background:var(--s1);}
+	    .strike-list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--border);}
+	    .strike-list-head h4{font-size:12px;font-weight:800;}
+	    .strike-history-group{border-bottom:1px solid rgba(126,137,175,.18);}
+	    .strike-history-group:last-child{border-bottom:none;}
+	    .strike-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(126,137,175,.12);flex-wrap:wrap;}
+	    .strike-history-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+	    .strike-history-name{font-size:12px;font-weight:900;color:#f4f7ff;}
+	    .strike-history-score{font-family:'DM Mono',monospace;font-size:14px;font-weight:900;color:var(--muted);}
+	    .strike-history-score.positive{color:var(--green);}
+	    .strike-history-score.negative{color:var(--red);}
+	    .strike-history-counts{display:flex;gap:6px;flex-wrap:wrap;}
+	    .strike-row{display:grid;grid-template-columns:110px minmax(140px,.8fr) minmax(260px,1.4fr) 150px auto;gap:12px;align-items:start;padding:11px 13px;border-bottom:1px solid rgba(126,137,175,.12);}
+	    .strike-row:last-child{border-bottom:none;}
+	    .strike-type{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:5px 8px;text-align:center;}
+	    .strike-type.check{background:rgba(45,212,160,.13);color:#80f2cf;}
+	    .strike-type.strike{background:rgba(248,113,113,.13);color:#ffaaaa;}
+	    .strike-row-name{font-size:12px;font-weight:800;}
+	    .strike-detail{font-size:12px;line-height:1.45;color:#c9d2ee;white-space:pre-wrap;overflow-wrap:anywhere;}
+	    .strike-date{font-size:10px;color:var(--muted);line-height:1.4;}
+	    .strike-delete{border:1px solid rgba(248,113,113,.28);background:rgba(248,113,113,.08);color:#ffaaaa;border-radius:7px;height:28px;padding:0 9px;font-size:10px;font-weight:800;cursor:pointer;}
+	    .strike-delete:disabled{opacity:.45;cursor:not-allowed;}
+	    .strike-table-wrap{overflow-x:auto;}
+	    .strike-table{width:100%;border-collapse:collapse;min-width:520px;}
+	    .strike-table.compact{min-width:420px;}
+	    .strike-table th{padding:9px 11px;background:rgba(255,255,255,.035);border-bottom:1px solid rgba(126,137,175,.18);font-size:9px;font-weight:900;color:#b7c2e0;text-align:left;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+	    .strike-table td{padding:9px 11px;border-bottom:1px solid rgba(126,137,175,.12);font-size:12px;color:#dbe3f8;vertical-align:top;}
+	    .strike-table tr:last-child td{border-bottom:none;}
+	    .strike-table .align-r{text-align:right;font-family:'DM Mono',monospace;}
+	    .strike-rank-badge{display:inline-flex;align-items:center;justify-content:center;min-width:27px;height:24px;border-radius:999px;background:rgba(75,142,245,.13);color:#9bc6ff;font-family:'DM Mono',monospace;font-size:11px;font-weight:900;}
+	    .strike-result{display:inline-flex;border-radius:999px;padding:5px 8px;font-size:9px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;border:1px solid rgba(126,137,175,.18);line-height:1.25;white-space:normal;}
+	    .strike-result.reward{background:rgba(45,212,160,.12);color:#80f2cf;border-color:rgba(45,212,160,.25);}
+	    .strike-result.neutral{background:rgba(126,137,175,.1);color:#c5cde5;}
+	    .strike-result.consequence{background:rgba(248,113,113,.12);color:#ffaaaa;border-color:rgba(248,113,113,.25);}
+	    .strike-result.severe{background:rgba(248,113,113,.18);color:#ffc2c2;border-color:rgba(248,113,113,.38);}
+	    .bonus-alert{padding:9px 16px;background:rgba(248,113,113,.1);border-bottom:1px solid rgba(248,113,113,.22);font-size:10px;color:#ffb4b4;line-height:1.45;}
+	    .bonus-state{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(126,137,175,.18);}
+	    .bonus-state.counted{color:#80f2cf;background:rgba(45,212,160,.12);border-color:rgba(45,212,160,.25);}
+	    .bonus-state.revoked,.bonus-state.miss{color:#ffaaaa;background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.25);}
+	    .bonus-state.hold{color:#ffd27a;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);}
+	    .bonus-state.pending{color:#b8c3e2;background:rgba(126,137,175,.1);}
+	    .bonus-wk.revoked .bwd-val{color:#ffaaaa;}
+	    .panel-total-sub{display:block;margin-top:2px;font-size:9px;font-weight:500;color:var(--muted);}
+	    @media(max-width:980px){
+	      .strike-form{grid-template-columns:1fr;}
+	      .strike-grid{grid-template-columns:1fr;}
+	      .strike-row{grid-template-columns:1fr;}
+	      .strike-delete{justify-self:start;}
+	    }
+
+	    /* RULES */
     .rg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media(max-width:700px){.rg{grid-template-columns:1fr;}}
     .rc{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.22);border-radius:12px;padding:16px;box-shadow:0 14px 28px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.04);}
@@ -454,17 +534,63 @@
 </div>
 
 <div id="tab-strike-checkpoints" class="tab-content">
-  <div class="manual-frame-wrap">
-    <div class="manual-frame-head">
-      <h3>Strike y Checkpoints</h3>
-      <p>Reporte mensual con puntajes, KPIs, bonus, ranking final y consecuencias del sistema.</p>
+  <div class="strike-shell">
+    <div class="strike-head">
+      <div>
+        <h3>Strike y Checkpoints</h3>
+        <p>Seguimiento mensual por closer, con detalle de cada check o strike y total actualizado.</p>
+      </div>
+      <div class="strike-period">
+        <label for="strike-mes">Mes</label>
+        <select class="sel" id="strike-mes" onchange="loadStrikeCheckpointData()"></select>
+        <select class="sel" id="strike-yr" onchange="loadStrikeCheckpointData()"></select>
+      </div>
     </div>
-    <iframe
-      class="manual-frame"
-      src="/views/reporte_mayo_checkpoints_strikes.html?embed=1"
-      title="Strike y Checkpoints"
-      loading="lazy"
-    ></iframe>
+    <div class="strike-body">
+      <div id="strike-meta" class="strike-meta">Cargando checks y strikes...</div>
+      <form id="strike-form" class="strike-form" onsubmit="saveStrikeCheckpointEntry(event)">
+        <div class="strike-field">
+          <label for="strike-closer">Closer</label>
+          <select class="sel" id="strike-closer"></select>
+        </div>
+        <div class="strike-field">
+          <label for="strike-tipo">Tipo</label>
+          <select class="sel" id="strike-tipo">
+            <option value="check">Check</option>
+            <option value="strike">Strike</option>
+          </select>
+        </div>
+        <div class="strike-field">
+          <label for="strike-detalle">Detalle</label>
+          <textarea id="strike-detalle" maxlength="1200" placeholder="Motivo del check o strike"></textarea>
+        </div>
+        <button id="strike-save" class="strike-btn" type="submit">Agregar</button>
+      </form>
+      <div id="strike-summary" class="strike-summary"></div>
+      <div class="strike-grid">
+        <div class="strike-list">
+          <div class="strike-list-head">
+            <h4>Ranking de puntos</h4>
+            <span id="strike-ranking-count" class="strike-meta"></span>
+          </div>
+          <div id="strike-ranking"></div>
+        </div>
+        <div class="strike-list">
+          <div class="strike-list-head">
+            <h4>Premios y consecuencias</h4>
+            <span class="strike-meta">Referencia</span>
+          </div>
+          <div id="strike-rewards"></div>
+        </div>
+      </div>
+      <div class="strike-list">
+        <div class="strike-list-head">
+          <h4>Historial del mes</h4>
+          <span id="strike-count" class="strike-meta"></span>
+        </div>
+        <div id="strike-entries"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -480,6 +606,24 @@ const MAY_2026_FLOOR=12500;
 const COLORS=['#4B8EF5','#2DD4A0','#F59E0B','#A78BFA','#F472B6','#34D399'];
 const MS=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MIN_PCT=10; // individual minimum % of team weekly cash
+const STRIKE_REWARD_RULES=[
+  {score:10,text:'10% comisión en todas las ventas + Día de Spa',tone:'reward'},
+  {score:9,text:'1% más comisión en todas las ventas',tone:'reward'},
+  {score:8,text:'7 + 1% más comisión de ventas de escala 5 a 9 ventas. Pasa a 10%',tone:'reward'},
+  {score:7,text:'1% más comisión de ventas de escala 1 a 4 ventas. Pasa a 9%',tone:'reward'},
+  {score:6,text:'80 USD',tone:'reward'},
+  {score:5,text:'$80.000',tone:'reward'},
+  {score:4,text:'$45.000',tone:'reward'},
+  {score:3,text:'$30.000',tone:'reward'},
+  {score:2,text:'-',tone:'neutral'},
+  {score:1,text:'-',tone:'neutral'},
+  {score:0,text:'-',tone:'neutral'},
+  {score:-1,text:'No cobra premios por cumplimientos de KPIs',tone:'consequence'},
+  {score:-2,text:'No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos semanales y mensuales',tone:'consequence'},
+  {score:-3,text:'-1, -2 y 1% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 7%',tone:'severe'},
+  {score:-4,text:'-1, -2 y 2% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 6%',tone:'severe'},
+  {score:-5,text:'-1, -2, 2% menos del porcentaje comisionable y tomar solo agendas calidad D',tone:'severe'}
+];
 const CLOSER_ALIAS_MAP={
   'pablo butera vie':'Pablo Butera',
   'pablo butera':'Pablo Butera',
@@ -496,6 +640,7 @@ let selectedProgressWeekIndex=null;
 let selectedProgressMonthKey='';
 let agendaBonusConfig=null;
 let agendaCalendarAssignments={};
+let strikeCheckpointState={anio:null,mes:null,entries:[],canEdit:false,updated_at:null,updated_by_email:null};
 let closers=[
   {id:1,name:'Walter Alegre',   status:'walter',startCat:'ABC',weeks:[]},
   {id:2,name:'Carlos Tu',       status:'normal',startCat:'ABC',weeks:[]},
@@ -605,6 +750,359 @@ function setRankMeta(message='', tone=''){
   meta.textContent=message;
 }
 
+function escapeHTML(value){
+  return String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function escapeJSString(value){
+  return String(value ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+function formatDateTimeShort(value){
+  if(!value) return 'Sin fecha';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime())) return 'Sin fecha';
+  return date.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+function setStrikeMeta(message='', tone=''){
+  const meta=document.getElementById('strike-meta');
+  if(!meta) return;
+  meta.className=`strike-meta${tone?` ${tone}`:''}`;
+  meta.textContent=message;
+}
+
+function getStrikeSelectedPeriod(){
+  return {
+    year: Number(document.getElementById('strike-yr')?.value || 0),
+    month: Number(document.getElementById('strike-mes')?.value || 0)
+  };
+}
+
+function setStrikeFormEnabled(enabled){
+  ['strike-closer','strike-tipo','strike-detalle','strike-save'].forEach((id)=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled=!enabled;
+  });
+}
+
+function initStrikeCheckpointControls(){
+  const monthSelect=document.getElementById('strike-mes');
+  const yearSelect=document.getElementById('strike-yr');
+  const closerSelect=document.getElementById('strike-closer');
+  if(!monthSelect || !yearSelect || !closerSelect) return;
+
+  const now=new Date();
+  monthSelect.innerHTML=MS.slice(1).map((name,index)=>(
+    `<option value="${index+1}">${name}</option>`
+  )).join('');
+  monthSelect.value=String(now.getMonth()+1);
+
+  const currentYear=now.getFullYear();
+  const years=[2026,2027,currentYear].filter((year,index,array)=>array.indexOf(year)===index).sort((a,b)=>a-b);
+  yearSelect.innerHTML=years.map((year)=>`<option value="${year}">${year}</option>`).join('');
+  yearSelect.value=String(currentYear);
+
+  closerSelect.innerHTML=closers.map((closer)=>(
+    `<option value="${escapeHTML(closer.name)}">${escapeHTML(closer.name)}</option>`
+  )).join('');
+
+  setStrikeFormEnabled(false);
+}
+
+function summarizeStrikeEntries(entries=[]){
+  const summary=new Map(closers.map((closer)=>[
+    normalizeText(closer.name),
+    { name: closer.name, checks: 0, strikes: 0, total: 0 }
+  ]));
+
+  entries.forEach((entry)=>{
+    const key=normalizeText(entry.closer_nombre);
+    const row=summary.get(key) || { name: entry.closer_nombre || 'Sin closer', checks: 0, strikes: 0, total: 0 };
+    const qty=Math.max(1, Number(entry.cantidad || 1));
+    if(entry.tipo==='check'){
+      row.checks+=qty;
+      row.total+=qty;
+    }else if(entry.tipo==='strike'){
+      row.strikes+=qty;
+      row.total-=qty;
+    }
+    summary.set(key,row);
+  });
+
+  return Array.from(summary.values());
+}
+
+function formatStrikeScore(score){
+  const value=Number(score || 0);
+  return value>0 ? `+${value}` : String(value);
+}
+
+function getStrikeRewardRule(score){
+  const value=Number(score || 0);
+  const clamped=Math.max(-5,Math.min(10,Math.trunc(value)));
+  return STRIKE_REWARD_RULES.find((rule)=>rule.score===clamped) || STRIKE_REWARD_RULES.find((rule)=>rule.score===0);
+}
+
+function getStrikeRankingRows(summaryRows=[]){
+  const sorted=[...summaryRows].sort((a,b)=>{
+    if(b.total!==a.total) return b.total-a.total;
+    return String(a.name).localeCompare(String(b.name),'es');
+  });
+  let previousScore=null;
+  let currentRank=0;
+  return sorted.map((row,index)=>{
+    if(previousScore===null || row.total!==previousScore){
+      currentRank=index+1;
+      previousScore=row.total;
+    }
+    const reward=getStrikeRewardRule(row.total);
+    return {
+      ...row,
+      rank: currentRank,
+      result: reward?.text === '-' ? 'Sin premio asignado' : reward?.text,
+      tone: reward?.tone || 'neutral'
+    };
+  });
+}
+
+function renderStrikeRanking(summaryRows=[]){
+  const rankingEl=document.getElementById('strike-ranking');
+  const countEl=document.getElementById('strike-ranking-count');
+  if(!rankingEl) return;
+
+  const rows=getStrikeRankingRows(summaryRows);
+  if(countEl) countEl.textContent=`${rows.length} closer${rows.length===1?'':'s'}`;
+  rankingEl.innerHTML=`<div class="strike-table-wrap"><table class="strike-table">
+    <thead><tr><th>Puesto</th><th>Closer</th><th class="align-r">Puntaje</th><th>Resultado</th></tr></thead>
+    <tbody>${rows.map((row)=>`<tr>
+      <td><span class="strike-rank-badge">${row.rank}</span></td>
+      <td>${escapeHTML(row.name)}</td>
+      <td class="align-r">${formatStrikeScore(row.total)}</td>
+      <td><span class="strike-result ${escapeHTML(row.tone)}">${escapeHTML(row.result)}</span></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderStrikeRewardsReference(){
+  const rewardsEl=document.getElementById('strike-rewards');
+  if(!rewardsEl) return;
+  rewardsEl.innerHTML=`<div class="strike-table-wrap"><table class="strike-table compact">
+    <thead><tr><th class="align-r">Puntaje</th><th>Premio / consecuencia</th></tr></thead>
+    <tbody>${STRIKE_REWARD_RULES.map((rule)=>`<tr>
+      <td class="align-r">${formatStrikeScore(rule.score)}</td>
+      <td><span class="strike-result ${escapeHTML(rule.tone)}">${escapeHTML(rule.text)}</span></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderStrikeCheckpointTab(){
+  const entries=Array.isArray(strikeCheckpointState.entries) ? strikeCheckpointState.entries : [];
+  const canEdit=strikeCheckpointState.canEdit === true;
+  const summaryEl=document.getElementById('strike-summary');
+  const entriesEl=document.getElementById('strike-entries');
+  const countEl=document.getElementById('strike-count');
+  const summaryRows=summarizeStrikeEntries(entries);
+
+  setStrikeFormEnabled(canEdit);
+  setStrikeMeta(
+    canEdit
+      ? 'Edición habilitada para Leo y Mati. Los demás usuarios ven el avance en modo lectura.'
+      : 'Modo lectura: todos pueden ver el avance, solo Leo y Mati pueden cargar checks y strikes.',
+    canEdit ? 'ok' : ''
+  );
+
+  if(countEl){
+    countEl.textContent=`${entries.length} movimiento${entries.length===1?'':'s'}`;
+  }
+
+  if(summaryEl){
+    summaryEl.innerHTML=summaryRows.map((row)=>{
+      const scoreClass=row.total>0?'positive':row.total<0?'negative':'';
+      const scoreLabel=formatStrikeScore(row.total);
+      return `<div class="strike-card">
+        <div class="strike-card-head">
+          <div class="strike-name">${escapeHTML(row.name)}</div>
+          <div class="strike-score ${scoreClass}">${scoreLabel}</div>
+        </div>
+        <div class="strike-counts">
+          <span class="strike-pill check">${row.checks} check${row.checks===1?'':'s'}</span>
+          <span class="strike-pill strike">${row.strikes} strike${row.strikes===1?'':'s'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  renderStrikeRanking(summaryRows);
+  renderStrikeRewardsReference();
+
+  if(!entriesEl) return;
+  if(!entries.length){
+    entriesEl.innerHTML='<div class="empty">Sin checks ni strikes cargados para este mes.</div>';
+    return;
+  }
+
+  const entriesByCloser=new Map(entries.map((entry)=>[normalizeText(entry.closer_nombre),[]]));
+  entries.forEach((entry)=>{
+    const key=normalizeText(entry.closer_nombre);
+    if(!entriesByCloser.has(key)) entriesByCloser.set(key,[]);
+    entriesByCloser.get(key).push(entry);
+  });
+
+  const historyGroups=getStrikeRankingRows(summaryRows)
+    .filter((row)=>entriesByCloser.has(normalizeText(row.name)))
+    .map((row)=>({
+      ...row,
+      entries: entriesByCloser.get(normalizeText(row.name)) || []
+    }));
+
+  entriesEl.innerHTML=historyGroups.map((group)=>{
+    const scoreClass=group.total>0?'positive':group.total<0?'negative':'';
+    return `<div class="strike-history-group">
+      <div class="strike-history-head">
+        <div class="strike-history-title">
+          <span class="strike-rank-badge">${group.rank}</span>
+          <span class="strike-history-name">${escapeHTML(group.name)}</span>
+          <span class="strike-history-score ${scoreClass}">${formatStrikeScore(group.total)}</span>
+        </div>
+        <div class="strike-history-counts">
+          <span class="strike-pill check">${group.checks} check${group.checks===1?'':'s'}</span>
+          <span class="strike-pill strike">${group.strikes} strike${group.strikes===1?'':'s'}</span>
+        </div>
+      </div>
+      ${group.entries.map((entry)=>{
+        const idForJs=escapeJSString(entry.id);
+        const typeLabel=entry.tipo==='strike'?'Strike':'Check';
+        const qty=Number(entry.cantidad || 1);
+        return `<div class="strike-row">
+          <div class="strike-type ${escapeHTML(entry.tipo)}">${typeLabel}${qty>1?` x${qty}`:''}</div>
+          <div class="strike-row-name">${escapeHTML(entry.closer_nombre)}</div>
+          <div class="strike-detail">${escapeHTML(entry.detalle || '')}</div>
+          <div class="strike-date">
+            <div>${formatDateTimeShort(entry.created_at)}</div>
+            <div>${escapeHTML(entry.created_by_email || '')}</div>
+          </div>
+          ${canEdit?`<button class="strike-delete" type="button" onclick="deleteStrikeCheckpointEntry('${idForJs}')">Eliminar</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+async function loadStrikeCheckpointData(){
+  const { year, month } = getStrikeSelectedPeriod();
+  if(!year || !month || !window.metricasApi?.fetchAgendaCheckpoints) return;
+
+  setStrikeFormEnabled(false);
+  setStrikeMeta('Cargando checks y strikes...');
+
+  try{
+    const response=await window.metricasApi.fetchAgendaCheckpoints({ anio: year, mes: month });
+    strikeCheckpointState={
+      anio: response?.anio || year,
+      mes: response?.mes || month,
+      entries: response?.entries || [],
+      canEdit: response?.canEdit === true || window.metricasAuthPermissions?.canEditAgendaCheckpoints === true,
+      updated_at: response?.updated_at || null,
+      updated_by_email: response?.updated_by_email || null
+    };
+    renderStrikeCheckpointTab();
+  }catch(error){
+    console.error(error);
+    strikeCheckpointState={anio:year,mes:month,entries:[],canEdit:false,updated_at:null,updated_by_email:null};
+    setStrikeMeta(error?.message || 'No se pudieron cargar checks y strikes.', 'error');
+    renderStrikeCheckpointTab();
+  }
+}
+
+async function saveStrikeCheckpointEntry(event){
+  if(event) event.preventDefault();
+  if(strikeCheckpointState.canEdit !== true){
+    setStrikeMeta('Solo Leo o Mati pueden cargar checks y strikes.', 'error');
+    return;
+  }
+
+  const { year, month } = getStrikeSelectedPeriod();
+  const closer=document.getElementById('strike-closer')?.value || '';
+  const tipo=document.getElementById('strike-tipo')?.value || 'check';
+  const detalle=document.getElementById('strike-detalle')?.value || '';
+  if(!detalle.trim()){
+    setStrikeMeta('Agregá el detalle del motivo antes de guardar.', 'error');
+    return;
+  }
+
+  const button=document.getElementById('strike-save');
+  if(button) button.disabled=true;
+  setStrikeMeta('Guardando movimiento...');
+
+  try{
+    const response=await window.metricasApi.saveAgendaCheckpoint({
+      anio: year,
+      mes: month,
+      closer_nombre: closer,
+      tipo,
+      detalle: detalle.trim()
+    });
+    strikeCheckpointState={
+      anio: response?.anio || year,
+      mes: response?.mes || month,
+      entries: response?.entries || [],
+      canEdit: response?.canEdit === true,
+      updated_at: response?.updated_at || null,
+      updated_by_email: response?.updated_by_email || null
+    };
+    const detailEl=document.getElementById('strike-detalle');
+    if(detailEl) detailEl.value='';
+    renderStrikeCheckpointTab();
+    setStrikeMeta('Movimiento guardado.', 'ok');
+  }catch(error){
+    console.error(error);
+    setStrikeMeta(error?.message || 'No se pudo guardar el movimiento.', 'error');
+    renderStrikeCheckpointTab();
+  }finally{
+    if(button) button.disabled=strikeCheckpointState.canEdit !== true;
+  }
+}
+
+async function deleteStrikeCheckpointEntry(id){
+  if(strikeCheckpointState.canEdit !== true){
+    setStrikeMeta('Solo Leo o Mati pueden eliminar checks y strikes.', 'error');
+    return;
+  }
+  if(!id || !window.confirm('Eliminar este check/strike del mes?')) return;
+
+  const { year, month } = getStrikeSelectedPeriod();
+  setStrikeMeta('Eliminando movimiento...');
+
+  try{
+    const response=await window.metricasApi.saveAgendaCheckpoint({
+      anio: year,
+      mes: month,
+      action: 'delete',
+      id
+    });
+    strikeCheckpointState={
+      anio: response?.anio || year,
+      mes: response?.mes || month,
+      entries: response?.entries || [],
+      canEdit: response?.canEdit === true,
+      updated_at: response?.updated_at || null,
+      updated_by_email: response?.updated_by_email || null
+    };
+    renderStrikeCheckpointTab();
+    setStrikeMeta('Movimiento eliminado.', 'ok');
+  }catch(error){
+    console.error(error);
+    setStrikeMeta(error?.message || 'No se pudo eliminar el movimiento.', 'error');
+    renderStrikeCheckpointTab();
+  }
+}
+
 function monthRange(year,month){
   const from=`${year}-${String(month).padStart(2,'0')}-01`;
   const toDate=new Date(year,month,0);
@@ -646,8 +1144,8 @@ function getWeekIndexForValue(value){
 function getConciliadoAmount(row){
   const conciliado=Number(row?.cash_collected_conciliado || 0);
   if(Number.isFinite(conciliado) && conciliado>0) return conciliado;
-  const total=Number(row?.cash_collected_total || 0);
-  return Number.isFinite(total) && total>0 ? total : 0;
+  const cash=Number(row?.cash_collected || 0);
+  return Number.isFinite(cash) && cash>0 ? cash : 0;
 }
 
 function getResponsibleCloser(row){
@@ -673,19 +1171,17 @@ async function loadRealCashByAcreditacion(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
   });
 
   const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
   (response.rows || []).forEach((row)=>{
     if(normalizeText(row?.producto_format).includes('club')) return;
-    const total=Number(row?.cash_collected_total || 0);
-    const fallback=Number(row?.cash_collected || 0);
-    const effectiveCash=total>0?total:fallback;
+    const effectiveCash=Number(row?.cash_collected || 0);
     const normalizedState=normalizeText(row?.estado);
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
-      cash_collected_total: effectiveCash,
+      cash_collected: effectiveCash,
       cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
     };
     if(!isEligibleCashRow(cashRow)) return;
@@ -712,19 +1208,17 @@ async function loadMonthlyBaseCategories(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_total,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
   });
 
   const totalsByCloser=new Map();
   (response.rows || []).forEach((row)=>{
     if(normalizeText(row?.producto_format).includes('club')) return;
-    const total=Number(row?.cash_collected_total || 0);
-    const fallback=Number(row?.cash_collected || 0);
-    const effectiveCash=total>0?total:fallback;
+    const effectiveCash=Number(row?.cash_collected || 0);
     const normalizedState=normalizeText(row?.estado);
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
-      cash_collected_total: effectiveCash,
+      cash_collected: effectiveCash,
       cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
     };
     if(!isEligibleCashRow(cashRow)) return;
@@ -974,6 +1468,52 @@ function bonusPct(cash,days){
 }
 function wkStatus(cash,days){const{floor,target}=adj(days);if(!cash)return'idle';if(cash<floor)return'miss';if(cash<target)return'mid';return'hit';}
 
+function isMonthBeforeCurrent(year,month){
+  const now=new Date();
+  return year<now.getFullYear() || (year===now.getFullYear() && month<(now.getMonth()+1));
+}
+
+function isWeekClosedForBonus(index){
+  const { year, month } = getSelectedPeriod();
+  const week=weeks[index];
+  if(!week) return false;
+  if(isMonthBeforeCurrent(year,month)) return true;
+  const now=new Date();
+  if(year>now.getFullYear() || (year===now.getFullYear() && month>(now.getMonth()+1))) return false;
+  return toDateKey(now)>week.endKey;
+}
+
+function getBonusWeekRows(){
+  const totals=wkTotals();
+  const baseRows=weeks.map((wk,index)=>{
+    const total=totals[index] || 0;
+    const thresholds=adj(wk.days);
+    const pct=bonusPct(total,wk.days);
+    const generatedPool=total*pct;
+    const closed=isWeekClosedForBonus(index);
+    const baseMiss=closed && total<thresholds.floor;
+    return {
+      index,
+      week: wk,
+      total,
+      floor: thresholds.floor,
+      target: thresholds.target,
+      pct,
+      generatedPool,
+      closed,
+      baseMiss
+    };
+  });
+  const hasClosedBaseMiss=baseRows.some((row)=>row.baseMiss);
+  return baseRows.map((row)=>({
+    ...row,
+    revoked: row.pct>0 && hasClosedBaseMiss,
+    counted: row.pct>0 && !hasClosedBaseMiss,
+    payablePool: row.pct>0 && !hasClosedBaseMiss ? row.generatedPool : 0,
+    hasClosedBaseMiss
+  }));
+}
+
 /* ═══ CATEGORY CHAIN ═══ */
 // Returns array per week: {type:'libre'|'ranked'|'special', cat:'ABC'|'DE'|'NONE'|'ALL'|'SP', met:bool|null, pct:number|null}
 function catChain(c, wkTotals){
@@ -1160,14 +1700,16 @@ function renderMilestoneBar(){
 function renderPills(ci){
   const el=document.getElementById('wk-pills'); el.innerHTML='';
   const totals=wkTotals();
+  const bonusRows=getBonusWeekRows();
   const selectedIndex=getProgressWeekIndex();
   weeks.forEach((wk,i)=>{
     const{target,floor}=adj(wk.days);const full=wk.days===7;
     const state=i<ci?'past':i===ci?'cur':'future';
     const ph=i<2?'libre':'rank';
     const weekTotal=totals[i]||0;
-    const poolPct=bonusPct(weekTotal,wk.days);
-    const poolValue=weekTotal*poolPct;
+    const bonusRow=bonusRows[i] || {};
+    const poolPct=bonusRow.pct || 0;
+    const poolValue=bonusRow.generatedPool || 0;
     const d=document.createElement('div');
     d.className=`wkp ${state}${i===selectedIndex?' cur':''}`;
     d.onclick=()=>{
@@ -1183,7 +1725,8 @@ function renderPills(ci){
       <div class="wkp-days">${wk.days} día${wk.days>1?'s':''}</div>
       <div class="wkp-meta ${full?'full':'part'}">Meta: ${fmtK(target)}</div>
       <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">Piso: ${fmtK(floor)}</div>
-      ${poolPct>0?`<div class="wkp-meta full" style="color:var(--green)">Pool: ${fmt(poolValue)}</div>`:''}
+      ${poolPct>0?`<div class="wkp-meta full" style="color:${bonusRow.revoked?'var(--red)':'var(--green)'}">${bonusRow.revoked?'Revocado':'Pool'}: ${fmt(poolValue)}</div>`:''}
+      ${bonusRow.baseMiss?`<div class="wkp-meta full" style="color:var(--red)">Bajo base cerrada</div>`:''}
       <div class="wkp-ph ${ph}">${ph==='libre'?'Libre':'Rankeada'}</div>`;
     el.appendChild(d);
   });
@@ -1226,6 +1769,7 @@ function renderNextWeek(ci){
 /* ═══ MAIN TABLE ═══ */
 function renderMainTable(ci){
   const tots=wkTotals();
+  const bonusRows=getBonusWeekRows();
   const tbl=document.getElementById('main-tbl');
 
   // THEAD
@@ -1305,8 +1849,13 @@ function renderMainTable(ci){
   tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">Pool bonus</td>`;
   let totalPool=0;
   weeks.forEach((wk,i)=>{
-    const t=tots[i];const p=bonusPct(t,wk.days);const pool=t*p;totalPool+=pool;
-    tf+=`<td style="color:${p>0?'var(--green)':'var(--muted)'}">${p>0?fmt(pool)+` (${(p*100).toFixed(1)}%)`:'—'}</td>`;
+    const row=bonusRows[i] || {};
+    totalPool+=row.payablePool || 0;
+    if(row.pct>0 && row.revoked){
+      tf+=`<td style="color:var(--red)">${fmt(row.generatedPool)} revocado</td>`;
+    }else{
+      tf+=`<td style="color:${row.pct>0?'var(--green)':'var(--muted)'}">${row.pct>0?fmt(row.payablePool)+` (${(row.pct*100).toFixed(1)}%)`:'—'}</td>`;
+    }
   });
   tf+=`<td style="color:var(--green);font-weight:600">${fmt(totalPool)}</td></tr></tfoot>`;
 
@@ -1414,6 +1963,7 @@ function rrHTML(c,num,numCls,barColor,maxCash,cats,options={}){
 
 /* ═══ BONUS ═══ */
 function renderBonus(){
+  const rows=getBonusWeekRows();
   const tots=wkTotals();
   const body=document.getElementById('bonus-body');
   const panel=document.getElementById('bonus-panel');
@@ -1421,30 +1971,61 @@ function renderBonus(){
   const old=panel.querySelector('.panel-total');if(old)old.remove();
 
   if(!tots.some(t=>t>0)){body.innerHTML='<div class="empty">Sin datos de bonus aún.</div>';return;}
-  let totalPool=0,html='';
+  let totalPayablePool=0,totalGeneratedPool=0,html='';
 
-  weeks.forEach((wk,i)=>{
-    const t=tots[i];const pct=bonusPct(t,wk.days);const pool=t*pct;
-    const{target}=adj(wk.days);totalPool+=pool;
-    if(pct>0){
-      const dist=closers.filter(c=>(c.weeks[i]||0)>0).map(c=>({name:c.name,cash:c.weeks[i]||0,bonus:((c.weeks[i]||0)/t)*pool}));
-      html+=`<div class="bonus-wk">
-        <div class="bwh"><span class="bwt">Semana ${i+1} — ${wk.label} (${wk.days}d)</span><span class="bwp" style="color:var(--green)">${(pct*100).toFixed(1)}%</span></div>
-        <div class="bwpool">Pool: ${fmt(pool)} · Equipo: ${fmt(t)}</div>
+  if(rows.some((row)=>row.baseMiss)){
+    html+='<div class="bonus-alert">Hay una semana cerrada debajo de base. Los bonus que se hayan generado en el mes quedan revocados hasta cumplir la regla mensual.</div>';
+  }
+
+  rows.forEach((row)=>{
+    const wk=row.week;
+    const i=row.index;
+    totalPayablePool+=row.payablePool || 0;
+    totalGeneratedPool+=row.generatedPool || 0;
+    if(row.pct>0){
+      const distPool=row.revoked ? row.generatedPool : row.payablePool;
+      const dist=closers.filter(c=>(c.weeks[i]||0)>0).map(c=>({name:c.name,cash:c.weeks[i]||0,bonus:((c.weeks[i]||0)/row.total)*distPool}));
+      const stateClass=row.revoked?'revoked':'counted';
+      const stateLabel=row.revoked?'Revocado':'Contabiliza';
+      html+=`<div class="bonus-wk ${row.revoked?'revoked':''}">
+        <div class="bwh">
+          <span class="bwt">Semana ${i+1} — ${wk.label} (${wk.days}d)</span>
+          <span class="bonus-state ${stateClass}">${stateLabel}</span>
+        </div>
+        <div class="bwpool">Generó ${(row.pct*100).toFixed(1)}% · Pool: ${fmt(row.generatedPool)} · Equipo: ${fmt(row.total)}</div>
         <div class="bwdist">${dist.map(r=>`<div class="bwd-row"><span class="bwd-name">${r.name}</span><span class="bwd-val">${fmt(r.bonus)}</span></div>`).join('')}</div>
       </div>`;
     }else{
-      const st=wkStatus(t,wk.days);
-      const{floor}=adj(wk.days);
-      const msg=!t?'Sin datos':st==='miss'?`${fmt(t)} — bajo piso (${fmtK(floor)})`:`${fmt(t)} — faltan ${fmtK(target-t)} para meta`;
-      html+=`<div class="no-bonus-wk">S${i+1} ${wk.label} · ${msg}</div>`;
+      const st=wkStatus(row.total,wk.days);
+      let stateClass='pending',stateLabel='Pendiente',msg='Sin datos';
+      if(row.baseMiss){
+        stateClass='miss';
+        stateLabel='Bajo base';
+        msg=`${fmt(row.total)} — no llegó al piso (${fmtK(row.floor)})`;
+      }else if(st==='mid' || (row.closed && row.total>=row.floor && row.total<row.target)){
+        stateClass='hold';
+        stateLabel='Sostiene';
+        msg=`${fmt(row.total)} — base alcanzada, faltan ${fmtK(row.target-row.total)} para objetivo`;
+      }else if(st==='hit'){
+        stateClass='counted';
+        stateLabel='Contabiliza';
+        msg=`${fmt(row.total)} — objetivo alcanzado`;
+      }else if(row.total>0){
+        stateClass=row.closed?'miss':'pending';
+        stateLabel=row.closed?'Bajo base':'En curso';
+        msg=`${fmt(row.total)} — faltan ${fmtK(row.floor-row.total)} para base`;
+      }
+      html+=`<div class="no-bonus-wk"><span class="bonus-state ${stateClass}">${stateLabel}</span> S${i+1} ${wk.label} · ${msg}</div>`;
     }
   });
 
   body.innerHTML=html;
   const totalEl=document.createElement('div');
   totalEl.className='panel-total';
-  totalEl.innerHTML=`<span class="panel-total-lbl">Total bonus del mes</span><span class="panel-total-val">${fmt(totalPool)}</span>`;
+  const generatedNote=totalGeneratedPool>totalPayablePool
+    ? `<span class="panel-total-sub">Generado antes de revocar: ${fmt(totalGeneratedPool)}</span>`
+    : '';
+  totalEl.innerHTML=`<span class="panel-total-lbl">Total bonus pagable del mes</span><span class="panel-total-val">${fmt(totalPayablePool)}${generatedNote}</span>`;
   panel.appendChild(totalEl);
 }
 
@@ -1458,6 +2039,9 @@ function showTab(tab,btn){
   document.querySelectorAll('.tb').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   btn.classList.add('active');
+  if(tab==='strike-checkpoints'){
+    loadStrikeCheckpointData();
+  }
 }
 
 function syncCurrentPeriodDefaults(){
@@ -1527,6 +2111,8 @@ async function boot(){
   renderAll();
 }
 syncCurrentPeriodDefaults();
+initStrikeCheckpointControls();
+loadStrikeCheckpointData();
 boot();
 </script>
 </div>

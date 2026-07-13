@@ -1,4 +1,5 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const env = require('../config/env');
 
 function requiredEnv() {
@@ -667,6 +668,209 @@ async function upsertAgendaCalendarAssignment(payload, user) {
     error.details = details;
     throw error;
   }
+}
+
+function validateAgendaCheckpointPeriod({ anio, mes }) {
+  const year = Number(anio);
+  const month = Number(mes);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const error = new Error('Parámetros inválidos para checks y strikes (anio/mes)');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return { year, month };
+}
+
+function getAgendaCheckpointStorageMeta({ anio, mes }) {
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    objectPath: `config/agendas/checkpoints/${anio}-${String(mes).padStart(2, '0')}.json`
+  };
+}
+
+function normalizeAgendaCheckpointEntry(rawEntry = {}) {
+  const id = String(rawEntry.id || '').trim();
+  const closerNombre = String(rawEntry.closer_nombre || rawEntry.closer || '').trim();
+  const tipo = String(rawEntry.tipo || '').trim().toLowerCase();
+  const detalle = String(rawEntry.detalle || rawEntry.reason || '').trim().slice(0, 1200);
+  const cantidad = Math.max(1, Math.min(50, Math.round(Number(rawEntry.cantidad || 1) || 1)));
+
+  if (!id || !closerNombre || !['check', 'strike'].includes(tipo)) return null;
+
+  return {
+    id,
+    closer_nombre: closerNombre,
+    tipo,
+    cantidad,
+    detalle,
+    created_at: rawEntry.created_at || rawEntry.createdAt || null,
+    created_by_email: String(rawEntry.created_by_email || rawEntry.createdBy || '').trim().toLowerCase() || null
+  };
+}
+
+function emptyAgendaCheckpoints(year, month) {
+  return {
+    anio: year,
+    mes: month,
+    entries: [],
+    updated_at: null,
+    updated_by_email: null
+  };
+}
+
+async function readAgendaCheckpointsFromStorage({ anio, mes }) {
+  await ensureReportesPersonalesDataBucket();
+  const meta = getAgendaCheckpointStorageMeta({ anio, mes });
+  const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders(),
+      responseType: 'text'
+    });
+    const raw = typeof response.data === 'string'
+      ? response.data
+      : Buffer.isBuffer(response.data)
+        ? response.data.toString('utf8')
+        : JSON.stringify(response.data || {});
+    const row = JSON.parse(raw || '{}');
+    const { year, month } = validateAgendaCheckpointPeriod({
+      anio: row.anio || anio,
+      mes: row.mes || mes
+    });
+
+    return {
+      anio: year,
+      mes: month,
+      entries: (Array.isArray(row.entries) ? row.entries : [])
+        .map(normalizeAgendaCheckpointEntry)
+        .filter(Boolean),
+      updated_at: row.updated_at || row.savedAt || null,
+      updated_by_email: String(row.updated_by_email || row.savedBy || '').trim().toLowerCase() || null
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return null;
+    }
+
+    const error = new Error(`Error leyendo checks y strikes desde storage: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function writeAgendaCheckpointsToStorage(data = {}, user) {
+  await ensureReportesPersonalesDataBucket();
+  const { year, month } = validateAgendaCheckpointPeriod({ anio: data.anio, mes: data.mes });
+  const updatedAt = new Date().toISOString();
+  const updatedBy = String(user?.email || '').trim().toLowerCase() || null;
+  const normalized = {
+    anio: year,
+    mes: month,
+    entries: (Array.isArray(data.entries) ? data.entries : [])
+      .map(normalizeAgendaCheckpointEntry)
+      .filter(Boolean),
+    updated_at: updatedAt,
+    updated_by_email: updatedBy
+  };
+  const meta = getAgendaCheckpointStorageMeta({ anio: year, mes: month });
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
+  const body = Buffer.from(JSON.stringify({
+    ...normalized,
+    savedAt: updatedAt,
+    savedBy: updatedBy
+  }, null, 2), 'utf8');
+
+  await axios.post(uploadUrl, body, {
+    headers: buildStorageHeaders({
+      'Content-Type': 'application/json',
+      'x-upsert': 'true',
+      'cache-control': '120'
+    }),
+    maxBodyLength: Infinity
+  });
+
+  return normalized;
+}
+
+async function getAgendaCheckpoints({ anio, mes }) {
+  const { year, month } = validateAgendaCheckpointPeriod({ anio, mes });
+  const stored = await readAgendaCheckpointsFromStorage({ anio: year, mes: month });
+  return stored || emptyAgendaCheckpoints(year, month);
+}
+
+async function updateAgendaCheckpoint(payload = {}, user) {
+  const { year, month } = validateAgendaCheckpointPeriod({ anio: payload.anio, mes: payload.mes });
+  const action = String(payload.action || 'add').trim().toLowerCase();
+  const current = await getAgendaCheckpoints({ anio: year, mes: month });
+
+  if (action === 'delete') {
+    const id = String(payload.id || '').trim();
+    if (!id) {
+      const error = new Error('Falta el ID del check o strike a eliminar');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const nextEntries = current.entries.filter((entry) => entry.id !== id);
+    if (nextEntries.length === current.entries.length) {
+      const error = new Error('No se encontró el check o strike para eliminar');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return writeAgendaCheckpointsToStorage({
+      anio: year,
+      mes: month,
+      entries: nextEntries
+    }, user);
+  }
+
+  const closerNombre = String(payload.closer_nombre || '').trim();
+  const tipo = String(payload.tipo || '').trim().toLowerCase();
+  const detalle = String(payload.detalle || '').trim();
+  const cantidad = Math.max(1, Math.min(50, Math.round(Number(payload.cantidad || 1) || 1)));
+
+  if (!closerNombre) {
+    const error = new Error('El closer es obligatorio');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!['check', 'strike'].includes(tipo)) {
+    const error = new Error('El tipo debe ser check o strike');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!detalle) {
+    const error = new Error('El detalle del check o strike es obligatorio');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const entry = normalizeAgendaCheckpointEntry({
+    id: typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    closer_nombre: closerNombre,
+    tipo,
+    cantidad,
+    detalle,
+    created_at: new Date().toISOString(),
+    created_by_email: String(user?.email || '').trim().toLowerCase() || null
+  });
+
+  return writeAgendaCheckpointsToStorage({
+    anio: year,
+    mes: month,
+    entries: [entry, ...current.entries]
+  }, user);
 }
 
 function normalizeUtmPresetKey(value) {
@@ -2662,6 +2866,8 @@ module.exports = {
   upsertAgendaBonusRules,
   listAgendaCalendarAssignments,
   upsertAgendaCalendarAssignment,
+  getAgendaCheckpoints,
+  updateAgendaCheckpoint,
   listUtmLinkPresets,
   upsertUtmLinkPreset,
   deleteUtmLinkPreset,

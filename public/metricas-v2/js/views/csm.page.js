@@ -345,16 +345,24 @@ function parseUnderSevenMetric(value) {
 }
 
 function normalizeModel(value) {
+  const rawLabel = getRawModelLabel(value);
   const text = String(value || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
+  if (rawLabel === 'Sin rubro') return 'Sin rubro';
   if (text.includes('reventa')) return 'Reventa';
   if (text.includes('gastro')) return 'Gastronomicos';
   if (text.includes('fabric')) return 'Fabricantes';
   if (text.includes('serv')) return 'Servicios';
-  return 'Etc';
+  if (text.includes('otro')) return 'Otros';
+  return 'Otros / Sin clasificar';
+}
+
+function getRawModelLabel(value) {
+  const label = String(value || '').trim();
+  return label || 'Sin rubro';
 }
 
 function isRenewalProduct(value) {
@@ -514,6 +522,51 @@ function getLatestDate(...dates) {
   return valid.sort((a, b) => a.getTime() - b.getTime())[valid.length - 1];
 }
 
+function getProgramEntryDateValue(row) {
+  return row?.f_acceso || row?.f_pago_con_acceso || row?.f_onboarding || row?.created_at || '';
+}
+
+function getProgramEntryYear(row) {
+  const date = toDateOnly(getProgramEntryDateValue(row));
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 4) : 'Sin fecha';
+}
+
+function hasExplicitEngagement(row) {
+  return Object.prototype.hasOwnProperty.call(row || {}, 'engagement')
+    && row.engagement !== null
+    && row.engagement !== undefined
+    && String(row.engagement).trim() !== '';
+}
+
+function getEngagementState(row, today = new Date()) {
+  if (hasExplicitEngagement(row)) {
+    return {
+      engaged: asTruthy(row.engagement),
+      source: 'engagement',
+      date: '',
+      rawValue: row.engagement
+    };
+  }
+
+  if (!row.engagementDate) {
+    return {
+      engaged: false,
+      source: 'sin engagement',
+      date: '',
+      rawValue: ''
+    };
+  }
+
+  const elapsedDays = daysBetween(row.engagementDate, today);
+  const engaged = elapsedDays !== null && elapsedDays >= 0 && elapsedDays <= 30;
+  return {
+    engaged,
+    source: 'ultima_fecha_de_avance / ultima_respuesta',
+    date: toDateOnly(row.engagementDate),
+    rawValue: engaged ? 'reciente' : 'fuera de 30 dias'
+  };
+}
+
 function discardDatesBeforeReference(dates, referenceDate) {
   return (dates || []).map((date) => {
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
@@ -528,7 +581,7 @@ function enrichRows(rows) {
     const accessDate = parseDate(row.f_acceso);
     const payAccessDate = parseDate(row.f_pago_con_acceso);
     const onboardingDateRaw = parseDate(row.f_onboarding);
-    const diagnosisDateRaw = parseDate(row.f_diagnostico || row.modulo_1);
+    const diagnosisDateRaw = parseDate(row.f_diagnostico);
     const payReferenceDate = payAccessDate || accessDate;
     const onboardingDate = (
       onboardingDateRaw instanceof Date
@@ -559,9 +612,11 @@ function enrichRows(rows) {
     return {
       ...row,
       modelBucket: normalizeModel(row.modelo_negocio),
+      modelRaw: getRawModelLabel(row.modelo_negocio),
       accessDate,
       payAccessDate,
       payReferenceDate,
+      unitStartDate: accessDate || payAccessDate || onboardingDate,
       onboardingDate,
       payToOnboardingMetric,
       payToOnboardingSource: 'pago_a_onbo',
@@ -757,10 +812,9 @@ function buildTimePage(rows) {
     .filter((value) => value !== null && Number.isFinite(value));
   const diagnosisUnder7Rows = activeProgramRows
     .map((row) => {
-      const elapsedDays = row.payReferenceDate && row.diagnosisDate
-        ? daysBetween(row.payReferenceDate, row.diagnosisDate)
-        : row.payToDiagnosisMetric;
+      if (!row.payReferenceDate || !row.diagnosisDate) return null;
 
+      const elapsedDays = daysBetween(row.payReferenceDate, row.diagnosisDate);
       const normalizedElapsed = elapsedDays !== null && Number.isFinite(elapsedDays) ? elapsedDays : null;
       if (normalizedElapsed === null || normalizedElapsed < 0 || normalizedElapsed > 7) return null;
 
@@ -769,7 +823,8 @@ function buildTimePage(rows) {
         ghlid: row.ghlid || '',
         elapsedDays: normalizedElapsed,
         diagnosisDate: toDateOnly(row.diagnosisDate),
-        payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || '')
+        payDate: toDateOnly(row.f_pago_con_acceso || row.f_acceso || ''),
+        diagnosisUnder7Flag: row.diagnostico_7dias
       };
     })
     .filter(Boolean)
@@ -851,7 +906,7 @@ function buildTimePage(rows) {
       .map((row) => {
         const current = row.moduleDates[index];
         const previous = index === 0
-          ? (row.payReferenceDate || row.onboardingDate)
+          ? (row.unitStartDate || row.payReferenceDate || row.onboardingDate)
           : row.moduleDates[index - 1];
         return daysBetween(previous, current);
       })
@@ -869,7 +924,7 @@ function buildTimePage(rows) {
       const unitValues = Array.from({ length: 10 }, (_, index) => {
         const current = row.moduleDates[index];
         const previous = index === 0
-          ? (row.payReferenceDate || row.onboardingDate)
+          ? (row.unitStartDate || row.payReferenceDate || row.onboardingDate)
           : row.moduleDates[index - 1];
         const value = daysBetween(previous, current);
         return value !== null && Number.isFinite(value) && value >= 0 ? formatDays(value) : '-';
@@ -879,6 +934,7 @@ function buildTimePage(rows) {
     .sort((a, b) => String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const diagnosticUnder7 = diagnosisUnder7Rows.length;
+  const diagnosticDateBase = activeProgramRows.filter((row) => row.payReferenceDate && row.diagnosisDate).length;
   const diagnosticUnder7Base = activeProgramRows.filter((row) => row.payReferenceDate).length;
   const diagnosticOver7 = diagnosisOver7Rows.length;
   const averageUnit = average(unitStats.map((row) => row.avgDays).filter((value) => value !== null));
@@ -914,15 +970,16 @@ function buildTimePage(rows) {
       key: 'diagnosis_under_7',
       label: 'Cantidad de sesiones diagnóstico menor a 7 días',
       value: formatInteger(diagnosticUnder7),
-      base: `${formatInteger(diagnosticUnder7Base)} clientes con fecha de ingreso y sin "abandono" en CSM`,
-      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "modulo_1"',
-      logic: 'Cantidad de clientes que hicieron la sesión diagnóstico dentro de los primeros 7 días desde su ingreso.',
-      detailColumns: ['Cliente', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
+      base: `${formatInteger(diagnosticDateBase)} clientes con fecha de ingreso y "f_diagnostico" sin "abandono" en CSM`,
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "f_diagnostico"',
+      logic: 'Cantidad de clientes con fecha real de diagnóstico cargada que hicieron la sesión dentro de los primeros 7 días desde su ingreso. No usa "modulo_1" como reemplazo.',
+      detailColumns: ['Cliente', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico', 'Diagnóstico 7 días'],
       detailRows: diagnosisUnder7Rows.map((row) => [
         createContactCell(row.nombre, row.ghlid),
         formatDays(row.elapsedDays),
         row.payDate || '-',
-        row.diagnosisDate || '-'
+        row.diagnosisDate || '-',
+        row.diagnosisUnder7Flag || '-'
       ])
     }),
     buildMetricRow({
@@ -930,7 +987,7 @@ function buildTimePage(rows) {
       label: 'Cantidad de sesiones diagnóstico mayor a 7 días',
       value: formatInteger(diagnosticOver7),
       base: `${formatInteger(diagnosticUnder7Base)} clientes con fecha de ingreso y sin "abandono" en CSM`,
-      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "modulo_1"',
+      fieldsLabel: '"f_pago_con_acceso" o "f_acceso", "f_diagnostico"',
       logic: 'Cantidad de clientes que tardaron más de 7 días en llegar a la sesión diagnóstico. Si todavía no la hicieron, también se listan cuando ya superaron los 7 días desde el ingreso.',
       detailColumns: ['Cliente', 'Estado', 'Tiempo desde pago', 'Pago con acceso', 'Sesión diagnóstico'],
       detailRows: diagnosisOver7Rows.map((row) => [
@@ -986,8 +1043,8 @@ function buildTimePage(rows) {
       label: 'Tiempo promedio en cada unidad',
       value: formatDays(averageUnit),
       base: `${formatInteger(unitStats.filter((row) => row.avgDays !== null).length)} unidades con base calculable sobre clientes sin "abandono"`,
-      fieldsLabel: '"f_onboarding", "modulo_1" a "modulo_10"',
-      logic: 'Promedio de días por unidad.',
+      fieldsLabel: '"f_acceso" o "f_pago_con_acceso", "modulo_1" a "modulo_10"',
+      logic: 'Promedio de días por unidad. Para Unidad 1 mide desde "f_acceso" cuando existe; si no, cae a "f_pago_con_acceso" u onboarding.',
       detailColumns: ['Cliente', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9', 'U10'],
       detailRows: unitClientRows
     }),
@@ -1074,13 +1131,9 @@ function buildTimePage(rows) {
   };
 }
 
-function buildSituationPage(rows) {
+function buildSituationPage(rows, context = {}) {
   const today = new Date();
-  const engagedRows = rows.filter((row) => {
-    if (!row.isActive || !row.engagementDate) return false;
-    const days = daysBetween(row.engagementDate, today);
-    return days !== null && days >= 0 && days <= 30;
-  });
+  const allProgramRows = Array.isArray(context.allRows) && context.allRows.length ? context.allRows : rows;
   const abandonDiffs = collectDayDiffs(rows, (row) => row.programStartDate, (row) => row.abandonDate);
   const successRows = rows.filter((row) => row.successDate);
   const firstResultRows = rows.filter((row) => row.firstResultDate);
@@ -1089,6 +1142,14 @@ function buildSituationPage(rows) {
   const refundRows = rows.filter((row) => row.hasRefundRequest);
   const refundCompletedRows = rows.filter((row) => row.hasRefundRequest && (!row.isActive || row.hasFarewell));
   const activeRows = rows.filter((row) => row.isActive);
+  const engagementRows = activeRows.map((row) => ({
+    row,
+    state: getEngagementState(row, today)
+  }));
+  const engagedRows = engagementRows
+    .filter((item) => item.state.engaged)
+    .map((item) => item.row);
+  const explicitEngagementRows = activeRows.filter((row) => hasExplicitEngagement(row));
 
   const npsUnitStats = Array.from({ length: 10 }, (_, index) => {
     const values = rows.map((row) => row.npsValues[index]).filter((value) => value !== null);
@@ -1102,7 +1163,9 @@ function buildSituationPage(rows) {
   const allNpsValues = rows.flatMap((row) => row.npsValues.filter((value) => value !== null));
   const recommendationCount = allNpsValues.filter((value) => Number(value) >= 9).length;
 
-  const modelBuckets = ['Reventa', 'Gastronomicos', 'Fabricantes', 'Servicios', 'Etc'].map((bucket) => {
+  const modelBucketNames = [...new Set(rows.map((row) => row.modelBucket || 'Sin rubro'))]
+    .sort((a, b) => a.localeCompare(b, 'es'));
+  const modelBuckets = modelBucketNames.map((bucket) => {
     const subset = rows.filter((row) => row.modelBucket === bucket);
     const subsetSuccess = subset.filter((row) => row.successDate);
     const subsetAbandon = subset.filter((row) => row.abandonDate);
@@ -1123,17 +1186,46 @@ function buildSituationPage(rows) {
       formatInteger(subsetRenewals.length)
     ];
   });
+  const yearBuckets = [...allProgramRows.reduce((map, row) => {
+    const year = getProgramEntryYear(row);
+    map.set(year, (map.get(year) || 0) + 1);
+    return map;
+  }, new Map()).entries()]
+    .sort((a, b) => {
+      if (a[0] === 'Sin fecha') return 1;
+      if (b[0] === 'Sin fecha') return -1;
+      return Number(b[0]) - Number(a[0]);
+    });
+  const rawModelBuckets = [...allProgramRows.reduce((map, row) => {
+    const model = row.modelRaw || getRawModelLabel(row.modelo_negocio);
+    map.set(model, (map.get(model) || 0) + 1);
+    return map;
+  }, new Map()).entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'));
+  const allProgramClientRows = allProgramRows
+    .map((row) => [
+      createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
+      getProgramEntryYear(row),
+      formatDate(getProgramEntryDateValue(row)),
+      row.modelRaw || getRawModelLabel(row.modelo_negocio),
+      row.isActive ? 'Activo' : 'No activo',
+      row.abandonDate ? 'Abandono' : '-',
+      createGhlLinkCell(row.ghlid || '')
+    ])
+    .sort((a, b) => String(b[1]).localeCompare(String(a[1]), 'es') || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const metrics = [
     buildMetricRow({
       key: 'total_clients',
       label: 'Clientes totales que pasaron por el programa',
-      value: formatInteger(rows.length),
-      base: `${formatInteger(rows.length)} filas actuales en "csm"`,
+      value: formatInteger(allProgramRows.length),
+      base: `${formatInteger(allProgramRows.length)} filas actuales en "csm" sin filtro mensual`,
       note: 'Incluye activos e inactivos.',
       dateLabel: 'Snapshot actual de "csm"',
-      fieldsLabel: '"id", "nombre"',
-      logic: 'Cuenta todas las filas vigentes de la tabla "csm" como universo del programa.'
+      fieldsLabel: '"id", "nombre", "f_acceso", "f_pago_con_acceso", "modelo_negocio"',
+      logic: 'Cuenta todas las filas vigentes de la tabla "csm" como universo histórico del programa, sin limitarse al mes seleccionado.',
+      detailColumns: ['Cliente', 'Año', 'Ingreso', 'Rubro', 'Estado', 'Abandono', 'GHL'],
+      detailRows: allProgramClientRows
     }),
     buildMetricRow({
       key: 'active_support',
@@ -1170,10 +1262,22 @@ function buildSituationPage(rows) {
       label: 'Clientes con engagement',
       value: formatCountWithPercent(engagedRows.length, activeRows.length),
       base: `${formatInteger(activeRows.length)} clientes activos`,
-      note: 'Considero engagement si hubo avance o respuesta en los últimos 30 días.',
-      dateLabel: 'Ultimos 30 dias sobre "ultima_fecha_de_avance" / "ultima_respuesta"',
-      fieldsLabel: '"activos", "ultima_fecha_de_avance", "ultima_respuesta"',
-      logic: 'Cuenta clientes activos con una fecha reciente de avance o respuesta dentro de los últimos 30 días.'
+      note: explicitEngagementRows.length
+        ? 'Usa el campo "engagement" cuando está cargado; si no, cae a actividad reciente.'
+        : 'Todavía no hay campo "engagement" cargado; infiero por avance o respuesta en los últimos 30 días.',
+      dateLabel: '"engagement" o últimos 30 días sobre actividad',
+      fieldsLabel: '"activos", "engagement", "ultima_fecha_de_avance", "ultima_respuesta"',
+      logic: 'Cuenta clientes activos con "engagement" marcado cuando ese campo viene cargado. Mientras no exista o venga vacío, usa una fecha reciente de avance o respuesta dentro de los últimos 30 días.',
+      detailColumns: ['Cliente', 'Engagement', 'Fuente', 'Fecha actividad', 'Valor GHL'],
+      detailRows: engagementRows
+        .map((item) => [
+          createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
+          item.state.engaged ? 'Si' : 'No',
+          item.state.source,
+          item.state.date || '-',
+          item.state.rawValue || '-'
+        ])
+        .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'))
     }),
     buildMetricRow({
       key: 'success_cases',
@@ -1259,6 +1363,25 @@ function buildSituationPage(rows) {
 
   const sections = [
     {
+      title: 'Clientes por Año',
+      description: 'Conteo historico de clientes que pasaron por el programa, sin filtro mensual.',
+      columns: ['Año', 'Clientes'],
+      rows: yearBuckets.map(([year, count]) => [
+        year,
+        formatInteger(count)
+      ])
+    },
+    {
+      title: 'Clientes por Rubro',
+      description: 'Conteo historico usando el valor original de "modelo_negocio".',
+      columns: ['Rubro', 'Clientes', '% total'],
+      rows: rawModelBuckets.map(([model, count]) => [
+        model,
+        formatInteger(count),
+        formatPercent(safeDiv(count * 100, allProgramRows.length))
+      ])
+    },
+    {
       title: 'NPS Promedio por Unidad',
       description: 'Promedio y cantidad de respuestas disponibles en cada unidad.',
       columns: ['Unidad', 'Promedio NPS', 'Respuestas'],
@@ -1270,7 +1393,7 @@ function buildSituationPage(rows) {
     },
     {
       title: 'Modelos de Negocio',
-      description: 'Desglose por segmento normalizado a partir de "modelo_negocio".',
+      description: 'Desglose del periodo seleccionado por segmento normalizado a partir de "modelo_negocio".',
       columns: ['Modelo', 'Cantidad programa', '% abandonos', 'Cantidad exito', '% caso exito', 'Tiempo a primer resultado', 'Insatisfechos', 'NPS', 'Renovaciones'],
       rows: modelBuckets
     }
@@ -1678,6 +1801,7 @@ async function initCsmPage() {
         : filterRowsByPayAccessPeriod(enrichedRows, filters);
 
       const page = builder(rows, {
+        allRows: enrichedRows,
         comprobanteRows,
         leadRows,
         filters

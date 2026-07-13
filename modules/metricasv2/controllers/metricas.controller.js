@@ -268,6 +268,44 @@ async function saveAgendaCalendarAssignment(req, res, next) {
   }
 }
 
+async function getAgendaCheckpoints(req, res, next) {
+  try {
+    const checkpoints = await supabaseService.getAgendaCheckpoints({
+      anio: req.query.anio,
+      mes: req.query.mes
+    });
+
+    res.json({
+      ok: true,
+      ...checkpoints,
+      canEdit: access.canEditAgendaCheckpointsForUser(req.authUser)
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveAgendaCheckpoint(req, res, next) {
+  try {
+    if (!access.canEditAgendaCheckpointsForUser(req.authUser)) {
+      return res.status(403).json({
+        ok: false,
+        message: 'Solo Leo o Mati pueden cargar o eliminar checks y strikes'
+      });
+    }
+
+    const checkpoints = await supabaseService.updateAgendaCheckpoint(req.body || {}, req.authUser);
+
+    res.json({
+      ok: true,
+      ...checkpoints,
+      canEdit: true
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getReportesPremioConfig(req, res, next) {
   try {
     const config = await supabaseService.getReportesPremioConfig();
@@ -753,6 +791,8 @@ module.exports = {
   saveAgendaBonusRules,
   listAgendaCalendarAssignments,
   saveAgendaCalendarAssignment,
+  getAgendaCheckpoints,
+  saveAgendaCheckpoint,
   getReportesPremioConfig,
   saveReportesPremioConfig,
   listReportComments,

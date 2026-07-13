@@ -372,7 +372,7 @@
       <section class="tools-shell">
         <article class="tools-main-card">
           <h2>Generador de params</h2>
-          <p class="tools-help">Si dejás vacío <code>utm_source</code>, se completa automáticamente con el valor de <code>origen_actual</code>. También podés sumar cualquier otro campo custom y elegir si querés agregar <code>Contact_id={{contact.id}}</code>.</p>
+          <p class="tools-help">Si dejás vacío <code>utm_source</code>, no se agrega al link. También podés sumar cualquier otro campo custom y elegir si querés agregar <code>Contact_id={{contact.id}}</code>.</p>
 
           <div class="tools-grid">
             <label class="tools-field-full">
@@ -395,7 +395,7 @@
             </label>
             <label class="tools-field">
               <span>utm_source</span>
-              <input id="utmSource" type="text" placeholder="Se completa con origen_actual si lo dejás vacío" autocomplete="off" />
+              <input id="utmSource" type="text" placeholder="Opcional" autocomplete="off" />
             </label>
             <label class="tools-field">
               <span>utm_medium</span>

@@ -55,6 +55,7 @@ const FEATURE_ROLE_ACCESS = {
   kpi_closers_rules: ['total', 'comercial'],
   agenda_bonus_rules: ['total', 'comercial'],
   agenda_calendar_assignments: ['total', 'comercial'],
+  agenda_checkpoints: ['total', 'comercial'],
   reportes_premio: ['total', 'comercial'],
   reportes_comentarios: ['total', 'comercial'],
   marketing_inversion: ['total', 'comercial', 'csm'],
@@ -91,6 +92,11 @@ const REPORTES_PREMIO_EDITOR_EMAILS = new Set([
 ]);
 
 const AGENDA_CALENDAR_EDITOR_EMAILS = new Set([
+  'leonardoalaniz19@gmail.com',
+  'matirandazzo@gmail.com'
+]);
+
+const AGENDA_CHECKPOINT_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com',
   'matirandazzo@gmail.com'
 ]);
@@ -328,6 +334,13 @@ function canEditAgendaCalendarForUser(user) {
   return AGENDA_CALENDAR_EDITOR_EMAILS.has(email);
 }
 
+function canEditAgendaCheckpointsForUser(user) {
+  const configValue = getConfigBoolean(user, 'canEditAgendaCheckpoints');
+  if (configValue !== null) return configValue;
+  const email = normalizeEmail(user?.email);
+  return AGENDA_CHECKPOINT_EDITOR_EMAILS.has(email);
+}
+
 function canGenerateCloserAiReportForUser(user) {
   const configValue = getConfigBoolean(user, 'canGenerateCloserAiReport');
   if (configValue !== null) return configValue;
@@ -395,6 +408,13 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
     return true;
   }
 
+  if (featureName === 'agenda_checkpoints') {
+    const method = String(options.method || 'GET').toUpperCase();
+    if (method !== 'GET') return canEditAgendaCheckpointsForUser(user);
+    const override = getUserAccessOverride(user);
+    if (override) return override.allowedPages.has('mag-sistema-agendas.html');
+  }
+
   const override = getUserAccessOverride(user);
   if (override) {
     const allowedMethods = override.allowedFeatures[featureName];
@@ -447,6 +467,13 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
   }
 
   if (
+    featureName === 'agenda_checkpoints'
+    && String(options.method || 'GET').toUpperCase() !== 'GET'
+  ) {
+    return canEditAgendaCheckpointsForUser(user);
+  }
+
+  if (
     featureName === 'reportes_comentarios'
     && String(options.method || 'GET').toUpperCase() === 'POST'
   ) {
@@ -470,6 +497,7 @@ function getUserPermissions(user) {
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
     canEditAgendaBonusRules: canAccessFeatureForUser(user, 'agenda_bonus_rules', { method: 'POST' }),
     canEditAgendaCalendar: canAccessFeatureForUser(user, 'agenda_calendar_assignments', { method: 'POST' }),
+    canEditAgendaCheckpoints: canAccessFeatureForUser(user, 'agenda_checkpoints', { method: 'POST' }),
     canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
     canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' }),
     canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
@@ -490,6 +518,7 @@ function getUserAccessSummary(user) {
       restrictedCommercial: isRestrictedCommercialUser(user),
       csmOnly: isCsmOnlyUser(user),
       canEditAgendaCalendar: canEditAgendaCalendarForUser(user),
+      canEditAgendaCheckpoints: canEditAgendaCheckpointsForUser(user),
       canEditReportesPremio: canEditReportesPremioForUser(user),
       canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
       canManageUsers: canManageUsersForUser(user)
@@ -515,6 +544,7 @@ module.exports = {
   isCsmOnlyUser,
   canEditReportesPremioForUser,
   canEditAgendaCalendarForUser,
+  canEditAgendaCheckpointsForUser,
   canGenerateCloserAiReportForUser,
   canManageUsersForUser,
   canAccessPage,
