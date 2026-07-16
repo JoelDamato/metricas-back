@@ -207,7 +207,7 @@
       <div class="prompt-wrap">
         <label class="prompt-label" for="reportExtraPrompt">Prompt adicional para GPT</label>
         <textarea id="reportExtraPrompt" class="prompt-input" placeholder="Ej: enfocá más el análisis en cierres, objeciones, disciplina comercial o alguna situación puntual del closer."></textarea>
-        <div class="prompt-help">Opcional. Se suma al contexto antes de enviar el reporte a GPT.</div>
+        <div class="prompt-help">Opcional. GPT lo trata como instrucción prioritaria y puede comparar hasta 6 meses anteriores y 6 posteriores disponibles.</div>
       </div>
       <button id="generateAiReport" class="report-action-btn" type="button" hidden>Generar individual</button>
       <button id="generateAllAiReports" class="report-action-btn" type="button" hidden>Generar todos</button>
@@ -379,6 +379,7 @@ function renderGeneratedReport(payload) {
     </div>`).join('');
   const additionalPrompt = String(payload?.additionalPrompt || '').trim();
   const pedidoAdicionalRespuesta = String(reportData.pedidoAdicionalRespuesta || '').trim();
+  const analisisHistorico = String(reportData.analisisHistorico || '').trim();
   const pedidoAdicionalHTML = (additionalPrompt || pedidoAdicionalRespuesta) ? `
     <div class="message-box pedido-adicional">
       <div class="mb-eyebrow">Pedido adicional</div>
@@ -414,6 +415,7 @@ function renderGeneratedReport(payload) {
       <div class="mb-eyebrow">Mensaje del mes</div>
       <div class="mb-text">${escapeTextBlock(reportData.mensaje)}</div>
     </div>
+    ${analisisHistorico ? `<div class="message-box personal"><div class="mb-eyebrow">Evolución y comparativa entre meses</div><div class="mb-text">${escapeTextBlock(analisisHistorico)}</div></div>` : ''}
     ${pedidoAdicionalHTML}
     <div class="section-card">
       <div class="sc-title"><span class="sc-icon">⬆️</span> Próximos pasos</div>

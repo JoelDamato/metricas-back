@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rendimiento CSM | Métricas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    :root{--bg:#0c1020;--panel:#151b2f;--panel2:#1b233b;--line:#2b3655;--text:#edf2ff;--muted:#94a1c3;--blue:#4b8ef5;--green:#2dd4a0;--red:#f87171;--amber:#f59e0b}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}.csm-performance{max-width:1280px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}.top a{color:#9bc6ff;text-decoration:none}.top h1{margin:8px 0 4px;font-size:26px}.top p{margin:0;color:var(--muted)}.filters,.form{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}.field select,.field input,.field textarea{box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 10px;font:12px 'DM Sans',sans-serif}.field textarea{min-width:280px;min-height:38px;resize:vertical}.btn{height:36px;border:0;border-radius:8px;padding:0 13px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#233050;color:#bcd6ff;border:1px solid #36517c}.btn.danger{height:28px;background:rgba(248,113,113,.12);color:#ffaaaa;border:1px solid rgba(248,113,113,.3)}.btn:disabled{opacity:.45;cursor:not-allowed}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}.meta{font-size:11px;color:var(--muted);margin-bottom:12px}.meta.ok{color:var(--green)}.meta.error{color:var(--red)}.cards{display:grid;grid-template-columns:repeat(3,minmax(200px,1fr));gap:10px;margin:14px 0}.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}.card h3{margin:0 0 10px}.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.check{background:rgba(45,212,160,.13);color:#80f2cf}.strike{background:rgba(248,113,113,.13);color:#ffaaaa}.pending{background:rgba(245,158,11,.13);color:#ffd27a}.score{font:700 20px 'DM Mono';margin-top:10px}.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-size:12px}.table th{font-size:10px;text-transform:uppercase;color:var(--muted)}.number{text-align:right!important;font-family:'DM Mono'}.empty{text-align:center;color:var(--muted);padding:24px}@media(max-width:760px){.csm-performance{padding:14px}.cards{grid-template-columns:1fr}.field,.field select,.field input,.field textarea{width:100%}.form{display:grid;grid-template-columns:1fr}.filters{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="csm-performance">
+    <header class="top">
+      <div><a href="/index.html">← Volver al dashboard</a><h1>CSM · Rendimiento</h1><p>Checks, strikes y pendientes del equipo CSM.</p></div>
+      <div class="filters"><div class="field"><label for="year">Año</label><select id="year"></select></div><div class="field"><label for="month">Mes</label><select id="month"></select></div><button id="export" class="btn secondary" type="button">Exportar CSV</button></div>
+    </header>
+    <section class="panel">
+      <div id="meta" class="meta">Cargando rendimiento...</div>
+      <form id="movement-form" class="form">
+        <div class="field"><label for="member">CSM</label><select id="member"></select></div>
+        <div class="field"><label for="type">Tipo</label><select id="type"><option value="check">Check</option><option value="strike">Strike</option><option value="pendiente:sumar">Pendiente (+)</option><option value="pendiente:restar">Resolver pendiente (-)</option></select></div>
+        <div class="field"><label for="quantity">Cantidad</label><input id="quantity" type="number" min="1" max="50" step="1" value="1" /></div>
+        <div class="field"><label for="detail">Detalle</label><textarea id="detail" maxlength="1200" placeholder="Motivo del movimiento"></textarea></div>
+        <button id="save" class="btn" type="submit">Guardar</button>
+      </form>
+      <div id="cards" class="cards"></div>
+    </section>
+    <section class="panel"><h2>Ranking CSM</h2><div id="ranking" class="table-wrap"></div></section>
+    <section class="panel"><h2>Historial del mes</h2><div id="history" class="table-wrap"></div></section>
+  </main>
+  <script src="/js/api/http.js"></script><script src="/js/api/metricas.api.js"></script><script src="/js/auth-shell.js"></script><script src="/js/views/csm-rendimiento.page.js"></script>
+</body>
+</html>

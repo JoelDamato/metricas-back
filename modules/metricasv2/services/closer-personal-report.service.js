@@ -313,6 +313,61 @@ function buildMetricsPayload({ closerRow, teamRows, monthValue, monthsActive }) 
   };
 }
 
+function buildMonthlyComparisonContext(rows, closerName, selectedMonthValue, limitPerDirection = 6) {
+  const selectedIndex = Number(String(selectedMonthValue || '').replace('-', ''));
+  const months = new Map();
+
+  (rows || []).forEach((row) => {
+    const monthValue = `${row.anio}-${String(row.mes).padStart(2, '0')}`;
+    const monthIndex = Number(monthValue.replace('-', ''));
+    if (!Number.isFinite(monthIndex) || monthIndex === selectedIndex) return;
+    if (!months.has(monthValue)) months.set(monthValue, []);
+    months.get(monthValue).push(row);
+  });
+
+  const sortedMonths = [...months.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const previousMonths = sortedMonths
+    .filter(([monthValue]) => Number(monthValue.replace('-', '')) < selectedIndex)
+    .slice(-limitPerDirection);
+  const followingMonths = sortedMonths
+    .filter(([monthValue]) => Number(monthValue.replace('-', '')) > selectedIndex)
+    .slice(0, limitPerDirection);
+
+  return [...previousMonths, ...followingMonths]
+    .map(([monthValue, monthRows]) => {
+      const teamRows = aggregateByCloser(monthRows);
+      const closerRow = teamRows.find((row) => row.closer === closerName);
+      if (!closerRow) return null;
+      const teamSummary = summarizeRows(teamRows);
+      return {
+        monthValue,
+        monthLabel: formatMonthLabel(monthValue),
+        rankingPosition: teamRows.findIndex((row) => row.closer === closerName) + 1,
+        activeClosers: teamRows.length,
+        shareOfTeamCashPct: safeDiv(closerRow.cashAgendasMes * 100, teamSummary.cashAgendasMes),
+        agendas: closerRow.agendas,
+        aplicables: closerRow.aplicables,
+        efectuadas: closerRow.efectuadas,
+        ventas: closerRow.ventas,
+        cierrePct: closerRow.cierrePct,
+        efectuadasSobreAplicablesPct: closerRow.efectuadasSobreAplicablesPct,
+        noAsistidasPct: closerRow.noAsistidasPct,
+        cashAgendasMes: closerRow.cashAgendasMes,
+        facturacionAgenda: closerRow.facturacionAgenda,
+        cashPorAgenda: closerRow.cashPorAgenda,
+        cashPorReunion: closerRow.cashPorReunion,
+        ticketPromedio: closerRow.ticketPromedio,
+        teamAverages: {
+          cashAgendasMes: averageMetric(teamRows, (row) => row.cashAgendasMes),
+          cierrePct: averageMetric(teamRows, (row) => row.cierrePct),
+          efectuadasSobreAplicablesPct: averageMetric(teamRows, (row) => row.efectuadasSobreAplicablesPct),
+          noAsistidasPct: averageMetric(teamRows, (row) => row.noAsistidasPct)
+        }
+      };
+    })
+    .filter(Boolean);
+}
+
 function requireOpenAi() {
   if (!env.openAiApiKey) {
     const error = new Error('Falta OPENAI_API_KEY para generar el reporte con GPT');
@@ -376,7 +431,7 @@ async function requestOpenAiReport(payload) {
             Authorization: `Bearer ${env.openAiApiKey}`,
             'Content-Type': 'application/json'
           },
-          timeout: 60000
+          timeout: 120000
         }
       );
     } catch (err) {
@@ -409,7 +464,7 @@ async function generateNarrative(metrics, options = {}) {
   const schema = {
     type: 'object',
     additionalProperties: false,
-    required: ['chips', 'kpis', 'fortalezas', 'atencion', 'mensaje', 'pedidoAdicionalRespuesta', 'pasos', 'sistemaMsg'],
+    required: ['chips', 'kpis', 'fortalezas', 'atencion', 'analisisHistorico', 'mensaje', 'pedidoAdicionalRespuesta', 'pasos', 'sistemaMsg'],
     properties: {
       chips: {
         type: 'array',
@@ -461,10 +516,14 @@ async function generateNarrative(metrics, options = {}) {
           }
         }
       },
+      analisisHistorico: {
+        type: 'string',
+        description: 'Análisis desarrollado de evolución y comparativas contra otros meses disponibles, sean anteriores o posteriores. Si no hay otros meses, indicarlo brevemente.'
+      },
       mensaje: { type: 'string' },
       pedidoAdicionalRespuesta: {
         type: 'string',
-        description: 'Si el usuario envio un pedido adicional, explica en 1 a 3 frases como se incorporo al informe. Si no hubo pedido adicional, devolver string vacio.'
+        description: 'Respuesta completa y desarrollada al pedido adicional del usuario, usando todos los datos disponibles. Si no hubo pedido adicional, devolver string vacio.'
       },
       pasos: {
         type: 'array',
@@ -498,12 +557,18 @@ async function generateNarrative(metrics, options = {}) {
     'Tomá como tasa de cierre la relación ventas sobre asistidas/efectuadas.',
     'Tomá como tasa de efectuadas la relación asistidas/efectuadas sobre agendas aplicables.',
     'Los próximos pasos deben ser accionables y concretos.',
-    'Si el usuario envia un pedido adicional, es obligatorio incorporarlo de forma visible en el informe.',
-    'El pedido adicional debe responderse principalmente en pedidoAdicionalRespuesta.',
+    'Desarrollá el análisis con suficiente profundidad: explicá relaciones entre volumen, conversión, cash, posición y tendencia; no te limites a enumerar KPI.',
+    'Usá monthlyComparisonContext para analizar evolución, tendencia, mejoras, retrocesos y consistencia contra cualquier mes disponible, anterior o posterior al mes principal.',
+    'No afirmes una tendencia con un solo mes histórico; aclaralo cuando la evidencia sea limitada.',
+    'Si el usuario envía un pedido adicional, tratá ese pedido como una instrucción prioritaria y obligatoria.',
+    'Respondé el pedido adicional de manera completa en pedidoAdicionalRespuesta, con varios párrafos cuando la complejidad lo justifique.',
+    'Si el usuario pide comparar dos meses presentes en monthlyComparisonContext o el mes principal, hacé la comparación solicitada aunque uno sea posterior al mes principal.',
+    'Si el usuario exige una extensión mínima en palabras, cumplila en pedidoAdicionalRespuesta.',
     'No metas comparaciones externas ni situaciones puntuales dentro de mensaje salvo que esten respaldadas por los Datos base.',
     'Si el pedido adicional requiere comparar contra otro closer, usa comparisonClosers de los Datos base.',
     'Si ese closer no aparece en comparisonClosers, explicalo en pedidoAdicionalRespuesta y no inventes la comparacion.',
-    'Si el pedido adicional pide mencionar una situacion puntual, mencionarla sin inventar datos ni atribuir hechos no confirmados.'
+    'Si el pedido adicional pide mencionar una situacion puntual, mencionarla sin inventar datos ni atribuir hechos no confirmados.',
+    'En analisisHistorico compará el mes principal con otros meses disponibles y citá los meses concretos usados.'
   ].join(' ');
 
   const input = `
@@ -517,9 +582,13 @@ ${additionalPrompt ? `\nPEDIDO ADICIONAL DEL USUARIO, OBLIGATORIO DE INTEGRAR EN
 
   const response = await requestOpenAiReport({
     model: env.openAiReportModel,
+    reasoning: {
+      effort: env.openAiReportReasoningEffort
+    },
     instructions,
     input,
     text: {
+      verbosity: 'high',
       format: {
         type: 'json_schema',
         name: 'closer_personal_report',
@@ -555,12 +624,16 @@ async function generateCloserPersonalReport({ closer, month, additionalPrompt })
   }
 
   const { year, month: monthNumber, monthValue } = parseMonthValue(month);
-  const monthRows = normalizeRows(await supabaseService.listRows(RESOURCE, {
-    limit: 1000,
-    orderBy: 'mes',
-    orderDir: 'asc',
-    eqFilters: { anio: year }
-  })).filter((row) => row.anio === year && row.mes === monthNumber);
+  const historyYears = [year - 1, year];
+  const historicalRows = normalizeRows((await Promise.all(historyYears.map((historyYear) => (
+    supabaseService.listRows(RESOURCE, {
+      limit: 1000,
+      orderBy: 'mes',
+      orderDir: 'asc',
+      eqFilters: { anio: historyYear }
+    })
+  )))).flat());
+  const monthRows = historicalRows.filter((row) => row.anio === year && row.mes === monthNumber);
 
   const teamRows = aggregateByCloser(monthRows);
   const closerRow = teamRows.find((row) => row.closer === closerName);
@@ -570,12 +643,7 @@ async function generateCloserPersonalReport({ closer, month, additionalPrompt })
     throw error;
   }
 
-  const yearlyRows = normalizeRows(await supabaseService.listRows(RESOURCE, {
-    limit: 1000,
-    orderBy: 'mes',
-    orderDir: 'asc',
-    eqFilters: { anio: year }
-  }));
+  const yearlyRows = historicalRows.filter((row) => row.anio === year);
 
   const monthsActive = new Set(
     yearlyRows
@@ -589,6 +657,7 @@ async function generateCloserPersonalReport({ closer, month, additionalPrompt })
     monthValue,
     monthsActive
   });
+  metrics.monthlyComparisonContext = buildMonthlyComparisonContext(historicalRows, closerName, monthValue, 6);
 
   const normalizedAdditionalPrompt = String(additionalPrompt || '').trim();
   const narrative = await generateNarrative(metrics, { additionalPrompt: normalizedAdditionalPrompt });
@@ -605,7 +674,8 @@ async function generateCloserPersonalReport({ closer, month, additionalPrompt })
     shareOfTeamCashPct: metrics.shareOfTeamCashPct,
     metrics: {
       closer: metrics.closerMetrics,
-      teamAverages: metrics.teamAverages
+      teamAverages: metrics.teamAverages,
+      monthlyComparisonContext: metrics.monthlyComparisonContext
     },
     style,
     report: narrative,
@@ -630,5 +700,6 @@ async function generateAndStoreCloserPersonalReport({ closer, month, additionalP
 module.exports = {
   generateCloserPersonalReport,
   getStoredCloserPersonalReport,
-  generateAndStoreCloserPersonalReport
+  generateAndStoreCloserPersonalReport,
+  buildMonthlyComparisonContext
 };

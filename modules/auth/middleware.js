@@ -118,8 +118,18 @@ async function metricasApiGuard(req, res, next) {
     }
 
     if (reqPath.endsWith('/agenda-checkpoints')) {
+      const checkpointArea = String(req.method === 'GET' ? req.query?.area : req.body?.area || '').toLowerCase();
+      if (checkpointArea === 'csm') {
+        if (!access.canAccessPageForUser(req.authUser, 'csm-rendimiento.html')) {
+          return res.status(403).json({ ok: false, message: 'Sin permiso para rendimiento CSM' });
+        }
+        if (req.method !== 'GET' && !access.canEditAgendaCheckpointsForUser(req.authUser)) {
+          return res.status(403).json({ ok: false, message: 'Sin permiso para editar rendimiento CSM' });
+        }
+        return next();
+      }
       if (!access.canAccessFeatureForUser(req.authUser, 'agenda_checkpoints', { method: req.method })) {
-        return res.status(403).json({ ok: false, message: 'Sin permiso para checks y strikes' });
+        return res.status(403).json({ ok: false, message: 'Sin permiso para checks, strikes y pendientes' });
       }
       return next();
     }

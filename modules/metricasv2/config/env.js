@@ -21,7 +21,8 @@ module.exports = {
   openRouterApiKey: getEnv('OPENROUTER_API_KEY'),
   openRouterModel: getEnv('OPENROUTER_MODEL', 'openrouter/free'),
   openAiApiKey: getEnv('OPENAI_API_KEY'),
-  openAiReportModel: getEnv('OPENAI_REPORT_MODEL', 'gpt-4.1-mini'),
+  openAiReportModel: getEnv('OPENAI_REPORT_MODEL', 'gpt-5.6-terra'),
+  openAiReportReasoningEffort: getEnv('OPENAI_REPORT_REASONING_EFFORT', 'medium'),
   tables: {
     clientes: getEnv('SUPABASE_TABLE_CLIENTES', 'clientes'),
     metricas: getEnv('SUPABASE_TABLE_METRICAS', 'metricas'),

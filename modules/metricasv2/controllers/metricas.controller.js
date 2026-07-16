@@ -272,7 +272,8 @@ async function getAgendaCheckpoints(req, res, next) {
   try {
     const checkpoints = await supabaseService.getAgendaCheckpoints({
       anio: req.query.anio,
-      mes: req.query.mes
+      mes: req.query.mes,
+      area: req.query.area
     });
 
     res.json({
@@ -290,7 +291,7 @@ async function saveAgendaCheckpoint(req, res, next) {
     if (!access.canEditAgendaCheckpointsForUser(req.authUser)) {
       return res.status(403).json({
         ok: false,
-        message: 'Solo Leo o Mati pueden cargar o eliminar checks y strikes'
+        message: 'Solo Leo o Mati pueden cargar o eliminar checks, strikes y pendientes'
       });
     }
 

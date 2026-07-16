@@ -17,6 +17,7 @@
     { value: '/views/marketing.html', label: 'Totales MKT' },
     { value: '/views/leads-bdd.html', label: 'Informe Por Respuestas' },
     { value: '/views/csm-tiempo.html', label: 'CSM por Tiempo' },
+    { value: '/views/csm-rendimiento.html', label: 'CSM Rendimiento' },
     { value: '/views/csm-situacion.html', label: 'CSM por Situación' },
     { value: '/views/csm-renovaciones.html', label: 'Renovaciones' },
     { value: '/contacto-estado/', label: 'Estado de Contacto' },

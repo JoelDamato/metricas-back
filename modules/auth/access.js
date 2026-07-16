@@ -26,6 +26,7 @@ const PAGE_ROLE_ACCESS = {
   'estado-contacto-comisiones.html': ['total', 'comercial'],
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
+  'csm-rendimiento.html': ['total', 'csm'],
   'csm-renovaciones.html': ['total', 'comercial'],
   'herramientas.html': ['total', 'comercial', 'csm'],
   'generador-params.html': ['total', 'comercial', 'csm'],
@@ -374,6 +375,7 @@ function canAccessFeature(role, featureName) {
 function canAccessPageForUser(user, pageName) {
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
   if (pageName === 'comisiones.html') return canAccessCommissionsForUser(user);
+  if (pageName === 'csm-rendimiento.html') return ['total', 'csm'].includes(user?.role);
   if (hasForcedMarketingAccess(user) && pageName === 'marketing.html') return true;
   const override = getUserAccessOverride(user);
   if (override) return override.allowedPages.has(pageName);
