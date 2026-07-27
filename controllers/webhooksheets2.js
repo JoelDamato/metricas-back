@@ -188,6 +188,7 @@ function mapToSupabase(payload) {
 
     // Clasificación
     origen: getValue(p['Origen']),
+    origen_actual: getValue(p['Origen Actual']) ?? getValue(p['Origen actual']),
     primer_origen: getValue(p['Primer origen']),
     ultimo_origen: getValue(p['Ultimo origen']) ?? getValue(p['Último origen']) ?? getValue(p['Ultimo Origen']) ?? getValue(p['Último Origen']),
     etapa: getValue(p['Etapa']),
@@ -474,3 +475,5 @@ exports.handleWebhook = async (req, res) => {
     return res.status(500).json({ error: 'Error interno en el handler CRM' });
   }
 };
+
+exports.mapToSupabase = mapToSupabase;
