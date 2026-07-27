@@ -42,6 +42,17 @@ router.patch('/marketing/inversiones', controller.updateMarketingInvestmentRecor
 router.delete('/marketing/inversiones', controller.deleteMarketingInvestmentRecord);
 router.get('/marketing/aov-dia-1', controller.getMarketingAovDia1);
 router.get('/marketing/ventas-totales', controller.getMarketingVentasTotales);
+router.get('/mercado-pago/club', controller.getMercadoPagoClubRecords);
+router.get('/mercado-pago/club/workflow', controller.getStoredMercadoPagoClubRecords);
+router.post('/mercado-pago/club/manual', controller.createManualInvoiceRecord);
+router.patch('/mercado-pago/club/manual/:id', controller.updateManualInvoiceRecord);
+router.delete('/mercado-pago/club/manual/:id', controller.deleteManualInvoiceRecord);
+router.post('/mercado-pago/club/reconcile', controller.reconcileMercadoPagoClubRecords);
+router.post('/mercado-pago/club/unreconcile', controller.unreconcileMercadoPagoClubRecord);
+router.post('/mercado-pago/club/invoice-preview', controller.previewMercadoPagoClubInvoices);
+router.post('/mercado-pago/club/invoice', controller.invoiceMercadoPagoClubRecords);
+router.get('/mercado-pago/club/invoice/:kind/:id', controller.viewMercadoPagoClubInvoice);
+router.post('/mercado-pago/club/credit-note', controller.creditNoteMercadoPagoClubInvoice);
 router.get('/marketing/cash-collected-agenda', controller.getMarketingCashCollectedAgenda);
 router.get('/marketing/campaign-totales', controller.getMarketingCampaignTotals);
 router.get('/utm-builder/presets', controller.listUtmBuilderPresets);

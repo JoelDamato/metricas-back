@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo de facturación · Club del Costo</title>
+  <style>
+    :root{--navy:#00112f;--ink:#111827;--muted:#607089;--line:#ccd5e2;--canvas:#eef2f7}
+    *{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--canvas);font-family:Arial,Helvetica,sans-serif}button,input{font:inherit}
+    .topbar{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:20px clamp(20px,4vw,56px);color:#fff;background:var(--navy)}
+    .topbar strong,.topbar span{display:block}.topbar span{margin-top:4px;color:#bdc9dc;font-size:13px}.demo-badge{padding:9px 13px;border:1px solid #8294af;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.08em}
+    .shell{display:grid;grid-template-columns:minmax(270px,350px) minmax(620px,850px);gap:26px;align-items:start;max-width:1250px;margin:auto;padding:28px}
+    .controls{position:sticky;top:24px;padding:24px;border-radius:18px;background:#fff;box-shadow:0 14px 40px #1c2a4214}.eyebrow{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+    h1{margin:8px 0;color:var(--navy);font-size:27px}.intro{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.5}.cases{display:grid;gap:9px}
+    .case-button{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;cursor:pointer}
+    .case-button.active{border-color:var(--navy);box-shadow:0 0 0 2px #00112f17}.case-letter{display:grid;width:38px;height:38px;place-items:center;border-radius:9px;color:#fff;background:var(--navy);font-size:20px;font-weight:700}
+    .case-button strong,.case-button small{display:block}.case-button small{margin-top:3px;color:var(--muted)}.field{display:grid;gap:7px;margin-top:18px;color:#17375f;font-size:12px;font-weight:700}
+    .field input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:10px;background:#fbfcfe}.safety{margin-top:20px;padding:13px;border:1px solid #b8dbc9;border-radius:11px;color:#075f39;background:#eefaf4;font-size:12px;line-height:1.5}.safety strong{display:block}
+    .simulation{margin:0 0 10px;color:#9a6100;font-size:12px;font-weight:700;text-align:center;letter-spacing:.08em}.invoice{padding:38px;background:#fff;box-shadow:0 18px 55px #1c2a4221}
+    .invoice-header{display:grid;grid-template-columns:1fr 70px 1fr;min-height:142px;border:1px solid var(--navy)}.issuer,.invoice-meta{padding:18px}.issuer img{display:block;width:125px;max-height:92px;object-fit:contain;object-position:left center}
+    .issuer p{margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.invoice-letter{display:grid;align-self:start;min-height:68px;place-items:center;border:1px solid var(--navy);border-top:0;color:var(--navy);font-size:38px;font-weight:700}
+    .invoice-meta{border-left:1px solid var(--navy)}.invoice-meta h2{margin:0 0 16px;color:var(--navy);font-size:25px}.invoice-meta p{margin:7px 0;font-size:12px}
+    .customer{display:grid;grid-template-columns:1fr 1fr;gap:13px 24px;margin-top:16px;padding:17px;border:1px solid var(--navy);font-size:12px}.customer span{display:block;margin-top:4px;font-weight:700}
+    .concepts{width:100%;margin-top:18px;border-collapse:collapse;table-layout:fixed;font-size:11px}.concepts th{padding:11px 9px;color:#fff;background:var(--navy);text-align:left}.concepts td{height:92px;padding:12px 9px;border:1px solid var(--line);vertical-align:top}
+    .concepts th:nth-child(1),.concepts td:nth-child(1){width:9%}.concepts th:nth-child(2),.concepts td:nth-child(2){width:57%}.concepts th:nth-child(n+3),.concepts td:nth-child(n+3){width:17%;text-align:right}.tax-tag{display:block;margin-top:10px;color:var(--muted);font-size:10px}
+    .after-detail{display:grid;grid-template-columns:1fr 245px;gap:20px;margin-top:16px}.observation{color:var(--muted);font-size:10px;line-height:1.45}.totals{padding:13px;border:1px solid var(--navy)}
+    .total-line{display:flex;justify-content:space-between;gap:14px;margin:7px 0;font-size:11px}.total-line.grand{margin-top:13px;color:var(--navy);font-size:16px;font-weight:700}.legends{display:grid;gap:8px;margin-top:18px}
+    .legend{padding:11px 13px;border:1px solid #b9c5d6;border-radius:7px;color:#12284d;background:#f6f8fc;font-size:9.5px;line-height:1.45}.legend strong{display:block;margin-bottom:4px;font-size:10px}
+    .demo-footer{display:grid;grid-template-columns:76px 1fr;gap:16px;align-items:center;margin-top:24px;padding-top:18px;border-top:2px solid var(--navy)}.no-qr{display:grid;width:76px;height:76px;place-items:center;border:1px dashed #8795aa;color:var(--muted);font-size:9px;text-align:center}
+    .demo-footer strong{display:block;color:var(--navy)}.demo-footer p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
+    @media(max-width:980px){.shell{grid-template-columns:1fr}.controls{position:static}}@media(max-width:680px){.shell{padding:14px}.invoice{padding:16px;overflow:auto}.invoice>*{min-width:580px}.topbar{align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><div><strong>Demo de facturación · Club del Costo</strong><span>Vista previa aislada del proceso productivo</span></div><div class="demo-badge">SIN CONEXIÓN A ARCA</div></header>
+  <main class="shell">
+    <aside class="controls">
+      <span class="eyebrow">Simulador</span><h1>Elegí el tipo de cliente</h1>
+      <p class="intro">Cambiá el importe y el nombre de la membresía. Nada de esta pantalla solicita CAE ni guarda información.</p>
+      <div class="cases" role="group" aria-label="Tipo de cliente">
+        <button class="case-button active" type="button" data-case="consumer"><span class="case-letter">B</span><span><strong>Consumidor Final</strong><small>Factura B · Exento</small></span></button>
+        <button class="case-button" type="button" data-case="monotributo"><span class="case-letter">A</span><span><strong>Monotributista</strong><small>Factura A · Exento</small></span></button>
+        <button class="case-button" type="button" data-case="registered"><span class="case-letter">A</span><span><strong>Responsable Inscripto</strong><small>Factura A · IVA 21%</small></span></button>
+      </div>
+      <label class="field">Importe final en ARS<input id="amount" type="number" min="0.01" step="0.01" value="15000"></label>
+      <label class="field">Nombre de membresía en Mercado Pago<input id="membership" value="Membresía Club Empresas"></label>
+      <div class="safety"><strong>Demo segura</strong>No consulta el Padrón, no solicita CAE, no genera QR fiscal y no registra una factura.</div>
+    </aside>
+    <section>
+      <p class="simulation">SIMULACIÓN SIN VALIDEZ FISCAL</p>
+      <article class="invoice">
+        <header class="invoice-header">
+          <div class="issuer"><img src="../assets/club-del-costo-logo.png" alt="Club del Costo"><p><strong>RANDAZZO MATIAS HERNAN</strong><br>Responsable Inscripto · CUIT 20-34813700-0</p></div>
+          <div class="invoice-letter" id="invoiceLetter">B</div>
+          <div class="invoice-meta"><h2>FACTURA</h2><p>N.º <strong>00005-DEMO</strong></p><p>Fecha: <strong id="invoiceDate">27/07/2026</strong></p><p>Cód. comprobante: <strong id="invoiceCode">06</strong></p></div>
+        </header>
+        <section class="customer"><div>Receptor<span id="recipientName">Cliente Consumidor Final</span></div><div>Documento<span id="document">DNI 30.111.222</span></div><div>Condición IVA<span id="vatCondition">Consumidor Final</span></div><div>Condición de venta<span>Mercado Pago</span></div></section>
+        <table class="concepts"><thead><tr><th>Cant.</th><th>Descripción</th><th>P. unitario</th><th>Subtotal</th></tr></thead><tbody><tr><td>1,00</td><td><span id="description">Suscripción mensual a edición digital informativa sobre costos y gestión, con contenidos originales y actualización periódica en línea - Club del Costo.</span><small class="tax-tag" id="taxTreatment">Exento</small></td><td id="unitPrice">$ 15.000,00</td><td id="subtotal">$ 15.000,00</td></tr></tbody></table>
+        <div class="after-detail"><p class="observation">Observaciones: comprobante de demostración. No representa una operación de Mercado Pago ni una factura emitida.</p><section class="totals" id="totals"><div class="total-line"><span>Importe exento</span><strong>$ 15.000,00</strong></div><div class="total-line grand"><span>TOTAL</span><span>$ 15.000,00</span></div></section></div>
+        <section class="legends" id="legends"><div class="legend"><strong>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</strong>IVA CONTENIDO: $ 0,00<br>OTROS IMPUESTOS NACIONALES INDIRECTOS: $ 0,00</div></section>
+        <footer class="demo-footer"><div class="no-qr">QR fiscal<br>no generado</div><div><strong>Comprobante no enviado a ARCA</strong><p>CAE: no solicitado · Vista exclusiva para revisar cómo quedaría el comprobante.</p></div></footer>
+      </article>
+    </section>
+  </main>
+  <script>
+    const FIXED='Suscripción mensual a edición digital informativa sobre costos y gestión, con contenidos originales y actualización periódica en línea - Club del Costo.';
+    const MONO='El crédito fiscal discriminado en el presente comprobante, sólo podrá ser computado a efectos del Régimen de Sostenimiento e Inclusión Fiscal para Pequeños Contribuyentes de la Ley N.º 27.618.';
+    const TRANSPARENCY='Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)';
+    const configs={
+      consumer:{letter:'B',code:'06',condition:'Consumidor Final',recipient:'Cliente Consumidor Final',document:'DNI 30.111.222',taxed:false,mono:false},
+      monotributo:{letter:'A',code:'01',condition:'Responsable Monotributo',recipient:'Cliente Monotributista',document:'CUIT 20-12345678-3',taxed:false,mono:true},
+      registered:{letter:'A',code:'01',condition:'Responsable Inscripto',recipient:'Empresa Responsable Inscripta SA',document:'CUIT 30-71234567-9',taxed:true,mono:false}
+    };
+    let selected='consumer';
+    const money=value=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(value||0));
+    const round=value=>Math.round((Number(value)+Number.EPSILON)*100)/100;
+    function render(){
+      const c=configs[selected],total=Math.max(0,Number(document.querySelector('#amount').value)||0),net=c.taxed?round(total/1.21):0,vat=c.taxed?round(total-net):0;
+      const description=c.taxed?(document.querySelector('#membership').value.trim()||'Membresía Club Empresas'):FIXED;
+      document.querySelector('#invoiceLetter').textContent=c.letter;document.querySelector('#invoiceCode').textContent=c.code;document.querySelector('#recipientName').textContent=c.recipient;
+      document.querySelector('#document').textContent=c.document;document.querySelector('#vatCondition').textContent=c.condition;document.querySelector('#description').textContent=description;
+      document.querySelector('#taxTreatment').textContent=c.taxed?'Gravado 21%':'Exento';document.querySelector('#unitPrice').textContent=money(c.taxed?net:total);document.querySelector('#subtotal').textContent=money(c.taxed?net:total);
+      document.querySelector('#totals').innerHTML=c.taxed?`<div class="total-line"><span>Subtotal gravado</span><strong>${money(net)}</strong></div><div class="total-line"><span>IVA (21%)</span><strong>${money(vat)}</strong></div><div class="total-line grand"><span>TOTAL</span><span>${money(total)}</span></div>`:`<div class="total-line"><span>Importe exento</span><strong>${money(total)}</strong></div><div class="total-line grand"><span>TOTAL</span><span>${money(total)}</span></div>`;
+      const legends=[];if(c.mono)legends.push(`<div class="legend"><strong>Ley N.º 27.618</strong>${MONO}</div>`);if(!c.taxed)legends.push(`<div class="legend"><strong>${TRANSPARENCY}</strong>IVA CONTENIDO: ${money(0)}<br>OTROS IMPUESTOS NACIONALES INDIRECTOS: ${money(0)}</div>`);document.querySelector('#legends').innerHTML=legends.join('');
+    }
+    document.querySelector('#invoiceDate').textContent=new Intl.DateTimeFormat('es-AR').format(new Date());
+    document.querySelectorAll('[data-case]').forEach(button=>button.addEventListener('click',()=>{selected=button.dataset.case;document.querySelectorAll('[data-case]').forEach(item=>item.classList.toggle('active',item===button));render()}));
+    document.querySelector('#amount').addEventListener('input',render);document.querySelector('#membership').addEventListener('input',render);render();
+  </script>
+</body>
+</html>

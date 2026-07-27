@@ -2,6 +2,8 @@ const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
 const comprobantesLoaderService = require('../services/comprobantes-loader.service');
 const closerPersonalReportService = require('../services/closer-personal-report.service');
+const mercadoPagoService = require('../services/mercado-pago.service');
+const arcaPdfService = require('../services/arca-pdf.service');
 const commissionsService = require('../services/commissions.service');
 const access = require('../../auth/access');
 
@@ -775,6 +777,133 @@ async function getCloserPersonalReport(req, res, next) {
   }
 }
 
+async function getMercadoPagoClubRecords(req, res, next) {
+  try {
+    const now = new Date();
+    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const data = await mercadoPagoService.getClubRecords(req.query.month || defaultMonth);
+    res.json({ ok: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getStoredMercadoPagoClubRecords(req, res, next) {
+  try {
+    const data = await mercadoPagoService.getStoredWorkflowRecords(req.query.month, req.query.status);
+    res.json({ ok: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createManualInvoiceRecord(req, res, next) {
+  try {
+    const record = await mercadoPagoService.createManualInvoiceRecord(req.body || {}, req.authUser);
+    res.json({ ok: true, record });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateManualInvoiceRecord(req, res, next) {
+  try { res.json({ ok: true, record: await mercadoPagoService.updateManualInvoiceRecord(req.params.id, req.body || {}) }); } catch (error) { next(error); }
+}
+async function deleteManualInvoiceRecord(req, res, next) {
+  try { res.json({ ok: true, ...(await mercadoPagoService.deleteManualInvoiceRecord(req.params.id)) }); } catch (error) { next(error); }
+}
+
+async function reconcileMercadoPagoClubRecords(req, res, next) {
+  try {
+    const result = await mercadoPagoService.reconcileRecords(req.body?.records, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function unreconcileMercadoPagoClubRecord(req, res, next) {
+  try {
+    const result = await mercadoPagoService.unreconcileRecord(req.body || {});
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function invoiceMercadoPagoClubRecords(req, res, next) {
+  try {
+    const result = await mercadoPagoService.invoiceRecords(req.body?.records, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function previewMercadoPagoClubInvoices(req, res, next) {
+  try {
+    const result = await mercadoPagoService.previewInvoiceRecords(req.body?.records);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function creditNoteMercadoPagoClubInvoice(req, res, next) {
+  try {
+    const result = await mercadoPagoService.issueCreditNote(req.body || {}, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+function escapeInvoiceHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function arcaDateLabel(value) {
+  const text = String(value || '');
+  return /^\d{8}$/.test(text) ? `${text.slice(6, 8)}/${text.slice(4, 6)}/${text.slice(0, 4)}` : text;
+}
+
+async function viewMercadoPagoClubInvoice(req, res, next) {
+  try {
+    const row = await mercadoPagoService.getInvoiceRecord(req.params.kind, req.params.id);
+    if (req.query.format === 'pdf') {
+      const pdf = await arcaPdfService.createInvoicePdf(row);
+      res.set('Content-Disposition', `inline; filename="factura-${row.arca_invoice_number || row.record_id}.pdf"`);
+      return res.type('application/pdf').send(pdf);
+    }
+    const record = row.record_snapshot || {};
+    const arca = row.arca_response || {};
+    const invoiceType = String(arca.invoiceType || 'B').toUpperCase();
+    const formatMoney = (value) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(Number(value || 0));
+    const total = Number(arca.amounts?.total || record.amount || arca.amount || 0);
+    const net = Number(arca.amounts?.net || 0);
+    const exempt = Number(arca.amounts?.exempt ?? (arca.taxTreatment === 'Exento' ? total : 0));
+    const vat = Number(arca.amounts?.vat || 0);
+    const isTaxed = vat > 0;
+    const unitPrice = isTaxed ? net : total;
+    const legends = [
+      arca.showMonotributoLegend ? `<section class="legend"><strong>Ley N.º 27.618</strong><p>${escapeInvoiceHtml(arca.legends?.[0] || '')}</p></section>` : '',
+      arca.showTransparency ? `<section class="legend"><strong>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</strong><p>IVA CONTENIDO: ${escapeInvoiceHtml(formatMoney(vat))}<br>OTROS IMPUESTOS NACIONALES INDIRECTOS: ${escapeInvoiceHtml(formatMoney(0))}</p></section>` : ''
+    ].join('');
+    res.type('html').send(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Factura ${escapeInvoiceHtml(invoiceType)} ${escapeInvoiceHtml(row.arca_invoice_number)}</title><style>
+      body{margin:0;background:#eef1f5;color:#20242c;font-family:Arial,sans-serif}.page{width:min(820px,calc(100% - 32px));margin:28px auto;background:#fff;padding:38px;box-sizing:border-box;box-shadow:0 10px 35px #17203320}.header{display:grid;grid-template-columns:1fr 72px 1fr;border:1px solid #333}.header>div{padding:20px}.brand img{display:block;width:120px;max-height:92px;object-fit:contain;margin-bottom:10px}.letter{display:grid;place-items:center;align-self:start;margin-top:-1px;border:1px solid #333;font-size:34px;font-weight:700}.right{border-left:1px solid #333}.title{font-size:25px;font-weight:700}.muted{color:#626b78}.customer,.period{margin-top:18px;padding:18px;border:1px solid #555;background:#fafafa;display:grid;grid-template-columns:1fr 1fr;gap:10px}.detail{width:100%;margin-top:22px;border-collapse:collapse}.detail th,.detail td{padding:13px;border:1px solid #777;text-align:left}.detail th{background:#00112f;color:#fff}.amount{text-align:right!important;font-weight:700}.totals{width:330px;margin:24px 0 24px auto;border:1px solid #555;padding:16px}.totals p{display:flex;justify-content:space-between;margin:8px 0}.total{font-size:20px;font-weight:700}.legend{margin:12px 0;padding:13px 15px;border:1px solid #b8c1d1;border-radius:6px;background:#f6f8fc;font-size:12px}.legend p{margin:7px 0 0}.cae{border-top:2px solid #333;padding-top:18px}.actions{display:flex;gap:10px;margin:20px auto;width:min(820px,calc(100% - 32px))}.actions button,.actions a{border:0;border-radius:8px;padding:11px 16px;background:#1267c4;color:#fff;text-decoration:none;font-weight:700;cursor:pointer}@media print{body{background:#fff}.page{margin:0;width:100%;box-shadow:none}.actions{display:none}}
+    </style></head><body><div class="actions"><a href="/views/mercado-pago-club.html">← Volver</a><button onclick="window.print()">Imprimir / Guardar PDF</button></div><main class="page">
+      <section class="header"><div class="brand"><img src="/assets/club-del-costo-logo.png" alt="Club del Costo"><strong>RANDAZZO MATIAS HERNAN</strong><p class="muted">Responsable Inscripto<br>CUIT 20-34813700-0</p></div><div class="letter">${escapeInvoiceHtml(invoiceType)}</div><div class="right"><div class="title">FACTURA</div><p>Punto de venta y comprobante<br><strong>${escapeInvoiceHtml(row.arca_invoice_number)}</strong></p><p>Fecha: ${escapeInvoiceHtml(new Date(row.invoiced_at).toLocaleDateString('es-AR'))}</p></div></section>
+      <section class="customer"><div><strong>Receptor</strong><br>${escapeInvoiceHtml(record.payer || 'Consumidor final')}</div><div><strong>Documento</strong><br>${escapeInvoiceHtml(record.identificationType || 'Consumidor final')} ${escapeInvoiceHtml(record.identificationNumber || '')}</div><div><strong>Condición IVA</strong><br>${escapeInvoiceHtml(arca.vatCondition || 'Consumidor Final')}</div><div><strong>Condición de venta</strong><br>${escapeInvoiceHtml(record.paymentMethod || 'Mercado Pago')}</div></section>
+      <table class="detail"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody><tr><td>1</td><td>${escapeInvoiceHtml(arca.description || record.description || 'Suscripción Club del Costo')}<br><span class="muted">${escapeInvoiceHtml(arca.taxTreatment || 'Exento')}</span></td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td></tr></tbody></table>
+      <section class="totals">${isTaxed ? `<p><span>Subtotal gravado</span><strong>${escapeInvoiceHtml(formatMoney(net))}</strong></p><p><span>IVA (21%)</span><strong>${escapeInvoiceHtml(formatMoney(vat))}</strong></p>` : `<p><span>Importe exento</span><strong>${escapeInvoiceHtml(formatMoney(exempt))}</strong></p>`}<p class="total"><span>TOTAL</span><span>${escapeInvoiceHtml(formatMoney(total))}</span></p></section>
+      ${legends}
+      <section class="cae"><h3>Comprobante autorizado por ARCA</h3><p>CAE: <strong>${escapeInvoiceHtml(row.arca_cae)}</strong></p><p>Vencimiento CAE: <strong>${escapeInvoiceHtml(arcaDateLabel(arca.caeExpiration))}</strong></p><p class="muted">Operación Mercado Pago N.º ${escapeInvoiceHtml(row.record_id)}</p></section>
+    </main></body></html>`);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   health,
   getCommissionConfig,
@@ -822,5 +951,16 @@ module.exports = {
   deleteUtmBuilderPreset,
   receiveContactoInstagramWebhook,
   generateCloserPersonalReport,
-  getCloserPersonalReport
+  getCloserPersonalReport,
+  getMercadoPagoClubRecords,
+  getStoredMercadoPagoClubRecords,
+  createManualInvoiceRecord,
+  updateManualInvoiceRecord,
+  deleteManualInvoiceRecord,
+  reconcileMercadoPagoClubRecords,
+  unreconcileMercadoPagoClubRecord,
+  previewMercadoPagoClubInvoices,
+  invoiceMercadoPagoClubRecords,
+  viewMercadoPagoClubInvoice,
+  creditNoteMercadoPagoClubInvoice
 };

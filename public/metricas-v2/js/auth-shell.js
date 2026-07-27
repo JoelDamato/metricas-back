@@ -387,6 +387,12 @@
       }
     });
 
+    document.querySelectorAll('[data-requires-permission="administracion"]').forEach((node) => {
+      if (permissions.canAccessAdministration !== true) {
+        node.remove();
+      }
+    });
+
     if (permissions.canAccessLeadsBdd === false) {
       document.querySelectorAll('a[href="/views/leads-bdd.html"]').forEach((node) => node.remove());
     }

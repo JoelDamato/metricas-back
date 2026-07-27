@@ -7,6 +7,10 @@ const PAGE_ROLE_ACCESS = {
   'agendas-ultimo-origen.html': ['total', 'comercial'],
   'agendas-detalle-closer.html': ['total', 'comercial'],
   'analisis-ventas.html': ['total', 'comercial'],
+  'administracion.html': ['total'],
+  'mercado-pago-club.html': ['total'],
+  'demo-facturacion-club.html': ['total'],
+  'conciliacion.html': ['total'],
   'kpi-closers.html': ['total', 'comercial'],
   'setting.html': ['total', 'comercial'],
   'reportes.html': ['total', 'comercial'],
@@ -113,6 +117,11 @@ const COMMISSIONS_ALLOWED_EMAILS = new Set([
   'matirandazzo@gmail.com',
   'nadia.cavallini@gmail.com',
   'nahuerandazzo@gmail.com'
+]);
+
+const ADMINISTRATION_ALLOWED_EMAILS = new Set([
+  'matirandazzo@gmail.com',
+  'nadia.cavallini@gmail.com'
 ]);
 
 const USER_ACCESS_OVERRIDES = {
@@ -239,6 +248,13 @@ function canAccessCommissionsForUser(userOrEmail) {
     : normalizeEmail(userOrEmail?.email);
 
   return COMMISSIONS_ALLOWED_EMAILS.has(email);
+}
+
+function canAccessAdministrationForUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+  return ADMINISTRATION_ALLOWED_EMAILS.has(email);
 }
 
 function hasForcedMarketingAccess(userOrEmail) {
@@ -373,6 +389,9 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  if (pageName === 'administracion.html' || pageName === 'mercado-pago-club.html' || pageName === 'demo-facturacion-club.html' || pageName === 'conciliacion.html') {
+    return canAccessAdministrationForUser(user);
+  }
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
   if (pageName === 'comisiones.html') return canAccessCommissionsForUser(user);
   if (pageName === 'csm-rendimiento.html') return ['total', 'csm'].includes(user?.role);
@@ -494,6 +513,7 @@ function getUserPermissions(user) {
     allowedResources: override ? Array.from(override.allowedResources) : null,
     allowedFeatures: override ? override.allowedFeatures : null,
     canAccessComisiones: canAccessPageForUser(user, 'comisiones.html'),
+    canAccessAdministration: canAccessAdministrationForUser(user),
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
@@ -540,6 +560,7 @@ module.exports = {
   CSM_ONLY_EMAILS,
   USER_ACCESS_OVERRIDES,
   canAccessCommissionsForUser,
+  canAccessAdministrationForUser,
   getUserAccessOverride,
   isMarketingOnlyUser,
   isRestrictedCommercialUser,

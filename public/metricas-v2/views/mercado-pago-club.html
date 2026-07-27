@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ventas Club · Mercado Pago</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/mercado-pago-club.css" />
+  </head>
+  <body class="mp-club-page">
+    <main class="mp-shell">
+      <nav><a href="/views/administracion.html">← Volver a Administración</a></nav>
+      <header class="mp-hero">
+        <div>
+          <span class="eyebrow">Mercado Pago</span>
+          <h1>Ventas Club</h1>
+          <p>Pagos y suscripciones que contienen “club” durante el mes seleccionado.</p>
+        </div>
+        <div class="filters">
+          <label for="month">Mes</label>
+          <input type="month" id="month" />
+          <button id="reload" type="button">Actualizar</button>
+        </div>
+      </header>
+
+      <p id="status" class="status" role="status"></p>
+      <div id="loading" class="mp-loading" hidden><span class="mp-spinner" aria-hidden="true"></span><strong id="loadingText">Consultando Mercado Pago…</strong></div>
+      <section id="summary" class="summary" aria-label="Resumen"></section>
+      <section class="workflow-bar" aria-label="Flujo de conciliación">
+        <div class="workflow-tabs">
+          <button class="workflow-tab active" type="button" data-workflow="pending">Pendientes <strong data-count="pending">0</strong></button>
+          <button class="workflow-tab" type="button" data-workflow="reconciled">Conciliadas <strong data-count="reconciled">0</strong></button>
+          <button class="workflow-tab" type="button" data-workflow="invoiced">Facturadas <strong data-count="invoiced">0</strong></button>
+          <button class="workflow-tab" type="button" data-workflow="credit_notes">Notas de crédito <strong data-count="credit_notes">0</strong></button>
+        </div>
+        <div class="workflow-actions">
+          <span id="selectedCount">0 seleccionadas</span>
+          <a class="demo-link" href="/views/demo-facturacion-club.html" target="_blank" rel="noopener">Ver demo sin ARCA</a>
+          <button id="reconcileSelected" type="button" disabled>Marcar conciliadas</button>
+          <button id="invoiceSelected" type="button" disabled title="La emisión ARCA se habilitará cuando definamos los datos fiscales">Facturar en ARCA</button>
+          <button id="newManual" type="button">Facturar manual</button>
+        </div>
+      </section>
+      <section class="table-card">
+        <div class="table-head"><h2>Registros encontrados</h2><span id="count"></span></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th><input id="selectAll" type="checkbox" aria-label="Seleccionar todos" /></th><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Cliente</th><th>CUIT / DNI</th><th>Conciliación</th><th>Estado MP</th><th>Medio</th><th>Importe</th><th>ID</th><th>Acciones</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div id="empty" class="empty" hidden>No se encontraron registros Club para este mes.</div>
+      </section>
+    </main>
+    <script src="/js/auth-shell.js"></script>
+    <script src="/js/views/mercado-pago-club.page.js"></script>
+  </body>
+</html>

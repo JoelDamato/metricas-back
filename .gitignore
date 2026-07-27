@@ -47,3 +47,12 @@ Thumbs.db
 skills/
 skills-lock.json
 supabase/.temp/
+
+# ARCA production credentials (never commit private keys or certificates)
+secrets/arca/
+
+# ARCA local previews and one-off production issuance artifacts
+output/
+tmp/pdfs/
+scripts/arca_issue_*.js
+scripts/generate_arca_invoice_pdf.py

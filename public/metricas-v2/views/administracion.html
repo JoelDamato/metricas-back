@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administración | Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body class="ranking-page dashboard-home-page">
+    <main class="container">
+      <div class="nav"><a href="/dashboard.html">← Volver al dashboard</a></div>
+      <section class="ranking-hero dashboard-hero">
+        <h1>Administración</h1>
+        <p>Herramientas y registros administrativos.</p>
+      </section>
+
+      <section class="cards central-cards">
+        <a class="card" href="/views/comisiones.html">
+          <h3>Comisiones</h3>
+          <p>Seguimiento, configuración y lectura de comisiones.</p>
+        </a>
+
+        <a class="card" href="/views/mercado-pago-club.html">
+          <h3>Ventas Club</h3>
+          <p>Pagos y suscripciones Club del mes consultados directamente en Mercado Pago.</p>
+        </a>
+
+        <a class="card" href="/views/conciliacion.html">
+          <h3>Conciliación</h3>
+          <p>Espacio para conciliar comprobantes y pagos. Lo construiremos en la próxima etapa.</p>
+        </a>
+      </section>
+    </main>
+    <script src="/js/api/http.js"></script>
+    <script src="/js/auth-shell.js"></script>
+  </body>
+</html>
