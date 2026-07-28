@@ -47,6 +47,7 @@ router.get('/mercado-pago/club/workflow', controller.getStoredMercadoPagoClubRec
 router.post('/mercado-pago/club/manual', controller.createManualInvoiceRecord);
 router.patch('/mercado-pago/club/manual/:id', controller.updateManualInvoiceRecord);
 router.delete('/mercado-pago/club/manual/:id', controller.deleteManualInvoiceRecord);
+router.patch('/mercado-pago/club/recipient/:kind/:id', controller.updateMercadoPagoClubRecipient);
 router.post('/mercado-pago/club/reconcile', controller.reconcileMercadoPagoClubRecords);
 router.post('/mercado-pago/club/unreconcile', controller.unreconcileMercadoPagoClubRecord);
 router.post('/mercado-pago/club/invoice-preview', controller.previewMercadoPagoClubInvoices);

@@ -32,6 +32,29 @@ function formatDate(value) {
 
 function recordKey(row) { return `${row.kind}:${row.id}`; }
 
+function recipientDataButton(row) {
+  return `<button class="recipient-data-button" type="button" data-recipient-key="${escapeHtml(recordKey(row))}">Datos fiscales</button>`;
+}
+
+function renderRowActions(row) {
+  if (row.workflowStatus === 'reconciled' && row.kind !== 'manual') {
+    return `<button class="unreconcile-button" type="button" data-unreconcile-key="${escapeHtml(recordKey(row))}">Quitar conciliación</button>${recipientDataButton(row)}`;
+  }
+  if (row.workflowStatus === 'reconciled' && row.kind === 'manual') {
+    return `<button class="edit-manual-button" type="button" data-manual-key="${escapeHtml(recordKey(row))}">Editar</button><button class="delete-manual-button" type="button" data-manual-key="${escapeHtml(recordKey(row))}">Eliminar</button>`;
+  }
+  if (row.workflowStatus === 'invoiced') {
+    const creditNote = row.creditNoteCae
+      ? `<span class="credit-note-issued">Nota de Crédito ${escapeHtml(row.creditNoteType)}<small>${escapeHtml(row.creditNoteNumber)}</small></span>`
+      : `<button class="credit-note-button" type="button" data-credit-key="${escapeHtml(recordKey(row))}">Nota de crédito</button>`;
+    return `${recipientDataButton(row)}${creditNote}`;
+  }
+  if (row.workflowStatus === 'credit_notes') {
+    return `<span class="credit-note-issued">Emitida<small>Factura original ${escapeHtml(row.arcaInvoiceNumber || '')}</small></span>`;
+  }
+  return '—';
+}
+
 function updateSelectionUi() {
   const selected = allRecords.filter((row) => selectedKeys.has(recordKey(row)));
   selectedCountNode.textContent = `${selected.length} seleccionada${selected.length === 1 ? '' : 's'}`;
@@ -128,7 +151,7 @@ function showInvoicePreview(records) {
         <tbody>${records.map((row) => `
           <tr>
             <td><strong class="invoice-kind">${proposedInvoiceType(row)}</strong><small>${escapeHtml(proposedTaxTreatment(row))} · Operación ${escapeHtml(row.id)}</small></td>
-            <td>${escapeHtml(row.payer || 'Sin nombre')}</td>
+            <td>${escapeHtml(row.proposedInvoice?.recipientName || row.payer || 'Sin nombre')}<small>${escapeHtml(row.proposedInvoice?.recipientAddress || row.payerAddress || 'Domicilio no informado')}</small></td>
             <td>${escapeHtml(row.identificationType || 'Sin tipo')} ${escapeHtml(row.identificationNumber || 'No informado')}</td>
             <td>${escapeHtml(row.proposedInvoice?.description || row.description || 'Club')}<small>${escapeHtml(row.proposedInvoice?.taxTreatment || '')}</small></td>
             <td class="amount">${formatMoney(row.proposedInvoice?.amounts?.total ?? row.amount, row.currency)}${row.proposedInvoice?.amounts?.vat ? `<small>Neto ${formatMoney(row.proposedInvoice.amounts.net, row.currency)} · IVA ${formatMoney(row.proposedInvoice.amounts.vat, row.currency)}</small>` : ''}</td>
@@ -186,7 +209,7 @@ function renderRecords() {
       <td>${escapeHtml(row.paymentMethod || '—')}</td>
       <td class="amount">${formatMoney(row.amount, row.currency)}</td>
       <td><code>${escapeHtml(row.id)}</code></td>
-      <td class="row-actions">${row.workflowStatus === 'reconciled' && row.kind !== 'manual' ? `<button class="unreconcile-button" type="button" data-unreconcile-key="${escapeHtml(recordKey(row))}">Quitar conciliación</button>` : row.workflowStatus === 'reconciled' && row.kind === 'manual' ? `<button class="edit-manual-button" type="button" data-manual-key="${escapeHtml(recordKey(row))}">Editar</button><button class="delete-manual-button" type="button" data-manual-key="${escapeHtml(recordKey(row))}">Eliminar</button>` : row.workflowStatus === 'invoiced' ? (row.creditNoteCae ? `<span class="credit-note-issued">Nota de Crédito ${escapeHtml(row.creditNoteType)}<small>${escapeHtml(row.creditNoteNumber)}</small></span>` : `<button class="credit-note-button" type="button" data-credit-key="${escapeHtml(recordKey(row))}">Nota de crédito</button>`) : row.workflowStatus === 'credit_notes' ? `<span class="credit-note-issued">Emitida<small>Factura original ${escapeHtml(row.arcaInvoiceNumber || '')}</small></span>` : '—'}</td>
+      <td class="row-actions">${renderRowActions(row)}</td>
     </tr>`).join('');
   updateSelectionUi();
 }
@@ -226,6 +249,12 @@ rowsNode.addEventListener('change', (event) => {
 });
 
 rowsNode.addEventListener('click', async (event) => {
+  const recipientButton = event.target.closest('.recipient-data-button');
+  if (recipientButton) {
+    const row = allRecords.find((record) => recordKey(record) === recipientButton.dataset.recipientKey);
+    if (row) openRecipientForm(row);
+    return;
+  }
   const editManualButton = event.target.closest('.edit-manual-button');
   if (editManualButton) {
     const row = allRecords.find((record) => recordKey(record) === editManualButton.dataset.manualKey);
@@ -329,10 +358,57 @@ invoiceButton.addEventListener('click', async () => {
   if (records.length) await openResolvedInvoicePreview(records);
 });
 
+function openRecipientForm(existing) {
+  const isInvoiced = existing.workflowStatus === 'invoiced';
+  const modal = document.createElement('div');
+  modal.className = 'invoice-preview';
+  modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2></div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Consumidor final</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Estos datos se guardarán antes de solicitar el CAE. Para Monotributo y Responsable Inscripto se requiere CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
+  document.body.appendChild(modal);
+  const form = modal.querySelector('form');
+  const values = {
+    payer: existing.payer,
+    payerAddress: existing.payerAddress,
+    vatConditionId: existing.vatConditionId,
+    identificationType: existing.identificationType,
+    identificationNumber: existing.identificationNumber
+  };
+  Object.entries(values).forEach(([name, value]) => {
+    const input = form.elements.namedItem(name);
+    if (input && value !== null && value !== undefined) input.value = value;
+  });
+  if (!isInvoiced) {
+    form.elements.namedItem('vatConditionId').addEventListener('change', (event) => {
+      if (Number(event.currentTarget.value) !== 5) form.elements.namedItem('identificationType').value = 'CUIT';
+    });
+  }
+  modal.querySelectorAll('[data-close-preview]').forEach((button) => button.addEventListener('click', () => modal.remove()));
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const submit = event.submitter;
+    submit.disabled = true;
+    try {
+      const response = await fetch(`/api/metricas/mercado-pago/club/recipient/${encodeURIComponent(existing.kind)}/${encodeURIComponent(existing.id)}`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'No se pudieron guardar los datos fiscales');
+      modal.remove();
+      await loadRecords();
+      statusNode.textContent = 'Datos fiscales actualizados';
+    } catch (error) {
+      submit.disabled = false;
+      window.alert(error.message);
+    }
+  });
+}
+
 function openManualForm(existing = null) {
   const modal = document.createElement('div');
   modal.className = 'invoice-preview';
-  modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Origen manual</span><h2>${existing ? 'Editar carga manual' : 'Facturar manual'}</h2></div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de factura<input name="invoiceType" value="B" readonly></label><label>Receptor<input name="payer" required placeholder="Nombre o razón social"></label><label>Email<input name="email" type="email"></label><label>Tipo de documento<select name="identificationType"><option value="DNI">DNI</option><option value="CUIT">CUIT</option><option value="">Consumidor final</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label><label class="manual-wide">Concepto / nombre de membresía<input name="description" required placeholder="Descripción del servicio"></label><label>Importe ARS<input name="amount" type="number" min="0.01" step="0.01" required></label><label>Medio de pago<input name="paymentMethod" placeholder="Transferencia, efectivo…"></label></div><p class="invoice-preview-note">El tipo se determina automáticamente: B para Consumidor Final; A para Monotributo y Responsable Inscripto.</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">${existing ? 'Guardar cambios' : 'Guardar y previsualizar'}</button></div></form>`;
+  modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Origen manual</span><h2>${existing ? 'Editar carga manual' : 'Facturar manual'}</h2></div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de factura<input name="invoiceType" value="B" readonly></label><label>Receptor<input name="payer" required placeholder="Nombre o razón social"></label><label>Email<input name="email" type="email"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label><label>Tipo de documento<select name="identificationType"><option value="DNI">DNI</option><option value="CUIT">CUIT</option><option value="">Consumidor final</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label><label class="manual-wide">Concepto / nombre de membresía<input name="description" required placeholder="Descripción del servicio"></label><label>Importe ARS<input name="amount" type="number" min="0.01" step="0.01" required></label><label>Medio de pago<input name="paymentMethod" placeholder="Transferencia, efectivo…"></label></div><p class="invoice-preview-note">El tipo se determina automáticamente: B para Consumidor Final; A para Monotributo y Responsable Inscripto.</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">${existing ? 'Guardar cambios' : 'Guardar y previsualizar'}</button></div></form>`;
   document.body.appendChild(modal);
   const form = modal.querySelector('form');
   const syncManualInvoiceType = () => {
@@ -341,7 +417,7 @@ function openManualForm(existing = null) {
     if (vatConditionId !== 5) form.elements.namedItem('identificationType').value = 'CUIT';
   };
   if (existing) {
-    const values = { invoiceType: existing.requestedInvoiceType || proposedInvoiceType(existing).slice(-1), payer: existing.payer, email: existing.payerEmail, identificationType: existing.identificationType, identificationNumber: existing.identificationNumber, vatConditionId: existing.vatConditionId, description: existing.description, amount: existing.amount, paymentMethod: existing.paymentMethod };
+    const values = { invoiceType: existing.requestedInvoiceType || proposedInvoiceType(existing).slice(-1), payer: existing.payer, email: existing.payerEmail, payerAddress: existing.payerAddress, identificationType: existing.identificationType, identificationNumber: existing.identificationNumber, vatConditionId: existing.vatConditionId, description: existing.description, amount: existing.amount, paymentMethod: existing.paymentMethod };
     Object.entries(values).forEach(([name, value]) => { const input = form.elements.namedItem(name); if (input && value !== null && value !== undefined) input.value = value; });
   }
   syncManualInvoiceType();

@@ -813,6 +813,15 @@ async function deleteManualInvoiceRecord(req, res, next) {
   try { res.json({ ok: true, ...(await mercadoPagoService.deleteManualInvoiceRecord(req.params.id)) }); } catch (error) { next(error); }
 }
 
+async function updateMercadoPagoClubRecipient(req, res, next) {
+  try {
+    const record = await mercadoPagoService.updateInvoiceRecipient(req.params.kind, req.params.id, req.body || {});
+    res.json({ ok: true, record });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function reconcileMercadoPagoClubRecords(req, res, next) {
   try {
     const result = await mercadoPagoService.reconcileRecords(req.body?.records, req.authUser);
@@ -867,6 +876,27 @@ function arcaDateLabel(value) {
   return /^\d{8}$/.test(text) ? `${text.slice(6, 8)}/${text.slice(4, 6)}/${text.slice(0, 4)}` : text;
 }
 
+function invoiceDateLabel(value) {
+  if (!value) return 'No informado';
+  const text = String(value);
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T12:00:00Z` : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? arcaDateLabel(text) : date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+}
+
+function invoiceDisplayDates(row, arca) {
+  const issued = new Date(arca.issuedAt || row.invoiced_at);
+  const safeIssued = Number.isNaN(issued.getTime()) ? new Date() : issued;
+  const serviceFrom = arca.serviceFrom || new Date(Date.UTC(safeIssued.getUTCFullYear(), safeIssued.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const serviceTo = arca.serviceTo || new Date(Date.UTC(safeIssued.getUTCFullYear(), safeIssued.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+  return {
+    issued: invoiceDateLabel(arca.issuedAt || row.invoiced_at),
+    serviceFrom: invoiceDateLabel(serviceFrom),
+    serviceTo: invoiceDateLabel(serviceTo),
+    paymentDueDate: invoiceDateLabel(arca.paymentDueDate || arca.issuedAt || row.invoiced_at)
+  };
+}
+
 async function viewMercadoPagoClubInvoice(req, res, next) {
   try {
     const row = await mercadoPagoService.getInvoiceRecord(req.params.kind, req.params.id);
@@ -885,16 +915,21 @@ async function viewMercadoPagoClubInvoice(req, res, next) {
     const vat = Number(arca.amounts?.vat || 0);
     const isTaxed = vat > 0;
     const unitPrice = isTaxed ? net : total;
+    const dates = invoiceDisplayDates(row, arca);
+    const [pointOfSale = '00005', invoiceNumber = ''] = String(row.arca_invoice_number || '00005-').split('-');
+    const documentType = String(record.identificationType || (Number(arca.documentType) === 80 ? 'CUIT' : Number(arca.documentType) === 96 ? 'DNI' : 'Documento'));
+    const recipientName = arca.recipientName || record.payer || 'Consumidor final';
+    const recipientAddress = arca.recipientAddress || record.payerAddress || 'No informado';
     const legends = [
       arca.showMonotributoLegend ? `<section class="legend"><strong>Ley N.º 27.618</strong><p>${escapeInvoiceHtml(arca.legends?.[0] || '')}</p></section>` : '',
       arca.showTransparency ? `<section class="legend"><strong>Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)</strong><p>IVA CONTENIDO: ${escapeInvoiceHtml(formatMoney(vat))}<br>OTROS IMPUESTOS NACIONALES INDIRECTOS: ${escapeInvoiceHtml(formatMoney(0))}</p></section>` : ''
     ].join('');
     res.type('html').send(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Factura ${escapeInvoiceHtml(invoiceType)} ${escapeInvoiceHtml(row.arca_invoice_number)}</title><style>
-      body{margin:0;background:#eef1f5;color:#20242c;font-family:Arial,sans-serif}.page{width:min(820px,calc(100% - 32px));margin:28px auto;background:#fff;padding:38px;box-sizing:border-box;box-shadow:0 10px 35px #17203320}.header{display:grid;grid-template-columns:1fr 72px 1fr;border:1px solid #333}.header>div{padding:20px}.brand img{display:block;width:120px;max-height:92px;object-fit:contain;margin-bottom:10px}.letter{display:grid;place-items:center;align-self:start;margin-top:-1px;border:1px solid #333;font-size:34px;font-weight:700}.right{border-left:1px solid #333}.title{font-size:25px;font-weight:700}.muted{color:#626b78}.customer,.period{margin-top:18px;padding:18px;border:1px solid #555;background:#fafafa;display:grid;grid-template-columns:1fr 1fr;gap:10px}.detail{width:100%;margin-top:22px;border-collapse:collapse}.detail th,.detail td{padding:13px;border:1px solid #777;text-align:left}.detail th{background:#00112f;color:#fff}.amount{text-align:right!important;font-weight:700}.totals{width:330px;margin:24px 0 24px auto;border:1px solid #555;padding:16px}.totals p{display:flex;justify-content:space-between;margin:8px 0}.total{font-size:20px;font-weight:700}.legend{margin:12px 0;padding:13px 15px;border:1px solid #b8c1d1;border-radius:6px;background:#f6f8fc;font-size:12px}.legend p{margin:7px 0 0}.cae{border-top:2px solid #333;padding-top:18px}.actions{display:flex;gap:10px;margin:20px auto;width:min(820px,calc(100% - 32px))}.actions button,.actions a{border:0;border-radius:8px;padding:11px 16px;background:#1267c4;color:#fff;text-decoration:none;font-weight:700;cursor:pointer}@media print{body{background:#fff}.page{margin:0;width:100%;box-shadow:none}.actions{display:none}}
+      body{margin:0;background:#eef1f5;color:#20242c;font-family:Arial,sans-serif}.page{width:min(820px,calc(100% - 32px));margin:28px auto;background:#fff;padding:38px;box-sizing:border-box;box-shadow:0 10px 35px #17203320}.header{display:grid;grid-template-columns:1fr 72px 1fr;border:1px solid #333}.header>div{padding:20px}.brand img{display:block;width:120px;max-height:82px;object-fit:contain;margin-bottom:10px}.brand p,.right p{font-size:12px;line-height:1.45}.letter{display:grid;place-items:center;align-self:start;margin-top:-1px;border:1px solid #333;font-size:34px;font-weight:700}.right{border-left:1px solid #333}.title{font-size:25px;font-weight:700}.muted{color:#626b78}.customer{margin-top:18px;padding:18px;border:1px solid #555;background:#fafafa;display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}.customer-wide{grid-column:1/-1}.detail{width:100%;margin-top:22px;border-collapse:collapse}.detail th,.detail td{padding:13px;border:1px solid #777;text-align:left}.detail th{background:#00112f;color:#fff}.amount{text-align:right!important;font-weight:700}.totals{width:330px;margin:24px 0 24px auto;border:1px solid #555;padding:16px}.totals p{display:flex;justify-content:space-between;margin:8px 0}.total{font-size:20px;font-weight:700}.legend{margin:12px 0;padding:13px 15px;border:1px solid #b8c1d1;border-radius:6px;background:#f6f8fc;font-size:12px}.legend p{margin:7px 0 0}.cae{border-top:2px solid #333;padding-top:18px}.actions{display:flex;gap:10px;margin:20px auto;width:min(820px,calc(100% - 32px))}.actions button,.actions a{border:0;border-radius:8px;padding:11px 16px;background:#1267c4;color:#fff;text-decoration:none;font-weight:700;cursor:pointer}@media print{body{background:#fff}.page{margin:0;width:100%;box-shadow:none}.actions{display:none}}
     </style></head><body><div class="actions"><a href="/views/mercado-pago-club.html">← Volver</a><button onclick="window.print()">Imprimir / Guardar PDF</button></div><main class="page">
-      <section class="header"><div class="brand"><img src="/assets/club-del-costo-logo.png" alt="Club del Costo"><strong>RANDAZZO MATIAS HERNAN</strong><p class="muted">Responsable Inscripto<br>CUIT 20-34813700-0</p></div><div class="letter">${escapeInvoiceHtml(invoiceType)}</div><div class="right"><div class="title">FACTURA</div><p>Punto de venta y comprobante<br><strong>${escapeInvoiceHtml(row.arca_invoice_number)}</strong></p><p>Fecha: ${escapeInvoiceHtml(new Date(row.invoiced_at).toLocaleDateString('es-AR'))}</p></div></section>
-      <section class="customer"><div><strong>Receptor</strong><br>${escapeInvoiceHtml(record.payer || 'Consumidor final')}</div><div><strong>Documento</strong><br>${escapeInvoiceHtml(record.identificationType || 'Consumidor final')} ${escapeInvoiceHtml(record.identificationNumber || '')}</div><div><strong>Condición IVA</strong><br>${escapeInvoiceHtml(arca.vatCondition || 'Consumidor Final')}</div><div><strong>Condición de venta</strong><br>${escapeInvoiceHtml(record.paymentMethod || 'Mercado Pago')}</div></section>
-      <table class="detail"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody><tr><td>1</td><td>${escapeInvoiceHtml(arca.description || record.description || 'Suscripción Club del Costo')}<br><span class="muted">${escapeInvoiceHtml(arca.taxTreatment || 'Exento')}</span></td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td></tr></tbody></table>
+      <section class="header"><div class="brand"><img src="/assets/club-del-costo-logo.png" alt="Club del Costo"><strong>RANDAZZO MATIAS HERNAN</strong><p class="muted">Domicilio Comercial: Brown Almte Av. 706 Piso 9 Dpto A - Ciudad de Buenos Aires<br>Condición frente al IVA: Responsable Inscripto<br>CUIT: 20-34813700-0<br>Ingresos Brutos: 20348137000<br>Fecha de Inicio de Actividades: 01/06/2021</p></div><div class="letter">${escapeInvoiceHtml(invoiceType)}</div><div class="right"><div class="title">FACTURA</div><p>Punto de Venta: <strong>${escapeInvoiceHtml(pointOfSale)}</strong><br>Comp. Nro.: <strong>${escapeInvoiceHtml(invoiceNumber)}</strong></p><p>Fecha de Emisión: <strong>${escapeInvoiceHtml(dates.issued)}</strong></p><p>Período Facturado Desde: <strong>${escapeInvoiceHtml(dates.serviceFrom)}</strong><br>Hasta: <strong>${escapeInvoiceHtml(dates.serviceTo)}</strong></p><p>Fecha de Vto. para el pago: <strong>${escapeInvoiceHtml(dates.paymentDueDate)}</strong></p></div></section>
+      <section class="customer"><div class="customer-wide"><strong>Apellido y Nombre / Razón Social</strong><br>${escapeInvoiceHtml(recipientName)}</div><div class="customer-wide"><strong>Domicilio Comercial</strong><br>${escapeInvoiceHtml(recipientAddress)}</div><div><strong>${escapeInvoiceHtml(documentType)}:</strong><br>${escapeInvoiceHtml(record.identificationNumber || arca.documentNumber || 'No informado')}</div><div><strong>Condición IVA</strong><br>${escapeInvoiceHtml(arca.vatCondition || 'Consumidor Final')}</div><div><strong>Condición de venta</strong><br>${escapeInvoiceHtml(record.paymentMethod || 'Mercado Pago')}</div></section>
+      <table class="detail"><thead><tr><th>Cantidad</th><th>Descripción</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody><tr><td>1</td><td>${escapeInvoiceHtml(arca.description || record.description || 'Suscripción Club del Costo')}</td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td><td class="amount">${escapeInvoiceHtml(formatMoney(unitPrice))}</td></tr></tbody></table>
       <section class="totals">${isTaxed ? `<p><span>Subtotal gravado</span><strong>${escapeInvoiceHtml(formatMoney(net))}</strong></p><p><span>IVA (21%)</span><strong>${escapeInvoiceHtml(formatMoney(vat))}</strong></p>` : `<p><span>Importe exento</span><strong>${escapeInvoiceHtml(formatMoney(exempt))}</strong></p>`}<p class="total"><span>TOTAL</span><span>${escapeInvoiceHtml(formatMoney(total))}</span></p></section>
       ${legends}
       <section class="cae"><h3>Comprobante autorizado por ARCA</h3><p>CAE: <strong>${escapeInvoiceHtml(row.arca_cae)}</strong></p><p>Vencimiento CAE: <strong>${escapeInvoiceHtml(arcaDateLabel(arca.caeExpiration))}</strong></p><p class="muted">Operación Mercado Pago N.º ${escapeInvoiceHtml(row.record_id)}</p></section>
@@ -957,6 +992,7 @@ module.exports = {
   createManualInvoiceRecord,
   updateManualInvoiceRecord,
   deleteManualInvoiceRecord,
+  updateMercadoPagoClubRecipient,
   reconcileMercadoPagoClubRecords,
   unreconcileMercadoPagoClubRecord,
   previewMercadoPagoClubInvoices,

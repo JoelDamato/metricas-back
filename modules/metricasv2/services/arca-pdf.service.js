@@ -13,7 +13,9 @@ const ISSUER = {
   name: 'RANDAZZO MATIAS HERNAN',
   cuit: '20-34813700-0',
   vat: 'Responsable Inscripto',
-  address: 'Argentina'
+  address: 'Brown Almte Av. 706 Piso 9 Dpto A - Ciudad de Buenos Aires',
+  grossIncome: '20348137000',
+  activitiesStart: '01/06/2021'
 };
 
 function arcaDate(value) {
@@ -27,6 +29,25 @@ function money(value) {
 
 function invoiceNumber(pointOfSale, number) {
   return `${String(pointOfSale).padStart(5, '0')}-${String(number).padStart(8, '0')}`;
+}
+
+function displayDate(value) {
+  if (!value) return 'No informado';
+  const text = String(value);
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T12:00:00Z` : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? arcaDate(text) : date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+}
+
+function invoiceDisplayDates(row, arca) {
+  const issued = new Date(arca.issuedAt || row.invoiced_at);
+  const safeIssued = Number.isNaN(issued.getTime()) ? new Date() : issued;
+  return {
+    issued: displayDate(arca.issuedAt || row.invoiced_at),
+    serviceFrom: displayDate(arca.serviceFrom || new Date(Date.UTC(safeIssued.getUTCFullYear(), safeIssued.getUTCMonth(), 1)).toISOString().slice(0, 10)),
+    serviceTo: displayDate(arca.serviceTo || new Date(Date.UTC(safeIssued.getUTCFullYear(), safeIssued.getUTCMonth() + 1, 0)).toISOString().slice(0, 10)),
+    paymentDueDate: displayDate(arca.paymentDueDate || arca.issuedAt || row.invoiced_at)
+  };
 }
 
 function normalizedAmounts(arca, amount) {
@@ -66,6 +87,11 @@ async function createInvoicePdf(row) {
   const description = arca.description || record.description || 'Suscripción Club del Costo';
   const isTaxed = amounts.vat > 0;
   const unitPrice = isTaxed ? amounts.net : amounts.total;
+  const dates = invoiceDisplayDates(row, arca);
+  const recipientName = arca.recipientName || record.payer || 'Consumidor final';
+  const recipientAddress = arca.recipientAddress || record.payerAddress || 'No informado';
+  const documentType = String(record.identificationType || (Number(arca.documentType) === 80 ? 'CUIT' : Number(arca.documentType) === 96 ? 'DNI' : 'Documento'));
+  const documentNumber = record.identificationNumber || arca.documentNumber || 'No informado';
   const qrPayload = {
     ver: 1,
     fecha: issuedDate,
@@ -91,41 +117,51 @@ async function createInvoicePdf(row) {
     doc.on('error', reject);
   });
 
-  doc.rect(40, 40, 515, 138).stroke('#26344a');
-  doc.image(LOGO_PATH, 52, 52, { fit: [105, 93], align: 'center', valign: 'center' });
-  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(10).text(ISSUER.name, 52, 150, { width: 210 });
-  doc.fillColor('#28364c').font('Helvetica').fontSize(7.5).text(`${ISSUER.vat} · CUIT ${ISSUER.cuit} · ${ISSUER.address}`, 52, 164, { width: 215 });
+  doc.rect(40, 40, 515, 190).stroke('#26344a');
+  doc.image(LOGO_PATH, 52, 52, { fit: [105, 78], align: 'center', valign: 'center' });
+  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(9).text(ISSUER.name, 52, 132, { width: 210 });
+  doc.fillColor('#28364c').font('Helvetica').fontSize(7).text(
+    `Domicilio Comercial: ${ISSUER.address}\nCondición frente al IVA: ${ISSUER.vat}\nCUIT: ${ISSUER.cuit}\nIngresos Brutos: ${ISSUER.grossIncome}\nFecha de Inicio de Actividades: ${ISSUER.activitiesStart}`,
+    52,
+    146,
+    { width: 215, lineGap: 1.5 }
+  );
 
   doc.rect(275, 40, 50, 59).stroke('#26344a');
   doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(28).text(type, 275, 54, { width: 50, align: 'center' });
   doc.fontSize(7).text(`Cód. ${String(typeCode).padStart(2, '0')}`, 275, 101, { width: 50, align: 'center' });
   doc.fontSize(20).text('FACTURA', 343, 56);
-  doc.fillColor('#28364c').font('Helvetica').fontSize(9.5).text(`N.º ${invoiceNumber(pointOfSale, number)}\nFecha: ${issued.toLocaleDateString('es-AR')}`, 343, 88, { lineGap: 6 });
+  doc.fillColor('#28364c').font('Helvetica').fontSize(8).text(
+    `Punto de Venta: ${String(pointOfSale).padStart(5, '0')}\nComp. Nro.: ${String(number).padStart(8, '0')}\nFecha de Emisión: ${dates.issued}\nPeríodo Facturado Desde: ${dates.serviceFrom}\nHasta: ${dates.serviceTo}\nFecha de Vto. para el pago: ${dates.paymentDueDate}`,
+    343,
+    86,
+    { width: 200, lineGap: 3 }
+  );
 
-  doc.rect(40, 190, 515, 82).stroke('#26344a');
-  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(9).text('Receptor:', 52, 205);
-  doc.font('Helvetica').text(record.payer || 'Consumidor final', 112, 205, { width: 420 });
-  doc.font('Helvetica-Bold').text('Documento:', 52, 228);
-  const documentLabel = `${record.identificationType || (arca.documentType === 99 ? 'Consumidor final' : '')} ${record.identificationNumber || ''}`.trim();
-  doc.font('Helvetica').text(documentLabel || 'No informado', 120, 228, { width: 160 });
-  doc.font('Helvetica-Bold').text('Condición IVA:', 300, 228);
-  doc.font('Helvetica').text(arca.vatCondition || 'Consumidor Final', 380, 228, { width: 160 });
-  doc.font('Helvetica-Bold').text('Condición de venta:', 52, 251);
-  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 150, 251, { width: 370 });
+  doc.rect(40, 242, 515, 116).stroke('#26344a');
+  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(8).text('Apellido y Nombre / Razón Social:', 52, 255);
+  doc.font('Helvetica').text(recipientName, 205, 255, { width: 335 });
+  doc.font('Helvetica-Bold').text('Domicilio Comercial:', 52, 280);
+  doc.font('Helvetica').text(recipientAddress, 150, 280, { width: 390 });
+  doc.font('Helvetica-Bold').text(`${documentType}:`, 52, 306);
+  doc.font('Helvetica').text(String(documentNumber), 92, 306, { width: 175 });
+  doc.font('Helvetica-Bold').text('Condición IVA:', 300, 306);
+  doc.font('Helvetica').text(arca.vatCondition || 'Consumidor Final', 380, 306, { width: 160 });
+  doc.font('Helvetica-Bold').text('Condición de venta:', 52, 332);
+  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 150, 332, { width: 370 });
 
-  doc.rect(40, 288, 515, 34).fill('#00112f');
+  doc.rect(40, 374, 515, 34).fill('#00112f');
   doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
-  doc.text('Cant.', 52, 300).text('Descripción', 100, 300).text('P. unitario', 402, 300).text('Subtotal', 490, 300);
-  doc.rect(40, 322, 515, 88).stroke('#26344a');
-  doc.fillColor('#111827').font('Helvetica').fontSize(9).text('1,00', 52, 339);
-  doc.text(description, 100, 337, { width: 270, height: 55, ellipsis: true });
-  doc.fontSize(7.5).fillColor('#526078').text(arca.taxTreatment || (isTaxed ? 'Gravado 21%' : 'Exento'), 100, 390);
-  doc.fillColor('#111827').fontSize(9).text(money(unitPrice), 382, 339, { width: 80, align: 'right' });
-  doc.text(money(unitPrice), 474, 339, { width: 68, align: 'right' });
+  doc.text('Cant.', 52, 386).text('Descripción', 100, 386).text('P. unitario', 402, 386).text('Subtotal', 490, 386);
+  doc.rect(40, 408, 515, 76).stroke('#26344a');
+  doc.fillColor('#111827').font('Helvetica').fontSize(9).text('1,00', 52, 425);
+  doc.text(description, 100, 423, { width: 270, height: 48, ellipsis: true });
+  doc.fillColor('#111827').fontSize(9).text(money(unitPrice), 382, 425, { width: 80, align: 'right' });
+  doc.text(money(unitPrice), 474, 425, { width: 68, align: 'right' });
 
   const totalsHeight = isTaxed ? 91 : 70;
-  doc.rect(335, 425, 220, totalsHeight).stroke('#26344a');
-  let totalY = 440;
+  doc.rect(335, 500, 220, totalsHeight).stroke('#26344a');
+  let totalY = 515;
   if (isTaxed) {
     doc.font('Helvetica').fontSize(9).fillColor('#111827').text('Subtotal gravado', 350, totalY);
     doc.text(money(amounts.net), 450, totalY, { width: 90, align: 'right' });
@@ -139,9 +175,9 @@ async function createInvoicePdf(row) {
   }
   doc.font('Helvetica-Bold').fontSize(12).text('TOTAL', 350, totalY).text(money(amounts.total), 430, totalY, { width: 110, align: 'right' });
 
-  doc.fillColor('#526078').font('Helvetica').fontSize(7.5).text(`Observaciones: comprobante generado por operación de Mercado Pago con ID ${row.record_id}`, 40, 430, { width: 275 });
+  doc.fillColor('#526078').font('Helvetica').fontSize(7.5).text(`Observaciones: comprobante generado por operación de Mercado Pago con ID ${row.record_id}`, 40, 505, { width: 275 });
 
-  let legendY = 530;
+  let legendY = 606;
   if (arca.showMonotributoLegend || Number(arca.vatConditionId) === 6) {
     legendY = drawLegend(doc, 'Ley N.º 27.618', MONOTRIBUTO_LEGEND, legendY);
   }
@@ -154,7 +190,7 @@ async function createInvoicePdf(row) {
     );
   }
 
-  const footerY = Math.max(legendY + 7, 662);
+  const footerY = Math.max(legendY + 7, 704);
   doc.image(qr, 45, footerY, { width: 105 });
   doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(10).text('Comprobante autorizado por ARCA', 170, footerY + 8);
   doc.fillColor('#28364c').font('Helvetica').fontSize(9).text(
@@ -163,7 +199,7 @@ async function createInvoicePdf(row) {
     footerY + 32,
     { lineGap: 5, width: 360 }
   );
-  doc.fontSize(7).fillColor('#526078').text('El código QR permite verificar los datos fiscales de este comprobante en ARCA.', 170, footerY + 88, { width: 360 });
+  doc.fontSize(6.5).fillColor('#526078').text('El código QR permite verificar los datos fiscales de este comprobante en ARCA.', 170, footerY + 76, { width: 360 });
   doc.end();
   return completed;
 }

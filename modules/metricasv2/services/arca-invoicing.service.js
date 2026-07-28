@@ -24,6 +24,35 @@ function formatArcaDate(date) {
   return date.toISOString().slice(0, 10).replaceAll('-', '');
 }
 
+function invoiceDates(date = new Date()) {
+  const issued = new Date(date);
+  const serviceFrom = new Date(Date.UTC(issued.getUTCFullYear(), issued.getUTCMonth(), 1));
+  const serviceTo = new Date(Date.UTC(issued.getUTCFullYear(), issued.getUTCMonth() + 1, 0));
+  return {
+    issued,
+    serviceFrom,
+    serviceTo,
+    paymentDueDate: new Date(issued)
+  };
+}
+
+function recipientNameFromPadron(xml) {
+  const businessName = xmlValue(xml, 'razonSocial');
+  if (businessName) return businessName;
+  return [xmlValue(xml, 'apellido'), xmlValue(xml, 'nombre')].filter(Boolean).join(' ').trim();
+}
+
+function recipientAddressFromPadron(xml) {
+  const domicile = xmlValue(xml, 'domicilioFiscal');
+  if (!domicile) return '';
+  const values = [
+    xmlValue(domicile, 'direccion'),
+    xmlValue(domicile, 'localidad'),
+    xmlValue(domicile, 'descripcionProvincia')
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  return [...new Set(values)].join(' - ');
+}
+
 function getErrors(xml) {
   const errorsXml = xmlValue(xml, 'Errors');
   if (!errorsXml) return [];
@@ -48,7 +77,7 @@ function validateRecord(record) {
   if (!Number.isFinite(Number(record.amount)) || Number(record.amount) <= 0) throw new Error('El importe a facturar es inválido');
 }
 
-function consumerFinalRecipient(raw = '') {
+function consumerFinalRecipient(record = {}, raw = '') {
   const hasDni = /^\d{7,8}$/.test(raw);
   return {
     invoiceType: 'B',
@@ -56,17 +85,19 @@ function consumerFinalRecipient(raw = '') {
     documentType: hasDni ? 96 : 99,
     documentNumber: hasDni ? raw : '0',
     vatConditionId: CONSUMIDOR_FINAL,
-    vatCondition: 'Consumidor Final'
+    vatCondition: 'Consumidor Final',
+    recipientName: String(record.payer || '').trim(),
+    recipientAddress: String(record.payerAddress || '').trim()
   };
 }
 
 function manualRecipient(record, raw) {
-  if (record?.source !== 'manual') return null;
   const vatConditionId = Number(record.vatConditionId);
+  if (![1, 5, 6].includes(vatConditionId)) return null;
   const requestedInvoiceType = String(record.requestedInvoiceType || '').toUpperCase();
   if (vatConditionId === CONSUMIDOR_FINAL) {
     if (requestedInvoiceType && requestedInvoiceType !== 'B') throw new Error('Consumidor Final requiere Factura B');
-    return consumerFinalRecipient(raw);
+    return consumerFinalRecipient(record, raw);
   }
   if (![1, 6].includes(vatConditionId)) throw new Error('Club del Costo solo admite Consumidor Final, Monotributo o Responsable Inscripto');
   if (requestedInvoiceType && requestedInvoiceType !== 'A') throw new Error('Monotributo y Responsable Inscripto requieren Factura A');
@@ -79,7 +110,9 @@ function manualRecipient(record, raw) {
     documentType: 80,
     documentNumber: raw,
     vatConditionId,
-    vatCondition: vatConditionId === 6 ? 'Responsable Monotributo' : 'Responsable Inscripto'
+    vatCondition: vatConditionId === 6 ? 'Responsable Monotributo' : 'Responsable Inscripto',
+    recipientName: String(record.payer || '').trim(),
+    recipientAddress: String(record.payerAddress || '').trim()
   };
 }
 
@@ -88,22 +121,40 @@ async function resolveRecipient(record) {
   const selectedRecipient = manualRecipient(record, raw);
   if (selectedRecipient) return selectedRecipient;
   if (String(record.identificationType || '').toUpperCase() !== 'CUIT' || raw.length !== 11) {
-    return consumerFinalRecipient(raw);
+    return consumerFinalRecipient(record, raw);
   }
-  const auth = await getWsaaCredentials('ws_sr_constancia_inscripcion');
+  let auth;
+  try {
+    auth = await getWsaaCredentials('ws_sr_constancia_inscripcion');
+  } catch (error) {
+    const wrapped = new Error('La consulta automática al Padrón de ARCA no está autorizada para este certificado. Completá los datos fiscales del receptor antes de facturar.');
+    wrapped.statusCode = 409;
+    wrapped.cause = error;
+    throw wrapped;
+  }
   const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><getPersona_v2 xmlns="http://a5.soap.ws.server.puc.sr/"><token>${xmlEscape(auth.token)}</token><sign>${xmlEscape(auth.sign)}</sign><cuitRepresentada>${CUIT}</cuitRepresentada><idPersona>${raw}</idPersona></getPersona_v2></soap:Body></soap:Envelope>`;
   const response = await axios.post(PADRON_URL, envelope, { headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' }, timeout: 30000 });
-  const descriptions = [...String(response.data).matchAll(/<descripcionImpuesto[^>]*>(.*?)<\/descripcionImpuesto>/gi)].map((match) => match[1].toUpperCase());
+  const descriptions = [...String(response.data).matchAll(/<(?:\w+:)?descripcionImpuesto[^>]*>(.*?)<\/(?:\w+:)?descripcionImpuesto>/gi)].map((match) => match[1].toUpperCase());
   const isMonotributo = descriptions.some((value) => value.includes('MONOTRIBUTO'));
   const isRegisteredVat = descriptions.some((value) => value === 'IVA' || value.includes('VALOR AGREGADO'));
   if (!isMonotributo && !isRegisteredVat) throw new Error('El CUIT no figura activo en IVA ni Monotributo; no se puede determinar una Factura A segura');
-  return { invoiceType: 'A', invoiceTypeCode: FACTURA_A, documentType: 80, documentNumber: raw, vatConditionId: isMonotributo ? 6 : 1, vatCondition: isMonotributo ? 'Responsable Monotributo' : 'Responsable Inscripto' };
+  return {
+    invoiceType: 'A',
+    invoiceTypeCode: FACTURA_A,
+    documentType: 80,
+    documentNumber: raw,
+    vatConditionId: isMonotributo ? 6 : 1,
+    vatCondition: isMonotributo ? 'Responsable Monotributo' : 'Responsable Inscripto',
+    recipientName: recipientNameFromPadron(response.data) || String(record.payer || '').trim(),
+    recipientAddress: recipientAddressFromPadron(response.data) || String(record.payerAddress || '').trim()
+  };
 }
 
 async function previewInvoice(record) {
   validateRecord(record);
   const recipient = await resolveRecipient(record);
   const policy = buildClubInvoicePolicy(record, recipient);
+  const dates = invoiceDates();
   return {
     invoiceType: recipient.invoiceType,
     invoiceTypeCode: recipient.invoiceTypeCode,
@@ -111,6 +162,12 @@ async function previewInvoice(record) {
     vatCondition: recipient.vatCondition,
     documentType: recipient.documentType,
     documentNumber: recipient.documentNumber,
+    recipientName: recipient.recipientName,
+    recipientAddress: recipient.recipientAddress,
+    issuedAt: dates.issued.toISOString(),
+    serviceFrom: dates.serviceFrom.toISOString().slice(0, 10),
+    serviceTo: dates.serviceTo.toISOString().slice(0, 10),
+    paymentDueDate: dates.paymentDueDate.toISOString().slice(0, 10),
     description: policy.description,
     taxTreatment: policy.taxTreatment,
     amounts: policy.amounts,
@@ -124,10 +181,8 @@ async function issueElectronicInvoice(record) {
   const policy = buildClubInvoicePolicy(record, recipient);
   const auth = await getWsaaCredentials();
   const invoiceNumber = (await getLastAuthorizedInvoice(auth, recipient.invoiceTypeCode)) + 1;
-  const today = new Date();
-  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0));
-  const detail = `<FECAEDetRequest><Concepto>2</Concepto><DocTipo>${recipient.documentType}</DocTipo><DocNro>${recipient.documentNumber}</DocNro><CbteDesde>${invoiceNumber}</CbteDesde><CbteHasta>${invoiceNumber}</CbteHasta><CbteFch>${formatArcaDate(today)}</CbteFch>${arcaAmountsXml(policy.amounts)}<FchServDesde>${formatArcaDate(start)}</FchServDesde><FchServHasta>${formatArcaDate(end)}</FchServHasta><FchVtoPago>${formatArcaDate(today)}</FchVtoPago><MonId>PES</MonId><MonCotiz>1.000000</MonCotiz><CondicionIVAReceptorId>${recipient.vatConditionId}</CondicionIVAReceptorId></FECAEDetRequest>`;
+  const dates = invoiceDates();
+  const detail = `<FECAEDetRequest><Concepto>2</Concepto><DocTipo>${recipient.documentType}</DocTipo><DocNro>${recipient.documentNumber}</DocNro><CbteDesde>${invoiceNumber}</CbteDesde><CbteHasta>${invoiceNumber}</CbteHasta><CbteFch>${formatArcaDate(dates.issued)}</CbteFch>${arcaAmountsXml(policy.amounts)}<FchServDesde>${formatArcaDate(dates.serviceFrom)}</FchServDesde><FchServHasta>${formatArcaDate(dates.serviceTo)}</FchServHasta><FchVtoPago>${formatArcaDate(dates.paymentDueDate)}</FchVtoPago><MonId>PES</MonId><MonCotiz>1.000000</MonCotiz><CondicionIVAReceptorId>${recipient.vatConditionId}</CondicionIVAReceptorId></FECAEDetRequest>`;
   const body = `<FECAESolicitar xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><FeCAEReq><FeCabReq><CantReg>1</CantReg><PtoVta>${POINT_OF_SALE}</PtoVta><CbteTipo>${recipient.invoiceTypeCode}</CbteTipo></FeCabReq><FeDetReq>${detail}</FeDetReq></FeCAEReq></FECAESolicitar>`;
   const xml = await postWsfe('FECAESolicitar', body);
   const result = xmlValue(xml, 'Resultado');
@@ -136,7 +191,16 @@ async function issueElectronicInvoice(record) {
   return {
     invoiceType: recipient.invoiceType, invoiceTypeCode: recipient.invoiceTypeCode, pointOfSale: POINT_OF_SALE,
     invoiceNumber, cae, caeExpiration: xmlValue(xml, 'CAEFchVto'),
-    issuedAt: today.toISOString(), documentType: recipient.documentType, documentNumber: recipient.documentNumber, vatConditionId: recipient.vatConditionId, vatCondition: recipient.vatCondition,
+    issuedAt: dates.issued.toISOString(),
+    serviceFrom: dates.serviceFrom.toISOString().slice(0, 10),
+    serviceTo: dates.serviceTo.toISOString().slice(0, 10),
+    paymentDueDate: dates.paymentDueDate.toISOString().slice(0, 10),
+    documentType: recipient.documentType,
+    documentNumber: recipient.documentNumber,
+    recipientName: recipient.recipientName,
+    recipientAddress: recipient.recipientAddress,
+    vatConditionId: recipient.vatConditionId,
+    vatCondition: recipient.vatCondition,
     concept: 'Servicios',
     description: policy.description,
     taxTreatment: policy.taxTreatment,
@@ -183,4 +247,4 @@ function issueCreditNote(record, original) {
   return queued;
 }
 
-module.exports = { issueInvoice, issueCreditNote, previewInvoice, resolveRecipient };
+module.exports = { issueInvoice, issueCreditNote, previewInvoice, resolveRecipient, invoiceDates };

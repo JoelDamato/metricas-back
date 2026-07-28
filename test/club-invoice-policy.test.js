@@ -7,7 +7,8 @@ const {
   buildClubInvoicePolicy,
   arcaAmountsXml
 } = require('../modules/metricasv2/services/club-invoice-policy.service');
-const { previewInvoice, resolveRecipient } = require('../modules/metricasv2/services/arca-invoicing.service');
+const { previewInvoice, resolveRecipient, invoiceDates } = require('../modules/metricasv2/services/arca-invoicing.service');
+const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
   const policy = buildClubInvoicePolicy(
@@ -114,6 +115,8 @@ test('previsualización fiscal manual resuelve el comprobante sin solicitar CAE'
     vatConditionId: 1,
     identificationType: 'CUIT',
     identificationNumber: '30-71234567-9',
+    payer: 'Empresa de Prueba S.A.',
+    payerAddress: 'Av. Siempre Viva 123 - Córdoba',
     description: 'Membresía Club Empresas',
     amount: 15000,
     currency: 'ARS'
@@ -123,4 +126,54 @@ test('previsualización fiscal manual resuelve el comprobante sin solicitar CAE'
   assert.equal(preview.vatCondition, 'Responsable Inscripto');
   assert.equal(preview.taxTreatment, 'Gravado 21%');
   assert.equal(preview.amounts.vat, 2603.31);
+  assert.equal(preview.recipientName, 'Empresa de Prueba S.A.');
+  assert.equal(preview.recipientAddress, 'Av. Siempre Viva 123 - Córdoba');
+});
+
+test('período facturado cubre el mes completo y el vencimiento coincide con la emisión', () => {
+  const dates = invoiceDates(new Date('2026-07-28T15:30:00.000Z'));
+
+  assert.equal(dates.issued.toISOString(), '2026-07-28T15:30:00.000Z');
+  assert.equal(dates.serviceFrom.toISOString(), '2026-07-01T00:00:00.000Z');
+  assert.equal(dates.serviceTo.toISOString(), '2026-07-31T00:00:00.000Z');
+  assert.equal(dates.paymentDueDate.toISOString(), '2026-07-28T15:30:00.000Z');
+});
+
+test('datos fiscales completados evitan consultar el Padrón para un registro importado', async () => {
+  const fields = validateRecipientFields({
+    payer: 'Empresa Importada S.A.',
+    payerAddress: 'Av. Córdoba 1234 - CABA',
+    vatConditionId: 1,
+    identificationType: 'CUIT',
+    identificationNumber: '30-71234567-9'
+  });
+  const recipient = await resolveRecipient(fields);
+
+  assert.equal(fields.requestedInvoiceType, 'A');
+  assert.equal(recipient.recipientName, 'Empresa Importada S.A.');
+  assert.equal(recipient.recipientAddress, 'Av. Córdoba 1234 - CABA');
+  assert.equal(recipient.vatCondition, 'Responsable Inscripto');
+});
+
+test('datos fiscales exigen domicilio y CUIT válido para Factura A', () => {
+  assert.throws(
+    () => validateRecipientFields({
+      payer: 'Empresa sin domicilio',
+      payerAddress: '',
+      vatConditionId: 1,
+      identificationType: 'CUIT',
+      identificationNumber: '30712345679'
+    }),
+    /Domicilio Comercial/
+  );
+  assert.throws(
+    () => validateRecipientFields({
+      payer: 'Empresa con CUIT inválido',
+      payerAddress: 'Calle 123',
+      vatConditionId: 1,
+      identificationType: 'CUIT',
+      identificationNumber: '123'
+    }),
+    /CUIT válido/
+  );
 });

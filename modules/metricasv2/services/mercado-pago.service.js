@@ -16,12 +16,40 @@ function validateManualInvoiceFields(payload) {
   const identificationNumber = String(payload.identificationNumber || '').replace(/\D/g, '');
   const amount = Number(payload.amount);
   const payer = String(payload.payer || '').trim();
+  const payerAddress = String(payload.payerAddress || '').trim();
   const description = String(payload.description || '').trim();
   if (!expectedInvoiceType) throw Object.assign(new Error('Elegí Consumidor Final, Monotributo o Responsable Inscripto'), { statusCode: 400 });
   if (invoiceType !== expectedInvoiceType) throw Object.assign(new Error(`${vatConditionId === 5 ? 'Consumidor Final requiere Factura B' : 'Monotributo y Responsable Inscripto requieren Factura A'}`), { statusCode: 400 });
-  if (!payer || !description || !Number.isFinite(amount) || amount <= 0) throw Object.assign(new Error('Completá receptor, concepto e importe'), { statusCode: 400 });
+  if (!payer || !payerAddress || !description || !Number.isFinite(amount) || amount <= 0) throw Object.assign(new Error('Completá receptor, domicilio comercial, concepto e importe'), { statusCode: 400 });
   if (expectedInvoiceType === 'A' && (identificationType !== 'CUIT' || identificationNumber.length !== 11)) throw Object.assign(new Error('Factura A requiere un CUIT válido'), { statusCode: 400 });
-  return { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, description };
+  return { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, payerAddress, description };
+}
+
+function validateRecipientFields(payload, invoiced = false) {
+  const payer = String(payload.payer || '').trim();
+  const payerAddress = String(payload.payerAddress || '').trim();
+  if (!payer || !payerAddress) {
+    throw Object.assign(new Error('Completá Apellido y Nombre / Razón Social y Domicilio Comercial'), { statusCode: 400 });
+  }
+  if (invoiced) return { payer, payerAddress };
+
+  const vatConditionId = Number(payload.vatConditionId);
+  const identificationType = String(payload.identificationType || '').toUpperCase();
+  const identificationNumber = String(payload.identificationNumber || '').replace(/\D/g, '');
+  if (![1, 5, 6].includes(vatConditionId)) {
+    throw Object.assign(new Error('Elegí Consumidor Final, Monotributo o Responsable Inscripto'), { statusCode: 400 });
+  }
+  if ([1, 6].includes(vatConditionId) && (identificationType !== 'CUIT' || identificationNumber.length !== 11)) {
+    throw Object.assign(new Error('Monotributo y Responsable Inscripto requieren un CUIT válido'), { statusCode: 400 });
+  }
+  return {
+    payer,
+    payerAddress,
+    vatConditionId,
+    identificationType,
+    identificationNumber,
+    requestedInvoiceType: vatConditionId === 5 ? 'B' : 'A'
+  };
 }
 
 function supabaseHeaders(extra = {}) {
@@ -91,12 +119,12 @@ async function getStoredWorkflowRecords(month, requestedStatus) {
 }
 
 async function createManualInvoiceRecord(payload, user) {
-  const { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, description } = validateManualInvoiceFields(payload);
+  const { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, payerAddress, description } = validateManualInvoiceFields(payload);
   const now = new Date();
   const id = `manual-${require('crypto').randomUUID()}`;
   const snapshot = {
     kind: 'manual', id, source: 'manual', date: now.toISOString(), createdAt: now.toISOString(),
-    description, externalReference: 'Carga manual', payer,
+    description, externalReference: 'Carga manual', payer, payerAddress,
     payerEmail: String(payload.email || '').trim(), identificationType, identificationNumber,
     amount, currency: 'ARS', status: 'manual', paymentMethod: String(payload.paymentMethod || 'Manual').trim(),
     requestedInvoiceType: invoiceType, vatConditionId
@@ -113,8 +141,8 @@ async function updateManualInvoiceRecord(id, payload) {
   const current = await axios.get(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, { headers: supabaseHeaders(), params: { select: '*', record_kind: 'eq.manual', record_id: `eq.${id}`, status: 'eq.reconciled', limit: 1 } });
   const row = current.data?.[0];
   if (!row) throw Object.assign(new Error('La carga manual no existe o ya fue facturada'), { statusCode: 409 });
-  const { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, description } = validateManualInvoiceFields(payload);
-  const snapshot = { ...row.record_snapshot, payer, payerEmail: String(payload.email || '').trim(), description, identificationType, identificationNumber, amount, paymentMethod: String(payload.paymentMethod || 'Manual').trim(), requestedInvoiceType: invoiceType, vatConditionId };
+  const { vatConditionId, invoiceType, identificationType, identificationNumber, amount, payer, payerAddress, description } = validateManualInvoiceFields(payload);
+  const snapshot = { ...row.record_snapshot, payer, payerAddress, payerEmail: String(payload.email || '').trim(), description, identificationType, identificationNumber, amount, paymentMethod: String(payload.paymentMethod || 'Manual').trim(), requestedInvoiceType: invoiceType, vatConditionId };
   await axios.patch(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, { record_snapshot: snapshot, updated_at: new Date().toISOString() }, { headers: supabaseHeaders({ Prefer: 'return=minimal' }), params: { record_kind: 'eq.manual', record_id: `eq.${id}`, status: 'eq.reconciled' } });
   return snapshot;
 }
@@ -123,6 +151,40 @@ async function deleteManualInvoiceRecord(id) {
   const response = await axios.delete(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, { headers: supabaseHeaders({ Prefer: 'return=representation' }), params: { record_kind: 'eq.manual', record_id: `eq.${id}`, status: 'eq.reconciled' } });
   if (!response.data?.length) throw Object.assign(new Error('La carga manual no existe o ya fue facturada'), { statusCode: 409 });
   return { deleted: true };
+}
+
+async function updateInvoiceRecipient(kind, id, payload) {
+  const recordKind = String(kind || '').trim();
+  const recordId = String(id || '').trim();
+  if (!['payment', 'subscription', 'manual'].includes(recordKind) || !recordId) {
+    throw Object.assign(new Error('Registro inválido'), { statusCode: 400 });
+  }
+  const current = await axios.get(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, {
+    headers: supabaseHeaders(),
+    params: { select: '*', record_kind: `eq.${recordKind}`, record_id: `eq.${recordId}`, limit: 1 }
+  });
+  const row = current.data?.[0];
+  if (!row || !['reconciled', 'invoiced'].includes(row.status)) {
+    throw Object.assign(new Error('Los datos fiscales solo se pueden completar en registros conciliados o facturados'), { statusCode: 409 });
+  }
+  const fields = validateRecipientFields(payload, row.status === 'invoiced');
+  const recordSnapshot = { ...(row.record_snapshot || {}), ...fields };
+  const body = {
+    record_snapshot: recordSnapshot,
+    updated_at: new Date().toISOString()
+  };
+  if (row.status === 'invoiced') {
+    body.arca_response = {
+      ...(row.arca_response || {}),
+      recipientName: fields.payer,
+      recipientAddress: fields.payerAddress
+    };
+  }
+  await axios.patch(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, body, {
+    headers: supabaseHeaders({ Prefer: 'return=minimal' }),
+    params: { record_kind: `eq.${recordKind}`, record_id: `eq.${recordId}` }
+  });
+  return recordSnapshot;
 }
 
 async function getInvoiceRecord(kind, id) {
@@ -364,8 +426,20 @@ function paymentClubFields(payment) {
   ];
 }
 
+function payerAddress(payer = {}) {
+  const address = payer.address || {};
+  const street = [address.street_name, address.street_number].filter(Boolean).join(' ').trim();
+  return [street, address.zip_code].filter(Boolean).join(' - ');
+}
+
 function mapPayment(payment) {
   const identification = payment.payer?.identification || payment.additional_info?.payer?.identification || {};
+  const payer = {
+    ...(payment.payer || {}),
+    ...(payment.additional_info?.payer || {}),
+    address: payment.additional_info?.payer?.address || payment.payer?.address || {}
+  };
+  const payerName = [payer.first_name, payer.last_name].filter(Boolean).join(' ').trim();
   return {
     kind: 'payment',
     id: String(payment.id || ''),
@@ -373,7 +447,9 @@ function mapPayment(payment) {
     createdAt: payment.date_created || null,
     description: payment.description || payment.additional_info?.items?.[0]?.title || 'Pago',
     externalReference: payment.external_reference || '',
-    payer: payment.payer?.email || [payment.payer?.first_name, payment.payer?.last_name].filter(Boolean).join(' ') || '',
+    payer: payerName || payment.payer?.email || '',
+    payerEmail: payment.payer?.email || '',
+    payerAddress: payerAddress(payer),
     identificationType: identification.type || '',
     identificationNumber: identification.number || '',
     amount: Number(payment.transaction_amount || 0),
@@ -386,6 +462,7 @@ function mapPayment(payment) {
 }
 
 function mapSubscription(subscription) {
+  const payer = subscription.payer || {};
   return {
     kind: 'subscription',
     id: String(subscription.id || ''),
@@ -393,7 +470,9 @@ function mapSubscription(subscription) {
     createdAt: subscription.date_created || null,
     description: subscription.reason || 'Suscripción',
     externalReference: subscription.external_reference || '',
-    payer: subscription.payer_email || String(subscription.payer_id || ''),
+    payer: [payer.first_name, payer.last_name].filter(Boolean).join(' ').trim() || subscription.payer_email || String(subscription.payer_id || ''),
+    payerEmail: subscription.payer_email || '',
+    payerAddress: payerAddress(payer),
     identificationType: subscription.payer?.identification?.type || '',
     identificationNumber: subscription.payer?.identification?.number || '',
     amount: Number(subscription.auto_recurring?.transaction_amount || 0),
@@ -475,4 +554,4 @@ async function getClubRecords(month) {
   }
 }
 
-module.exports = { getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote };
+module.exports = { getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, updateInvoiceRecipient, validateRecipientFields, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote };
