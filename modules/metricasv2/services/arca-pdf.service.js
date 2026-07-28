@@ -147,8 +147,8 @@ async function createInvoicePdf(row) {
   doc.font('Helvetica').text(String(documentNumber), 92, 306, { width: 175 });
   doc.font('Helvetica-Bold').text('Condición IVA:', 300, 306);
   doc.font('Helvetica').text(arca.vatCondition || 'Consumidor Final', 380, 306, { width: 160 });
-  doc.font('Helvetica-Bold').text('Condición de venta:', 52, 332);
-  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 150, 332, { width: 370 });
+  doc.font('Helvetica-Bold').text('Condición de venta:', 300, 332);
+  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 395, 332, { width: 145 });
 
   doc.rect(40, 374, 515, 34).fill('#00112f');
   doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
