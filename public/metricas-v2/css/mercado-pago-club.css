@@ -48,6 +48,27 @@ table { width: 100%; border-collapse: collapse; min-width: 1050px; }
 th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #edf1f6; font-size: 13px; vertical-align: top; }
 th { background: #f9fbfd; color: #65758b; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
 td small { display: block; color: #8793a4; margin-top: 4px; max-width: 300px; }
+.records-table.compact { min-width: 100%; table-layout: fixed; }
+.records-table.compact th, .records-table.compact td { padding: 10px 8px; font-size: 11.5px; overflow-wrap: anywhere; }
+.records-table.compact th { font-size: 9.5px; letter-spacing: .035em; }
+.records-table.compact td small { max-width: none; font-size: 10px; line-height: 1.35; }
+.records-table.compact th:nth-child(1) { width: 3%; }
+.records-table.compact th:nth-child(2) { width: 7%; }
+.records-table.compact th:nth-child(3) { width: 6%; }
+.records-table.compact th:nth-child(4) { width: 17%; }
+.records-table.compact th:nth-child(5) { width: 10%; }
+.records-table.compact th:nth-child(6) { width: 9%; }
+.records-table.compact th:nth-child(7) { width: 15%; }
+.records-table.compact th:nth-child(8) { width: 6%; }
+.records-table.compact th:nth-child(9) { width: 6%; }
+.records-table.compact th:nth-child(10) { width: 8%; }
+.records-table.compact th:nth-child(11) { width: 6%; }
+.records-table.compact th:nth-child(12) { width: 7%; }
+.records-table.compact .row-actions { min-width: 0; }
+.records-table.compact .row-actions button { width: 100%; padding: 6px 7px; font-size: 10px; white-space: normal; }
+.records-table.compact .workflow-state { padding: 4px 7px; font-size: 10px; }
+.records-table.compact .invoice-link { margin-top: 5px; font-size: 10.5px; }
+.records-table.compact code { font-size: 9.5px; overflow-wrap: anywhere; }
 .type, .state { display: inline-flex; border-radius: 99px; padding: 5px 9px; background: #eef3f8; font-weight: 700; font-size: 11px; }
 .type.payment { color: #0558ad; background: #e4f1ff; }.type.subscription { color: #73510b; background: #fff1c9; }
 .type.manual { color: #6b3ab0; background: #eee5ff; }

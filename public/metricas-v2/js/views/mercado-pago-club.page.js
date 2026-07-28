@@ -5,6 +5,7 @@ const summaryNode = document.querySelector('#summary');
 const rowsNode = document.querySelector('#rows');
 const countNode = document.querySelector('#count');
 const emptyNode = document.querySelector('#empty');
+const recordsTableNode = document.querySelector('#recordsTable');
 const selectedCountNode = document.querySelector('#selectedCount');
 const reconcileButton = document.querySelector('#reconcileSelected');
 const invoiceButton = document.querySelector('#invoiceSelected');
@@ -193,6 +194,7 @@ function showInvoicePreview(records) {
 
 function renderRecords() {
   const records = allRecords.filter((row) => row.workflowStatus === activeWorkflow);
+  recordsTableNode.classList.toggle('compact', activeWorkflow === 'invoiced');
   countNode.textContent = `${records.length} resultado${records.length === 1 ? '' : 's'}`;
   emptyNode.hidden = records.length > 0;
   selectAllNode.checked = records.length > 0 && records.every((row) => selectedKeys.has(recordKey(row)));
