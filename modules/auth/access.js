@@ -251,6 +251,8 @@ function canAccessCommissionsForUser(userOrEmail) {
 }
 
 function canAccessAdministrationForUser(userOrEmail) {
+  const configValue = getConfigBoolean(userOrEmail, 'canAccessAdministration');
+  if (configValue !== null) return configValue;
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
