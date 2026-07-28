@@ -139,16 +139,16 @@ async function createInvoicePdf(row) {
   );
 
   doc.rect(40, 242, 515, 116).stroke('#26344a');
-  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(8).text('Apellido y Nombre / Razón Social:', 52, 255);
-  doc.font('Helvetica').text(recipientName, 205, 255, { width: 335 });
-  doc.font('Helvetica-Bold').text('Domicilio Comercial:', 52, 280);
-  doc.font('Helvetica').text(recipientAddress, 150, 280, { width: 390 });
-  doc.font('Helvetica-Bold').text(`${documentType}:`, 52, 306);
-  doc.font('Helvetica').text(String(documentNumber), 92, 306, { width: 175 });
-  doc.font('Helvetica-Bold').text('Condición IVA:', 300, 306);
-  doc.font('Helvetica').text(arca.vatCondition || 'Consumidor Final', 380, 306, { width: 160 });
-  doc.font('Helvetica-Bold').text('Condición de venta:', 300, 332);
-  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 395, 332, { width: 145 });
+  doc.fillColor('#00112f').font('Helvetica-Bold').fontSize(8).text('Apellido y Nombre / Razón Social:', 52, 253, { width: 225 });
+  doc.font('Helvetica').text(recipientName, 52, 265, { width: 225 });
+  doc.font('Helvetica-Bold').text('Domicilio Comercial:', 52, 287, { width: 225 });
+  doc.font('Helvetica').text(recipientAddress, 52, 299, { width: 225 });
+  doc.font('Helvetica-Bold').text(`${documentType}:`, 52, 327);
+  doc.font('Helvetica').text(String(documentNumber), 92, 327, { width: 175 });
+  doc.font('Helvetica-Bold').text('Condición IVA:', 300, 253, { width: 240 });
+  doc.font('Helvetica').text(arca.vatCondition || 'Consumidor Final', 300, 265, { width: 240 });
+  doc.font('Helvetica-Bold').text('Condición de venta:', 300, 287, { width: 240 });
+  doc.font('Helvetica').text(record.paymentMethod || 'Mercado Pago', 300, 299, { width: 240 });
 
   doc.rect(40, 374, 515, 34).fill('#00112f');
   doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
