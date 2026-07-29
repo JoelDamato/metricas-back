@@ -83,7 +83,14 @@ function closeInvoicePreview() {
   document.querySelector('#invoicePreview')?.remove();
 }
 
-async function openResolvedInvoicePreview(records) {
+function isPadronAuthorizationError(message) {
+  const text = String(message || '');
+  return /consulta automática al Padrón de ARCA no está autorizada/i.test(text)
+    || /ws_sr_constancia_inscripcion/i.test(text);
+}
+
+async function openResolvedInvoicePreview(records, options = {}) {
+  const allowManualFallback = options.allowManualFallback !== false;
   invoiceButton.disabled = true;
   statusNode.textContent = 'Validando condición fiscal en ARCA…';
   try {
@@ -98,6 +105,13 @@ async function openResolvedInvoicePreview(records) {
     showInvoicePreview(data.previews || []);
     statusNode.textContent = 'Condición fiscal validada; revisá la previsualización antes de emitir';
   } catch (error) {
+    if (allowManualFallback && isPadronAuthorizationError(error.message)) {
+      const completedRecords = await completeRecipientData(records);
+      if (completedRecords) {
+        return openResolvedInvoicePreview(completedRecords, { allowManualFallback: false });
+      }
+      return null;
+    }
     statusNode.textContent = error.message;
     window.alert(error.message);
   } finally {
@@ -358,8 +372,7 @@ reconcileButton.addEventListener('click', async () => {
 invoiceButton.addEventListener('click', async () => {
   const records = allRecords.filter((row) => selectedKeys.has(recordKey(row)) && row.workflowStatus === 'reconciled');
   if (!records.length) return;
-  const completedRecords = await completeRecipientData(records);
-  if (completedRecords) await openResolvedInvoicePreview(completedRecords);
+  await openResolvedInvoicePreview(records);
 });
 
 function recipientDataIsIncomplete(row) {

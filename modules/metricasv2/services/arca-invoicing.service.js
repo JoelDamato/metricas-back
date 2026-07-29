@@ -94,6 +94,9 @@ function consumerFinalRecipient(record = {}, raw = '') {
 function manualRecipient(record, raw) {
   const vatConditionId = Number(record.vatConditionId);
   if (![1, 5, 6].includes(vatConditionId)) return null;
+  const hasCompleteRecipientData = String(record.payer || '').trim()
+    && String(record.payerAddress || '').trim();
+  if (record.source !== 'manual' && !hasCompleteRecipientData) return null;
   const requestedInvoiceType = String(record.requestedInvoiceType || '').toUpperCase();
   if (vatConditionId === CONSUMIDOR_FINAL) {
     if (requestedInvoiceType && requestedInvoiceType !== 'B') throw new Error('Consumidor Final requiere Factura B');
