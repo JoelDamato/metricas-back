@@ -355,12 +355,15 @@
 	    /* OPERATIONAL ALERTS */
 	    .ops-alert-shell{border:1px solid #1e2d45;border-radius:16px;overflow:hidden;background:#0a0f1e;color:#e2e8f0;box-shadow:0 18px 42px rgba(0,0,0,.22);}
 	    .ops-alert-head{padding:24px 26px;background:radial-gradient(circle at 90% 10%,rgba(75,142,245,.16),transparent 34%),linear-gradient(135deg,#0d1b3e,#0a0f1e 62%);border-bottom:1px solid #1e2d45;display:flex;justify-content:space-between;gap:20px;align-items:flex-start;}
-	    .ops-alert-head h2{font-size:24px;letter-spacing:-.02em;margin-bottom:5px;}
+	    .ops-alert-shell .ops-alert-head h2{font-size:24px;letter-spacing:-.02em;margin-bottom:5px;color:#f3f6ff!important;}
 	    .ops-alert-head p{font-size:12px;line-height:1.55;color:#aab5d6;max-width:650px;}
 	    .ops-alert-live{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.26);color:#ff9d9d;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
 	    .ops-alert-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#f87171;box-shadow:0 0 12px rgba(248,113,113,.7);}
 	    .ops-alert-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 18px;background:#111827;border-bottom:1px solid #1e2d45;}
 	    .ops-alert-pills,.ops-alert-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+	    .ops-alert-period{display:flex;align-items:center;gap:6px;padding-right:4px;}
+	    .ops-alert-period label{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#8390b2;}
+	    .ops-alert-period select{height:31px;border:1px solid #1e2d45;border-radius:8px;background:#1a2336;color:#dce5f8;padding:0 8px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:800;outline:none;}
 	    .ops-alert-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;font-weight:800;border:1px solid #1e2d45;color:#c7d0e8;background:rgba(255,255,255,.025);}
 	    .ops-alert-pill.high{color:#ff9d9d;border-color:rgba(248,113,113,.28);background:rgba(248,113,113,.1);}
 	    .ops-alert-pill.medium{color:#ffc36c;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.1);}
@@ -385,7 +388,8 @@
 	    .ops-alert-severity{padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#ff9d9d;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.24);}
 	    .ops-alert-card.medium .ops-alert-severity{color:#ffc36c;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.24);}
 	    .ops-alert-rows{display:flex;flex-direction:column;gap:6px;}
-	    .ops-alert-row{display:grid;grid-template-columns:27px minmax(110px,1fr) 64px auto;gap:8px;align-items:center;padding:7px 9px;border-radius:8px;background:#1a2336;}
+	    .ops-alert-row{width:100%;display:grid;grid-template-columns:27px minmax(110px,1fr) 64px auto 15px;gap:8px;align-items:center;padding:7px 9px;border:1px solid transparent;border-radius:8px;background:#1a2336;color:#e2e8f0;text-align:left;font-family:inherit;cursor:pointer;transition:border-color .15s ease,transform .15s ease,background .15s ease;}
+	    .ops-alert-row:hover,.ops-alert-row:focus-visible{border-color:rgba(75,142,245,.48);background:#202c43;transform:translateY(-1px);outline:none;}
 	    .ops-alert-avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#26324a;font-size:9px;font-weight:900;color:#c8d2ec;}
 	    .ops-alert-person{min-width:0;}
 	    .ops-alert-person strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -395,15 +399,38 @@
 	    .ops-alert-card.medium .ops-alert-bar span{background:#f59e0b;}
 	    .ops-alert-value{font-family:'DM Mono',monospace;font-size:10px;font-weight:900;color:#ff9d9d;white-space:nowrap;}
 	    .ops-alert-card.medium .ops-alert-value{color:#ffc36c;}
+	    .ops-alert-open{color:#7381a5;font-size:15px;font-weight:900;text-align:right;}
 	    .ops-alert-threshold{display:flex;justify-content:space-between;gap:10px;margin-top:10px;padding:7px 9px;border:1px solid rgba(126,137,175,.16);border-radius:8px;font-size:9px;color:#8996b9;}
 	    .ops-alert-threshold strong{color:#c7d0e8;font-family:'DM Mono',monospace;}
 	    .ops-alert-reading{padding:10px 16px 13px;border-top:1px solid rgba(126,137,175,.13);font-size:10px;line-height:1.5;color:#8e9abc;}
 	    .ops-alert-empty{grid-column:1/-1;text-align:center;padding:48px 20px;color:#8e9abc;font-size:12px;}
 	    .ops-alert-empty strong{display:block;color:#63ebc0;font-size:17px;margin-bottom:6px;}
+	    .ops-case-modal{position:fixed;inset:0;z-index:10040;display:grid;place-items:center;padding:20px;background:rgba(3,7,18,.78);backdrop-filter:blur(8px);}
+	    .ops-case-card{width:min(1120px,96vw);max-height:min(820px,92vh);display:flex;flex-direction:column;border:1px solid #283955;border-radius:16px;overflow:hidden;background:#0f1728;color:#e2e8f0;box-shadow:0 30px 90px rgba(0,0,0,.55);}
+	    .ops-case-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:19px 21px;border-bottom:1px solid #23314a;background:linear-gradient(135deg,#12213f,#0f1728);}
+	    .ops-case-card .ops-case-head h3{font-size:18px;margin-bottom:5px;color:#f6f8ff!important;}
+	    .ops-case-head p{font-size:11px;color:#95a3c4;line-height:1.5;}
+	    .ops-case-close{width:34px;height:34px;border:1px solid #31415e;border-radius:9px;background:#19243a;color:#dfe7f8;font-size:20px;cursor:pointer;flex-shrink:0;}
+	    .ops-case-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid #23314a;background:#111b2d;}
+	    .ops-case-tools input{width:min(360px,100%);height:34px;border:1px solid #2a3955;border-radius:8px;background:#0b1322;color:#e4e9f6;padding:0 11px;font-size:11px;outline:none;}
+	    .ops-case-count{font-family:'DM Mono',monospace;font-size:10px;color:#9aa8ca;}
+	    .ops-case-table-wrap{overflow:auto;}
+	    .ops-case-table{width:100%;border-collapse:collapse;min-width:760px;}
+	    .ops-case-table th{position:sticky;top:0;z-index:1;padding:10px 12px;background:#182338;color:#91a0c3;font-size:9px;text-align:left;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+	    .ops-case-table td{padding:10px 12px;border-bottom:1px solid rgba(126,137,175,.13);font-size:11px;color:#d8e0f2;vertical-align:top;}
+	    .ops-case-table tr:hover td{background:rgba(75,142,245,.055);}
+	    .ops-case-contact{color:#8fc0ff;text-decoration:none;font-weight:800;}
+	    .ops-case-contact:hover{text-decoration:underline;color:#b8d8ff;}
+	    .ops-case-table .mono{font-size:10px;}
+	    .ops-case-status{display:inline-flex;padding:4px 7px;border-radius:999px;border:1px solid #34425d;background:#1c2940;color:#c8d3ec;font-size:9px;font-weight:800;white-space:nowrap;}
+	    .ops-case-status.bad{border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#ffaaaa;}
+	    .ops-case-status.good{border-color:rgba(45,212,160,.3);background:rgba(45,212,160,.1);color:#7eefd0;}
+	    .ops-case-empty{padding:42px 20px;text-align:center;color:#8f9cbd;font-size:12px;}
 	    @media(max-width:700px){
 	      .ops-alert-head{padding:20px;flex-direction:column;}
 	      .ops-alert-grid{grid-template-columns:1fr;padding:12px;}
-	      .ops-alert-row{grid-template-columns:27px minmax(90px,1fr) 48px auto;}
+	      .ops-alert-row{grid-template-columns:27px minmax(90px,1fr) 48px auto 12px;}
+	      .ops-alert-period{width:100%;}
 	    }
 
 	    /* RULES */
@@ -537,6 +564,16 @@
         <span id="ops-alert-people-count" class="ops-alert-pill">0 personas</span>
       </div>
       <div class="ops-alert-actions">
+        <div class="ops-alert-period">
+          <label for="ops-alert-month">Período</label>
+          <select id="ops-alert-month" onchange="handleAgendaAlertPeriodChange()">
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+          <select id="ops-alert-year" aria-label="Año de alertas" onchange="handleAgendaAlertPeriodChange()"></select>
+        </div>
         <button class="ops-alert-filter active" type="button" data-ops-filter="all" onclick="setAgendaAlertFilter('all',this)">Todos</button>
         <button class="ops-alert-filter" type="button" data-ops-filter="high" onclick="setAgendaAlertFilter('high',this)">Crítico</button>
         <button class="ops-alert-filter" type="button" data-ops-filter="medium" onclick="setAgendaAlertFilter('medium',this)">Medio</button>
@@ -2243,6 +2280,51 @@ function agendaAlertMonthEnd(year,month){
   return toDateKey(new Date(year,month,0));
 }
 
+function initAgendaOperationalAlertControls(){
+  const monthSelect=document.getElementById('ops-alert-month');
+  const yearSelect=document.getElementById('ops-alert-year');
+  if(!monthSelect || !yearSelect) return;
+  const now=new Date();
+  const currentYear=now.getFullYear();
+  yearSelect.innerHTML='';
+  for(let year=2025;year<=currentYear;year+=1){
+    const option=document.createElement('option');
+    option.value=String(year);
+    option.textContent=String(year);
+    yearSelect.appendChild(option);
+  }
+  yearSelect.value=String(currentYear);
+  monthSelect.value=String(now.getMonth()+1);
+  syncAgendaAlertAvailableMonths();
+}
+
+function syncAgendaAlertAvailableMonths(){
+  const monthSelect=document.getElementById('ops-alert-month');
+  const yearSelect=document.getElementById('ops-alert-year');
+  if(!monthSelect || !yearSelect) return;
+  const now=new Date();
+  const year=Number(yearSelect.value);
+  Array.from(monthSelect.options).forEach((option)=>{
+    option.disabled=year===now.getFullYear() && Number(option.value)>now.getMonth()+1;
+  });
+  if(monthSelect.selectedOptions[0]?.disabled){
+    monthSelect.value=String(now.getMonth()+1);
+  }
+}
+
+function getAgendaAlertPeriod(){
+  return {
+    year:Number(document.getElementById('ops-alert-year')?.value||new Date().getFullYear()),
+    month:Number(document.getElementById('ops-alert-month')?.value||new Date().getMonth()+1)
+  };
+}
+
+function handleAgendaAlertPeriodChange(){
+  syncAgendaAlertAvailableMonths();
+  closeAgendaAlertCases();
+  loadAgendaOperationalAlerts();
+}
+
 function setAgendaAlertMeta(message,tone=''){
   const meta=document.getElementById('ops-alert-meta');
   if(!meta) return;
@@ -2289,15 +2371,16 @@ function renderAgendaOperationalAlerts(){
         </div>
         <div class="ops-alert-rows">
           ${alert.affected.map((row)=>`
-            <div class="ops-alert-row">
+            <button class="ops-alert-row" type="button" data-alert-case="${escapeHTML(alert.id)}" data-alert-closer="${escapeHTML(normalizeText(row.name))}" title="Ver casos de ${escapeHTML(row.name)}">
               <div class="ops-alert-avatar">${escapeHTML(row.initials)}</div>
               <div class="ops-alert-person">
                 <strong>${escapeHTML(row.name)}</strong>
-                <span title="${escapeHTML(row.detail)}">${escapeHTML(row.detail)}</span>
+                <span title="${escapeHTML(row.detail)}">${escapeHTML(row.detail)} · ${row.cases.length} caso${row.cases.length===1?'':'s'}</span>
               </div>
               <div class="ops-alert-bar" aria-hidden="true"><span style="width:${Number(row.barPercent)||0}%"></span></div>
               <div class="ops-alert-value">${escapeHTML(row.value)}</div>
-            </div>
+              <div class="ops-alert-open" aria-hidden="true">›</div>
+            </button>
           `).join('')}
         </div>
         <div class="ops-alert-threshold"><span>Umbral de alerta</span><strong>${escapeHTML(alert.threshold)}</strong></div>
@@ -2305,6 +2388,10 @@ function renderAgendaOperationalAlerts(){
       <div class="ops-alert-reading"><strong>Lectura:</strong> ${escapeHTML(alert.reading)}</div>
     </article>
   `).join('');
+
+  grid.querySelectorAll('[data-alert-case]').forEach((button)=>{
+    button.addEventListener('click',()=>openAgendaAlertCases(button.dataset.alertCase,button.dataset.alertCloser));
+  });
 }
 
 function setAgendaAlertFilter(filter,button){
@@ -2314,13 +2401,137 @@ function setAgendaAlertFilter(filter,button){
   renderAgendaOperationalAlerts();
 }
 
+function formatAgendaAlertMoney(value){
+  return new Intl.NumberFormat('es-AR',{
+    style:'currency',
+    currency:'USD',
+    minimumFractionDigits:2,
+    maximumFractionDigits:2
+  }).format(Number(value||0));
+}
+
+function renderAgendaAlertContact(record){
+  const label=String(record?.client||'Sin nombre');
+  const url=window.metricasGhl?.buildContactUrl?.(record?.ghlid||'');
+  if(!url) return escapeHTML(label);
+  return `<a class="ops-case-contact" href="${escapeHTML(url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(label)}</a>`;
+}
+
+function agendaAlertCaseTable(alert,row){
+  const cases=row.cases||[];
+  if(!cases.length){
+    return '<div class="ops-case-empty">No hay registros individuales vinculables para este total consolidado.</div>';
+  }
+
+  const isCash=cases[0]?.kind==='cash';
+  const isClosure=cases[0]?.kind==='closure';
+  const headers=isCash
+    ? ['Cliente','Acreditación','Tipo','Producto','Cash','Estado']
+    : isClosure
+      ? ['Lead','Agenda','Origen','Setter','Resultado','Venta']
+      : ['Lead','Agenda','Origen','Setter','Aplica','Llamada'];
+
+  const rows=cases.map((record)=>{
+    if(isCash){
+      return `
+        <tr>
+          <td>${renderAgendaAlertContact(record)}</td>
+          <td class="mono">${escapeHTML(formatAgendaAlertDate(record.date))}</td>
+          <td>${escapeHTML(record.type||'-')}</td>
+          <td>${escapeHTML(record.product||'-')}</td>
+          <td class="mono">${escapeHTML(formatAgendaAlertMoney(record.amount))}</td>
+          <td><span class="ops-case-status">${escapeHTML(record.state||'-')}</span></td>
+        </tr>`;
+    }
+    if(isClosure){
+      const saleDetail=record.converted
+        ? `${formatAgendaAlertDate(record.saleDate)} · ${record.saleProduct||'Venta'} · ${formatAgendaAlertMoney(record.saleBilling)}`
+        : 'Sin venta vinculada';
+      return `
+        <tr>
+          <td>${renderAgendaAlertContact(record)}</td>
+          <td class="mono">${escapeHTML(formatAgendaAlertDate(record.date))}</td>
+          <td>${escapeHTML(record.origin||'-')}</td>
+          <td>${escapeHTML(record.setter||'-')}</td>
+          <td><span class="ops-case-status">${escapeHTML(record.callStatus||'Efectuada')}</span></td>
+          <td><span class="ops-case-status ${record.converted?'good':'bad'}">${escapeHTML(saleDetail)}</span></td>
+        </tr>`;
+    }
+    return `
+      <tr>
+        <td>${renderAgendaAlertContact(record)}</td>
+        <td class="mono">${escapeHTML(formatAgendaAlertDate(record.date))}</td>
+        <td>${escapeHTML(record.origin||'-')}</td>
+        <td>${escapeHTML(record.setter||'-')}</td>
+        <td><span class="ops-case-status ${normalizeText(record.applies)==='aplica'?'good':'bad'}">${escapeHTML(record.applies||'Vacío')}</span></td>
+        <td><span class="ops-case-status">${escapeHTML(record.callStatus||'Vacío')}</span></td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="ops-case-table-wrap">
+      <table class="ops-case-table">
+        <thead><tr>${headers.map((header)=>`<th>${escapeHTML(header)}</th>`).join('')}</tr></thead>
+        <tbody id="ops-case-tbody">${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function closeAgendaAlertCases(){
+  document.getElementById('ops-alert-case-modal')?.remove();
+}
+
+function openAgendaAlertCases(alertId,closerKey){
+  const result=agendaOperationalAlertState.result;
+  const alert=result?.alerts?.find((item)=>item.id===alertId);
+  const row=alert?.affected?.find((item)=>normalizeText(item.name)===closerKey);
+  if(!alert || !row) return;
+  closeAgendaAlertCases();
+
+  const modal=document.createElement('div');
+  modal.id='ops-alert-case-modal';
+  modal.className='ops-case-modal';
+  modal.innerHTML=`
+    <section class="ops-case-card" role="dialog" aria-modal="true" aria-labelledby="opsCaseTitle">
+      <header class="ops-case-head">
+        <div>
+          <h3 id="opsCaseTitle">${escapeHTML(alert.title)} · ${escapeHTML(row.name)}</h3>
+          <p>${escapeHTML(row.detail)} · Período ${MS[result.period.month]} ${result.period.year}. Hacé clic en el cliente para abrir su contacto en GHL.</p>
+        </div>
+        <button class="ops-case-close" type="button" aria-label="Cerrar">×</button>
+      </header>
+      <div class="ops-case-tools">
+        <input id="ops-case-search" type="search" placeholder="Buscar cliente, estado, origen o producto…" autocomplete="off">
+        <span id="ops-case-count" class="ops-case-count">${row.cases.length} caso${row.cases.length===1?'':'s'}</span>
+      </div>
+      ${agendaAlertCaseTable(alert,row)}
+    </section>`;
+  document.body.appendChild(modal);
+
+  const close=()=>closeAgendaAlertCases();
+  modal.querySelector('.ops-case-close')?.addEventListener('click',close);
+  modal.addEventListener('click',(event)=>{if(event.target===modal) close();});
+  const search=modal.querySelector('#ops-case-search');
+  search?.addEventListener('input',()=>{
+    const query=normalizeText(search.value);
+    let visible=0;
+    modal.querySelectorAll('#ops-case-tbody tr').forEach((tableRow)=>{
+      const matches=!query||normalizeText(tableRow.textContent).includes(query);
+      tableRow.hidden=!matches;
+      if(matches) visible+=1;
+    });
+    const count=modal.querySelector('#ops-case-count');
+    if(count) count.textContent=`${visible} de ${row.cases.length} casos`;
+  });
+}
+
 async function loadAgendaOperationalAlerts(){
   if(!window.metricasApi?.fetchAllRows || !window.agendaOperationalAlerts?.build){
     setAgendaAlertMeta('No se pudo inicializar el cálculo de alertas.','error');
     return;
   }
 
-  const {year,month}=getSelectedPeriod();
+  const {year,month}=getAgendaAlertPeriod();
   const refreshButton=document.getElementById('ops-alert-refresh');
   const loadId=agendaOperationalAlertState.loadId+1;
   agendaOperationalAlertState.loadId=loadId;
@@ -2331,12 +2542,21 @@ async function loadAgendaOperationalAlerts(){
   renderAgendaOperationalAlerts();
 
   try{
-    const [agendaResponse,cashResponse]=await Promise.all([
+    const [agendaResponse,leadResponse,cashResponse,saleResponse,rulesResponse]=await Promise.all([
       window.metricasApi.fetchAllRows('agenda_detalle_por_origen_closer',{
         eq_anio:year,
         eq_mes:month,
         limit:1000,
         select:'anio,mes,origen,closer,total_agendados,total_aplica,total_no_asistidas,total_pendientes,total_efectuadas,total_ventas'
+      }),
+      window.metricasApi.fetchAllRows('leads_raw',{
+        from:`${year}-${String(month).padStart(2,'0')}-01`,
+        to:agendaAlertMonthEnd(year,month),
+        dateField:'fecha_agenda',
+        orderBy:'fecha_agenda',
+        orderDir:'desc',
+        limit:1000,
+        select:'id,nombre,ghlid,mail,telefono,whatsapp,closer,setter,origen,fecha_agenda,fecha_llamada,agendo,aplica,llamada_meg,estrategia_a'
       }),
       window.metricasApi.fetchAllRows('comprobantes',{
         from:agendaAlertHistoryStart(year,month),
@@ -2345,12 +2565,22 @@ async function loadAgendaOperationalAlerts(){
         orderBy:'f_acreditacion',
         orderDir:'asc',
         limit:1000,
-        select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
-      })
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,tipo,producto_format,f_acreditacion,cash_collected,estado'
+      }),
+      window.metricasApi.fetchAllRows('comprobantes',{
+        from:`${year}-${String(month).padStart(2,'0')}-01`,
+        to:agendaAlertMonthEnd(year,month),
+        dateField:'fecha_de_agendamiento',
+        orderBy:'fecha_de_agendamiento',
+        orderDir:'desc',
+        limit:1000,
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,fecha_de_agendamiento,f_venta,tipo,producto_format,facturacion,cash_collected,estado'
+      }),
+      window.metricasApi.fetchAgendaBonusRules({anio:year,mes:month})
     ]);
 
     if(loadId!==agendaOperationalAlertState.loadId) return;
-    const config=getAgendaBonusConfig();
+    const config=rulesResponse?.rules||getLegacyWeeklyAgendaBonus(year,month);
     const result=window.agendaOperationalAlerts.build({
       year,
       month,
@@ -2358,11 +2588,13 @@ async function loadAgendaOperationalAlerts(){
       weeklyTarget:Number(config.objetivo_mensual||0),
       closerNames:closers.map((closer)=>closer.name),
       agendaRows:agendaResponse.rows||[],
-      cashRows:cashResponse.rows||[]
+      leadRows:leadResponse.rows||[],
+      cashRows:cashResponse.rows||[],
+      saleRows:saleResponse.rows||[]
     });
     agendaOperationalAlertState.result=result;
     setAgendaAlertMeta(
-      `Corte ${formatAgendaAlertDate(result.period.evaluationDate)} · Semana ${formatAgendaAlertDate(result.period.weekStart)} al ${formatAgendaAlertDate(result.period.weekEnd)} · ${agendaResponse.rows?.length||0} filas de agendas y ${cashResponse.rows?.length||0} movimientos de cash revisados.`
+      `Corte ${formatAgendaAlertDate(result.period.evaluationDate)} · Semana ${formatAgendaAlertDate(result.period.weekStart)} al ${formatAgendaAlertDate(result.period.weekEnd)} · ${leadResponse.rows?.length||0} leads, ${cashResponse.rows?.length||0} movimientos de cash y ${saleResponse.rows?.length||0} comprobantes revisados.`
     );
   }catch(error){
     console.error(error);
@@ -2485,6 +2717,7 @@ async function boot(){
 }
 syncCurrentPeriodDefaults();
 initStrikeCheckpointControls();
+initAgendaOperationalAlertControls();
 restoreAgendaActiveTab();
 boot();
 </script>

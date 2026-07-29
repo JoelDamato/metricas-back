@@ -80,6 +80,11 @@
     }).format(safeNumber(value));
   }
 
+  function isValidSaleProduct(value) {
+    const product = normalizeText(value);
+    return Boolean(product) && product !== 'empty' && !product.includes('club');
+  }
+
   function getEvaluationPeriod(year, month, todayValue) {
     const monthStart = new Date(year, month - 1, 1);
     const monthEnd = new Date(year, month, 0);
@@ -142,7 +147,10 @@
       ventas: 0,
       weekCash: 0,
       monthCash: 0,
-      historyCash: new Map()
+      historyCash: new Map(),
+      leadRecords: [],
+      cashRecords: [],
+      saleRecords: []
     };
   }
 
@@ -176,13 +184,66 @@
       closer.ventas += safeNumber(row?.total_ventas);
     });
 
+    (options.leadRows || []).forEach((row) => {
+      const agendaDate = dateKey(row?.fecha_agenda);
+      if (!agendaDate || agendaDate < period.monthStartKey || agendaDate > period.evaluationKey) return;
+      const closer = ensureCloser(row?.closer);
+      closer.leadRecords.push({
+        id: String(row?.id || ''),
+        client: String(row?.nombre || 'Sin nombre').trim() || 'Sin nombre',
+        ghlid: String(row?.ghlid || '').trim(),
+        email: String(row?.mail || '').trim(),
+        phone: String(row?.telefono || row?.whatsapp || '').trim(),
+        date: agendaDate,
+        callDate: dateKey(row?.fecha_llamada),
+        booked: String(row?.agendo || '').trim(),
+        applies: String(row?.aplica || '').trim(),
+        callStatus: String(row?.llamada_meg || '').trim(),
+        origin: String(row?.origen || '').trim(),
+        setter: String(row?.setter || '').trim(),
+        strategy: String(row?.estrategia_a || '').trim()
+      });
+    });
+
+    (options.saleRows || []).forEach((row) => {
+      if (normalizeText(row?.tipo) !== 'venta' || !isValidSaleProduct(row?.producto_format)) return;
+      const agendaDate = dateKey(row?.fecha_de_agendamiento);
+      if (!agendaDate || agendaDate < period.monthStartKey || agendaDate > period.evaluationKey) return;
+      const closer = ensureCloser(row?.responsable_venta || row?.creado_por || row?.closer);
+      closer.saleRecords.push({
+        id: String(row?.id || ''),
+        client: String(row?.cliente_format || row?.cliente || 'Sin nombre').trim() || 'Sin nombre',
+        ghlid: String(row?.ghlid || '').trim(),
+        date: agendaDate,
+        saleDate: dateKey(row?.f_venta),
+        product: String(row?.producto_format || '').trim(),
+        state: String(row?.estado || '').trim(),
+        billing: safeNumber(row?.facturacion),
+        cash: safeNumber(row?.cash_collected)
+      });
+    });
+
     (options.cashRows || []).forEach((row) => {
       if (normalizeText(row?.producto_format).includes('club')) return;
+      const cashType = normalizeText(row?.tipo);
+      if (cashType && !['venta', 'cobranza'].includes(cashType)) return;
       const cash = safeNumber(row?.cash_collected);
       const acreditacion = dateKey(row?.f_acreditacion);
       if (cash <= 0 || !acreditacion) return;
       const closer = ensureCloser(row?.responsable_venta || row?.creado_por || row?.closer);
       const cashMonthKey = acreditacion.slice(0, 7);
+      if (cashMonthKey === selectedMonthKey || historyKeys.includes(cashMonthKey)) {
+        closer.cashRecords.push({
+          id: String(row?.id || ''),
+          client: String(row?.cliente_format || row?.cliente || 'Sin nombre').trim() || 'Sin nombre',
+          ghlid: String(row?.ghlid || '').trim(),
+          date: acreditacion,
+          amount: cash,
+          type: String(row?.tipo || '').trim(),
+          product: String(row?.producto_format || '').trim(),
+          state: String(row?.estado || '').trim()
+        });
+      }
       if (cashMonthKey === selectedMonthKey && acreditacion <= period.evaluationKey) {
         closer.monthCash += cash;
         if (acreditacion >= period.weekStartKey && acreditacion <= period.weekEndKey) {
@@ -230,6 +291,48 @@
       };
     });
 
+    function leadCases(closer, predicate, extra = () => ({})) {
+      return closer.leadRecords
+        .filter(predicate)
+        .map((record) => ({
+          kind: 'lead',
+          ...record,
+          ...extra(record, closer)
+        }))
+        .sort((left, right) => right.date.localeCompare(left.date) || left.client.localeCompare(right.client, 'es'));
+    }
+
+    function cashCases(closer, predicate) {
+      return closer.cashRecords
+        .filter(predicate)
+        .map((record) => ({ kind: 'cash', ...record }))
+        .sort((left, right) => right.date.localeCompare(left.date) || left.client.localeCompare(right.client, 'es'));
+    }
+
+    function closureCases(closer) {
+      const salesByGhlid = new Map(
+        closer.saleRecords
+          .filter((record) => record.ghlid)
+          .map((record) => [record.ghlid, record])
+      );
+      return leadCases(
+        closer,
+        (record) => normalizeText(record.booked) === 'agendo'
+          && normalizeText(record.applies) === 'aplica'
+          && normalizeText(record.callStatus) === 'efectuada',
+        (record) => {
+          const sale = record.ghlid ? salesByGhlid.get(record.ghlid) : null;
+          return {
+            kind: 'closure',
+            converted: Boolean(sale),
+            saleDate: sale?.saleDate || '',
+            saleProduct: sale?.product || '',
+            saleBilling: sale?.billing || 0
+          };
+        }
+      );
+    }
+
     const definitions = [
       {
         id: 'no-aplica',
@@ -241,7 +344,11 @@
         check: (closer) => closer.noAplica !== null && closer.noAplica > 0.40,
         value: (closer) => percent(closer.noAplica),
         detail: (closer) => `${Math.max(closer.agendados - closer.aplica, 0)} de ${closer.agendados} agendas`,
-        bar: (closer) => clamp(closer.noAplica / 0.80, 0, 1)
+        bar: (closer) => clamp(closer.noAplica / 0.80, 0, 1),
+        cases: (closer) => leadCases(
+          closer,
+          (record) => normalizeText(record.booked) === 'agendo' && normalizeText(record.applies) !== 'aplica'
+        )
       },
       {
         id: 'no-show',
@@ -253,7 +360,13 @@
         check: (closer) => closer.noShow !== null && closer.noShow > 0.25,
         value: (closer) => percent(closer.noShow),
         detail: (closer) => `${closer.noAsistidas} de ${closer.aplica} aplicables`,
-        bar: (closer) => clamp(closer.noShow / 0.60, 0, 1)
+        bar: (closer) => clamp(closer.noShow / 0.60, 0, 1),
+        cases: (closer) => leadCases(
+          closer,
+          (record) => normalizeText(record.booked) === 'agendo'
+            && normalizeText(record.applies) === 'aplica'
+            && normalizeText(record.callStatus) === 'no show'
+        )
       },
       {
         id: 'tasa-cierre',
@@ -265,7 +378,8 @@
         check: (closer) => closer.closeRate !== null && closer.closeRate < 0.20,
         value: (closer) => percent(closer.closeRate),
         detail: (closer) => `${closer.ventas} ventas de ${closer.efectuadas} efectuadas`,
-        bar: (closer) => clamp(closer.closeRate / 0.20, 0, 1)
+        bar: (closer) => clamp(closer.closeRate / 0.20, 0, 1),
+        cases: closureCases
       },
       {
         id: 'cash-semana',
@@ -277,7 +391,11 @@
         check: (closer) => closer.active && closer.weekShare !== null && closer.weekShare < 0.10,
         value: (closer) => percent(closer.weekShare),
         detail: (closer) => `${money(closer.weekCash)} de ${money(teamWeekCash)}`,
-        bar: (closer) => clamp(closer.weekShare / 0.10, 0, 1)
+        bar: (closer) => clamp(closer.weekShare / 0.10, 0, 1),
+        cases: (closer) => cashCases(
+          closer,
+          (record) => record.date >= period.weekStartKey && record.date <= period.evaluationKey
+        )
       },
       {
         id: 'pendientes',
@@ -289,7 +407,13 @@
         check: (closer) => closer.pendientes > 3,
         value: (closer) => `${closer.pendientes} pend.`,
         detail: () => 'Pendientes del mes seleccionado',
-        bar: (closer) => clamp(closer.pendientes / 10, 0, 1)
+        bar: (closer) => clamp(closer.pendientes / 10, 0, 1),
+        cases: (closer) => leadCases(
+          closer,
+          (record) => normalizeText(record.booked) === 'agendo'
+            && normalizeText(record.applies) === 'aplica'
+            && ['', 'pendiente'].includes(normalizeText(record.callStatus))
+        )
       },
       {
         id: 'cash-mes',
@@ -301,7 +425,11 @@
         check: (closer) => closer.active && closer.monthTargetRatio !== null && closer.monthTargetRatio < 0.70,
         value: (closer) => percent(closer.monthTargetRatio),
         detail: (closer) => `${money(closer.monthCash)} de ${money(individualTargetToDate)}`,
-        bar: (closer) => clamp(closer.monthTargetRatio / 0.70, 0, 1)
+        bar: (closer) => clamp(closer.monthTargetRatio / 0.70, 0, 1),
+        cases: (closer) => cashCases(
+          closer,
+          (record) => record.date.slice(0, 7) === selectedMonthKey && record.date <= period.evaluationKey
+        )
       },
       {
         id: 'cash-trim',
@@ -316,7 +444,12 @@
           && closer.trimRatio < 0.70,
         value: (closer) => percent(closer.trimRatio),
         detail: (closer) => `Proyección ${money(closer.projectedMonthCash)} · promedio ${money(closer.historyAverage)}`,
-        bar: (closer) => clamp(closer.trimRatio / 0.70, 0, 1)
+        bar: (closer) => clamp(closer.trimRatio / 0.70, 0, 1),
+        cases: (closer) => cashCases(
+          closer,
+          (record) => historyKeys.includes(record.date.slice(0, 7))
+            || (record.date.slice(0, 7) === selectedMonthKey && record.date <= period.evaluationKey)
+        )
       }
     ];
 
@@ -335,7 +468,8 @@
           initials: closer.initials,
           value: definition.value(closer),
           detail: definition.detail(closer),
-          barPercent: Math.round(definition.bar(closer) * 100)
+          barPercent: Math.round(definition.bar(closer) * 100),
+          cases: definition.cases(closer)
         }))
     })).filter((alert) => alert.affected.length > 0);
 

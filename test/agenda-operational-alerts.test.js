@@ -20,10 +20,15 @@ function agendaRow(overrides = {}) {
 
 function cashRow(date, amount, closer = 'Mauro Gaitan') {
   return {
+    id: `${closer}-${date}-${amount}`,
+    cliente_format: `Cliente ${closer}`,
+    ghlid: `ghl-${closer}`,
     responsable_venta: closer,
     f_acreditacion: `${date}T03:00:00+00:00`,
     cash_collected: amount,
-    producto_format: ''
+    tipo: 'Venta',
+    producto_format: 'MEG',
+    estado: 'Conciliado'
   };
 }
 
@@ -105,4 +110,69 @@ test('prorratea el objetivo semanal por los días transcurridos del mes', () => 
   }, 7000);
 
   assert.equal(total, 7000);
+});
+
+test('adjunta los leads y comprobantes reales que explican cada alerta', () => {
+  const result = build({
+    year: 2026,
+    month: 7,
+    today: '2026-07-29',
+    weeklyTarget: 20000,
+    agendaRows: [agendaRow()],
+    leadRows: [
+      {
+        id: 'lead-no-show',
+        nombre: 'Lead No Show',
+        ghlid: 'ghl-no-show',
+        closer: 'Mauro Gaitan',
+        fecha_agenda: '2026-07-10',
+        agendo: 'Agendo',
+        aplica: 'Aplica',
+        llamada_meg: 'No show',
+        origen: 'VSL'
+      },
+      {
+        id: 'lead-efectuado',
+        nombre: 'Lead Vendido',
+        ghlid: 'ghl-vendido',
+        closer: 'Mauro Gaitan',
+        fecha_agenda: '2026-07-11',
+        agendo: 'Agendo',
+        aplica: 'Aplica',
+        llamada_meg: 'Efectuada',
+        origen: 'ORG'
+      }
+    ],
+    saleRows: [
+      {
+        id: 'venta-1',
+        cliente_format: 'Lead Vendido',
+        ghlid: 'ghl-vendido',
+        responsable_venta: 'Mauro Gaitan',
+        fecha_de_agendamiento: '2026-07-11',
+        f_venta: '2026-07-12',
+        tipo: 'Venta',
+        producto_format: 'MEG 2.1',
+        facturacion: 3000
+      }
+    ],
+    cashRows: [
+      cashRow('2026-07-28', 500),
+      cashRow('2026-04-10', 5000),
+      cashRow('2026-05-10', 5000),
+      cashRow('2026-06-10', 5000)
+    ]
+  });
+
+  const noShow = result.alerts.find((alert) => alert.id === 'no-show');
+  const closeRate = result.alerts.find((alert) => alert.id === 'tasa-cierre');
+  const monthCash = result.alerts.find((alert) => alert.id === 'cash-mes');
+
+  assert.equal(noShow.affected[0].cases[0].client, 'Lead No Show');
+  assert.equal(noShow.affected[0].cases[0].ghlid, 'ghl-no-show');
+  assert.equal(closeRate.affected[0].cases[0].kind, 'closure');
+  assert.equal(closeRate.affected[0].cases[0].converted, true);
+  assert.equal(closeRate.affected[0].cases[0].saleProduct, 'MEG 2.1');
+  assert.equal(monthCash.affected[0].cases.length, 1);
+  assert.equal(monthCash.affected[0].cases[0].amount, 500);
 });
