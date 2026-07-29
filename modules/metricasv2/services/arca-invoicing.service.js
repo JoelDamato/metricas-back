@@ -119,6 +119,10 @@ function manualRecipient(record, raw) {
   };
 }
 
+function buildPadronEnvelope(auth, documentNumber) {
+  return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><a5:getPersona_v2 xmlns:a5="http://a5.soap.ws.server.puc.sr/"><token>${xmlEscape(auth.token)}</token><sign>${xmlEscape(auth.sign)}</sign><cuitRepresentada>${CUIT}</cuitRepresentada><idPersona>${xmlEscape(documentNumber)}</idPersona></a5:getPersona_v2></soap:Body></soap:Envelope>`;
+}
+
 async function resolveRecipient(record) {
   const raw = String(record.identificationNumber || '').replace(/\D/g, '');
   const selectedRecipient = manualRecipient(record, raw);
@@ -135,7 +139,7 @@ async function resolveRecipient(record) {
     wrapped.cause = error;
     throw wrapped;
   }
-  const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><getPersona_v2 xmlns="http://a5.soap.ws.server.puc.sr/"><token>${xmlEscape(auth.token)}</token><sign>${xmlEscape(auth.sign)}</sign><cuitRepresentada>${CUIT}</cuitRepresentada><idPersona>${raw}</idPersona></getPersona_v2></soap:Body></soap:Envelope>`;
+  const envelope = buildPadronEnvelope(auth, raw);
   const response = await axios.post(PADRON_URL, envelope, { headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' }, timeout: 30000 });
   const descriptions = [...String(response.data).matchAll(/<(?:\w+:)?descripcionImpuesto[^>]*>(.*?)<\/(?:\w+:)?descripcionImpuesto>/gi)].map((match) => match[1].toUpperCase());
   const isMonotributo = descriptions.some((value) => value.includes('MONOTRIBUTO'));
@@ -250,4 +254,11 @@ function issueCreditNote(record, original) {
   return queued;
 }
 
-module.exports = { issueInvoice, issueCreditNote, previewInvoice, resolveRecipient, invoiceDates };
+module.exports = {
+  issueInvoice,
+  issueCreditNote,
+  previewInvoice,
+  resolveRecipient,
+  invoiceDates,
+  buildPadronEnvelope
+};

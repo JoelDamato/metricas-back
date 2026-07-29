@@ -7,7 +7,12 @@ const {
   buildClubInvoicePolicy,
   arcaAmountsXml
 } = require('../modules/metricasv2/services/club-invoice-policy.service');
-const { previewInvoice, resolveRecipient, invoiceDates } = require('../modules/metricasv2/services/arca-invoicing.service');
+const {
+  previewInvoice,
+  resolveRecipient,
+  invoiceDates,
+  buildPadronEnvelope
+} = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
@@ -176,4 +181,12 @@ test('datos fiscales exigen domicilio y CUIT válido para Factura A', () => {
     }),
     /CUIT válido/
   );
+});
+
+test('consulta de Padrón envía parámetros SOAP sin heredar el namespace del método', () => {
+  const xml = buildPadronEnvelope({ token: 'token-prueba', sign: 'firma-prueba' }, '27312950214');
+
+  assert.match(xml, /<a5:getPersona_v2 xmlns:a5="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/"><token>/);
+  assert.match(xml, /<idPersona>27312950214<\/idPersona><\/a5:getPersona_v2>/);
+  assert.doesNotMatch(xml, /<getPersona_v2 xmlns="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/">/);
 });
