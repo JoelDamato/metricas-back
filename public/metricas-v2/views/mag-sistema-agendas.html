@@ -352,6 +352,60 @@
 	      .strike-delete{justify-self:start;}
 	    }
 
+	    /* OPERATIONAL ALERTS */
+	    .ops-alert-shell{border:1px solid #1e2d45;border-radius:16px;overflow:hidden;background:#0a0f1e;color:#e2e8f0;box-shadow:0 18px 42px rgba(0,0,0,.22);}
+	    .ops-alert-head{padding:24px 26px;background:radial-gradient(circle at 90% 10%,rgba(75,142,245,.16),transparent 34%),linear-gradient(135deg,#0d1b3e,#0a0f1e 62%);border-bottom:1px solid #1e2d45;display:flex;justify-content:space-between;gap:20px;align-items:flex-start;}
+	    .ops-alert-head h2{font-size:24px;letter-spacing:-.02em;margin-bottom:5px;}
+	    .ops-alert-head p{font-size:12px;line-height:1.55;color:#aab5d6;max-width:650px;}
+	    .ops-alert-live{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.26);color:#ff9d9d;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+	    .ops-alert-live::before{content:'';width:7px;height:7px;border-radius:50%;background:#f87171;box-shadow:0 0 12px rgba(248,113,113,.7);}
+	    .ops-alert-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 18px;background:#111827;border-bottom:1px solid #1e2d45;}
+	    .ops-alert-pills,.ops-alert-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+	    .ops-alert-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-family:'DM Mono',monospace;font-size:10px;font-weight:800;border:1px solid #1e2d45;color:#c7d0e8;background:rgba(255,255,255,.025);}
+	    .ops-alert-pill.high{color:#ff9d9d;border-color:rgba(248,113,113,.28);background:rgba(248,113,113,.1);}
+	    .ops-alert-pill.medium{color:#ffc36c;border-color:rgba(245,158,11,.28);background:rgba(245,158,11,.1);}
+	    .ops-alert-filter,.ops-alert-refresh{height:31px;border-radius:999px;padding:0 12px;font-size:10px;font-weight:800;cursor:pointer;}
+	    .ops-alert-filter{border:1px solid #1e2d45;background:#1a2336;color:#aeb9d8;}
+	    .ops-alert-filter.active{border-color:rgba(75,142,245,.58);background:rgba(75,142,245,.15);color:#9bc6ff;}
+	    .ops-alert-refresh{border:1px solid rgba(75,142,245,.45);background:#3478dc;color:#fff;padding:0 15px;}
+	    .ops-alert-refresh:disabled{opacity:.5;cursor:wait;}
+	    .ops-alert-meta{padding:11px 18px;font-size:10px;color:#96a3c5;background:#0d1424;border-bottom:1px solid rgba(126,137,175,.14);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+	    .ops-alert-meta.error{color:#ffaaaa;}
+	    .ops-alert-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:13px;padding:18px;background:#0a0f1e;}
+	    .ops-alert-card{border-radius:13px;overflow:hidden;background:#111827;border:1px solid #1e2d45;box-shadow:0 12px 28px rgba(0,0,0,.16);}
+	    .ops-alert-card.high{border-color:rgba(248,113,113,.3);}
+	    .ops-alert-card.medium{border-color:rgba(245,158,11,.3);}
+	    .ops-alert-stripe{height:3px;background:linear-gradient(90deg,#f87171,#dc2626);}
+	    .ops-alert-card.medium .ops-alert-stripe{background:linear-gradient(90deg,#f59e0b,#ea580c);}
+	    .ops-alert-card-body{padding:15px 16px 13px;}
+	    .ops-alert-card-head{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;margin-bottom:11px;}
+	    .ops-alert-icon{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(248,113,113,.1);font-size:15px;}
+	    .ops-alert-card.medium .ops-alert-icon{background:rgba(245,158,11,.1);}
+	    .ops-alert-title{font-size:13px;font-weight:800;line-height:1.3;color:#f3f6ff;}
+	    .ops-alert-severity{padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#ff9d9d;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.24);}
+	    .ops-alert-card.medium .ops-alert-severity{color:#ffc36c;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.24);}
+	    .ops-alert-rows{display:flex;flex-direction:column;gap:6px;}
+	    .ops-alert-row{display:grid;grid-template-columns:27px minmax(110px,1fr) 64px auto;gap:8px;align-items:center;padding:7px 9px;border-radius:8px;background:#1a2336;}
+	    .ops-alert-avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#26324a;font-size:9px;font-weight:900;color:#c8d2ec;}
+	    .ops-alert-person{min-width:0;}
+	    .ops-alert-person strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+	    .ops-alert-person span{display:block;font-size:8px;color:#8895ba;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+	    .ops-alert-bar{height:4px;border-radius:999px;background:#26324a;overflow:hidden;}
+	    .ops-alert-bar span{display:block;height:100%;background:#f87171;border-radius:inherit;}
+	    .ops-alert-card.medium .ops-alert-bar span{background:#f59e0b;}
+	    .ops-alert-value{font-family:'DM Mono',monospace;font-size:10px;font-weight:900;color:#ff9d9d;white-space:nowrap;}
+	    .ops-alert-card.medium .ops-alert-value{color:#ffc36c;}
+	    .ops-alert-threshold{display:flex;justify-content:space-between;gap:10px;margin-top:10px;padding:7px 9px;border:1px solid rgba(126,137,175,.16);border-radius:8px;font-size:9px;color:#8996b9;}
+	    .ops-alert-threshold strong{color:#c7d0e8;font-family:'DM Mono',monospace;}
+	    .ops-alert-reading{padding:10px 16px 13px;border-top:1px solid rgba(126,137,175,.13);font-size:10px;line-height:1.5;color:#8e9abc;}
+	    .ops-alert-empty{grid-column:1/-1;text-align:center;padding:48px 20px;color:#8e9abc;font-size:12px;}
+	    .ops-alert-empty strong{display:block;color:#63ebc0;font-size:17px;margin-bottom:6px;}
+	    @media(max-width:700px){
+	      .ops-alert-head{padding:20px;flex-direction:column;}
+	      .ops-alert-grid{grid-template-columns:1fr;padding:12px;}
+	      .ops-alert-row{grid-template-columns:27px minmax(90px,1fr) 48px auto;}
+	    }
+
 	    /* RULES */
     .rg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
     @media(max-width:700px){.rg{grid-template-columns:1fr;}}
@@ -378,6 +432,7 @@
 
 <div class="tabs">
   <button class="tb active" data-tab="mes" onclick="showTab('mes',this)">Mes en Curso</button>
+  <button class="tb" data-tab="alertas-operativas" onclick="showTab('alertas-operativas',this)">Alertas Operativas</button>
   <button class="tb" data-tab="reg" onclick="showTab('reg',this)">Reglas del Sistema</button>
   <button class="tb" data-tab="manual" onclick="showTab('manual',this)">Manual Closers</button>
   <button class="tb" data-tab="reportes-closers" onclick="showTab('reportes-closers',this)">Reporte Closers</button>
@@ -464,6 +519,35 @@
       <div id="bonus-body"><div class="empty">Sin datos de bonus aún.</div></div>
     </div>
   </div>
+</div>
+
+<div id="tab-alertas-operativas" class="tab-content">
+  <section class="ops-alert-shell">
+    <header class="ops-alert-head">
+      <div>
+        <h2>Alertas Operativas</h2>
+        <p>Control automático con datos reales de agendas y cash collected. Cada caso muestra el valor observado, la base utilizada y el umbral que requiere atención.</p>
+      </div>
+      <span class="ops-alert-live">Datos reales</span>
+    </header>
+    <div class="ops-alert-toolbar">
+      <div class="ops-alert-pills">
+        <span id="ops-alert-high-count" class="ops-alert-pill high">0 críticas</span>
+        <span id="ops-alert-medium-count" class="ops-alert-pill medium">0 medias</span>
+        <span id="ops-alert-people-count" class="ops-alert-pill">0 personas</span>
+      </div>
+      <div class="ops-alert-actions">
+        <button class="ops-alert-filter active" type="button" data-ops-filter="all" onclick="setAgendaAlertFilter('all',this)">Todos</button>
+        <button class="ops-alert-filter" type="button" data-ops-filter="high" onclick="setAgendaAlertFilter('high',this)">Crítico</button>
+        <button class="ops-alert-filter" type="button" data-ops-filter="medium" onclick="setAgendaAlertFilter('medium',this)">Medio</button>
+        <button id="ops-alert-refresh" class="ops-alert-refresh" type="button" onclick="loadAgendaOperationalAlerts()">↻ Actualizar</button>
+      </div>
+    </div>
+    <div id="ops-alert-meta" class="ops-alert-meta">
+      <span>Seleccioná la pestaña para consultar las alertas.</span>
+    </div>
+    <div id="ops-alert-grid" class="ops-alert-grid"></div>
+  </section>
 </div>
 
 <div id="tab-reg" class="tab-content">
@@ -618,6 +702,7 @@
 <script src="/js/api/metricas.api.js"></script>
 <script src="/js/auth-shell.js"></script>
 <script src="/js/mag-theme.js"></script>
+<script src="/js/agenda-operational-alerts.js"></script>
 <script>
 /* ═══ CONSTANTS ═══ */
 const TARGET=20000,FLOOR=16500,STEP=5000;
@@ -663,6 +748,7 @@ let selectedProgressMonthKey='';
 let agendaBonusConfig=null;
 let agendaCalendarAssignments={};
 let strikeCheckpointState={anio:null,mes:null,entries:[],canEdit:false,updated_at:null,updated_by_email:null};
+let agendaOperationalAlertState={result:null,filter:'all',loading:false,loadId:0};
 let closers=[
   {id:1,name:'Walter Alegre',   status:'walter',startCat:'ABC',weeks:[]},
   {id:2,name:'Carlos Tu',       status:'normal',startCat:'ABC',weeks:[]},
@@ -2142,6 +2228,156 @@ function renderBonus(){
   panel.appendChild(totalEl);
 }
 
+/* ═══ OPERATIONAL ALERTS ═══ */
+function formatAgendaAlertDate(value){
+  const parts=String(value||'').split('-').map(Number);
+  if(parts.length!==3 || parts.some((part)=>!Number.isFinite(part))) return String(value||'');
+  return new Intl.DateTimeFormat('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(parts[0],parts[1]-1,parts[2]));
+}
+
+function agendaAlertHistoryStart(year,month){
+  return toDateKey(new Date(year,month-4,1));
+}
+
+function agendaAlertMonthEnd(year,month){
+  return toDateKey(new Date(year,month,0));
+}
+
+function setAgendaAlertMeta(message,tone=''){
+  const meta=document.getElementById('ops-alert-meta');
+  if(!meta) return;
+  meta.className=`ops-alert-meta${tone?` ${tone}`:''}`;
+  meta.innerHTML=`<span>${escapeHTML(message)}</span>`;
+}
+
+function renderAgendaOperationalAlerts(){
+  const result=agendaOperationalAlertState.result;
+  const grid=document.getElementById('ops-alert-grid');
+  const highCount=document.getElementById('ops-alert-high-count');
+  const mediumCount=document.getElementById('ops-alert-medium-count');
+  const peopleCount=document.getElementById('ops-alert-people-count');
+  if(!grid || !highCount || !mediumCount || !peopleCount) return;
+
+  if(!result){
+    grid.innerHTML=agendaOperationalAlertState.loading
+      ? '<div class="ops-alert-empty"><strong>Consultando datos reales…</strong>Estamos calculando los siete controles operativos.</div>'
+      : '';
+    return;
+  }
+
+  highCount.textContent=`${result.summary.high} crítica${result.summary.high===1?'':'s'}`;
+  mediumCount.textContent=`${result.summary.medium} media${result.summary.medium===1?'':'s'}`;
+  peopleCount.textContent=`${result.summary.affectedPeople} persona${result.summary.affectedPeople===1?'':'s'}`;
+
+  const alerts=result.alerts.filter((alert)=>(
+    agendaOperationalAlertState.filter==='all' || alert.severity===agendaOperationalAlertState.filter
+  ));
+
+  if(!alerts.length){
+    grid.innerHTML='<div class="ops-alert-empty"><strong>Todo en orden</strong>No hay alertas activas para este filtro y período.</div>';
+    return;
+  }
+
+  grid.innerHTML=alerts.map((alert)=>`
+    <article class="ops-alert-card ${escapeHTML(alert.severity)}">
+      <div class="ops-alert-stripe"></div>
+      <div class="ops-alert-card-body">
+        <div class="ops-alert-card-head">
+          <div class="ops-alert-icon" aria-hidden="true">${escapeHTML(alert.icon)}</div>
+          <div class="ops-alert-title">${escapeHTML(alert.title)}</div>
+          <span class="ops-alert-severity">${alert.severity==='high'?'Crítico':'Medio'}</span>
+        </div>
+        <div class="ops-alert-rows">
+          ${alert.affected.map((row)=>`
+            <div class="ops-alert-row">
+              <div class="ops-alert-avatar">${escapeHTML(row.initials)}</div>
+              <div class="ops-alert-person">
+                <strong>${escapeHTML(row.name)}</strong>
+                <span title="${escapeHTML(row.detail)}">${escapeHTML(row.detail)}</span>
+              </div>
+              <div class="ops-alert-bar" aria-hidden="true"><span style="width:${Number(row.barPercent)||0}%"></span></div>
+              <div class="ops-alert-value">${escapeHTML(row.value)}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="ops-alert-threshold"><span>Umbral de alerta</span><strong>${escapeHTML(alert.threshold)}</strong></div>
+      </div>
+      <div class="ops-alert-reading"><strong>Lectura:</strong> ${escapeHTML(alert.reading)}</div>
+    </article>
+  `).join('');
+}
+
+function setAgendaAlertFilter(filter,button){
+  agendaOperationalAlertState.filter=['high','medium'].includes(filter)?filter:'all';
+  document.querySelectorAll('[data-ops-filter]').forEach((node)=>node.classList.remove('active'));
+  if(button) button.classList.add('active');
+  renderAgendaOperationalAlerts();
+}
+
+async function loadAgendaOperationalAlerts(){
+  if(!window.metricasApi?.fetchAllRows || !window.agendaOperationalAlerts?.build){
+    setAgendaAlertMeta('No se pudo inicializar el cálculo de alertas.','error');
+    return;
+  }
+
+  const {year,month}=getSelectedPeriod();
+  const refreshButton=document.getElementById('ops-alert-refresh');
+  const loadId=agendaOperationalAlertState.loadId+1;
+  agendaOperationalAlertState.loadId=loadId;
+  agendaOperationalAlertState.loading=true;
+  agendaOperationalAlertState.result=null;
+  if(refreshButton) refreshButton.disabled=true;
+  setAgendaAlertMeta(`Consultando agendas y cash collected reales de ${MS[month]} ${year}…`);
+  renderAgendaOperationalAlerts();
+
+  try{
+    const [agendaResponse,cashResponse]=await Promise.all([
+      window.metricasApi.fetchAllRows('agenda_detalle_por_origen_closer',{
+        eq_anio:year,
+        eq_mes:month,
+        limit:1000,
+        select:'anio,mes,origen,closer,total_agendados,total_aplica,total_no_asistidas,total_pendientes,total_efectuadas,total_ventas'
+      }),
+      window.metricasApi.fetchAllRows('comprobantes',{
+        from:agendaAlertHistoryStart(year,month),
+        to:agendaAlertMonthEnd(year,month),
+        dateField:'f_acreditacion',
+        orderBy:'f_acreditacion',
+        orderDir:'asc',
+        limit:1000,
+        select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
+      })
+    ]);
+
+    if(loadId!==agendaOperationalAlertState.loadId) return;
+    const config=getAgendaBonusConfig();
+    const result=window.agendaOperationalAlerts.build({
+      year,
+      month,
+      today:new Date(),
+      weeklyTarget:Number(config.objetivo_mensual||0),
+      closerNames:closers.map((closer)=>closer.name),
+      agendaRows:agendaResponse.rows||[],
+      cashRows:cashResponse.rows||[]
+    });
+    agendaOperationalAlertState.result=result;
+    setAgendaAlertMeta(
+      `Corte ${formatAgendaAlertDate(result.period.evaluationDate)} · Semana ${formatAgendaAlertDate(result.period.weekStart)} al ${formatAgendaAlertDate(result.period.weekEnd)} · ${agendaResponse.rows?.length||0} filas de agendas y ${cashResponse.rows?.length||0} movimientos de cash revisados.`
+    );
+  }catch(error){
+    console.error(error);
+    if(loadId!==agendaOperationalAlertState.loadId) return;
+    agendaOperationalAlertState.result=null;
+    setAgendaAlertMeta(error?.message||'No se pudieron calcular las alertas operativas.','error');
+  }finally{
+    if(loadId===agendaOperationalAlertState.loadId){
+      agendaOperationalAlertState.loading=false;
+      if(refreshButton) refreshButton.disabled=false;
+      renderAgendaOperationalAlerts();
+    }
+  }
+}
+
 /* ═══ EVENTS ═══ */
 const AGENDA_ACTIVE_TAB_KEY='mag-sistema-agendas-active-tab';
 
@@ -2164,6 +2400,9 @@ function showTab(tab,btn){
   }
   if(tab==='strike-checkpoints'){
     loadStrikeCheckpointData();
+  }
+  if(tab==='alertas-operativas'){
+    loadAgendaOperationalAlerts();
   }
 }
 
