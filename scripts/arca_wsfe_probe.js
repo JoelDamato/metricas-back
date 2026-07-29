@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const https = require('node:https');
 const { execFileSync } = require('node:child_process');
 const axios = require('axios');
 
@@ -9,6 +10,11 @@ const POINT_OF_SALE = 5;
 const INVOICE_B = 6;
 const CERT_FILENAME = 'matias-randazzo-wsfe-produccion.crt';
 const KEY_FILENAME = 'matias-randazzo-wsfe-produccion.key';
+const ARCA_HTTPS_AGENT = new https.Agent({
+  keepAlive: true,
+  minVersion: 'TLSv1.2',
+  ciphers: 'DEFAULT@SECLEVEL=1'
+});
 
 function credentialPathCandidates(filename, explicitPath = '') {
   const secretType = filename.endsWith('.key') ? 'key' : 'certificate';
@@ -109,6 +115,7 @@ async function getWsaaCredentials(service = 'wsfe') {
     const envelope = `<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>${cms}</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>`;
     const response = await axios.post('https://wsaa.afip.gov.ar/ws/services/LoginCms', envelope, {
       headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
+      httpsAgent: ARCA_HTTPS_AGENT,
       timeout: 30000
     });
     const loginResponse = xmlValue(response.data, 'loginCmsReturn');
@@ -125,6 +132,7 @@ async function getLastAuthorizedInvoice(auth, invoiceType = INVOICE_B) {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><FECompUltimoAutorizado xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><PtoVta>${POINT_OF_SALE}</PtoVta><CbteTipo>${invoiceType}</CbteTipo></FECompUltimoAutorizado></soap:Body></soap:Envelope>`;
   const response = await axios.post('https://servicios1.afip.gov.ar/wsfev1/service.asmx', envelope, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: 'http://ar.gov.afip.dif.FEV1/FECompUltimoAutorizado' },
+    httpsAgent: ARCA_HTTPS_AGENT,
     timeout: 30000
   });
   const errorsXml = xmlValue(response.data, 'Errors');
@@ -147,6 +155,7 @@ async function main() {
 module.exports = {
   CUIT,
   POINT_OF_SALE,
+  ARCA_HTTPS_AGENT,
   decodeXml,
   xmlValue,
   xmlEscape,

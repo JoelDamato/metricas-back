@@ -18,6 +18,7 @@ const {
 } = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 const {
+  ARCA_HTTPS_AGENT,
   discoverRenderSecretFiles,
   credentialPathCandidates,
   resolveCredentialPath,
@@ -242,6 +243,11 @@ test('credenciales ARCA aceptan PEM multilínea desde variables de entorno', () 
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+});
+
+test('conexiones ARCA usan compatibilidad TLS aislada para el servidor fiscal', () => {
+  assert.equal(ARCA_HTTPS_AGENT.options.ciphers, 'DEFAULT@SECLEVEL=1');
+  assert.equal(ARCA_HTTPS_AGENT.options.minVersion, 'TLSv1.2');
 });
 
 test('factura y nota de crédito conservan el botón antes de esperar la confirmación', () => {

@@ -2,6 +2,7 @@ const axios = require('axios');
 const {
   CUIT,
   POINT_OF_SALE,
+  ARCA_HTTPS_AGENT,
   xmlValue,
   xmlEscape,
   getWsaaCredentials,
@@ -65,6 +66,7 @@ async function postWsfe(action, body) {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>${body}</soap:Body></soap:Envelope>`;
   const response = await axios.post(WSFE_URL, envelope, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `http://ar.gov.afip.dif.FEV1/${action}` },
+    httpsAgent: ARCA_HTTPS_AGENT,
     timeout: 30000
   });
   const errors = getErrors(response.data);
@@ -144,7 +146,11 @@ async function resolveRecipient(record) {
     throw wrapped;
   }
   const envelope = buildPadronEnvelope(auth, raw);
-  const response = await axios.post(PADRON_URL, envelope, { headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' }, timeout: 30000 });
+  const response = await axios.post(PADRON_URL, envelope, {
+    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
+    httpsAgent: ARCA_HTTPS_AGENT,
+    timeout: 30000
+  });
   const descriptions = [...String(response.data).matchAll(/<(?:\w+:)?descripcionImpuesto[^>]*>(.*?)<\/(?:\w+:)?descripcionImpuesto>/gi)].map((match) => match[1].toUpperCase());
   const isMonotributo = descriptions.some((value) => value.includes('MONOTRIBUTO'));
   const isRegisteredVat = descriptions.some((value) => value === 'IVA' || value.includes('VALOR AGREGADO'));
