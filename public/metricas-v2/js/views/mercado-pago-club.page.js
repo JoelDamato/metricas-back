@@ -158,7 +158,7 @@ function showInvoicePreview(records) {
             <td class="amount">${formatMoney(row.proposedInvoice?.amounts?.total ?? row.amount, row.currency)}${row.proposedInvoice?.amounts?.vat ? `<small>Neto ${formatMoney(row.proposedInvoice.amounts.net, row.currency)} · IVA ${formatMoney(row.proposedInvoice.amounts.vat, row.currency)}</small>` : ''}</td>
           </tr>`).join('')}</tbody></table>
       </div>
-      <p class="invoice-preview-note">Para CUIT importados desde Mercado Pago, la condición se valida contra el Padrón de ARCA antes de solicitar el CAE. Consumidor Final y Monotributo usan el concepto fijo; Responsable Inscripto usa el nombre de la membresía.</p>
+      <p class="invoice-preview-note">Los datos fiscales se completan antes de solicitar el CAE. Consumidor Final y Monotributo usan el concepto fijo; Responsable Inscripto usa el nombre de la membresía.</p>
       <div class="invoice-preview-actions">
         <button type="button" class="preview-cancel" data-close-preview>Volver</button>
         <button type="button" class="preview-confirm">Confirmar y facturar</button>
@@ -357,53 +357,95 @@ reconcileButton.addEventListener('click', async () => {
 
 invoiceButton.addEventListener('click', async () => {
   const records = allRecords.filter((row) => selectedKeys.has(recordKey(row)) && row.workflowStatus === 'reconciled');
-  if (records.length) await openResolvedInvoicePreview(records);
+  if (!records.length) return;
+  const completedRecords = await completeRecipientData(records);
+  if (completedRecords) await openResolvedInvoicePreview(completedRecords);
 });
 
-function openRecipientForm(existing) {
-  const isInvoiced = existing.workflowStatus === 'invoiced';
-  const modal = document.createElement('div');
-  modal.className = 'invoice-preview';
-  modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2></div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Consumidor final</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Estos datos se guardarán antes de solicitar el CAE. Para Monotributo y Responsable Inscripto se requiere CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
-  document.body.appendChild(modal);
-  const form = modal.querySelector('form');
-  const values = {
-    payer: existing.payer,
-    payerAddress: existing.payerAddress,
-    vatConditionId: existing.vatConditionId,
-    identificationType: existing.identificationType,
-    identificationNumber: existing.identificationNumber
-  };
-  Object.entries(values).forEach(([name, value]) => {
-    const input = form.elements.namedItem(name);
-    if (input && value !== null && value !== undefined) input.value = value;
-  });
-  if (!isInvoiced) {
-    form.elements.namedItem('vatConditionId').addEventListener('change', (event) => {
-      if (Number(event.currentTarget.value) !== 5) form.elements.namedItem('identificationType').value = 'CUIT';
+function recipientDataIsIncomplete(row) {
+  const vatConditionId = Number(row.vatConditionId);
+  const identificationType = String(row.identificationType || '').toUpperCase();
+  const identificationNumber = String(row.identificationNumber || '').replace(/\D/g, '');
+  if (!String(row.payer || '').trim() || !String(row.payerAddress || '').trim()) return true;
+  if (![1, 5, 6].includes(vatConditionId)) return true;
+  return [1, 6].includes(vatConditionId)
+    && (identificationType !== 'CUIT' || identificationNumber.length !== 11);
+}
+
+async function completeRecipientData(records) {
+  const incomplete = records.filter(recipientDataIsIncomplete);
+  for (let index = 0; index < incomplete.length; index += 1) {
+    const row = incomplete[index];
+    statusNode.textContent = `Completá los datos fiscales (${index + 1} de ${incomplete.length}) antes de facturar`;
+    const saved = await openRecipientForm(row, {
+      reloadAfterSave: false,
+      stepLabel: `Comprobante ${index + 1} de ${incomplete.length} · Operación ${row.id}`
     });
-  }
-  modal.querySelectorAll('[data-close-preview]').forEach((button) => button.addEventListener('click', () => modal.remove()));
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const submit = event.submitter;
-    submit.disabled = true;
-    try {
-      const response = await fetch(`/api/metricas/mercado-pago/club/recipient/${encodeURIComponent(existing.kind)}/${encodeURIComponent(existing.id)}`, {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'No se pudieron guardar los datos fiscales');
-      modal.remove();
-      await loadRecords();
-      statusNode.textContent = 'Datos fiscales actualizados';
-    } catch (error) {
-      submit.disabled = false;
-      window.alert(error.message);
+    if (!saved) {
+      statusNode.textContent = 'Facturación cancelada: faltan datos fiscales';
+      return null;
     }
+    Object.assign(row, saved, { workflowStatus: 'reconciled' });
+  }
+  return records;
+}
+
+function openRecipientForm(existing, options = {}) {
+  const reloadAfterSave = options.reloadAfterSave !== false;
+  const stepLabel = String(options.stepLabel || '').trim();
+  const isInvoiced = existing.workflowStatus === 'invoiced';
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    let finished = false;
+    const finish = (value) => {
+      if (finished) return;
+      finished = true;
+      modal.remove();
+      resolve(value);
+    };
+    modal.className = 'invoice-preview';
+    modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2>${stepLabel ? `<p class="invoice-preview-note">${escapeHtml(stepLabel)}</p>` : ''}</div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Consumidor final</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Confirmá la condición IVA y el domicilio antes de solicitar el CAE. Para Monotributo y Responsable Inscripto se requiere CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
+    document.body.appendChild(modal);
+    const form = modal.querySelector('form');
+    const values = {
+      payer: existing.payer,
+      payerAddress: existing.payerAddress,
+      vatConditionId: existing.vatConditionId,
+      identificationType: existing.identificationType,
+      identificationNumber: existing.identificationNumber
+    };
+    Object.entries(values).forEach(([name, value]) => {
+      const input = form.elements.namedItem(name);
+      if (input && value !== null && value !== undefined) input.value = value;
+    });
+    if (!isInvoiced) {
+      form.elements.namedItem('vatConditionId').addEventListener('change', (event) => {
+        if (Number(event.currentTarget.value) !== 5) form.elements.namedItem('identificationType').value = 'CUIT';
+      });
+    }
+    modal.querySelectorAll('[data-close-preview]').forEach((button) => button.addEventListener('click', () => finish(null)));
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = event.submitter;
+      submit.disabled = true;
+      try {
+        const response = await fetch(`/api/metricas/mercado-pago/club/recipient/${encodeURIComponent(existing.kind)}/${encodeURIComponent(existing.id)}`, {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'No se pudieron guardar los datos fiscales');
+        Object.assign(existing, data.record || {});
+        if (reloadAfterSave) await loadRecords();
+        statusNode.textContent = 'Datos fiscales actualizados';
+        finish(data.record || existing);
+      } catch (error) {
+        submit.disabled = false;
+        window.alert(error.message);
+      }
+    });
   });
 }
 
