@@ -20,7 +20,8 @@ const { validateRecipientFields } = require('../modules/metricasv2/services/merc
 const {
   discoverRenderSecretFiles,
   credentialPathCandidates,
-  resolveCredentialPath
+  resolveCredentialPath,
+  materializeCredentialPem
 } = require('../scripts/arca_wsfe_probe');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
@@ -218,6 +219,28 @@ test('credenciales ARCA detectan certificados y claves aunque Render cambie sus 
     assert.deepEqual(discoverRenderSecretFiles('key', secretDir), [path.join(secretDir, 'clave-privada')]);
   } finally {
     fs.rmSync(secretDir, { recursive: true, force: true });
+  }
+});
+
+test('credenciales ARCA aceptan PEM multilínea desde variables de entorno', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'arca-env-'));
+  try {
+    const certificatePath = materializeCredentialPem(
+      '-----BEGIN CERTIFICATE-----\\ncontenido\\n-----END CERTIFICATE-----',
+      'certificado.crt',
+      tempRoot
+    );
+    const keyPath = materializeCredentialPem(
+      '-----BEGIN PRIVATE KEY-----\ncontenido\n-----END PRIVATE KEY-----',
+      'privada.key',
+      tempRoot
+    );
+
+    assert.equal(fs.readFileSync(certificatePath, 'utf8'), '-----BEGIN CERTIFICATE-----\ncontenido\n-----END CERTIFICATE-----\n');
+    assert.equal(fs.statSync(certificatePath).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(keyPath).mode & 0o777, 0o600);
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
   }
 });
 

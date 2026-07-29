@@ -43,8 +43,27 @@ function resolveCredentialPath(filename, explicitPath = '') {
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
 }
 
-const CERT_PATH = resolveCredentialPath(CERT_FILENAME, process.env.ARCA_CERT_PATH);
-const KEY_PATH = resolveCredentialPath(KEY_FILENAME, process.env.ARCA_KEY_PATH);
+function materializeCredentialPem(pemValue, filename, tempRoot = os.tmpdir()) {
+  const raw = String(pemValue || '').trim();
+  if (!raw) return '';
+  const normalized = `${raw.replace(/\\n/g, '\n')}\n`;
+  const marker = filename.endsWith('.key')
+    ? /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/
+    : /-----BEGIN CERTIFICATE-----/;
+  if (!marker.test(normalized)) {
+    throw new Error(`La variable de entorno para ${filename} no contiene un PEM válido`);
+  }
+  const tempDir = fs.mkdtempSync(path.join(tempRoot, 'arca-credentials-'));
+  fs.chmodSync(tempDir, 0o700);
+  const filePath = path.join(tempDir, filename);
+  fs.writeFileSync(filePath, normalized, { mode: 0o600 });
+  return filePath;
+}
+
+const CERT_PATH = materializeCredentialPem(process.env.ARCA_CERT_PEM, CERT_FILENAME)
+  || resolveCredentialPath(CERT_FILENAME, process.env.ARCA_CERT_PATH);
+const KEY_PATH = materializeCredentialPem(process.env.ARCA_KEY_PEM, KEY_FILENAME)
+  || resolveCredentialPath(KEY_FILENAME, process.env.ARCA_KEY_PATH);
 
 function decodeXml(value = '') {
   return String(value)
@@ -69,7 +88,7 @@ function xmlEscape(value = '') {
 async function getWsaaCredentials(service = 'wsfe') {
   for (const filePath of [CERT_PATH, KEY_PATH]) {
     if (!filePath || !fs.existsSync(filePath)) {
-      throw new Error(`Falta la credencial ARCA ${path.basename(filePath || 'sin-ruta')}. En Render cargala como Secret File o configurá ARCA_CERT_PATH/ARCA_KEY_PATH.`);
+      throw new Error(`Falta la credencial ARCA ${path.basename(filePath || 'sin-ruta')}. En Render cargala como Secret File o configurá ARCA_CERT_PEM/ARCA_KEY_PEM.`);
     }
   }
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arca-wsaa-'));
@@ -134,6 +153,7 @@ module.exports = {
   discoverRenderSecretFiles,
   credentialPathCandidates,
   resolveCredentialPath,
+  materializeCredentialPem,
   getWsaaCredentials,
   getLastAuthorizedInvoice
 };
