@@ -255,4 +255,6 @@ test('factura y nota de crédito conservan el botón antes de esperar la confirm
 
   assert.match(source, /const button = event\.currentTarget;\s+if \(!await confirmArcaEmission\(records\.length\)\) return;/);
   assert.match(source, /const confirmButton = clickEvent\.currentTarget;\s+if \(!await confirmArcaEmission\(1\)\) return;/);
+  assert.match(source, /const progress = showArcaProgress\(records\.length\);/);
+  assert.match(source, /closeInvoicePreview\(\);\s+await loadRecords\(\);\s+statusNode\.textContent = `La emisión se interrumpió:/);
 });

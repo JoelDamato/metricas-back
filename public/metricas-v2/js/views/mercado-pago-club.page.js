@@ -141,6 +141,24 @@ function confirmArcaEmission(count) {
   });
 }
 
+function showArcaProgress(count, operation = 'facturas') {
+  document.querySelector('#arcaProgress')?.remove();
+  const popup = document.createElement('div');
+  const plural = count === 1 ? 'comprobante' : 'comprobantes';
+  popup.id = 'arcaProgress';
+  popup.className = 'arca-confirm arca-processing';
+  popup.setAttribute('role', 'status');
+  popup.setAttribute('aria-live', 'assertive');
+  popup.innerHTML = `
+    <section class="arca-confirm-card">
+      <span class="arca-progress-spinner" aria-hidden="true"></span>
+      <h3>Procesando en ARCA</h3>
+      <p>Emitiendo ${count} ${plural} de ${escapeHtml(operation)}. ARCA los procesa uno por uno; no cierres ni actualices esta página.</p>
+    </section>`;
+  document.body.appendChild(popup);
+  return popup;
+}
+
 function showInvoicePreview(records) {
   closeInvoicePreview();
   const totals = records.reduce((map, row) => {
@@ -184,6 +202,7 @@ function showInvoicePreview(records) {
     if (!await confirmArcaEmission(records.length)) return;
     button.disabled = true;
     button.textContent = 'Facturando…';
+    const progress = showArcaProgress(records.length);
     try {
       const response = await fetch('/api/metricas/mercado-pago/club/invoice', {
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
@@ -197,9 +216,12 @@ function showInvoicePreview(records) {
       await loadRecords();
       statusNode.textContent = `${data.invoiced} factura${data.invoiced === 1 ? '' : 's'} autorizada${data.invoiced === 1 ? '' : 's'} por ARCA`;
     } catch (error) {
-      button.disabled = false;
-      button.textContent = 'Confirmar y facturar';
+      closeInvoicePreview();
+      await loadRecords();
+      statusNode.textContent = `La emisión se interrumpió: ${error.message}`;
       window.alert(error.message);
+    } finally {
+      progress.remove();
     }
   });
 }
@@ -329,12 +351,14 @@ rowsNode.addEventListener('click', async (event) => {
     const confirmButton = clickEvent.currentTarget;
     if (!await confirmArcaEmission(1)) return;
     confirmButton.disabled = true; confirmButton.textContent = 'Emitiendo…';
+    const progress = showArcaProgress(1, 'nota de crédito');
     try {
       const response = await fetch('/api/metricas/mercado-pago/club/credit-note', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: row.kind, id: row.id }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'No se pudo emitir la nota de crédito');
       modal.remove(); await loadRecords(); statusNode.textContent = `Nota de Crédito ${data.type || ''} ${data.number || ''} autorizada por ARCA`;
     } catch (error) { confirmButton.disabled = false; confirmButton.textContent = 'Emitir nota de crédito'; window.alert(error.message); }
+    finally { progress.remove(); }
   });
 });
 
