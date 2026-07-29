@@ -180,8 +180,8 @@ function showInvoicePreview(records) {
   modal.querySelectorAll('[data-close-preview]').forEach((button) => button.addEventListener('click', closeInvoicePreview));
   modal.addEventListener('click', (event) => { if (event.target === modal) closeInvoicePreview(); });
   modal.querySelector('.preview-confirm').addEventListener('click', async (event) => {
-    if (!await confirmArcaEmission(records.length)) return;
     const button = event.currentTarget;
+    if (!await confirmArcaEmission(records.length)) return;
     button.disabled = true;
     button.textContent = 'Facturando…';
     try {
@@ -326,8 +326,8 @@ rowsNode.addEventListener('click', async (event) => {
   document.body.appendChild(modal);
   modal.querySelector('.arca-confirm-cancel').addEventListener('click', () => modal.remove());
   modal.querySelector('.arca-confirm-accept').addEventListener('click', async (clickEvent) => {
-    if (!await confirmArcaEmission(1)) return;
     const confirmButton = clickEvent.currentTarget;
+    if (!await confirmArcaEmission(1)) return;
     confirmButton.disabled = true; confirmButton.textContent = 'Emitiendo…';
     try {
       const response = await fetch('/api/metricas/mercado-pago/club/credit-note', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: row.kind, id: row.id }) });

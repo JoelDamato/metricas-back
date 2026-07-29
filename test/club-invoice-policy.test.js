@@ -220,3 +220,10 @@ test('credenciales ARCA detectan certificados y claves aunque Render cambie sus 
     fs.rmSync(secretDir, { recursive: true, force: true });
   }
 });
+
+test('factura y nota de crédito conservan el botón antes de esperar la confirmación', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../public/metricas-v2/js/views/mercado-pago-club.page.js'), 'utf8');
+
+  assert.match(source, /const button = event\.currentTarget;\s+if \(!await confirmArcaEmission\(records\.length\)\) return;/);
+  assert.match(source, /const confirmButton = clickEvent\.currentTarget;\s+if \(!await confirmArcaEmission\(1\)\) return;/);
+});
