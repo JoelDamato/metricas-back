@@ -14,6 +14,10 @@ const {
   buildPadronEnvelope
 } = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
+const {
+  credentialPathCandidates,
+  resolveCredentialPath
+} = require('../scripts/arca_wsfe_probe');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
   const policy = buildClubInvoicePolicy(
@@ -189,4 +193,12 @@ test('consulta de Padrón envía parámetros SOAP sin heredar el namespace del m
   assert.match(xml, /<a5:getPersona_v2 xmlns:a5="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/"><token>/);
   assert.match(xml, /<idPersona>27312950214<\/idPersona><\/a5:getPersona_v2>/);
   assert.doesNotMatch(xml, /<getPersona_v2 xmlns="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/">/);
+});
+
+test('credenciales ARCA contemplan la ubicación oficial de Secret Files en Render', () => {
+  const candidates = credentialPathCandidates('certificado.crt', '/ruta/explicita/certificado.crt');
+
+  assert.equal(candidates[0], '/ruta/explicita/certificado.crt');
+  assert.equal(candidates[1], '/etc/secrets/certificado.crt');
+  assert.match(resolveCredentialPath('matias-randazzo-wsfe-produccion.crt'), /secrets\/arca\/matias-randazzo-wsfe-produccion\.crt$/);
 });

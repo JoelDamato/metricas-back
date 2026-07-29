@@ -7,8 +7,25 @@ const axios = require('axios');
 const CUIT = '20348137000';
 const POINT_OF_SALE = 5;
 const INVOICE_B = 6;
-const CERT_PATH = path.resolve(__dirname, '../secrets/arca/matias-randazzo-wsfe-produccion.crt');
-const KEY_PATH = path.resolve(__dirname, '../secrets/arca/matias-randazzo-wsfe-produccion.key');
+const CERT_FILENAME = 'matias-randazzo-wsfe-produccion.crt';
+const KEY_FILENAME = 'matias-randazzo-wsfe-produccion.key';
+
+function credentialPathCandidates(filename, explicitPath = '') {
+  return [
+    explicitPath,
+    path.join('/etc/secrets', filename),
+    path.resolve(__dirname, '../secrets/arca', filename),
+    path.resolve(__dirname, '..', filename)
+  ].filter(Boolean);
+}
+
+function resolveCredentialPath(filename, explicitPath = '') {
+  const candidates = credentialPathCandidates(filename, explicitPath);
+  return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
+}
+
+const CERT_PATH = resolveCredentialPath(CERT_FILENAME, process.env.ARCA_CERT_PATH);
+const KEY_PATH = resolveCredentialPath(KEY_FILENAME, process.env.ARCA_KEY_PATH);
 
 function decodeXml(value = '') {
   return String(value)
@@ -31,6 +48,11 @@ function xmlEscape(value = '') {
 }
 
 async function getWsaaCredentials(service = 'wsfe') {
+  for (const filePath of [CERT_PATH, KEY_PATH]) {
+    if (!filePath || !fs.existsSync(filePath)) {
+      throw new Error(`Falta la credencial ARCA ${path.basename(filePath || 'sin-ruta')}. En Render cargala como Secret File o configurá ARCA_CERT_PATH/ARCA_KEY_PATH.`);
+    }
+  }
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arca-wsaa-'));
   const traPath = path.join(tempDir, 'tra.xml');
   const cmsPath = path.join(tempDir, 'tra.cms');
@@ -90,6 +112,8 @@ module.exports = {
   decodeXml,
   xmlValue,
   xmlEscape,
+  credentialPathCandidates,
+  resolveCredentialPath,
   getWsaaCredentials,
   getLastAuthorizedInvoice
 };
