@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const {
   FIXED_DESCRIPTION,
   MONOTRIBUTO_LEGEND,
@@ -15,6 +18,7 @@ const {
 } = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 const {
+  discoverRenderSecretFiles,
   credentialPathCandidates,
   resolveCredentialPath
 } = require('../scripts/arca_wsfe_probe');
@@ -201,4 +205,18 @@ test('credenciales ARCA contemplan la ubicación oficial de Secret Files en Rend
   assert.equal(candidates[0], '/ruta/explicita/certificado.crt');
   assert.equal(candidates[1], '/etc/secrets/certificado.crt');
   assert.match(resolveCredentialPath('matias-randazzo-wsfe-produccion.crt'), /secrets\/arca\/matias-randazzo-wsfe-produccion\.crt$/);
+});
+
+test('credenciales ARCA detectan certificados y claves aunque Render cambie sus nombres', () => {
+  const secretDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arca-secrets-'));
+  try {
+    fs.writeFileSync(path.join(secretDir, 'certificado-produccion'), '-----BEGIN CERTIFICATE-----\nprueba\n-----END CERTIFICATE-----');
+    fs.writeFileSync(path.join(secretDir, 'clave-privada'), '-----BEGIN PRIVATE KEY-----\nprueba\n-----END PRIVATE KEY-----');
+    fs.writeFileSync(path.join(secretDir, 'otro-secreto'), 'sin credenciales');
+
+    assert.deepEqual(discoverRenderSecretFiles('certificate', secretDir), [path.join(secretDir, 'certificado-produccion')]);
+    assert.deepEqual(discoverRenderSecretFiles('key', secretDir), [path.join(secretDir, 'clave-privada')]);
+  } finally {
+    fs.rmSync(secretDir, { recursive: true, force: true });
+  }
 });

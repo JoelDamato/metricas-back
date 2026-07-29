@@ -11,12 +11,31 @@ const CERT_FILENAME = 'matias-randazzo-wsfe-produccion.crt';
 const KEY_FILENAME = 'matias-randazzo-wsfe-produccion.key';
 
 function credentialPathCandidates(filename, explicitPath = '') {
+  const secretType = filename.endsWith('.key') ? 'key' : 'certificate';
   return [
     explicitPath,
     path.join('/etc/secrets', filename),
+    ...discoverRenderSecretFiles(secretType),
     path.resolve(__dirname, '../secrets/arca', filename),
     path.resolve(__dirname, '..', filename)
   ].filter(Boolean);
+}
+
+function discoverRenderSecretFiles(secretType, secretDir = '/etc/secrets') {
+  if (!fs.existsSync(secretDir)) return [];
+  const marker = secretType === 'key'
+    ? /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/
+    : /-----BEGIN CERTIFICATE-----/;
+  return fs.readdirSync(secretDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(secretDir, entry.name))
+    .filter((filePath) => {
+      try {
+        return marker.test(fs.readFileSync(filePath, 'utf8'));
+      } catch {
+        return false;
+      }
+    });
 }
 
 function resolveCredentialPath(filename, explicitPath = '') {
@@ -112,6 +131,7 @@ module.exports = {
   decodeXml,
   xmlValue,
   xmlEscape,
+  discoverRenderSecretFiles,
   credentialPathCandidates,
   resolveCredentialPath,
   getWsaaCredentials,

@@ -106,10 +106,8 @@ async function openResolvedInvoicePreview(records, options = {}) {
     statusNode.textContent = 'Condición fiscal validada; revisá la previsualización antes de emitir';
   } catch (error) {
     if (allowManualFallback && isPadronAuthorizationError(error.message)) {
-      const completedRecords = await completeRecipientData(records);
-      if (completedRecords) {
-        return openResolvedInvoicePreview(completedRecords, { allowManualFallback: false });
-      }
+      statusNode.textContent = error.message;
+      window.alert(`${error.message}\n\nNo hace falta cargar el domicilio manualmente: corregí el certificado de ARCA y volvé a intentar.`);
       return null;
     }
     statusNode.textContent = error.message;
