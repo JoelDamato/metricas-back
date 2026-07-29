@@ -80,12 +80,13 @@ function validateRecord(record) {
 }
 
 function consumerFinalRecipient(record = {}, raw = '') {
+  const hasCuit = String(record.identificationType || '').toUpperCase() === 'CUIT' && /^\d{11}$/.test(raw);
   const hasDni = /^\d{7,8}$/.test(raw);
   return {
     invoiceType: 'B',
     invoiceTypeCode: FACTURA_B,
-    documentType: hasDni ? 96 : 99,
-    documentNumber: hasDni ? raw : '0',
+    documentType: hasCuit ? 80 : hasDni ? 96 : 99,
+    documentNumber: hasCuit || hasDni ? raw : '0',
     vatConditionId: CONSUMIDOR_FINAL,
     vatCondition: 'Consumidor Final',
     recipientName: String(record.payer || '').trim(),
@@ -125,6 +126,31 @@ function buildPadronEnvelope(auth, documentNumber) {
   return `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><a5:getPersona_v2 xmlns:a5="http://a5.soap.ws.server.puc.sr/"><token>${xmlEscape(auth.token)}</token><sign>${xmlEscape(auth.sign)}</sign><cuitRepresentada>${CUIT}</cuitRepresentada><idPersona>${xmlEscape(documentNumber)}</idPersona></a5:getPersona_v2></soap:Body></soap:Envelope>`;
 }
 
+function recipientFromPadron(record, raw, xml) {
+  const descriptions = [...String(xml).matchAll(/<(?:\w+:)?descripcionImpuesto[^>]*>(.*?)<\/(?:\w+:)?descripcionImpuesto>/gi)]
+    .map((match) => match[1].toUpperCase());
+  const isMonotributo = descriptions.some((value) => value.includes('MONOTRIBUTO'));
+  const isRegisteredVat = descriptions.some((value) => value === 'IVA' || value.includes('VALOR AGREGADO'));
+  const enrichedRecord = {
+    ...record,
+    payer: recipientNameFromPadron(xml) || String(record.payer || '').trim(),
+    payerAddress: recipientAddressFromPadron(xml) || String(record.payerAddress || '').trim()
+  };
+  if (!isMonotributo && !isRegisteredVat) {
+    return consumerFinalRecipient(enrichedRecord, raw);
+  }
+  return {
+    invoiceType: 'A',
+    invoiceTypeCode: FACTURA_A,
+    documentType: 80,
+    documentNumber: raw,
+    vatConditionId: isMonotributo ? 6 : 1,
+    vatCondition: isMonotributo ? 'Responsable Monotributo' : 'Responsable Inscripto',
+    recipientName: enrichedRecord.payer,
+    recipientAddress: enrichedRecord.payerAddress
+  };
+}
+
 async function resolveRecipient(record) {
   const raw = String(record.identificationNumber || '').replace(/\D/g, '');
   const selectedRecipient = manualRecipient(record, raw);
@@ -151,20 +177,7 @@ async function resolveRecipient(record) {
     httpsAgent: ARCA_HTTPS_AGENT,
     timeout: 30000
   });
-  const descriptions = [...String(response.data).matchAll(/<(?:\w+:)?descripcionImpuesto[^>]*>(.*?)<\/(?:\w+:)?descripcionImpuesto>/gi)].map((match) => match[1].toUpperCase());
-  const isMonotributo = descriptions.some((value) => value.includes('MONOTRIBUTO'));
-  const isRegisteredVat = descriptions.some((value) => value === 'IVA' || value.includes('VALOR AGREGADO'));
-  if (!isMonotributo && !isRegisteredVat) throw new Error('El CUIT no figura activo en IVA ni Monotributo; no se puede determinar una Factura A segura');
-  return {
-    invoiceType: 'A',
-    invoiceTypeCode: FACTURA_A,
-    documentType: 80,
-    documentNumber: raw,
-    vatConditionId: isMonotributo ? 6 : 1,
-    vatCondition: isMonotributo ? 'Responsable Monotributo' : 'Responsable Inscripto',
-    recipientName: recipientNameFromPadron(response.data) || String(record.payer || '').trim(),
-    recipientAddress: recipientAddressFromPadron(response.data) || String(record.payerAddress || '').trim()
-  };
+  return recipientFromPadron(record, raw, response.data);
 }
 
 async function previewInvoice(record) {
@@ -270,5 +283,6 @@ module.exports = {
   previewInvoice,
   resolveRecipient,
   invoiceDates,
-  buildPadronEnvelope
+  buildPadronEnvelope,
+  recipientFromPadron
 };

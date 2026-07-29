@@ -14,7 +14,8 @@ const {
   previewInvoice,
   resolveRecipient,
   invoiceDates,
-  buildPadronEnvelope
+  buildPadronEnvelope,
+  recipientFromPadron
 } = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 const {
@@ -199,6 +200,32 @@ test('consulta de Padrón envía parámetros SOAP sin heredar el namespace del m
   assert.match(xml, /<a5:getPersona_v2 xmlns:a5="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/"><token>/);
   assert.match(xml, /<idPersona>27312950214<\/idPersona><\/a5:getPersona_v2>/);
   assert.doesNotMatch(xml, /<getPersona_v2 xmlns="http:\/\/a5\.soap\.ws\.server\.puc\.sr\/">/);
+});
+
+test('CUIT sin IVA ni Monotributo se factura B como Consumidor Final conservando su identificación', () => {
+  const xml = `
+    <personaReturn>
+      <persona>
+        <apellido>GORMAN</apellido><nombre>GABRIELA</nombre>
+        <domicilioFiscal>
+          <direccion>Calle 123</direccion><localidad>Rosario</localidad><descripcionProvincia>Santa Fe</descripcionProvincia>
+        </domicilioFiscal>
+        <impuesto><descripcionImpuesto>GANANCIAS PERSONAS FISICAS</descripcionImpuesto></impuesto>
+      </persona>
+    </personaReturn>`;
+  const recipient = recipientFromPadron(
+    { identificationType: 'CUIT', payer: 'correo@ejemplo.com', payerAddress: '' },
+    '27253656676',
+    xml
+  );
+
+  assert.equal(recipient.invoiceType, 'B');
+  assert.equal(recipient.documentType, 80);
+  assert.equal(recipient.documentNumber, '27253656676');
+  assert.equal(recipient.vatConditionId, 5);
+  assert.equal(recipient.vatCondition, 'Consumidor Final');
+  assert.equal(recipient.recipientName, 'GORMAN GABRIELA');
+  assert.equal(recipient.recipientAddress, 'Calle 123 - Rosario - Santa Fe');
 });
 
 test('credenciales ARCA contemplan la ubicación oficial de Secret Files en Render', () => {
