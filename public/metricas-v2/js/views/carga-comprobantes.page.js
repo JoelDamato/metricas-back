@@ -249,6 +249,13 @@
     return `cmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
+  function isChequePaymentMethod(value) {
+    const compact = normalizeText(value).replace(/[^a-z0-9]+/g, '');
+    return compact.includes('cheque')
+      || compact.includes('echeq')
+      || compact.includes('echeck');
+  }
+
   function setCreatingPopup(isVisible) {
     if (!refs.creatingPopup) return;
     refs.creatingPopup.hidden = !isVisible;
@@ -263,7 +270,7 @@
     const tipo = refs.tipo.value;
     const isVenta = tipo === 'Venta';
     const isDevolucion = tipo === 'Devolución';
-    const isCheque = normalizeText(refs.medioPago.value) === 'cheque';
+    const isCheque = isChequePaymentMethod(refs.medioPago.value);
     const isClubSale = isVenta && isClubProduct(refs.productName.value);
     const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
     const baseReady = clientReady
@@ -286,6 +293,7 @@
       chequeCount > 0
       && chequeRows.length === chequeCount
       && chequeRows.every((row) => Boolean(String(row.montoArs || '').trim()))
+      && chequeRows.every((row) => Boolean(String(row.fechaAcreditacion || '').trim()))
     );
     const attachmentReady = state.attachments.length > 0;
     const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución' || (isVenta && isCheque);
@@ -474,6 +482,10 @@
             <span>Archivo / foto</span>
             <input type="text" data-cheque-file="${index}" placeholder="Nombre del archivo o referencia" />
           </label>
+          <label class="carga-field">
+            <span>Fecha de acreditación</span>
+            <input type="date" data-cheque-fecha="${index}" value="${escapeHtml(refs.fechaAcreditacion.value || todayIso())}" />
+          </label>
         </div>
       </article>
     `).join('');
@@ -496,7 +508,7 @@
     const isVenta = tipo === 'Venta';
     const isCobranza = tipo === 'Cobranza';
     const isDevolucion = tipo === 'Devolución';
-    const isCheque = normalizeText(refs.medioPago.value) === 'cheque';
+    const isCheque = isChequePaymentMethod(refs.medioPago.value);
 
     refs.ventaFields.hidden = !(isVenta || isDevolucion);
     refs.chequeFields.hidden = !(isVenta && isCheque);
@@ -591,10 +603,11 @@
       if (!payload.productName) warnings.push('Falta elegir el producto adquirido.');
       if (!payload.facturacionUsd) warnings.push('Falta la facturación USD.');
       if (!payload.cantidadPagos) warnings.push('Falta la cantidad de pagos.');
-      if (normalizeText(payload.medioPago) === 'cheque') {
+      if (isChequePaymentMethod(payload.medioPago)) {
         if (!payload.chequeCount) warnings.push('Falta la cantidad de cheques.');
         const chequeRows = Array.isArray(payload.cheques) ? payload.cheques : [];
         if (!chequeRows.length) warnings.push('Faltan los cheques cargados.');
+        if (chequeRows.some((row) => !row.fechaAcreditacion)) warnings.push('Falta la fecha de acreditación de algún cheque.');
       }
     }
 
@@ -651,11 +664,11 @@
     rows.push(['Adjuntos', payload.attachmentNames?.length ? payload.attachmentNames.join(', ') : 'Sin adjuntos']);
     rows.push(['Info comprobantes', payload.infoComprobantes || '-']);
 
-    if (normalizeText(payload.medioPago) === 'cheque' && Array.isArray(payload.cheques) && payload.cheques.length) {
+    if (isChequePaymentMethod(payload.medioPago) && Array.isArray(payload.cheques) && payload.cheques.length) {
       payload.cheques.forEach((cheque, index) => {
         rows.push([
           `Cheque ${index + 1}`,
-          `${cheque.montoArs ? formatCurrency(parseLocaleNumber(cheque.montoArs), 'ARS') : '-'}${cheque.archivoNombre ? ` | ${cheque.archivoNombre}` : ''}`
+          `${cheque.montoArs ? formatCurrency(parseLocaleNumber(cheque.montoArs), 'ARS') : '-'} | ${cheque.fechaAcreditacion || 'Sin fecha'}${cheque.archivoNombre ? ` | ${cheque.archivoNombre}` : ''}`
         ]);
       });
     }
@@ -666,7 +679,7 @@
   function countDraftOperations(payload) {
     if (
       payload.tipo === 'Venta'
-      && normalizeText(payload.medioPago) === 'cheque'
+      && isChequePaymentMethod(payload.medioPago)
       && Array.isArray(payload.cheques)
       && payload.cheques.length > 1
     ) {
@@ -874,7 +887,8 @@
   function collectChequeRows() {
     return Array.from(refs.chequeRows.querySelectorAll('.carga-cheque-row')).map((row, index) => ({
       montoArs: row.querySelector(`[data-cheque-monto="${index}"]`)?.value || '',
-      archivoNombre: row.querySelector(`[data-cheque-file="${index}"]`)?.value || ''
+      archivoNombre: row.querySelector(`[data-cheque-file="${index}"]`)?.value || state.attachments[index]?.name || '',
+      fechaAcreditacion: row.querySelector(`[data-cheque-fecha="${index}"]`)?.value || ''
     }));
   }
 

@@ -85,6 +85,13 @@ function isClubProduct(value) {
   return normalizeText(value) === 'club';
 }
 
+function isChequePaymentMethod(value) {
+  const compact = normalizeText(value).replace(/[^a-z0-9]+/g, '');
+  return compact.includes('cheque')
+    || compact.includes('echeq')
+    || compact.includes('echeck');
+}
+
 function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 }
@@ -911,7 +918,11 @@ function buildChequeRows(payload) {
     .map((row, index) => ({
       index,
       montoArs: toNumber(row?.montoArs),
-      archivoNombre: optionalString(row?.archivoNombre)
+      archivoNombre: optionalString(row?.archivoNombre),
+      fechaAcreditacion: requiredDate(
+        row?.fechaAcreditacion || payload.fechaAcreditacion,
+        `la fecha de acreditación del cheque ${index + 1}`
+      )
     }))
     .filter((row) => row.montoArs !== null);
 }
@@ -1013,7 +1024,7 @@ async function attachFilesToNotionPage(pageId, files = []) {
   );
 }
 
-function normalizePayload(payload = {}, user) {
+function normalizePayload(payload = {}, user, options = {}) {
   const tipo = requiredString(payload.tipo, 'el tipo');
   if (!DEFAULT_TYPES.includes(tipo)) {
     const error = new Error('Tipo inválido para el comprobante');
@@ -1060,7 +1071,7 @@ function normalizePayload(payload = {}, user) {
 
   attachmentFiles.forEach((file) => ensureFileSize(file));
 
-  if (!attachmentFiles.length) {
+  if (!attachmentFiles.length && !options.allowMissingAttachments) {
     const error = new Error('Debés adjuntar el comprobante para crear el registro');
     error.statusCode = 400;
     throw error;
@@ -1125,7 +1136,7 @@ function normalizePayload(payload = {}, user) {
       throw error;
     }
 
-    if (normalizeText(medioPago) === 'cheque') {
+    if (isChequePaymentMethod(medioPago)) {
       normalized.chequeCount = toInteger(payload.chequeCount);
       normalized.cheques = buildChequeRows(payload);
       validateChequeRows(normalized.cheques, normalized.chequeCount, normalized.cashCollectedArs);
@@ -1168,15 +1179,16 @@ function buildDraftOperations(normalized) {
       'Dni/cuit': notionRichTextValue(normalized.dniCuit),
       'Info Comprobantes': notionRichTextValue(commonInfo),
       'Medios de pago': notionRelationArrayValue(overrides.medioPagoIds || normalized.medioPagoIds || []),
+      'Cheque?': notionCheckboxValue(overrides.cheque ?? isChequePaymentMethod(normalized.medioPago)),
       'Fecha de acreditacion': notionDateValue(overrides.fechaAcreditacion || normalized.fechaAcreditacion),
+      'Fecha respaldo': notionDateValue(overrides.fechaVenta || normalized.fechaVenta),
       'F.venta respaldo': notionDateValue(overrides.fechaVenta || normalized.fechaVenta),
       'Venta relacionada': notionRelationValue(overrides.ventaRelacionada || normalized.latestSaleId)
     };
 
     if (operationType === 'Venta') {
       Object.assign(properties, {
-        'Cantidad de pagos': notionSelectValue(`${normalized.cantidadPagos} ${normalized.cantidadPagos === 1 ? 'Pago' : 'Pagos'}`),
-        'Cheque?': notionCheckboxValue(overrides.cheque ?? (normalizeText(normalized.medioPago) === 'cheque'))
+        'Cantidad de pagos': notionSelectValue(`${normalized.cantidadPagos} ${normalized.cantidadPagos === 1 ? 'Pago' : 'Pagos'}`)
       });
     }
 
@@ -1188,11 +1200,12 @@ function buildDraftOperations(normalized) {
     return Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined));
   }
 
-  if (normalized.tipo === 'Venta' && normalizeText(normalized.medioPago) === 'cheque' && normalized.cheques.length > 1) {
+  if (normalized.tipo === 'Venta' && isChequePaymentMethod(normalized.medioPago) && normalized.cheques.length > 1) {
     return normalized.cheques.map((cheque, index) => ({
       localType: index === 0 ? 'Venta' : 'Cobranza',
       properties: buildOperationPayload(index === 0 ? 'Venta' : 'Cobranza', {
         cashCollectedArs: cheque.montoArs,
+        fechaAcreditacion: cheque.fechaAcreditacion,
         cheque: true,
         finalizar: index > 0
       }),
@@ -1203,7 +1216,7 @@ function buildDraftOperations(normalized) {
   return [{
     localType: normalized.tipo,
     properties: buildOperationPayload(normalized.tipo, {
-      cheque: normalizeText(normalized.medioPago) === 'cheque',
+      cheque: isChequePaymentMethod(normalized.medioPago),
       finalizar: normalized.autoFinalizar
     }),
     attachmentNames: normalized.attachmentNames
@@ -1248,8 +1261,8 @@ async function updateNotionPageProperties(pageId, properties) {
   return response.data;
 }
 
-async function createComprobante(payload, user) {
-  const normalized = normalizePayload(payload, user);
+async function createComprobante(payload, user, options = {}) {
+  const normalized = normalizePayload(payload, user, options);
   const submissionKey = normalized.submissionKey;
   const cached = submissionKey ? getSubmissionCacheEntry(submissionKey) : null;
   if (cached?.status === 'done') return cached.result;
@@ -1270,7 +1283,7 @@ async function createComprobante(payload, user) {
   const responsibleMatch = findBestNotionUserMatch(notionUsers, normalized.responsableVenta, user);
   normalized.responsableVentaUserIds = responsibleMatch ? [responsibleMatch.id] : [];
 
-  if ((normalized.tipo === 'Cobranza' || (normalized.tipo === 'Venta' && normalizeText(normalized.medioPago) === 'cheque' && normalized.cheques.length > 1)) && !normalized.latestSaleId) {
+  if ((normalized.tipo === 'Cobranza' || (normalized.tipo === 'Venta' && isChequePaymentMethod(normalized.medioPago) && normalized.cheques.length > 1)) && !normalized.latestSaleId) {
     const latestSale = await findLatestVentaByGhlId(normalized.ghlId);
     normalized.latestSaleId = latestSale?.notionPageId || null;
   }
@@ -1279,12 +1292,23 @@ async function createComprobante(payload, user) {
 
   try {
     const results = [];
+    let createdVentaId = null;
     for (const operation of operations) {
+      if (operation.localType === 'Cobranza' && createdVentaId) {
+        operation.properties['Venta relacionada'] = notionRelationValue(createdVentaId);
+      }
       const created = await createNotionPage(operation.properties);
-      if (normalized.attachmentFiles.length && operation.localType === normalized.tipo) {
-        await attachFilesToNotionPage(created.id, normalized.attachmentFiles);
+      const referencedFiles = operation.attachmentNames.length
+        ? normalized.attachmentFiles.filter((file) => operation.attachmentNames.includes(file.name))
+        : [];
+      const operationFiles = referencedFiles.length
+        ? referencedFiles
+        : (operations.length === 1 || operation.localType === normalized.tipo ? normalized.attachmentFiles : []);
+      if (operationFiles.length) {
+        await attachFilesToNotionPage(created.id, operationFiles);
       }
       if (operation.localType === 'Venta') {
+        createdVentaId = created.id;
         await updateNotionPageProperties(created.id, {
           Finalizado: notionCheckboxValue(true),
           'Venta relacionada': notionRelationValue(created.id)
@@ -1398,5 +1422,11 @@ module.exports = {
   lookupClientByGhlId,
   lookupRelatedSaleById,
   createComprobante,
-  listMyComprobantes
+  listMyComprobantes,
+  _test: {
+    isChequePaymentMethod,
+    buildChequeRows,
+    buildDraftOperations,
+    normalizePayload
+  }
 };
