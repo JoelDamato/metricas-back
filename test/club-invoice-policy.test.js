@@ -23,7 +23,8 @@ const {
   discoverRenderSecretFiles,
   credentialPathCandidates,
   resolveCredentialPath,
-  materializeCredentialPem
+  materializeCredentialPem,
+  credentialsAreReusable
 } = require('../scripts/arca_wsfe_probe');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
@@ -275,6 +276,15 @@ test('credenciales ARCA aceptan PEM multilínea desde variables de entorno', () 
 test('conexiones ARCA usan compatibilidad TLS aislada para el servidor fiscal', () => {
   assert.equal(ARCA_HTTPS_AGENT.options.ciphers, 'DEFAULT@SECLEVEL=1');
   assert.equal(ARCA_HTTPS_AGENT.options.minVersion, 'TLSv1.2');
+});
+
+test('ticket WSAA se reutiliza hasta cinco minutos antes de vencer', () => {
+  const now = Date.parse('2026-07-30T12:00:00.000Z');
+  const base = { token: 'token', sign: 'sign' };
+
+  assert.equal(credentialsAreReusable({ ...base, expirationTime: '2026-07-30T13:00:00.000Z' }, now), true);
+  assert.equal(credentialsAreReusable({ ...base, expirationTime: '2026-07-30T12:04:59.000Z' }, now), false);
+  assert.equal(credentialsAreReusable({ token: '', sign: 'sign', expirationTime: '2026-07-30T13:00:00.000Z' }, now), false);
 });
 
 test('factura y nota de crédito conservan el botón antes de esperar la confirmación', () => {

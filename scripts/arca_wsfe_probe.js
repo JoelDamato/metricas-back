@@ -10,6 +10,9 @@ const POINT_OF_SALE = 5;
 const INVOICE_B = 6;
 const CERT_FILENAME = 'matias-randazzo-wsfe-produccion.crt';
 const KEY_FILENAME = 'matias-randazzo-wsfe-produccion.key';
+const WSAA_TICKET_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+const wsaaCredentialCache = new Map();
+const wsaaCredentialRequests = new Map();
 const ARCA_HTTPS_AGENT = new https.Agent({
   keepAlive: true,
   minVersion: 'TLSv1.2',
@@ -91,7 +94,18 @@ function xmlEscape(value = '') {
   }[char]));
 }
 
-async function getWsaaCredentials(service = 'wsfe') {
+function credentialsAreReusable(credentials, now = Date.now()) {
+  if (!credentials?.token || !credentials?.sign || !credentials?.expirationTime) return false;
+  const expiresAt = Date.parse(credentials.expirationTime);
+  return Number.isFinite(expiresAt) && expiresAt > now + WSAA_TICKET_REFRESH_MARGIN_MS;
+}
+
+function clearWsaaCredentialCache() {
+  wsaaCredentialCache.clear();
+  wsaaCredentialRequests.clear();
+}
+
+async function requestWsaaCredentials(service) {
   for (const filePath of [CERT_PATH, KEY_PATH]) {
     if (!filePath || !fs.existsSync(filePath)) {
       throw new Error(`Falta la credencial ARCA ${path.basename(filePath || 'sin-ruta')}. En Render cargala como Secret File o configurá ARCA_CERT_PEM/ARCA_KEY_PEM.`);
@@ -121,11 +135,29 @@ async function getWsaaCredentials(service = 'wsfe') {
     const loginResponse = xmlValue(response.data, 'loginCmsReturn');
     const token = xmlValue(loginResponse, 'token');
     const sign = xmlValue(loginResponse, 'sign');
+    const responseExpirationTime = xmlValue(loginResponse, 'expirationTime') || expirationTime;
     if (!token || !sign) throw new Error(`WSAA no devolvió token/sign: ${String(response.data).slice(0, 600)}`);
-    return { token, sign };
+    return { token, sign, expirationTime: responseExpirationTime };
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+}
+
+function getWsaaCredentials(service = 'wsfe') {
+  const cached = wsaaCredentialCache.get(service);
+  if (credentialsAreReusable(cached)) return Promise.resolve(cached);
+  const pending = wsaaCredentialRequests.get(service);
+  if (pending) return pending;
+  const request = requestWsaaCredentials(service)
+    .then((credentials) => {
+      wsaaCredentialCache.set(service, credentials);
+      return credentials;
+    })
+    .finally(() => {
+      wsaaCredentialRequests.delete(service);
+    });
+  wsaaCredentialRequests.set(service, request);
+  return request;
 }
 
 async function getLastAuthorizedInvoice(auth, invoiceType = INVOICE_B) {
@@ -163,6 +195,8 @@ module.exports = {
   credentialPathCandidates,
   resolveCredentialPath,
   materializeCredentialPem,
+  credentialsAreReusable,
+  clearWsaaCredentialCache,
   getWsaaCredentials,
   getLastAuthorizedInvoice
 };

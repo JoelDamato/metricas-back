@@ -162,11 +162,11 @@ async function resolveRecipient(record) {
   try {
     auth = await getWsaaCredentials('ws_sr_constancia_inscripcion');
   } catch (error) {
-    const causeMessage = String(error?.message || '').trim();
+    const causeMessage = String(xmlValue(error?.response?.data, 'faultstring') || error?.message || '').trim();
     const missingCredential = /Falta la credencial ARCA/i.test(causeMessage);
     const wrapped = new Error(missingCredential
       ? causeMessage
-      : 'La consulta automática al Padrón de ARCA no está autorizada para el certificado activo. Revisá que Render use el certificado RANDAZZO2026.');
+      : `No se pudo autenticar la consulta al Padrón de ARCA${causeMessage ? `: ${causeMessage}` : ''}`);
     wrapped.statusCode = 409;
     wrapped.cause = error;
     throw wrapped;
