@@ -927,7 +927,7 @@ function buildChequeRows(payload) {
     .filter((row) => row.montoArs !== null);
 }
 
-function validateChequeRows(chequeRows, expectedCount, totalCashArs) {
+function validateChequeRows(chequeRows, expectedCount, totalCashArs, options = {}) {
   if (!expectedCount || expectedCount < 1) {
     const error = new Error('Si el medio de pago es cheque tenés que indicar la cantidad de cheques');
     error.statusCode = 400;
@@ -936,6 +936,12 @@ function validateChequeRows(chequeRows, expectedCount, totalCashArs) {
 
   if (chequeRows.length !== expectedCount) {
     const error = new Error('La cantidad de cheques cargados no coincide con la cantidad indicada');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (options.requireFiles !== false && chequeRows.some((row) => !row.archivoNombre)) {
+    const error = new Error('Tenés que adjuntar el archivo o foto de cada cheque');
     error.statusCode = 400;
     throw error;
   }
@@ -1139,7 +1145,9 @@ function normalizePayload(payload = {}, user, options = {}) {
     if (isChequePaymentMethod(medioPago)) {
       normalized.chequeCount = toInteger(payload.chequeCount);
       normalized.cheques = buildChequeRows(payload);
-      validateChequeRows(normalized.cheques, normalized.chequeCount, normalized.cashCollectedArs);
+      validateChequeRows(normalized.cheques, normalized.chequeCount, normalized.cashCollectedArs, {
+        requireFiles: !options.allowMissingAttachments
+      });
     }
   }
 
@@ -1427,6 +1435,7 @@ module.exports = {
     isChequePaymentMethod,
     buildChequeRows,
     buildDraftOperations,
+    validateChequeRows,
     normalizePayload
   }
 };

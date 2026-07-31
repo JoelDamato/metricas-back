@@ -6,6 +6,7 @@
     bootstrap: null,
     client: null,
     attachments: [],
+    chequeFiles: [],
     loading: false,
     previewPayload: null,
     submissionKey: null,
@@ -212,9 +213,16 @@
     });
   }
 
+  function getAllAttachments() {
+    return [
+      ...state.attachments,
+      ...state.chequeFiles.map((entry) => entry?.uploadFile).filter(Boolean)
+    ];
+  }
+
   async function serializeAttachments() {
     return Promise.all(
-      state.attachments.map(async (file) => ({
+      getAllAttachments().map(async (file) => ({
         name: file.name,
         type: file.type || 'application/octet-stream',
         size: Number(file.size || 0),
@@ -295,7 +303,14 @@
       && chequeRows.every((row) => Boolean(String(row.montoArs || '').trim()))
       && chequeRows.every((row) => Boolean(String(row.fechaAcreditacion || '').trim()))
     );
-    const attachmentReady = state.attachments.length > 0;
+    const chequeFilesReady = chequeCount > 0
+      && Array.from(
+        { length: chequeCount },
+        (_, index) => Boolean(state.chequeFiles[index]?.uploadFile)
+      ).every(Boolean);
+    const attachmentReady = isVenta && isCheque
+      ? chequeFilesReady
+      : state.attachments.length > 0;
     const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución';
     const relationReady = !needsRelatedSale || Boolean(refs.latestSaleId.value);
     const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady && attachmentReady;
@@ -466,9 +481,12 @@
   function renderChequeRows() {
     const count = Number(refs.chequeCount.value || 0);
     if (!count || count < 1) {
+      state.chequeFiles = [];
       refs.chequeRows.innerHTML = '';
       return;
     }
+
+    state.chequeFiles = state.chequeFiles.slice(0, count);
 
     refs.chequeRows.innerHTML = Array.from({ length: count }, (_, index) => `
       <article class="carga-cheque-row">
@@ -480,7 +498,10 @@
           </label>
           <label class="carga-field">
             <span>Archivo / foto</span>
-            <input type="text" data-cheque-file="${index}" placeholder="Nombre del archivo o referencia" />
+            <input type="file" data-cheque-file="${index}" accept=".jpg,.jpeg,.png,.webp,.pdf,image/*,application/pdf" />
+            <small class="carga-cheque-file-name" data-cheque-file-name="${index}">
+              ${state.chequeFiles[index]?.originalName ? escapeHtml(state.chequeFiles[index].originalName) : 'Sin archivo seleccionado'}
+            </small>
           </label>
           <label class="carga-field">
             <span>Fecha de acreditación</span>
@@ -491,7 +512,32 @@
     `).join('');
 
     refs.chequeRows.querySelectorAll('[data-cheque-monto]').forEach(bindFormattedNumberInput);
-    refs.chequeRows.querySelectorAll('input').forEach((node) => {
+    refs.chequeRows.querySelectorAll('[data-cheque-file]').forEach((node) => {
+      node.addEventListener('change', (event) => {
+        const index = Number(event.currentTarget.dataset.chequeFile);
+        const file = event.currentTarget.files?.[0] || null;
+        if (file) {
+          const uploadName = `cheque-${index + 1}-${file.name}`;
+          const uploadFile = new File([file], uploadName, {
+            type: file.type || 'application/octet-stream',
+            lastModified: file.lastModified
+          });
+          state.chequeFiles[index] = {
+            originalName: file.name,
+            uploadFile
+          };
+        } else {
+          state.chequeFiles[index] = null;
+        }
+
+        const label = refs.chequeRows.querySelector(`[data-cheque-file-name="${index}"]`);
+        if (label) label.textContent = file?.name || 'Sin archivo seleccionado';
+        updateStepFlow();
+        invalidatePreview();
+      });
+    });
+
+    refs.chequeRows.querySelectorAll('input:not([type="file"])').forEach((node) => {
       node.addEventListener('input', () => {
         updateStepFlow();
         invalidatePreview();
@@ -608,6 +654,7 @@
         const chequeRows = Array.isArray(payload.cheques) ? payload.cheques : [];
         if (!chequeRows.length) warnings.push('Faltan los cheques cargados.');
         if (chequeRows.some((row) => !row.fechaAcreditacion)) warnings.push('Falta la fecha de acreditación de algún cheque.');
+        if (chequeRows.some((row) => !row.archivoNombre)) warnings.push('Falta el archivo o foto de algún cheque.');
       }
     }
 
@@ -887,7 +934,7 @@
   function collectChequeRows() {
     return Array.from(refs.chequeRows.querySelectorAll('.carga-cheque-row')).map((row, index) => ({
       montoArs: row.querySelector(`[data-cheque-monto="${index}"]`)?.value || '',
-      archivoNombre: row.querySelector(`[data-cheque-file="${index}"]`)?.value || state.attachments[index]?.name || '',
+      archivoNombre: state.chequeFiles[index]?.uploadFile?.name || '',
       fechaAcreditacion: row.querySelector(`[data-cheque-fecha="${index}"]`)?.value || ''
     }));
   }
@@ -913,7 +960,7 @@
       chequeCount: refs.chequeCount.value,
       cheques: collectChequeRows(),
       latestSaleId: refs.latestSaleId.value,
-      attachmentNames: state.attachments.map((file) => file.name),
+      attachmentNames: getAllAttachments().map((file) => file.name),
       attachmentFiles,
       mesesSoporte: refs.tipo.value === 'Venta' ? refs.mesesSoporte.value : '',
       sesiones: refs.tipo.value === 'Venta' ? refs.sesiones.value : '',
@@ -971,6 +1018,7 @@
       refs.responsableVenta.value = state.bootstrap?.responsibleVentaDefault || '';
       syncAutomaticDates();
       state.attachments = [];
+      state.chequeFiles = [];
       state.client = null;
       renderAttachments();
       setClientSummary(null);
@@ -1008,7 +1056,14 @@
   refs.latestSaleId?.addEventListener('change', lookupRelatedSaleFromInput);
   refs.clientName?.addEventListener('input', updateIdentificador);
   refs.tipo?.addEventListener('change', updateVisibility);
-  refs.medioPago?.addEventListener('change', updateVisibility);
+  refs.medioPago?.addEventListener('change', () => {
+    if (!isChequePaymentMethod(refs.medioPago.value)) {
+      state.chequeFiles = [];
+      refs.chequeCount.value = '';
+      refs.chequeRows.innerHTML = '';
+    }
+    updateVisibility();
+  });
   refs.tipo?.addEventListener('change', syncAutomaticDates);
   refs.tc?.addEventListener('input', updateCashValidation);
   refs.cashCollectedArs?.addEventListener('input', updateCashValidation);

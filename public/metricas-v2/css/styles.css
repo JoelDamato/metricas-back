@@ -6231,6 +6231,12 @@ th {
   color: #15336f;
 }
 
+.carga-cheque-file-name {
+  color: #667aa8;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .carga-dropzone {
   position: relative;
   padding: 28px;

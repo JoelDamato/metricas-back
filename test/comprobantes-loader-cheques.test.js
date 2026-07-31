@@ -6,6 +6,7 @@ const {
     isChequePaymentMethod,
     buildChequeRows,
     buildDraftOperations,
+    validateChequeRows,
     normalizePayload
   }
 } = require('../modules/metricasv2/services/comprobantes-loader.service');
@@ -32,6 +33,21 @@ test('cada cheque conserva su fecha de acreditación', () => {
     '2026-08-26',
     '2026-09-26'
   ]);
+});
+
+test('exige un archivo o foto distinto para cada cheque', () => {
+  const cheques = [
+    { montoArs: 1000, fechaAcreditacion: '2026-07-31', archivoNombre: 'cheque-1.jpg' },
+    { montoArs: 1000, fechaAcreditacion: '2026-08-31', archivoNombre: '' }
+  ];
+
+  assert.throws(
+    () => validateChequeRows(cheques, 2, 2000),
+    /archivo o foto de cada cheque/
+  );
+  assert.doesNotThrow(
+    () => validateChequeRows(cheques, 2, 2000, { requireFiles: false })
+  );
 });
 
 test('genera una venta y dos cobranzas con las fechas de cada cheque', () => {
