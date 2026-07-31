@@ -676,12 +676,20 @@ function normalizeText(value) {
 }
 
 function normalizeOriginGroup(value) {
-  const text = normalizeText(value);
-  if (text.includes('apset')) return 'APSET';
-  if (text.includes('clases')) return 'CLASES';
-  if (text.includes('org')) return 'ORG';
-  if (text.includes('vsl')) return 'VSL';
-  return String(value || '').trim() || 'Sin origen';
+  const raw = String(value || '').trim();
+  if (!raw) return 'Sin origen';
+  if (!/^postulación meg - /i.test(raw)) return raw;
+
+  const segment = String(raw.split(' - ')[1] || '').trim();
+  const normalizedSegment = normalizeText(segment);
+  if (normalizedSegment.includes('vsl')) return 'VSL';
+  if (normalizedSegment.includes('org')) return 'ORG';
+  if (normalizedSegment.includes('apset')) return 'APSET';
+  return segment || raw;
+}
+
+function getMarketingLeadOrigin(row) {
+  return String(row?.origen_actual || row?.origen || '').trim() || 'Sin origen';
 }
 
 function sumField(rows, key) {
@@ -783,7 +791,7 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
 }
 
 function isMarketingLeadInSelectedOrigin(row, filters) {
-  return !filters.origen || normalizeOriginGroup(row.origen) === filters.origen;
+  return !filters.origen || normalizeOriginGroup(getMarketingLeadOrigin(row)) === filters.origen;
 }
 
 function isAgendaCompletedLead(row) {
@@ -1025,7 +1033,7 @@ function aggregateAdsMetrics(rows, filters) {
     const adname = String(row.adname || '').trim();
     if (!adname) return;
 
-    if (filters.origen && normalizeOriginGroup(row.origen) !== filters.origen) {
+    if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
       return;
     }
 
@@ -1118,7 +1126,7 @@ function aggregateQualityMetrics(rows, filters) {
   (rows || []).forEach((row) => {
     const calidad = String(row.calidad_lead || '').trim() || 'Sin calidad';
 
-    if (filters.origen && normalizeOriginGroup(row.origen) !== filters.origen) {
+    if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
       return;
     }
 
@@ -1278,7 +1286,7 @@ function renderInvestmentHistoryTable(rows) {
             <tr data-record-key="${recordKey}">
               <td>${escapeHtml(row.fecha_desde || '-')}</td>
               <td>${escapeHtml(row.fecha_hasta || '-')}</td>
-              <td>${escapeHtml(row.origen || '-')}</td>
+              <td>${escapeHtml(getMarketingLeadOrigin(row))}</td>
               <td>
                 <input
                   type="number"
@@ -1665,7 +1673,7 @@ async function loadDashboard() {
     const adRows = aggregateAdsMetrics(leadRows, filters);
     const qualityRows = aggregateQualityMetrics(leadRows, filters);
     const traceabilityRows = (traceabilityResponse.rows || []).filter((row) => {
-      if (filters.origen && normalizeOriginGroup(row.origen) !== filters.origen) {
+      if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
         return false;
       }
       return true;

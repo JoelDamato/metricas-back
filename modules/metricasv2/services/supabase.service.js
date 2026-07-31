@@ -1964,14 +1964,48 @@ function normalizeMarketingOrigin(value) {
   return origin || '__ALL__';
 }
 
+const {
+  buildMarketingLeadByGhlId,
+  resolveMarketingOrigin
+} = require('./marketing-origin.service');
+
 function normalizeMarketingOriginGroup(value) {
-  const text = String(value || '').trim().toUpperCase();
-  if (!text) return 'Sin origen';
-  if (text.includes('APSET')) return 'APSET';
-  if (text.includes('CLASES') || text.includes('CLASE')) return 'CLASES';
-  if (text.includes('ORG')) return 'ORG';
-  if (text.includes('VSL')) return 'VSL';
-  return String(value || '').trim() || 'Sin origen';
+  const raw = String(value || '').trim();
+  if (!raw) return 'Sin origen';
+  if (!/^postulación meg - /i.test(raw)) return raw;
+
+  const segment = String(raw.split(' - ')[1] || '').trim();
+  const normalizedSegment = segment.toUpperCase();
+  if (normalizedSegment.includes('VSL')) return 'VSL';
+  if (normalizedSegment.includes('ORG')) return 'ORG';
+  if (normalizedSegment.includes('APSET')) return 'APSET';
+  return segment || raw;
+}
+
+async function listMarketingOriginLeadsForRows(rows = []) {
+  const ghlIds = [...new Set((rows || [])
+    .map((row) => String(row?.ghlid || row?.ghl_id || '').trim())
+    .filter((value) => /^[a-zA-Z0-9_-]+$/.test(value)))];
+  if (!ghlIds.length) return [];
+
+  const chunks = [];
+  for (let index = 0; index < ghlIds.length; index += 200) {
+    chunks.push(ghlIds.slice(index, index + 200));
+  }
+
+  const responses = await Promise.all(chunks.map((chunk) => axios.get(
+    `${env.supabaseUrl}/rest/v1/leads_raw`,
+    {
+      headers: buildHeaders(),
+      params: {
+        select: 'ghlid,origen,origen_actual,last_edited_time,created_time',
+        ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
+        limit: 1000
+      }
+    }
+  )));
+
+  return responses.flatMap((response) => response.data || []);
 }
 
 function normalizeStrategyGroup(value) {
@@ -2528,6 +2562,8 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     orderBy: 'fecha_de_agendamiento',
     orderDir: 'desc'
   });
+  const leadRows = await listMarketingOriginLeadsForRows(rows);
+  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
 
   const filtered = rows.filter((row) => {
     if (String(row.tipo || '').trim().toLowerCase() !== 'venta') return false;
@@ -2540,7 +2576,7 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     if (!(facturacion > 0)) return false;
     if (!(primerPago > facturacion * 0.3)) return false;
 
-    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
       return false;
     }
 
@@ -2578,6 +2614,8 @@ async function getMarketingVentasTotales({ from, to, origen }) {
     orderBy: 'fecha_de_agendamiento',
     orderDir: 'desc'
   });
+  const leadRows = await listMarketingOriginLeadsForRows(rows);
+  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
 
   const filtered = rows.filter((row) => {
     if (String(row.tipo || '').trim().toLowerCase() !== 'venta') return false;
@@ -2586,7 +2624,7 @@ async function getMarketingVentasTotales({ from, to, origen }) {
     if (!producto || producto.toLowerCase() === 'empty') return false;
     if (producto.toLowerCase().includes('club')) return false;
 
-    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
       return false;
     }
 
@@ -2633,13 +2671,15 @@ async function getMarketingCashCollectedAgenda({ from, to, origen }) {
     orderBy: 'fecha_de_agendamiento',
     orderDir: 'desc'
   });
+  const leadRows = await listMarketingOriginLeadsForRows(rows);
+  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
 
   const cashCollectedAgenda = rows.reduce((sum, row) => {
     const tipo = String(row.tipo || '').trim().toLowerCase();
     if (tipo !== 'venta' && tipo !== 'cobranza') return sum;
     if (!isNonClubProductForCash(row)) return sum;
 
-    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) {
+    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
       return sum;
     }
 
@@ -2686,9 +2726,10 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
   ]);
 
   const byCampaign = new Map();
+  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
 
   leadRows.forEach((row) => {
-    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) return;
+    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) return;
 
     const current = getMarketingCampaignTotal(byCampaign, row.campaign);
     if (!current) return;
@@ -2726,7 +2767,7 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
     if (!producto || producto.toLowerCase() === 'empty') return;
     if (producto.toLowerCase().includes('club')) return;
 
-    if (origen && normalizeMarketingOriginGroup(row.origen) !== origen) return;
+    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) return;
 
     const current = getMarketingCampaignTotal(byCampaign, row.campaign);
     if (!current) return;
