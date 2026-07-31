@@ -1283,7 +1283,7 @@ async function createComprobante(payload, user, options = {}) {
   const responsibleMatch = findBestNotionUserMatch(notionUsers, normalized.responsableVenta, user);
   normalized.responsableVentaUserIds = responsibleMatch ? [responsibleMatch.id] : [];
 
-  if ((normalized.tipo === 'Cobranza' || (normalized.tipo === 'Venta' && isChequePaymentMethod(normalized.medioPago) && normalized.cheques.length > 1)) && !normalized.latestSaleId) {
+  if (normalized.tipo === 'Cobranza' && !normalized.latestSaleId) {
     const latestSale = await findLatestVentaByGhlId(normalized.ghlId);
     normalized.latestSaleId = latestSale?.notionPageId || null;
   }

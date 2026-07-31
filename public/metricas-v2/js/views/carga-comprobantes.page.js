@@ -296,7 +296,7 @@
       && chequeRows.every((row) => Boolean(String(row.fechaAcreditacion || '').trim()))
     );
     const attachmentReady = state.attachments.length > 0;
-    const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución' || (isVenta && isCheque);
+    const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución';
     const relationReady = !needsRelatedSale || Boolean(refs.latestSaleId.value);
     const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady && attachmentReady;
 
@@ -325,13 +325,13 @@
       refs.cobranzaLinkSection,
       stepState.baseReady
         && (!stepState.isVenta || stepState.ventaReady)
-        && (stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución' || stepState.isCheque)
+        && (stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución')
     );
     setSectionVisibility(
       refs.cashSection,
       stepState.baseReady
         && (!stepState.isVenta || stepState.ventaReady)
-        && (stepState.relationReady || !(stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución' || stepState.isCheque))
+        && (stepState.relationReady || !(stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución'))
     );
     setSectionVisibility(
       refs.chequeFields,
@@ -512,7 +512,7 @@
 
     refs.ventaFields.hidden = !(isVenta || isDevolucion);
     refs.chequeFields.hidden = !(isVenta && isCheque);
-    refs.cobranzaLinkSection.hidden = !(isCobranza || isDevolucion || (isVenta && isCheque));
+    refs.cobranzaLinkSection.hidden = !(isCobranza || isDevolucion);
     setSectionVisibility(refs.mesesSoporteField, isVenta);
     setSectionVisibility(refs.sesionesField, isVenta);
     setSectionVisibility(refs.bonusMatiField, isVenta);

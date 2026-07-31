@@ -86,6 +86,47 @@ test('genera una venta y dos cobranzas con las fechas de cada cheque', () => {
   );
 });
 
+test('permite una venta nueva en cuatro cheques sin exigir una venta previa', () => {
+  const operations = buildDraftOperations({
+    tipo: 'Venta',
+    ghlId: 'cliente-nuevo-cheques',
+    clientName: 'Cliente Nuevo',
+    clientPageId: 'cliente-notion-id',
+    responsableVenta: 'Mauro Gaitan',
+    responsableVentaUserIds: [],
+    fechaVenta: '2026-07-31',
+    fechaAcreditacion: '2026-07-31',
+    tc: 11111,
+    cashCollectedArs: 4000000,
+    medioPago: 'E-cheq Bco Frances',
+    medioPagoIds: [],
+    dniCuit: '1111111',
+    infoComprobantes: '',
+    mesesSoporte: null,
+    sesiones: null,
+    bonusMati: false,
+    attachmentNames: ['cheque-1.png', 'cheque-2.png', 'cheque-3.png', 'cheque-4.png'],
+    facturacionUsd: 360,
+    productName: 'Meg 2.1',
+    productIds: [],
+    cantidadPagos: 4,
+    latestSaleId: null,
+    autoFinalizar: false,
+    cheques: [
+      { montoArs: 1000000, fechaAcreditacion: '2026-07-31', archivoNombre: 'cheque-1.png' },
+      { montoArs: 1000000, fechaAcreditacion: '2026-08-31', archivoNombre: 'cheque-2.png' },
+      { montoArs: 1000000, fechaAcreditacion: '2026-09-30', archivoNombre: 'cheque-3.png' },
+      { montoArs: 1000000, fechaAcreditacion: '2026-10-31', archivoNombre: 'cheque-4.png' }
+    ]
+  });
+
+  assert.deepEqual(
+    operations.map((operation) => operation.localType),
+    ['Venta', 'Cobranza', 'Cobranza', 'Cobranza']
+  );
+  assert.equal(operations[0].properties['Venta relacionada'], undefined);
+});
+
 test('solo una carga administrativa explícita puede omitir adjuntos', () => {
   const payload = {
     tipo: 'Venta',
