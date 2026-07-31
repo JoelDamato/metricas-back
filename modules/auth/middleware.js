@@ -123,7 +123,7 @@ async function metricasApiGuard(req, res, next) {
         if (!access.canAccessPageForUser(req.authUser, 'csm-rendimiento.html')) {
           return res.status(403).json({ ok: false, message: 'Sin permiso para rendimiento CSM' });
         }
-        if (req.method !== 'GET' && !access.canEditAgendaCheckpointsForUser(req.authUser)) {
+        if (req.method !== 'GET' && !access.canEditCsmCheckpointsForUser(req.authUser)) {
           return res.status(403).json({ ok: false, message: 'Sin permiso para editar rendimiento CSM' });
         }
         return next();

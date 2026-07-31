@@ -106,6 +106,11 @@ const AGENDA_CHECKPOINT_EDITOR_EMAILS = new Set([
   'matirandazzo@gmail.com'
 ]);
 
+const CSM_CHECKPOINT_EDITOR_EMAILS = new Set([
+  'belenherrera.gestion@gmail.com',
+  'matirandazzo@gmail.com'
+]);
+
 const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'leonardoalaniz19@gmail.com',
   'matirandazzo@gmail.com'
@@ -170,6 +175,7 @@ const USER_ACCESS_OVERRIDES = {
     allowedPages: new Set([
       'csm-tiempo.html',
       'csm-situacion.html',
+      'csm-rendimiento.html',
       'csm-renovaciones.html',
       'comprobantes.html',
       'carga-comprobantes.html',
@@ -360,6 +366,11 @@ function canEditAgendaCheckpointsForUser(user) {
   return AGENDA_CHECKPOINT_EDITOR_EMAILS.has(email);
 }
 
+function canEditCsmCheckpointsForUser(user) {
+  const email = normalizeEmail(user?.email);
+  return CSM_CHECKPOINT_EDITOR_EMAILS.has(email);
+}
+
 function canGenerateCloserAiReportForUser(user) {
   const configValue = getConfigBoolean(user, 'canGenerateCloserAiReport');
   if (configValue !== null) return configValue;
@@ -522,6 +533,7 @@ function getUserPermissions(user) {
     canEditAgendaBonusRules: canAccessFeatureForUser(user, 'agenda_bonus_rules', { method: 'POST' }),
     canEditAgendaCalendar: canAccessFeatureForUser(user, 'agenda_calendar_assignments', { method: 'POST' }),
     canEditAgendaCheckpoints: canAccessFeatureForUser(user, 'agenda_checkpoints', { method: 'POST' }),
+    canEditCsmCheckpoints: canEditCsmCheckpointsForUser(user),
     canEditReportesPremio: canAccessFeatureForUser(user, 'reportes_premio', { method: 'POST' }),
     canCommentReportes: canAccessFeatureForUser(user, 'reportes_comentarios', { method: 'POST' }),
     canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
@@ -543,6 +555,7 @@ function getUserAccessSummary(user) {
       csmOnly: isCsmOnlyUser(user),
       canEditAgendaCalendar: canEditAgendaCalendarForUser(user),
       canEditAgendaCheckpoints: canEditAgendaCheckpointsForUser(user),
+      canEditCsmCheckpoints: canEditCsmCheckpointsForUser(user),
       canEditReportesPremio: canEditReportesPremioForUser(user),
       canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
       canManageUsers: canManageUsersForUser(user)
@@ -570,6 +583,7 @@ module.exports = {
   canEditReportesPremioForUser,
   canEditAgendaCalendarForUser,
   canEditAgendaCheckpointsForUser,
+  canEditCsmCheckpointsForUser,
   canGenerateCloserAiReportForUser,
   canManageUsersForUser,
   canAccessPage,

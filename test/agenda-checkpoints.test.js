@@ -238,9 +238,10 @@ test('mantiene los movimientos de CSM separados de los de agendas', async () => 
   }), { email: 'mati@example.com' });
   await supabaseService.updateAgendaCheckpoint(basePayload({
     tipo: 'strike',
-    cantidad: 1,
     area: 'csm',
-    closer_nombre: 'Sofia Gallardo'
+    closer_nombre: 'Sofia Gallardo',
+    fecha: '2026-07-15',
+    categoria: 'Trato y conducta'
   }), { email: 'mati@example.com' });
 
   const agendas = await supabaseService.getAgendaCheckpoints({ anio: 2026, mes: 7, area: 'agendas' });
@@ -254,6 +255,15 @@ test('mantiene los movimientos de CSM separados de los de agendas', async () => 
     [...objects.keys()].find((url) => url.includes('/config/agendas/')),
     [...objects.keys()].find((url) => url.includes('/config/csm/'))
   );
+
+  const csmReport = await supabaseService.getCsmCheckpointReport({
+    anio: 2026,
+    mes: 7,
+    current: csm
+  });
+  assert.equal(csmReport.current.members.find((row) => row.name === 'Sofía Gallardo').score, -1);
+  assert.equal(csmReport.current.members.find((row) => row.name === 'Sofía Gallardo').bonusUsd, 0);
+  assert.equal(csmReport.history.length, 12);
 });
 
 test('activa el bono de USD 40 al alcanzar 40% del cash mensual', () => {

@@ -3,36 +3,178 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rendimiento CSM | Métricas</title>
+  <title>Checks & Strikes CSM | Métricas</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/styles.css" />
   <style>
-    :root{--bg:#0c1020;--panel:#151b2f;--panel2:#1b233b;--line:#2b3655;--text:#edf2ff;--muted:#94a1c3;--blue:#4b8ef5;--green:#2dd4a0;--red:#f87171;--amber:#f59e0b}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}.csm-performance{max-width:1280px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}.top a{color:#9bc6ff;text-decoration:none}.top h1{margin:8px 0 4px;font-size:26px}.top p{margin:0;color:var(--muted)}.filters,.form{display:flex;gap:9px;flex-wrap:wrap;align-items:end}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}.field select,.field input,.field textarea{box-sizing:border-box;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);padding:9px 10px;font:12px 'DM Sans',sans-serif}.field textarea{min-width:280px;min-height:38px;resize:vertical}.btn{height:36px;border:0;border-radius:8px;padding:0 13px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}.btn.secondary{background:#233050;color:#bcd6ff;border:1px solid #36517c}.btn.danger{height:28px;background:rgba(248,113,113,.12);color:#ffaaaa;border:1px solid rgba(248,113,113,.3)}.btn:disabled{opacity:.45;cursor:not-allowed}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}.meta{font-size:11px;color:var(--muted);margin-bottom:12px}.meta.ok{color:var(--green)}.meta.error{color:var(--red)}.cards{display:grid;grid-template-columns:repeat(3,minmax(200px,1fr));gap:10px;margin:14px 0}.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}.card h3{margin:0 0 10px}.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}.check{background:rgba(45,212,160,.13);color:#80f2cf}.strike{background:rgba(248,113,113,.13);color:#ffaaaa}.pending{background:rgba(245,158,11,.13);color:#ffd27a}.score{font:700 20px 'DM Mono';margin-top:10px}.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse;min-width:760px}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-size:12px}.table th{font-size:10px;text-transform:uppercase;color:var(--muted)}.number{text-align:right!important;font-family:'DM Mono'}.empty{text-align:center;color:var(--muted);padding:24px}@media(max-width:760px){.csm-performance{padding:14px}.cards{grid-template-columns:1fr}.field,.field select,.field input,.field textarea{width:100%}.form{display:grid;grid-template-columns:1fr}.filters{width:100%}}
+    :root {
+      --bg: #090d1a;
+      --panel: #12192b;
+      --panel-2: #182139;
+      --line: #293653;
+      --text: #edf2ff;
+      --muted: #94a1c3;
+      --blue: #4b8ef5;
+      --green: #2dd4a0;
+      --red: #f87171;
+      --amber: #f5a524;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at top right, rgba(75,142,245,.11), transparent 32rem), var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+    .csm-performance { width: min(1440px, 100%); margin: auto; padding: 28px; }
+    .top { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; }
+    .back { color: #9bc6ff; text-decoration: none; font-size: 13px; font-weight: 600; }
+    .top h1 { margin: 10px 0 5px; font-size: clamp(27px, 4vw, 40px); line-height: 1.05; letter-spacing: -.035em; }
+    .top p { margin: 0; color: var(--muted); max-width: 700px; }
+    .filters, .form { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+    .field { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
+    .field.grow { flex: 1 1 330px; }
+    .field label, .eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+    .field select, .field input, .field textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 9px; background: #0d1425; color: var(--text);
+      padding: 10px 11px; font: 12px 'DM Sans', sans-serif; outline: none;
+    }
+    .field select:focus, .field input:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(75,142,245,.12); }
+    .field textarea { min-height: 42px; resize: vertical; }
+    .btn { height: 38px; border: 0; border-radius: 9px; padding: 0 15px; background: var(--blue); color: #fff; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .btn.secondary { background: #1c2b49; color: #bcd6ff; border: 1px solid #36517c; }
+    .btn.danger { height: 29px; padding: 0 9px; background: rgba(248,113,113,.1); color: #ffaaaa; border: 1px solid rgba(248,113,113,.3); font-size: 10px; }
+    .btn:disabled, select:disabled, input:disabled, textarea:disabled { opacity: .48; cursor: not-allowed; }
+    .panel { background: rgba(18,25,43,.96); border: 1px solid var(--line); border-radius: 15px; padding: 18px; margin-bottom: 15px; box-shadow: 0 18px 55px rgba(0,0,0,.16); }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+    .panel h2 { margin: 0; font-size: 18px; }
+    .panel-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .meta { font-size: 11px; color: var(--muted); margin-bottom: 13px; }
+    .meta.ok { color: var(--green); }
+    .meta.error { color: var(--red); }
+    .form { padding: 13px; border: 1px solid rgba(75,142,245,.24); background: linear-gradient(135deg, rgba(75,142,245,.07), transparent 55%), var(--panel-2); border-radius: 12px; }
+    .policy { margin: 10px 1px 0; color: var(--muted); font-size: 11px; }
+    .alerts { display: grid; gap: 8px; margin-bottom: 15px; }
+    .alert { display: flex; gap: 8px 16px; justify-content: space-between; flex-wrap: wrap; border-radius: 10px; padding: 11px 13px; font-size: 12px; }
+    .alert.clear { color: #8de8ce; background: rgba(45,212,160,.08); border: 1px solid rgba(45,212,160,.2); }
+    .alert.warning { color: #ffd38a; background: rgba(245,165,36,.09); border: 1px solid rgba(245,165,36,.26); }
+    .alert span { color: inherit; opacity: .84; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 11px; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,.025), transparent), var(--panel-2); border: 1px solid var(--line); border-radius: 13px; padding: 15px; }
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .card h3 { margin: 3px 0 0; font-size: 16px; }
+    .score { font: 700 24px 'DM Mono', monospace; }
+    .score.positive { color: var(--green); }
+    .score.negative, .negative { color: var(--red)!important; }
+    .score.neutral { color: #c2cae0; }
+    .pills { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+    .pill, .type-badge { padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+    .check { background: rgba(45,212,160,.13); color: #80f2cf; }
+    .strike { background: rgba(248,113,113,.13); color: #ffaaaa; }
+    .money-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid var(--line); padding-top: 11px; }
+    .money-grid div { display: flex; flex-direction: column; gap: 3px; }
+    .money-grid span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+    .money-grid strong { font: 700 13px 'DM Mono', monospace; }
+    .money-total { text-align: right; }
+    .split { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr); gap: 15px; align-items: start; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; }
+    .table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    .table.compact { min-width: 430px; }
+    .table th, .table td { text-align: left; padding: 10px 11px; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: top; }
+    .table th { background: rgba(255,255,255,.025); font-size: 9px; text-transform: uppercase; letter-spacing: .055em; color: var(--muted); }
+    .table tbody tr:last-child td { border-bottom: 0; }
+    .number { text-align: right!important; font-family: 'DM Mono', monospace; white-space: nowrap; }
+    .total-cell { color: #9bc6ff; font-weight: 700; }
+    .detail-table { min-width: 1120px; }
+    .detail-text { min-width: 280px; white-space: pre-wrap; line-height: 1.45; color: #cbd5ee; }
+    .count { color: var(--muted); font: 500 11px 'DM Mono', monospace; }
+    .empty { text-align: center; color: var(--muted); padding: 30px; font-size: 12px; }
+    @media (max-width: 1020px) {
+      .cards { grid-template-columns: 1fr; }
+      .split { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .csm-performance { padding: 15px; }
+      .filters, .form { display: grid; grid-template-columns: 1fr; width: 100%; }
+      .field, .field.grow { width: 100%; min-width: 0; }
+      .btn { width: 100%; }
+      .money-grid { grid-template-columns: 1fr 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
   <main class="csm-performance">
     <header class="top">
-      <div><a href="/index.html">← Volver al dashboard</a><h1>CSM · Rendimiento</h1><p>Checks, strikes y pendientes del equipo CSM.</p></div>
-      <div class="filters"><div class="field"><label for="year">Año</label><select id="year"></select></div><div class="field"><label for="month">Mes</label><select id="month"></select></div><button id="export" class="btn secondary" type="button">Exportar CSV</button></div>
+      <div>
+        <a class="back" href="/index.html">← Volver al dashboard</a>
+        <h1>Checks & Strikes · CSM</h1>
+        <p>Registro y reporte mensual del Área de Contribución, con bono calculado automáticamente.</p>
+      </div>
+      <div class="filters">
+        <div class="field"><label for="year">Año</label><select id="year"></select></div>
+        <div class="field"><label for="month">Mes</label><select id="month"></select></div>
+        <button id="export" class="btn secondary" type="button">Exportar reporte CSV</button>
+      </div>
     </header>
+
+    <div id="alerts" class="alerts"></div>
+
     <section class="panel">
+      <div class="panel-head">
+        <div><h2>Cargar un hecho</h2><p class="panel-subtitle">Cada registro corresponde a un único check o strike.</p></div>
+      </div>
       <div id="meta" class="meta">Cargando rendimiento...</div>
       <form id="movement-form" class="form">
-        <div class="field"><label for="member">CSM</label><select id="member"></select></div>
-        <div class="field"><label for="type">Tipo</label><select id="type"><option value="check">Check</option><option value="strike">Strike</option><option value="pendiente:sumar">Pendiente (+)</option><option value="pendiente:restar">Resolver pendiente (-)</option></select></div>
-        <div class="field"><label for="quantity">Cantidad</label><input id="quantity" type="number" min="1" max="50" step="1" value="1" /></div>
-        <div class="field"><label for="detail">Detalle</label><textarea id="detail" maxlength="1200" placeholder="Motivo del movimiento"></textarea></div>
+        <div class="field">
+          <label for="member">Persona</label>
+          <select id="member"></select>
+        </div>
+        <div class="field">
+          <label for="date">Fecha de carga</label>
+          <input id="date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="type">Tipo</label>
+          <select id="type"><option value="check">Check</option><option value="strike">Strike</option></select>
+        </div>
+        <div class="field grow">
+          <label for="category">Categoría general</label>
+          <select id="category"></select>
+        </div>
+        <div class="field grow">
+          <label for="detail">Detalle de la situación</label>
+          <textarea id="detail" maxlength="1200" required placeholder="Describí el caso puntual y su contexto."></textarea>
+        </div>
         <button id="save" class="btn" type="submit">Guardar</button>
       </form>
+      <p id="cutoff-policy" class="policy"></p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>Resultado del mes</h2><p class="panel-subtitle">Checks menos strikes, bono y total a pagar por persona.</p></div></div>
       <div id="cards" class="cards"></div>
     </section>
-    <section class="panel"><h2>Ranking CSM</h2><div id="ranking" class="table-wrap"></div></section>
-    <section class="panel"><h2>Historial del mes</h2><div id="history" class="table-wrap"></div></section>
+
+    <div class="split">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Reporte mensual</h2><p class="panel-subtitle">Sueldo fijo de USD 850 más el bono correspondiente.</p></div></div>
+        <div id="monthly-report" class="table-wrap"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Tabla de bono</h2><p class="panel-subtitle">Referencia automática según resultado.</p></div></div>
+        <div id="bonus-rules" class="table-wrap"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Detalle del mes</h2><p class="panel-subtitle">Fecha, tipo, categoría, situación y responsable de carga.</p></div>
+        <span id="detail-count" class="count"></span>
+      </div>
+      <div id="detail-history" class="table-wrap"></div>
+    </section>
+
   </main>
-  <script src="/js/api/http.js"></script><script src="/js/api/metricas.api.js"></script><script src="/js/auth-shell.js"></script><script src="/js/views/csm-rendimiento.page.js"></script>
+  <script src="/js/api/http.js"></script>
+  <script src="/js/api/metricas.api.js"></script>
+  <script src="/js/auth-shell.js"></script>
+  <script src="/js/views/csm-rendimiento.page.js"></script>
 </body>
 </html>

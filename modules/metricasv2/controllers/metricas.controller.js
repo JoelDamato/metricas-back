@@ -272,16 +272,27 @@ async function saveAgendaCalendarAssignment(req, res, next) {
 
 async function getAgendaCheckpoints(req, res, next) {
   try {
+    const area = String(req.query.area || '').trim().toLowerCase() === 'csm' ? 'csm' : 'agendas';
     const checkpoints = await supabaseService.getAgendaCheckpoints({
       anio: req.query.anio,
       mes: req.query.mes,
-      area: req.query.area
+      area
     });
+    const csmReport = area === 'csm'
+      ? await supabaseService.getCsmCheckpointReport({
+        anio: checkpoints.anio,
+        mes: checkpoints.mes,
+        current: checkpoints
+      })
+      : null;
 
     res.json({
       ok: true,
       ...checkpoints,
-      canEdit: access.canEditAgendaCheckpointsForUser(req.authUser)
+      ...(csmReport ? { csmReport } : {}),
+      canEdit: area === 'csm'
+        ? access.canEditCsmCheckpointsForUser(req.authUser)
+        : access.canEditAgendaCheckpointsForUser(req.authUser)
     });
   } catch (error) {
     next(error);
@@ -290,18 +301,35 @@ async function getAgendaCheckpoints(req, res, next) {
 
 async function saveAgendaCheckpoint(req, res, next) {
   try {
-    if (!access.canEditAgendaCheckpointsForUser(req.authUser)) {
+    const area = String(req.body?.area || '').trim().toLowerCase() === 'csm' ? 'csm' : 'agendas';
+    const canEdit = area === 'csm'
+      ? access.canEditCsmCheckpointsForUser(req.authUser)
+      : access.canEditAgendaCheckpointsForUser(req.authUser);
+    if (!canEdit) {
       return res.status(403).json({
         ok: false,
-        message: 'Solo Leo o Mati pueden cargar o eliminar checks, strikes y pendientes'
+        message: area === 'csm'
+          ? 'Solo Belén Herrera o Mati pueden cargar o eliminar checks y strikes de CSM'
+          : 'Solo Leo o Mati pueden cargar o eliminar checks, strikes y pendientes'
       });
     }
 
-    const checkpoints = await supabaseService.updateAgendaCheckpoint(req.body || {}, req.authUser);
+    const checkpoints = await supabaseService.updateAgendaCheckpoint({
+      ...(req.body || {}),
+      area
+    }, req.authUser);
+    const csmReport = area === 'csm'
+      ? await supabaseService.getCsmCheckpointReport({
+        anio: checkpoints.anio,
+        mes: checkpoints.mes,
+        current: checkpoints
+      })
+      : null;
 
     res.json({
       ok: true,
       ...checkpoints,
+      ...(csmReport ? { csmReport } : {}),
       canEdit: true
     });
   } catch (error) {

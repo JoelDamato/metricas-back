@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const env = require('../config/env');
+const csmCheckpoints = require('./csm-checkpoints.service');
 
 function requiredEnv() {
   if (!env.supabaseUrl || !env.supabaseKey) {
@@ -748,12 +749,18 @@ function getAgendaPendingBalance(entries = [], closerNombre = '') {
   }, 0);
 }
 
-function normalizeAgendaCheckpointEntry(rawEntry = {}) {
+function normalizeAgendaCheckpointEntry(rawEntry = {}, area = 'agendas') {
+  const safeArea = normalizeAgendaCheckpointArea(area);
   const id = String(rawEntry.id || '').trim();
-  const closerNombre = String(rawEntry.closer_nombre || rawEntry.closer || '').trim();
+  const rawCloserNombre = String(rawEntry.closer_nombre || rawEntry.closer || '').trim();
+  const closerNombre = safeArea === 'csm'
+    ? csmCheckpoints.normalizeCsmMember(rawCloserNombre) || rawCloserNombre
+    : rawCloserNombre;
   const tipo = String(rawEntry.tipo || '').trim().toLowerCase();
   const detalle = String(rawEntry.detalle || rawEntry.reason || '').trim().slice(0, 1200);
   const cantidad = Math.max(1, Math.min(50, Math.round(Number(rawEntry.cantidad || 1) || 1)));
+  const fecha = String(rawEntry.fecha || '').trim();
+  const categoria = String(rawEntry.categoria || '').trim();
 
   if (!id || !closerNombre || !['check', 'strike', 'pendiente'].includes(tipo)) return null;
 
@@ -765,6 +772,8 @@ function normalizeAgendaCheckpointEntry(rawEntry = {}) {
     ...(tipo === 'pendiente'
       ? { operacion: normalizeAgendaCheckpointOperation(rawEntry.operacion) }
       : {}),
+    ...(safeArea === 'csm' && fecha ? { fecha } : {}),
+    ...(safeArea === 'csm' && categoria ? { categoria } : {}),
     detalle,
     created_at: rawEntry.created_at || rawEntry.createdAt || null,
     created_by_email: String(rawEntry.created_by_email || rawEntry.createdBy || '').trim().toLowerCase() || null
@@ -781,8 +790,13 @@ function emptyAgendaCheckpoints(year, month) {
   };
 }
 
-async function readAgendaCheckpointsFromStorage({ anio, mes, area }) {
-  await ensureReportesPersonalesDataBucket();
+async function readAgendaCheckpointsFromStorage({
+  anio,
+  mes,
+  area,
+  skipBucketEnsure = false
+}) {
+  if (!skipBucketEnsure) await ensureReportesPersonalesDataBucket();
   const safeArea = normalizeAgendaCheckpointArea(area);
   const meta = getAgendaCheckpointStorageMeta({ anio, mes, area: safeArea });
   const url = `${env.supabaseUrl}/storage/v1/object/${meta.bucket}/${encodeStoragePath(meta.objectPath)}`;
@@ -808,7 +822,7 @@ async function readAgendaCheckpointsFromStorage({ anio, mes, area }) {
       mes: month,
       area: safeArea,
       entries: (Array.isArray(row.entries) ? row.entries : [])
-        .map(normalizeAgendaCheckpointEntry)
+        .map((entry) => normalizeAgendaCheckpointEntry(entry, safeArea))
         .filter(Boolean),
       updated_at: row.updated_at || row.savedAt || null,
       updated_by_email: String(row.updated_by_email || row.savedBy || '').trim().toLowerCase() || null
@@ -838,7 +852,7 @@ async function writeAgendaCheckpointsToStorage(data = {}, user) {
     mes: month,
     area,
     entries: (Array.isArray(data.entries) ? data.entries : [])
-      .map(normalizeAgendaCheckpointEntry)
+      .map((entry) => normalizeAgendaCheckpointEntry(entry, area))
       .filter(Boolean),
     updated_at: updatedAt,
     updated_by_email: updatedBy
@@ -863,22 +877,40 @@ async function writeAgendaCheckpointsToStorage(data = {}, user) {
   return normalized;
 }
 
-async function getAgendaCheckpoints({ anio, mes, area }) {
+async function getAgendaCheckpoints({ anio, mes, area, skipBucketEnsure = false }) {
   const { year, month } = validateAgendaCheckpointPeriod({ anio, mes });
   const safeArea = normalizeAgendaCheckpointArea(area);
-  const stored = await readAgendaCheckpointsFromStorage({ anio: year, mes: month, area: safeArea });
+  const stored = await readAgendaCheckpointsFromStorage({
+    anio: year,
+    mes: month,
+    area: safeArea,
+    skipBucketEnsure
+  });
   return stored || { ...emptyAgendaCheckpoints(year, month), area: safeArea };
 }
 
 async function updateAgendaCheckpoint(payload = {}, user) {
-  const { year, month } = validateAgendaCheckpointPeriod({ anio: payload.anio, mes: payload.mes });
   const area = normalizeAgendaCheckpointArea(payload.area);
+  const action = String(payload.action || 'add').trim().toLowerCase();
+  const csmEntry = area === 'csm' && action !== 'delete'
+    ? csmCheckpoints.validateCsmEntryInput(payload)
+    : null;
+  const { year, month } = validateAgendaCheckpointPeriod(
+    csmEntry
+      ? { anio: csmEntry.period.anio, mes: csmEntry.period.mes }
+      : { anio: payload.anio, mes: payload.mes }
+  );
   return withAgendaCheckpointPeriodLock({ year, month, area }, () => (
-    updateAgendaCheckpointUnlocked(payload, user, { year, month, area })
+    updateAgendaCheckpointUnlocked(payload, user, { year, month, area, csmEntry })
   ));
 }
 
-async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area }) {
+async function updateAgendaCheckpointUnlocked(payload, user, {
+  year,
+  month,
+  area,
+  csmEntry = null
+}) {
   const action = String(payload.action || 'add').trim().toLowerCase();
   const current = await getAgendaCheckpoints({ anio: year, mes: month, area });
 
@@ -915,10 +947,10 @@ async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area
     }, user);
   }
 
-  const closerNombre = String(payload.closer_nombre || '').trim();
-  const tipo = String(payload.tipo || '').trim().toLowerCase();
-  const detalle = String(payload.detalle || '').trim();
-  const cantidad = Number(payload.cantidad ?? 1);
+  const closerNombre = csmEntry?.closer_nombre || String(payload.closer_nombre || '').trim();
+  const tipo = csmEntry?.tipo || String(payload.tipo || '').trim().toLowerCase();
+  const detalle = csmEntry?.detalle || String(payload.detalle || '').trim();
+  const cantidad = csmEntry?.cantidad || Number(payload.cantidad ?? 1);
   const operacion = String(payload.operacion || 'sumar').trim().toLowerCase();
 
   if (!closerNombre) {
@@ -927,7 +959,7 @@ async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area
     throw error;
   }
 
-  if (!['check', 'strike', 'pendiente'].includes(tipo)) {
+  if (area !== 'csm' && !['check', 'strike', 'pendiente'].includes(tipo)) {
     const error = new Error('El tipo debe ser check, strike o pendiente');
     error.statusCode = 400;
     throw error;
@@ -939,17 +971,17 @@ async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area
     throw error;
   }
 
-  if (tipo === 'pendiente' && !['sumar', 'restar'].includes(operacion)) {
+  if (area !== 'csm' && tipo === 'pendiente' && !['sumar', 'restar'].includes(operacion)) {
     const error = new Error('La operación de pendientes debe ser sumar o restar');
     error.statusCode = 400;
     throw error;
   }
 
-  const saldoPendientes = tipo === 'pendiente'
+  const saldoPendientes = area !== 'csm' && tipo === 'pendiente'
     ? getAgendaPendingBalance(current.entries, closerNombre)
     : 0;
 
-  if (tipo === 'pendiente' && operacion === 'restar' && cantidad > saldoPendientes) {
+  if (area !== 'csm' && tipo === 'pendiente' && operacion === 'restar' && cantidad > saldoPendientes) {
     const saldoActual = Math.max(0, saldoPendientes);
     const error = new Error(`No se pueden restar ${cantidad} pendientes: el saldo actual es ${saldoActual}`);
     error.statusCode = 400;
@@ -970,10 +1002,12 @@ async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area
     tipo,
     cantidad,
     operacion,
+    fecha: csmEntry?.fecha,
+    categoria: csmEntry?.categoria,
     detalle,
     created_at: new Date().toISOString(),
     created_by_email: String(user?.email || '').trim().toLowerCase() || null
-  });
+  }, area);
 
   return writeAgendaCheckpointsToStorage({
     anio: year,
@@ -981,6 +1015,30 @@ async function updateAgendaCheckpointUnlocked(payload, user, { year, month, area
     area,
     entries: [entry, ...current.entries]
   }, user);
+}
+
+function shiftAgendaCheckpointPeriod(year, month, offset) {
+  const date = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return {
+    anio: date.getUTCFullYear(),
+    mes: date.getUTCMonth() + 1
+  };
+}
+
+async function getCsmCheckpointReport({ anio, mes, months = 12, current = null }) {
+  const { year, month } = validateAgendaCheckpointPeriod({ anio, mes });
+  const safeMonths = Math.max(6, Math.min(24, Number(months) || 12));
+  if (!current) await ensureReportesPersonalesDataBucket();
+  const periodKeys = Array.from({ length: safeMonths }, (_, index) => (
+    shiftAgendaCheckpointPeriod(year, month, -index)
+  ));
+  const periods = await Promise.all(periodKeys.map((period, index) => (
+    index === 0 && current
+      ? Promise.resolve(current)
+      : getAgendaCheckpoints({ ...period, area: 'csm', skipBucketEnsure: true })
+  )));
+
+  return csmCheckpoints.buildCsmReport(periods);
 }
 
 function normalizeUtmPresetKey(value) {
@@ -3023,6 +3081,7 @@ module.exports = {
   upsertAgendaCalendarAssignment,
   getAgendaCheckpoints,
   updateAgendaCheckpoint,
+  getCsmCheckpointReport,
   listUtmLinkPresets,
   upsertUtmLinkPreset,
   deleteUtmLinkPreset,
