@@ -102,6 +102,12 @@ function getResponsibleCloser(row) {
     return Number.isFinite(numeric) ? numeric : 0;
   }
 
+  function getNetCashCollected(row) {
+    const total = safeNumber(row?.cash_collected_neto_total ?? row?.cash_collected_total);
+    if (total !== 0) return total;
+    return safeNumber(row?.cash_collected_neto ?? row?.cash_collected);
+  }
+
   function getAlertIcon(alert) {
     const iconByKey = {
       sin_onboarding: '👥',
@@ -329,7 +335,7 @@ function getResponsibleCloser(row) {
       .filter((row) => !normalizeText(row.producto_format).includes('club'))
       .map((row) => {
         const facturacion = safeNumber(row.facturacion);
-        const cash = safeNumber(row.cash_collected_total || row.cash_collected);
+        const cash = getNetCashCollected(row);
         const issues = [];
 
         if (cash < 0) issues.push('Cash negativo');
@@ -423,7 +429,7 @@ function getResponsibleCloser(row) {
           venta: toDateOnly(row.f_venta || ''),
           acreditacion: toDateOnly(row.f_acreditacion || ''),
           facturacion: safeNumber(row.facturacion),
-          cash: safeNumber(row.cash_collected_total || row.cash_collected)
+          cash: getNetCashCollected(row)
         };
       })
       .filter(Boolean)
@@ -442,7 +448,7 @@ function getResponsibleCloser(row) {
           venta: toDateOnly(row.f_venta || ''),
           acreditacion: toDateOnly(row.f_acreditacion || ''),
           facturacion: safeNumber(row.facturacion),
-          cash: safeNumber(row.cash_collected_total || row.cash_collected)
+          cash: getNetCashCollected(row)
         };
       })
       .filter(Boolean)

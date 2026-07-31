@@ -2551,6 +2551,10 @@ function getMarketingCampaignTotal(acc, campaign) {
   return acc.get(key);
 }
 
+function getNetCashCollected(row) {
+  return Number(row?.cash_collected_neto ?? row?.cash_collected ?? 0);
+}
+
 async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
   validateDateRange(from, to);
 
@@ -2572,7 +2576,7 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     if (!producto || producto.toLowerCase() === 'empty') return false;
     if (producto.toLowerCase().includes('club')) return false;
     const facturacion = Number(row.facturacion || 0);
-    const primerPago = Number(row.cash_collected || 0);
+    const primerPago = getNetCashCollected(row);
     if (!(facturacion > 0)) return false;
     if (!(primerPago > facturacion * 0.3)) return false;
 
@@ -2592,7 +2596,7 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
   });
 
   const facturacionDia1 = filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0);
-  const cashCollectedDia1 = filtered.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0);
+  const cashCollectedDia1 = filtered.reduce((sum, row) => sum + getNetCashCollected(row), 0);
   const ventasDia1 = filtered.length;
 
   return {
@@ -2695,7 +2699,7 @@ async function getMarketingCashCollectedAgenda({ from, to, origen }) {
       return sum;
     }
 
-    return sum + Number(row.cash_collected || 0);
+    return sum + getNetCashCollected(row);
   }, 0);
 
   return {
@@ -2774,7 +2778,7 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
 
     current.ventas += 1;
     current.facturacion += Number(row.facturacion || 0);
-    current.cashCollected += Number(row.cash_collected || 0);
+    current.cashCollected += getNetCashCollected(row);
 
     const estadoCc = normalizeMarketingText(row.estado_cc);
     if (estadoCc === 'exitoso') {

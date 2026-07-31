@@ -1458,10 +1458,16 @@ function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
 
   const totals = {
     facturacion: facturacionRows.reduce((sum, row) => sum + Number(row.facturacion || 0), 0),
-    cashCollected: cashRows.reduce((sum, row) => sum + Number(row.cash_collected || 0), 0),
+    cashCollected: cashRows.reduce(
+      (sum, row) => sum + Number(row.cash_collected_neto ?? row.cash_collected ?? 0),
+      0
+    ),
     pendiente: pendingRows.reduce((sum, row) => {
       const facturacion = Number(row.facturacion || 0);
-      const cashCollected = Number(row.cash_collected_total || row.cash_collected || 0);
+      const netTotal = Number(row.cash_collected_neto_total ?? row.cash_collected_total ?? 0);
+      const cashCollected = netTotal > 0
+        ? netTotal
+        : Number(row.cash_collected_neto ?? row.cash_collected ?? 0);
       return sum + Math.max(facturacion - cashCollected, 0);
     }, 0),
     cantidad: countRows.length

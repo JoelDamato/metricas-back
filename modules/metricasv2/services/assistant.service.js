@@ -36,8 +36,8 @@ Contexto del sistema:
 - CCNE efectuadas: misma lógica de CCNE + llamada_meg='Efectuada'
 - total_ventas: comprobantes tipo='Venta', producto_format válido, agrupado por fecha_de_agendamiento
 - facturacion_total_mes: comprobantes por f_venta o lógica ya consolidada en la vista
-- cash_collected_real_mes: comprobantes por f_acreditacion, con corte hasta hoy para el mes actual, usando cash_collected
-- AOV día 1: promedio de cash_collected por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento y opcionalmente por origen/estrategia
+- cash_collected_real_mes: comprobantes por f_acreditacion, con corte hasta hoy para el mes actual, usando cash_collected_neto
+- AOV día 1: promedio de cash_collected_neto por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento y opcionalmente por origen/estrategia
 
 2. Marketing / Totales MKT
 - KPI principal base: kpi_marketing_diario
@@ -48,16 +48,16 @@ Contexto del sistema:
 - Ventas totales: ventas_cce + ventas_ccne
 - Tasa de cierre: ventas totales / reuniones totales * 100
 - Saldo restante en línea de crédito: suma saldo_restante_linea_credito desde kpi_marketing_inversiones, con el mismo rango y origen que inversión realizada
-- ROAS sobre CC: cash_collected / inversion_realizada
+- ROAS sobre CC: cash_collected_neto / inversion_realizada
 - ROAS sobre facturación total: facturacion / inversion_realizada
-- AOV día 1: promedio de cash_collected por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento
+- AOV día 1: promedio de cash_collected_neto por venta para comprobantes tipo='Venta', producto_format válido, donde fecha_correspondiente y fecha_de_llamada caen el mismo día, filtrado por fecha_de_agendamiento
 
 3. Ranking Closers Mensual
 - Muestra facturación, cash collected, ventas y % por closer
 - total_ventas: comprobantes tipo='Venta', producto_format válido, agrupado por closer usando f_venta en el mes seleccionado
 - facturacion_total: suma de facturacion de esos mismos comprobantes de venta
 - cash collected tiene corte por f_acreditacion <= hoy para el mes actual
-- cash_collected_total: suma de cash_collected por closer, excluyendo Club, con ese corte de acreditación
+- cash_collected_total: suma de cash_collected_neto por closer, excluyendo Club, con ese corte de acreditación
 
 4. Agenda Detalle Origen + Closer
 - Similar a Agendas Totales pero desagregado por origen y closer

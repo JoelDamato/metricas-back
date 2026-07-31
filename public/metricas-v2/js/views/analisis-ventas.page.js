@@ -139,9 +139,13 @@ function matchesResponsibleVenta(row, responsibleName) {
 }
 
 function getEffectiveCashCollected(row) {
-  const cashCollectedTotal = Number(row.cash_collected_total || 0);
+  const cashCollectedTotal = Number(
+    row.cash_collected_neto_total
+    ?? row.cash_collected_total
+    ?? 0
+  );
   if (cashCollectedTotal > 0) return cashCollectedTotal;
-  return Number(row.cash_collected || 0);
+  return Number(row.cash_collected_neto ?? row.cash_collected ?? 0);
 }
 
 function getCashPct(row) {
@@ -353,7 +357,7 @@ function showDetailPopup({ section, rowDefinition, month, year, rows }) {
               Producto: ${escapeHtml(row.producto_format || 'Sin producto')}
             </span>
             <span class="sales-analysis-detail-meta">
-              Closer: ${escapeHtml(getResponsibleCloser(row))} · Facturacion: ${formatCurrency(row.facturacion)} · Cash inicial: ${formatCurrency(row.cash_collected)} · Cash/facturacion: ${formatPercent(getCashPct(row))}
+              Closer: ${escapeHtml(getResponsibleCloser(row))} · Facturacion: ${formatCurrency(row.facturacion)} · Cash inicial: ${formatCurrency(row.cash_collected_neto ?? row.cash_collected)} · Cash/facturacion: ${formatPercent(getCashPct(row))}
             </span>
             <span class="sales-analysis-detail-meta">
               Cash total venta: ${formatCurrency(getEffectiveCashCollected(row))}

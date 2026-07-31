@@ -219,7 +219,7 @@
         product: String(row?.producto_format || '').trim(),
         state: String(row?.estado || '').trim(),
         billing: safeNumber(row?.facturacion),
-        cash: safeNumber(row?.cash_collected)
+        cash: safeNumber(row?.cash_collected_neto ?? row?.cash_collected)
       });
     });
 
@@ -227,7 +227,7 @@
       if (normalizeText(row?.producto_format).includes('club')) return;
       const cashType = normalizeText(row?.tipo);
       if (cashType && !['venta', 'cobranza'].includes(cashType)) return;
-      const cash = safeNumber(row?.cash_collected);
+      const cash = safeNumber(row?.cash_collected_neto ?? row?.cash_collected);
       const acreditacion = dateKey(row?.f_acreditacion);
       if (cash <= 0 || !acreditacion) return;
       const closer = ensureCloser(row?.responsable_venta || row?.creado_por || row?.closer);

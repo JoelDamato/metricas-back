@@ -176,3 +176,22 @@ test('adjunta los leads y comprobantes reales que explican cada alerta', () => {
   assert.equal(monthCash.affected[0].cases.length, 1);
   assert.equal(monthCash.affected[0].cases[0].amount, 500);
 });
+
+test('usa el cash neto de IVA cuando el comprobante tambien trae el importe bruto', () => {
+  const result = build({
+    year: 2026,
+    month: 7,
+    today: '2026-07-29',
+    weeklyTarget: 20000,
+    agendaRows: [agendaRow()],
+    cashRows: [
+      {
+        ...cashRow('2026-07-28', 1210),
+        cash_collected_neto: 1000
+      }
+    ]
+  });
+
+  const monthCash = result.alerts.find((alert) => alert.id === 'cash-mes');
+  assert.equal(monthCash.affected[0].cases[0].amount, 1000);
+});

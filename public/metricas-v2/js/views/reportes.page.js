@@ -632,20 +632,20 @@ async function fetchCashRows(range) {
     from: range.from,
     to: range.to,
     dateField: 'f_acreditacion',
-    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,cash_collected_ars,estado'
+    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected_neto_ars,cash_collected,cash_collected_ars,estado'
   });
 
   return (response.rows || [])
     .filter((row) => !normalizeText(row.producto_format).includes('club'))
     .map((row) => {
-      const effectiveCash = Number(row.cash_collected || 0);
+      const effectiveCash = Number(row.cash_collected_neto ?? row.cash_collected ?? 0);
       const normalizedState = normalizeText(row.estado);
       const conciliado = normalizedState === 'conciliado' ? effectiveCash : 0;
 
       return {
         closer: getResponsibleCloser(row),
         cash_collected_usd: effectiveCash,
-        cash_collected_ars_total: Number(row.cash_collected_ars || 0),
+        cash_collected_ars_total: Number(row.cash_collected_neto_ars ?? row.cash_collected_ars ?? 0),
         cash_collected_conciliado: conciliado
       };
     })
