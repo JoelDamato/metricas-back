@@ -116,7 +116,9 @@ const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'matirandazzo@gmail.com'
 ]);
 
-const MARKETING_FORCE_ALLOW_EMAILS = new Set([]);
+const MARKETING_FORCE_ALLOW_EMAILS = new Set([
+  'walteralegre56@gmail.com'
+]);
 
 const COMMISSIONS_ALLOWED_EMAILS = new Set([
   'matirandazzo@gmail.com',
