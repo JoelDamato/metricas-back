@@ -1021,14 +1021,16 @@
     const qualifiedSales = getSettingComprobantesForPerson(person);
     const commissionDetails = getSettingCommissionDetailsForPerson(person);
     const sales = qualifiedSales;
-    const collections = commissionDetails.filter((detail) => normalizeText(detail.tipo) === 'cobranza');
+    const collections = commissionDetails.filter((detail) => (
+      normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail)
+    ));
     const visibleDetails = [...sales, ...collections];
     const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
     const itemsHtml = visibleDetails.length
       ? `
         <div class="comisiones-setting-summary">
           <span><strong>${formatInteger(sales.length)}</strong> ventas APSET / RT</span>
-          <span><strong>${formatInteger(collections.length)}</strong> cobranzas</span>
+          <span><strong>${formatInteger(collections.length)}</strong> cobranzas APSET / RT</span>
           <span><strong>${formatInteger(visibleDetails.length)}</strong> comprobantes mostrados</span>
           <span><strong>${escapeHtml(formatCurrency(totalCommission))}</strong> comisión detallada</span>
         </div>
@@ -1040,10 +1042,10 @@
               : '<p>No hay ventas APSET / RT que sumen en la columna Setting este mes.</p>'}
           </section>
           <section class="comisiones-setting-detail-section">
-            <h4>Cobranzas acreditadas en el mes (${formatInteger(collections.length)})</h4>
+            <h4>Cobranzas APSET / RT acreditadas en el mes (${formatInteger(collections.length)})</h4>
             ${collections.length
               ? `<ol class="sales-analysis-detail-list">${collections.map((detail) => renderSettingCommissionItem(detail, person)).join('')}</ol>`
-              : '<p>No hay cobranzas acreditadas en este mes.</p>'}
+              : '<p>No hay cobranzas APSET / RT acreditadas en este mes.</p>'}
           </section>
         </div>
       `
@@ -1055,7 +1057,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>Se muestran únicamente las ventas que suman en la columna Setting por origen o calendario APSET / RT, junto con las cobranzas acreditadas del mes.</p>
+        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por origen o calendario APSET / RT.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>

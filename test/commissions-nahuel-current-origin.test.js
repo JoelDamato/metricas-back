@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const commissionsService = require('../modules/metricasv2/services/commissions.service');
 
-const { hasCommissionAgendaSignals, buildLiveAgendaCountMap, qualifiesForSettingSale } = commissionsService._test;
+const { hasCommissionAgendaSignals, buildLiveAgendaCountMap, qualifiesForSettingTransaction } = commissionsService._test;
 
 function agenda(overrides = {}) {
   return {
@@ -64,8 +64,8 @@ test('otros setters conservan la regla de origen o calendario APSET / RT', () =>
   assert.equal(hasCommissionAgendaSignals(row), true);
 });
 
-test('una venta Setting califica únicamente por origen o calendario APSET / RT', () => {
-  assert.equal(qualifiesForSettingSale({ origen: 'Postulación MEG - APSET' }), true);
-  assert.equal(qualifiesForSettingSale({ calendario_agendado: 'Postulacion Meg | RT - NI' }), true);
-  assert.equal(qualifiesForSettingSale({ origen: 'Postulación MEG - VSL', calendario_agendado: 'Postulación MEG - VSL - 3' }), false);
+test('una venta o cobranza Setting califica únicamente por origen o calendario APSET / RT', () => {
+  assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - APSET' }), true);
+  assert.equal(qualifiesForSettingTransaction({ calendario_agendado: 'Postulacion Meg | RT - NI' }), true);
+  assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - VSL', calendario_agendado: 'Postulación MEG - VSL - 3' }), false);
 });

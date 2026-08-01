@@ -507,7 +507,7 @@ function matchesAgendaCommissionChannel(value, setterName) {
   return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
 }
 
-function qualifiesForSettingSale(row) {
+function qualifiesForSettingTransaction(row) {
   return matchesApsetOrRt(row?.origen) || matchesApsetOrRt(row?.calendario_agendado);
 }
 
@@ -1232,7 +1232,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     if (isClub) return;
 
-    if (type === 'venta' && isNahuelSetter(setterName) && !qualifiesForSettingSale(row)) {
+    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row)) {
       return;
     }
 
@@ -1573,6 +1573,6 @@ module.exports = {
   _test: {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,
-    qualifiesForSettingSale
+    qualifiesForSettingTransaction
   }
 };
