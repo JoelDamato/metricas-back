@@ -507,6 +507,10 @@ function matchesAgendaCommissionChannel(value, setterName) {
   return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
 }
 
+function qualifiesForSettingSale(row) {
+  return matchesApsetOrRt(row?.origen) || matchesApsetOrRt(row?.calendario_agendado);
+}
+
 function isClubProduct(value) {
   return normalizeText(value).includes('club');
 }
@@ -1228,6 +1232,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     if (isClub) return;
 
+    if (type === 'venta' && isNahuelSetter(setterName) && !qualifiesForSettingSale(row)) {
+      return;
+    }
+
     const relatedSale = type === 'cobranza' ? findRelatedSale(row, saleIndex) : null;
     const inheritedPct = row.porcentaje_venta_vieja > 0
       ? row.porcentaje_venta_vieja
@@ -1564,6 +1572,7 @@ module.exports = {
   getCommissionPersonDetail,
   _test: {
     hasCommissionAgendaSignals,
-    buildLiveAgendaCountMap
+    buildLiveAgendaCountMap,
+    qualifiesForSettingSale
   }
 };
