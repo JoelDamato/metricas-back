@@ -348,7 +348,7 @@ async function fetchComprobantesRowsForCommissions() {
 async function fetchAgendaRowsForCommissions(monthKey) {
   const bounds = getMonthBounds(monthKey);
   return fetchAllRows('leads_raw', {
-    select: 'id,nombre,setter,fecha_agenda,origen,primer_origen,ultimo_origen,calendario_agendado,agendo,aplica',
+    select: 'id,nombre,setter,fecha_agenda,origen_actual,origen,primer_origen,ultimo_origen,calendario_agendado,agendo,aplica',
     from: bounds.from,
     to: bounds.to,
     dateField: 'fecha_agenda',
@@ -667,6 +667,11 @@ function getAgendaOriginFilter(row) {
 function hasCommissionAgendaSignals(row) {
   if (normalizeText(row?.agendo) !== 'agendo') return false;
   if (normalizeText(row?.aplica) !== 'aplica') return false;
+
+  if (isNahuelSetter(row?.setter)) {
+    return matchesApset(row?.origen_actual);
+  }
+
   return matchesAgendaCommissionChannel(getAgendaOriginFilter(row), row?.setter)
     || matchesAgendaCommissionChannel(row?.calendario_agendado, row?.setter);
 }
@@ -1556,5 +1561,9 @@ module.exports = {
   saveDefaultCommissionConfig,
   lockCommissionMonth,
   buildCommissionDashboard,
-  getCommissionPersonDetail
+  getCommissionPersonDetail,
+  _test: {
+    hasCommissionAgendaSignals,
+    buildLiveAgendaCountMap
+  }
 };

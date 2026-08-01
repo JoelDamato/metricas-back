@@ -20,6 +20,7 @@
       setter: '',
       from: '',
       to: '',
+      currentOrigin: [],
       lastOrigin: [],
       quality: [],
       aplica: '',
@@ -526,6 +527,11 @@
   function hasCommissionAgendaSignals(row) {
     if (normalizeText(row.agendo) !== 'agendo') return false;
     if (normalizeText(row.aplica) !== 'aplica') return false;
+
+    if (isNahuelSetter(row.setter)) {
+      return matchesApset(row.currentOrigin);
+    }
+
     return matchesAgendaCommissionChannel(row.originFilter, row.setter)
       || matchesAgendaCommissionChannel(row.calendar, row.setter);
   }
@@ -563,6 +569,19 @@
       emptyLabel: 'Sin orígenes',
       onChange: (values) => {
         state.agendaFilters.lastOrigin = values;
+        renderAgendaPanel();
+      }
+    });
+  }
+
+  function renderAgendaCurrentOriginChecks() {
+    renderAgendaCheckgroup({
+      containerId: 'commissionAgendaCurrentOriginChecks',
+      values: uniqueSortedValues(state.agendaRows, 'currentOrigin'),
+      selectedValues: state.agendaFilters.currentOrigin,
+      emptyLabel: 'Sin orígenes actuales',
+      onChange: (values) => {
+        state.agendaFilters.currentOrigin = values;
         renderAgendaPanel();
       }
     });
@@ -812,6 +831,7 @@
           closer: String(row.closer || '').trim(),
           agendaDate: '',
           callDate: String(row.fecha_llamada || '').trim().slice(0, 10),
+          currentOrigin: String(row.origen_actual || '').trim(),
           origin: String(row.origen || row.primer_origen || '').trim(),
           firstOrigin: String(row.primer_origen || '').trim(),
           lastOrigin: String(row.ultimo_origen || '').trim(),
@@ -852,8 +872,10 @@
         if (!allowedQualities.includes(normalizeText(row.quality))) return false;
       }
       if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
+      const allowedCurrentOrigins = Array.isArray(filters.currentOrigin) ? filters.currentOrigin.map((value) => normalizeText(value)) : [];
       const allowedOrigins = Array.isArray(filters.lastOrigin) ? filters.lastOrigin.map((value) => normalizeText(value)) : [];
       const allowedCalendars = Array.isArray(filters.calendar) ? filters.calendar.map((value) => normalizeText(value)) : [];
+      if (allowedCurrentOrigins.length && !allowedCurrentOrigins.includes(normalizeText(row.currentOrigin))) return false;
       const hasOriginFilters = allowedOrigins.length > 0;
       const hasCalendarFilters = allowedCalendars.length > 0;
       if (hasOriginFilters || hasCalendarFilters) {
@@ -869,6 +891,13 @@
     return uniqueSortedValues(
       state.agendaRows.filter((row) => matchesAgendaCommissionChannel(row.originFilter, person)),
       'originFilter'
+    );
+  }
+
+  function getCommissionCurrentOriginFilterValuesForPerson(person) {
+    return uniqueSortedValues(
+      state.agendaRows.filter((row) => isNahuelSetter(person) && matchesApset(row.currentOrigin)),
+      'currentOrigin'
     );
   }
 
@@ -1232,7 +1261,7 @@
                 <article class="comisiones-overview-kpi is-agendas">
                   <span>Agendas Nahuel</span>
                   <strong>${nahuelAgendaCount > 0 ? `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="Nahuel Iasci" data-agenda-preset="nahuel">${formatInteger(nahuelAgendaCount)}</button>` : formatInteger(nahuelAgendaCount)}</strong>
-                  <p>Total APSET del mes por fecha de agendamiento</p>
+                  <p>Agendo + Aplica con Origen Actual APSET</p>
                 </article>
               </div>
             </section>
@@ -1527,13 +1556,15 @@
     const detailNode = document.getElementById('commissionAgendaDetails');
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
-    const commissionChannelsLabel = isNahuelSetter(state.agendaFilters.setter) ? 'APSET' : 'APSET / RT';
-    const uniqueOrigins = new Set(filteredRows.map((row) => row.originFilter).filter(Boolean));
+    const nahuelSelected = isNahuelSetter(state.agendaFilters.setter);
+    const commissionChannelsLabel = nahuelSelected ? 'Origen Actual APSET' : 'origen o calendario APSET / RT';
+    const originSummaryKey = nahuelSelected ? 'currentOrigin' : 'originFilter';
+    const uniqueOrigins = new Set(filteredRows.map((row) => row[originSummaryKey]).filter(Boolean));
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
     const uniqueCalendars = new Set(filteredRows.map((row) => row.calendar).filter(Boolean));
     const qualifiedRows = filteredRows.filter((row) => row.commissionQualified);
     const topOriginEntry = [...filteredRows.reduce((map, row) => {
-      const key = row.originFilter || 'Sin origen';
+      const key = row[originSummaryKey] || 'Sin origen';
       map.set(key, Number(map.get(key) || 0) + 1);
       return map;
     }, new Map()).entries()].sort((a, b) => b[1] - a[1])[0] || null;
@@ -1559,7 +1590,7 @@
           <article class="comisiones-summary-card">
             <span>Comisionables</span>
             <strong>${formatInteger(qualifiedRows.length)}</strong>
-            <p>Agendo + Aplica con origen o calendario ${escapeHtml(commissionChannelsLabel)}.</p>
+            <p>Agendo + Aplica con ${escapeHtml(commissionChannelsLabel)}.</p>
           </article>
           <article class="comisiones-summary-card">
             <span>Orígenes</span>
@@ -1585,6 +1616,7 @@
               <th>Setter</th>
               <th>Closer</th>
               <th>Origen</th>
+              <th>Origen actual</th>
               <th>Calendario agendado</th>
               <th>Calidad</th>
               <th>Aplica</th>
@@ -1605,6 +1637,7 @@
                 <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.closer || '-')}</td>
                 <td>${escapeHtml(row.originFilter || '-')}</td>
+                <td>${escapeHtml(row.currentOrigin || '-')}</td>
                 <td>${escapeHtml(row.calendar || '-')}</td>
                 <td>${escapeHtml(row.quality || '-')}</td>
                 <td>${escapeHtml(row.aplica || '-')}</td>
@@ -1616,7 +1649,7 @@
                 <td>${row.commissionQualified ? 'Si' : 'No'}</td>
                 <td>${renderGhlIdCell(row.ghlid)}</td>
               </tr>
-            `).join('') : '<tr><td colspan="15">No hay agendas para los filtros seleccionados.</td></tr>'}
+            `).join('') : '<tr><td colspan="16">No hay agendas para los filtros seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1639,6 +1672,7 @@
     const aplicaSelect = document.getElementById('commissionAgendaAplicaSelect');
 
     fillSimpleSelect(setterSelect, uniqueSortedValues(state.agendaRows, 'setter'), state.agendaFilters.setter);
+    renderAgendaCurrentOriginChecks();
     renderAgendaLastOriginChecks();
     renderAgendaQualityChecks();
     renderAgendaCalendarChecks();
@@ -1653,6 +1687,7 @@
     state.agendaFilters.setter = '';
     state.agendaFilters.from = from;
     state.agendaFilters.to = to;
+    state.agendaFilters.currentOrigin = [];
     state.agendaFilters.lastOrigin = [];
     state.agendaFilters.quality = [];
     state.agendaFilters.aplica = '';
@@ -1667,8 +1702,9 @@
     state.agendaFilters.setter = person || '';
     if (preset === 'nahuel') {
       state.agendaFilters.aplica = 'Aplica';
-      state.agendaFilters.lastOrigin = getCommissionOriginFilterValuesForPerson(person);
-      state.agendaFilters.calendar = getCommissionCalendarFilterValuesForPerson(person);
+      state.agendaFilters.currentOrigin = getCommissionCurrentOriginFilterValuesForPerson(person);
+      state.agendaFilters.lastOrigin = [];
+      state.agendaFilters.calendar = [];
     }
     syncAgendaFilterControls();
     renderAgendaPanel();
@@ -1903,7 +1939,7 @@
     const { from, to } = getMonthRange(state.month);
     const fetchTo = addDays(to, 1) || to;
     const response = await window.metricasApi.fetchAllRows('leads_raw', {
-      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen,primer_origen,ultimo_origen,calendario_agendado,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
+      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen_actual,origen,primer_origen,ultimo_origen,calendario_agendado,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
       from,
       to: fetchTo,
       dateField: 'fecha_agenda',
