@@ -866,7 +866,6 @@ th {
   font-weight: 800;
 }
 
-.comisiones-setting-badge.is-qualified,
 .comisiones-setting-badge.is-sale {
   background: #e8f3ff;
   color: #1d5ca6;
@@ -6712,7 +6711,6 @@ th {
   color: #d5e4ff;
 }
 
-:root[data-theme='dark'] .comisiones-setting-badge.is-qualified,
 :root[data-theme='dark'] .comisiones-setting-badge.is-sale {
   background: rgba(61, 137, 255, 0.2);
   color: #b9d7ff;

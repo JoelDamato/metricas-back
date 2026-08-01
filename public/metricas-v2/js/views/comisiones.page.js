@@ -969,7 +969,7 @@
     });
   }
 
-  function renderSettingCommissionItem(detail, person, { showCountStatus = false } = {}) {
+  function renderSettingCommissionItem(detail, person) {
     const type = normalizeText(detail.tipo);
     const isCollection = type === 'cobranza';
     const contactUrl = window.metricasGhl?.buildContactUrl?.(detail.ghlid);
@@ -982,18 +982,12 @@
     const dateLabel = isCollection
       ? `Acreditada: ${escapeHtml(accreditationDate || '-')}${saleDate && saleDate !== accreditationDate ? ` · Venta original: ${escapeHtml(saleDate)}` : ''}`
       : escapeHtml(saleDate || accreditationDate || '-');
-    const countStatus = showCountStatus
-      ? (qualifiesForSettingCount(detail)
-        ? '<span class="comisiones-setting-badge is-qualified">Cuenta APSET / RT</span>'
-        : '<span class="comisiones-setting-badge">No suma en la columna Setting</span>')
-      : '';
 
     return `
       <li>
         <div class="comisiones-setting-item-head">
           <strong>${clientHtml}</strong>
           <span class="comisiones-setting-badge ${isCollection ? 'is-collection' : 'is-sale'}">${isCollection ? 'Cobranza' : 'Venta'}</span>
-          ${countStatus}
         </div>
         <span class="sales-analysis-detail-meta">
           ${dateLabel} · ${escapeHtml(detail.product || (isCollection ? 'Cobranza' : '-'))} · Closer: ${escapeHtml(detail.closer || '-')}
@@ -1026,23 +1020,24 @@
 
     const qualifiedSales = getSettingComprobantesForPerson(person);
     const commissionDetails = getSettingCommissionDetailsForPerson(person);
-    const sales = commissionDetails.filter((detail) => normalizeText(detail.tipo) === 'venta');
+    const sales = qualifiedSales;
     const collections = commissionDetails.filter((detail) => normalizeText(detail.tipo) === 'cobranza');
-    const totalCommission = commissionDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
-    const itemsHtml = commissionDetails.length
+    const visibleDetails = [...sales, ...collections];
+    const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
+    const itemsHtml = visibleDetails.length
       ? `
         <div class="comisiones-setting-summary">
-          <span><strong>${formatInteger(qualifiedSales.length)}</strong> ventas APSET / RT</span>
-          <span><strong>${formatInteger(sales.length)}</strong> ventas comisionadas</span>
+          <span><strong>${formatInteger(sales.length)}</strong> ventas APSET / RT</span>
           <span><strong>${formatInteger(collections.length)}</strong> cobranzas</span>
-          <span><strong>${escapeHtml(formatCurrency(totalCommission))}</strong> comisión Setting</span>
+          <span><strong>${formatInteger(visibleDetails.length)}</strong> comprobantes mostrados</span>
+          <span><strong>${escapeHtml(formatCurrency(totalCommission))}</strong> comisión detallada</span>
         </div>
         <div class="comisiones-setting-detail-body">
           <section class="comisiones-setting-detail-section">
             <h4>Ventas MEG del mes (${formatInteger(sales.length)})</h4>
             ${sales.length
-              ? `<ol class="sales-analysis-detail-list">${sales.map((detail) => renderSettingCommissionItem(detail, person, { showCountStatus: true })).join('')}</ol>`
-              : '<p>No hay ventas MEG comisionadas en este mes.</p>'}
+              ? `<ol class="sales-analysis-detail-list">${sales.map((detail) => renderSettingCommissionItem(detail, person)).join('')}</ol>`
+              : '<p>No hay ventas APSET / RT que sumen en la columna Setting este mes.</p>'}
           </section>
           <section class="comisiones-setting-detail-section">
             <h4>Cobranzas acreditadas en el mes (${formatInteger(collections.length)})</h4>
@@ -1060,7 +1055,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>El número de la columna Setting cuenta solo ventas con origen o calendario APSET / RT. Acá se detallan todas las ventas y cobranzas que forman la comisión Setting del mes.</p>
+        <p>Se muestran únicamente las ventas que suman en la columna Setting por origen o calendario APSET / RT, junto con las cobranzas acreditadas del mes.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>
