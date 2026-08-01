@@ -945,43 +945,114 @@
     });
   }
 
+  function getSettingCommissionDetailsForPerson(person) {
+    const normalizedPerson = normalizeText(person);
+    const rows = getAllCommissionDetails().filter((detail) => {
+      const type = normalizeText(detail.tipo);
+      return normalizeText(detail.person) === normalizedPerson
+        && detail.role === 'Setter'
+        && detail.category === 'MEG'
+        && (type === 'venta' || type === 'cobranza');
+    });
+
+    const uniqueRows = new Map();
+    rows.forEach((detail) => {
+      const key = String(detail.transactionId || detail.id || '').trim();
+      if (!key || uniqueRows.has(key)) return;
+      uniqueRows.set(key, detail);
+    });
+
+    return [...uniqueRows.values()].sort((a, b) => {
+      const aDate = String(a.acreditacionDate || a.date || '');
+      const bDate = String(b.acreditacionDate || b.date || '');
+      return bDate.localeCompare(aDate) || String(a.clientName || '').localeCompare(String(b.clientName || ''), 'es');
+    });
+  }
+
+  function renderSettingCommissionItem(detail, person, { showCountStatus = false } = {}) {
+    const type = normalizeText(detail.tipo);
+    const isCollection = type === 'cobranza';
+    const contactUrl = window.metricasGhl?.buildContactUrl?.(detail.ghlid);
+    const clientLabel = escapeHtml(detail.clientName || 'Sin nombre');
+    const clientHtml = contactUrl
+      ? `<a class="comisiones-external-link" href="${escapeHtml(contactUrl)}" target="_blank" rel="noreferrer">${clientLabel}</a>`
+      : clientLabel;
+    const accreditationDate = formatDetailDate(detail.acreditacionDate || detail.date);
+    const saleDate = formatDetailDate(detail.date);
+    const dateLabel = isCollection
+      ? `Acreditada: ${escapeHtml(accreditationDate || '-')}${saleDate && saleDate !== accreditationDate ? ` · Venta original: ${escapeHtml(saleDate)}` : ''}`
+      : escapeHtml(saleDate || accreditationDate || '-');
+    const countStatus = showCountStatus
+      ? (qualifiesForSettingCount(detail)
+        ? '<span class="comisiones-setting-badge is-qualified">Cuenta APSET / RT</span>'
+        : '<span class="comisiones-setting-badge">No suma en la columna Setting</span>')
+      : '';
+
+    return `
+      <li>
+        <div class="comisiones-setting-item-head">
+          <strong>${clientHtml}</strong>
+          <span class="comisiones-setting-badge ${isCollection ? 'is-collection' : 'is-sale'}">${isCollection ? 'Cobranza' : 'Venta'}</span>
+          ${countStatus}
+        </div>
+        <span class="sales-analysis-detail-meta">
+          ${dateLabel} · ${escapeHtml(detail.product || (isCollection ? 'Cobranza' : '-'))} · Closer: ${escapeHtml(detail.closer || '-')}
+        </span>
+        <span class="sales-analysis-detail-meta">
+          Origen: ${escapeHtml(detail.origin || '-')} · Calendario: ${escapeHtml(detail.calendar || '-')}
+        </span>
+        <span class="sales-analysis-detail-meta">
+          Cash neto: ${escapeHtml(formatDetailCurrency(detail.baseAmount) || '$ 0,00')} · Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · <strong>${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}</strong>
+        </span>
+      </li>
+    `;
+  }
+
   function renderSettingCountButton(person, count) {
     const safeCount = Number(count || 0);
     if (safeCount <= 0) return '';
     return `<button class="comisiones-inline-link comisiones-setting-link" type="button" data-setting-person="${escapeHtml(person)}">${formatInteger(safeCount)}</button>`;
   }
 
+  function renderSettingCommissionButton(person, amount) {
+    const safeAmount = Number(amount || 0);
+    if (safeAmount <= 0) return '';
+    return `<button class="comisiones-inline-link comisiones-setting-link" type="button" data-setting-person="${escapeHtml(person)}">${escapeHtml(formatCurrency(safeAmount))}</button>`;
+  }
+
   function showSettingComprobantesPopup(person) {
     const existing = document.getElementById('commissionSettingDetailPopup');
     if (existing) existing.remove();
 
-    const details = getSettingComprobantesForPerson(person);
-    const itemsHtml = details.length
+    const qualifiedSales = getSettingComprobantesForPerson(person);
+    const commissionDetails = getSettingCommissionDetailsForPerson(person);
+    const sales = commissionDetails.filter((detail) => normalizeText(detail.tipo) === 'venta');
+    const collections = commissionDetails.filter((detail) => normalizeText(detail.tipo) === 'cobranza');
+    const totalCommission = commissionDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
+    const itemsHtml = commissionDetails.length
       ? `
-        <ol class="sales-analysis-detail-list">
-          ${details.map((detail) => `
-            <li>
-              ${(() => {
-                const contactUrl = window.metricasGhl?.buildContactUrl?.(detail.ghlid);
-                const label = escapeHtml(detail.clientName || 'Sin nombre');
-                return contactUrl
-                  ? `<a class="comisiones-external-link" href="${escapeHtml(contactUrl)}" target="_blank" rel="noreferrer">${label}</a>`
-                  : label;
-              })()}
-              <span class="sales-analysis-detail-meta">
-                ${escapeHtml(formatDetailDate(detail.date))} · ${escapeHtml(detail.product || '-')} · Closer: ${escapeHtml(detail.closer || '-')}
-              </span>
-              <span class="sales-analysis-detail-meta">
-                Origen: ${escapeHtml(detail.origin || '-')} · Calendario: ${escapeHtml(detail.calendar || '-')}
-              </span>
-              <span class="sales-analysis-detail-meta">
-                Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · ${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}
-              </span>
-            </li>
-          `).join('')}
-        </ol>
+        <div class="comisiones-setting-summary">
+          <span><strong>${formatInteger(qualifiedSales.length)}</strong> ventas APSET / RT</span>
+          <span><strong>${formatInteger(sales.length)}</strong> ventas comisionadas</span>
+          <span><strong>${formatInteger(collections.length)}</strong> cobranzas</span>
+          <span><strong>${escapeHtml(formatCurrency(totalCommission))}</strong> comisión Setting</span>
+        </div>
+        <div class="comisiones-setting-detail-body">
+          <section class="comisiones-setting-detail-section">
+            <h4>Ventas MEG del mes (${formatInteger(sales.length)})</h4>
+            ${sales.length
+              ? `<ol class="sales-analysis-detail-list">${sales.map((detail) => renderSettingCommissionItem(detail, person, { showCountStatus: true })).join('')}</ol>`
+              : '<p>No hay ventas MEG comisionadas en este mes.</p>'}
+          </section>
+          <section class="comisiones-setting-detail-section">
+            <h4>Cobranzas acreditadas en el mes (${formatInteger(collections.length)})</h4>
+            ${collections.length
+              ? `<ol class="sales-analysis-detail-list">${collections.map((detail) => renderSettingCommissionItem(detail, person)).join('')}</ol>`
+              : '<p>No hay cobranzas acreditadas en este mes.</p>'}
+          </section>
+        </div>
       `
-      : '<p>No encontré comprobantes para ese conteo.</p>';
+      : '<p>No encontré comprobantes de Setting para este mes.</p>';
 
     const popup = document.createElement('div');
     popup.id = 'commissionSettingDetailPopup';
@@ -989,7 +1060,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>${formatInteger(details.length)} comprobantes de venta con origen o calendario APSET / RT.</p>
+        <p>El número de la columna Setting cuenta solo ventas con origen o calendario APSET / RT. Acá se detallan todas las ventas y cobranzas que forman la comisión Setting del mes.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>
@@ -1313,7 +1384,7 @@
                       <td>${formatSheetCurrency(row.cc)}</td>
                       <td>${formatSheetCurrency(row.comisionMegArs)}</td>
                       <td>${formatSheetCurrency(row.comisionClubArs)}</td>
-                      <td>${formatSheetCurrency(row.comisionSetting)}</td>
+                      <td>${renderSettingCommissionButton(row.person, row.comisionSetting) || formatSheetCurrency(row.comisionSetting)}</td>
                       <td>${formatSheetUsd(row.bonoUsd)}</td>
                       <td>${formatSheetCurrency(row.total)}</td>
                     </tr>

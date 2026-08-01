@@ -806,6 +806,83 @@ th {
   font-size: 0.75rem;
 }
 
+.comisiones-setting-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.comisiones-setting-summary span {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(34, 88, 160, 0.16);
+  border-radius: 10px;
+  background: rgba(239, 246, 255, 0.8);
+  color: #536986;
+  font-size: 0.72rem;
+}
+
+.comisiones-setting-summary strong {
+  color: #16355f;
+  font-size: 0.98rem;
+}
+
+.comisiones-setting-detail-body {
+  display: grid;
+  gap: 18px;
+  max-height: 58vh;
+  padding-right: 6px;
+  overflow-y: auto;
+}
+
+.comisiones-setting-detail-section h4 {
+  margin: 0 0 8px;
+  color: #16355f;
+}
+
+.comisiones-setting-detail-section .sales-analysis-detail-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.comisiones-setting-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.comisiones-setting-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #edf1f6;
+  color: #5a6d89;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.comisiones-setting-badge.is-qualified,
+.comisiones-setting-badge.is-sale {
+  background: #e8f3ff;
+  color: #1d5ca6;
+}
+
+.comisiones-setting-badge.is-collection {
+  background: #e8f8ee;
+  color: #247746;
+}
+
+@media (max-width: 720px) {
+  .comisiones-setting-summary {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .sales-analysis-page th:first-child,
   .sales-analysis-page td:first-child {
@@ -6617,6 +6694,33 @@ th {
 :root[data-theme='dark'] .central-group-summary p,
 :root[data-theme='dark'] .central-cards .card p {
   color: var(--muted);
+}
+
+:root[data-theme='dark'] .comisiones-setting-summary span {
+  background: rgba(31, 56, 92, 0.72);
+  border-color: rgba(126, 161, 219, 0.2);
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .comisiones-setting-summary strong,
+:root[data-theme='dark'] .comisiones-setting-detail-section h4 {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .comisiones-setting-badge {
+  background: rgba(126, 161, 219, 0.15);
+  color: #d5e4ff;
+}
+
+:root[data-theme='dark'] .comisiones-setting-badge.is-qualified,
+:root[data-theme='dark'] .comisiones-setting-badge.is-sale {
+  background: rgba(61, 137, 255, 0.2);
+  color: #b9d7ff;
+}
+
+:root[data-theme='dark'] .comisiones-setting-badge.is-collection {
+  background: rgba(58, 178, 107, 0.18);
+  color: #a8e7c2;
 }
 
 :root[data-theme='dark'] .ranking-actions button,
