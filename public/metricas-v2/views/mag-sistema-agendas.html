@@ -1349,8 +1349,10 @@ function getWeekIndexForValue(value){
 }
 
 function getConciliadoAmount(row){
-  const conciliado=Number(row?.cash_collected_conciliado || 0);
-  if(Number.isFinite(conciliado) && conciliado>0) return conciliado;
+  if(Object.prototype.hasOwnProperty.call(row||{},'cash_collected_conciliado')){
+    const conciliado=Number(row?.cash_collected_conciliado || 0);
+    return Number.isFinite(conciliado) && conciliado>0 ? conciliado : 0;
+  }
   const cash=Number(row?.cash_collected || 0);
   return Number.isFinite(cash) && cash>0 ? cash : 0;
 }
@@ -1378,13 +1380,13 @@ async function loadRealCashByAcreditacion(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
   });
 
   const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
   (response.rows || []).forEach((row)=>{
     if(normalizeText(row?.producto_format).includes('club')) return;
-    const effectiveCash=Number(row?.cash_collected || 0);
+    const effectiveCash=Number(row?.cash_collected_neto ?? row?.cash_collected ?? 0);
     const normalizedState=normalizeText(row?.estado);
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
@@ -1415,13 +1417,13 @@ async function loadMonthlyBaseCategories(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
   });
 
   const totalsByCloser=new Map();
   (response.rows || []).forEach((row)=>{
     if(normalizeText(row?.producto_format).includes('club')) return;
-    const effectiveCash=Number(row?.cash_collected || 0);
+    const effectiveCash=Number(row?.cash_collected_neto ?? row?.cash_collected ?? 0);
     const normalizedState=normalizeText(row?.estado);
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
@@ -2565,7 +2567,7 @@ async function loadAgendaOperationalAlerts(){
         orderBy:'f_acreditacion',
         orderDir:'asc',
         limit:1000,
-        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,tipo,producto_format,f_acreditacion,cash_collected,estado'
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,tipo,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
       }),
       window.metricasApi.fetchAllRows('comprobantes',{
         from:`${year}-${String(month).padStart(2,'0')}-01`,
@@ -2574,7 +2576,7 @@ async function loadAgendaOperationalAlerts(){
         orderBy:'fecha_de_agendamiento',
         orderDir:'desc',
         limit:1000,
-        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,fecha_de_agendamiento,f_venta,tipo,producto_format,facturacion,cash_collected,estado'
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,fecha_de_agendamiento,f_venta,tipo,producto_format,facturacion,cash_collected_neto,cash_collected,estado'
       }),
       window.metricasApi.fetchAgendaBonusRules({anio:year,mes:month})
     ]);
