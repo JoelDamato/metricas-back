@@ -1029,7 +1029,6 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const settersMap = buildSettersMonthMap(settersRows, monthKey, liveAgendaCountMap);
   const saleIndex = buildHistoricalSaleIndex(normalizedRows);
   const transactionIndex = buildHistoricalTransactionIndex(normalizedRows);
-  const clubSequenceMap = buildClubSequenceMap(activeRows, monthKey);
   const closerClubSequenceMap = buildCloserClubSequenceMap(activeRows, monthKey);
   const closerMegSalesMap = buildCloserMegSalesCountMap(activeRows, monthKey);
   const areaMap = buildAreaMap(config);
@@ -1161,72 +1160,11 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     }
 
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
+    if (isClub) return;
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
-
-    if (isClub && type === 'venta') {
-      if (normalizeText(setterName) === normalizeText(row.responsable_venta || row.creado_por || '')) {
-        return;
-      }
-      const sequenceKey = `${normalizeText(setterName)}:${row.id}`;
-      const sequentialCount = Number(clubSequenceMap.get(sequenceKey) || 0);
-      const scalePct = pickScalePct(config.clubScale, sequentialCount, config.global.clubMercadoPagoPct);
-      const clubPaymentRule = resolveClubPaymentRule(row, config, scalePct);
-      const appliedPct = clubPaymentRule.pct;
-      const baseAmount = row.commission_base_ars;
-      const commissionAmount = baseAmount * appliedPct;
-
-      if (baseAmount <= 0) return;
-
-      details.push({
-        id: `${row.id}:setter`,
-        transactionId: row.id,
-        date: row.f_venta_only || row.f_acreditacion_only || '',
-        dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
-        acreditacionDate: row.f_acreditacion_only || '',
-        acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
-        ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
-        area,
-        person: setterName,
-        role: 'Setter',
-        category: 'Club',
-        tipo: row.tipo || 'Venta',
-        product: row.producto_format || 'Club',
-        clientName: row.cliente_format || '',
-        ghlid: row.ghlid || '',
-        setter: setterName,
-        closer: row.responsable_venta || row.creado_por || '',
-        origin: row.origen || '',
-        calendar: row.calendario_agendado || '',
-        paymentMethod: row.medios_de_pago || '',
-        tc: row.tc,
-        cheque: row.cheque,
-        conciliado: row.conciliado || '',
-        status: row.estado || '',
-        facturacionUsd: row.facturacion,
-        facturacionArs: row.facturacion_display_ars,
-        cashUsd: row.cash_usd,
-        cashArs: row.cash_collected_ars,
-        ...buildDetailFinancials(row),
-        baseAmount,
-        commissionPct: appliedPct,
-        commissionAmount,
-        bonusUsd: 0,
-        bonusArs: 0,
-        isBonus: false,
-        sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
-        sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${setterName}.`,
-        counters: {
-          agendas: setterAgendas,
-          clubSalesSequential: sequentialCount
-        }
-      });
-      return;
-    }
-
-    if (isClub) return;
 
     if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row)) {
       return;
@@ -1569,6 +1507,7 @@ module.exports = {
   _test: {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,
-    qualifiesForSettingTransaction
+    qualifiesForSettingTransaction,
+    buildTransactionDetails
   }
 };

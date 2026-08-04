@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 
 const commissionsService = require('../modules/metricasv2/services/commissions.service');
 
-const { hasCommissionAgendaSignals, buildLiveAgendaCountMap, qualifiesForSettingTransaction } = commissionsService._test;
+const {
+  hasCommissionAgendaSignals,
+  buildLiveAgendaCountMap,
+  qualifiesForSettingTransaction,
+  buildTransactionDetails
+} = commissionsService._test;
 
 function agenda(overrides = {}) {
   return {
@@ -68,4 +73,39 @@ test('una venta o cobranza Setting califica únicamente por origen o calendario 
   assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - APSET' }), true);
   assert.equal(qualifiesForSettingTransaction({ calendario_agendado: 'Postulacion Meg | RT - NI' }), true);
   assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - VSL', calendario_agendado: 'Postulación MEG - VSL - 3' }), false);
+});
+
+test('Club paga únicamente al responsable de venta y nunca genera comisión de setter', () => {
+  const config = commissionsService.normalizeConfig({
+    global: {
+      includeOnlyVerified: false
+    },
+    personRoles: [
+      { person: 'Patricia Conti', role: 'Closer' },
+      { person: 'Nahuel Iasci', role: 'Setter' }
+    ]
+  });
+  const details = buildTransactionDetails({
+    monthKey: '2026-07',
+    config,
+    comprobantesRows: [{
+      id: 'club-sin-setting',
+      tipo: 'Venta',
+      producto_format: 'Club',
+      cliente_format: 'Cliente Club',
+      responsable_venta: 'Patricia Conti',
+      setter: 'Nahuel Iasci',
+      f_venta: '2026-07-30',
+      f_acreditacion: '2026-07-30',
+      cash_ar: 39500,
+      cash_collected_ar: 39500,
+      cash_collected_ars: 39500,
+      medios_de_pago: 'Mercado Pago'
+    }],
+    settersRows: [],
+    agendaRows: []
+  });
+
+  assert.equal(details.some((detail) => detail.role === 'Setter' && detail.category === 'Club'), false);
+  assert.equal(details.some((detail) => detail.role === 'Closer' && detail.category === 'Club'), true);
 });
