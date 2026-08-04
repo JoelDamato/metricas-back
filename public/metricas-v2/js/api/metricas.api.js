@@ -273,7 +273,8 @@ async function generateCloserPersonalReport(payload = {}) {
 async function fetchCloserPersonalReport(params = {}) {
   const qs = queryString({
     closer: params.closer,
-    month: params.month
+    month: params.month,
+    v: Date.now()
   });
   return window.http.getJson(`/api/metricas/closers/personal-report?${qs}`);
 }

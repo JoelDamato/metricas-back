@@ -779,6 +779,7 @@ async function generateCloserPersonalReport(req, res, next) {
       additionalPrompt: req.body?.additionalPrompt
     }, req.authUser);
 
+    res.set('Cache-Control', 'no-store, max-age=0');
     res.json({
       ok: true,
       report
@@ -795,6 +796,7 @@ async function getCloserPersonalReport(req, res, next) {
       month: req.query.month
     });
 
+    res.set('Cache-Control', 'no-store, max-age=0');
     res.json({
       ok: true,
       exists: Boolean(stored?.exists),

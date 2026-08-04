@@ -2991,11 +2991,14 @@ async function uploadCloserPersonalPdf(params = {}, fileBuffer, user) {
 
 async function getStoredCloserPersonalReport(params = {}) {
   const normalized = normalizeReportePersonalReportParams(params);
-  const url = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+  const url = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}?v=${Date.now()}`;
 
   try {
     const response = await axios.get(url, {
-      headers: buildStorageHeaders(),
+      headers: buildStorageHeaders({
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        Pragma: 'no-cache'
+      }),
       responseType: 'text'
     });
     const raw = typeof response.data === 'string'
@@ -3044,23 +3047,30 @@ async function saveCloserPersonalReport(params = {}, reportPayload = {}, user) {
   await ensureReportesPersonalesDataBucket();
 
   const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
-  const body = Buffer.from(JSON.stringify({
+  const storedReport = {
     ...reportPayload,
     savedAt: new Date().toISOString(),
     savedBy: String(user?.email || '').trim().toLowerCase() || null
-  }, null, 2), 'utf8');
+  };
+  const body = Buffer.from(JSON.stringify(storedReport, null, 2), 'utf8');
 
   try {
     await axios.post(uploadUrl, body, {
       headers: buildStorageHeaders({
         'Content-Type': 'application/json',
         'x-upsert': 'true',
-        'cache-control': '3600'
+        'cache-control': '0'
       }),
       maxBodyLength: Infinity
     });
 
-    return getStoredCloserPersonalReport(normalized);
+    return {
+      exists: true,
+      closer: normalized.closer,
+      month: normalized.month,
+      path: normalized.objectPath,
+      report: storedReport
+    };
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error guardando reporte personal: ${message}`);

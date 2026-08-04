@@ -535,13 +535,6 @@ async function renderReport() {
   }
 
   const cacheKey = getCacheKey(closerKey, monthValue);
-  const cached = GENERATED_REPORT_CACHE.get(cacheKey);
-  if (cached) {
-    renderGeneratedReport(cached);
-    status.textContent = `Mostrando reporte guardado de ${closerName} para ${getPeriodLabel(monthValue)}.`;
-    return;
-  }
-
   setReportLoading(`Buscando reporte guardado de ${closerName}...`);
 
   try {

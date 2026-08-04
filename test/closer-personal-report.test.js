@@ -1,7 +1,20 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
+process.env.SUPABASE_URL = 'https://supabase.test';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
+
+const axios = require('axios');
 const { buildMonthlyComparisonContext } = require('../modules/metricasv2/services/closer-personal-report.service');
+const supabaseService = require('../modules/metricasv2/services/supabase.service');
+
+const originalAxiosGet = axios.get;
+const originalAxiosPost = axios.post;
+
+test.afterEach(() => {
+  axios.get = originalAxiosGet;
+  axios.post = originalAxiosPost;
+});
 
 function row(overrides = {}) {
   return {
@@ -45,4 +58,55 @@ test('arma contexto con meses anteriores y posteriores, excluyendo el mes princi
   assert.equal(history[1].cashAgendasMes, 3000);
   assert.equal(history[1].shareOfTeamCashPct, 75);
   assert.equal(history.some((item) => item.monthValue === '2026-01'), false);
+});
+
+test('al guardar devuelve el reporte recién escrito sin releer una copia cacheada', async () => {
+  let getCalls = 0;
+  let uploadedReport = null;
+
+  axios.get = async () => {
+    getCalls += 1;
+    return { data: JSON.stringify({ metrics: { cierrePct: 0 } }) };
+  };
+  axios.post = async (url, body, config) => {
+    if (url.endsWith('/storage/v1/bucket')) return { data: {} };
+    uploadedReport = JSON.parse(body.toString('utf8'));
+    assert.equal(config.headers['cache-control'], '0');
+    return { data: {} };
+  };
+
+  const stored = await supabaseService.saveCloserPersonalReport({
+    closer: 'Claudio Nicolini',
+    month: '2026-07'
+  }, {
+    metrics: { cierrePct: 22.22 }
+  }, {
+    email: 'mati@example.com'
+  });
+
+  assert.equal(getCalls, 0);
+  assert.equal(stored.report.metrics.cierrePct, 22.22);
+  assert.equal(uploadedReport.metrics.cierrePct, 22.22);
+  assert.equal(stored.report.savedBy, 'mati@example.com');
+});
+
+test('la lectura del reporte evita la caché del storage', async () => {
+  let requestedUrl = '';
+  let requestedConfig = null;
+
+  axios.get = async (url, config) => {
+    requestedUrl = url;
+    requestedConfig = config;
+    return { data: JSON.stringify({ metrics: { cierrePct: 22.22 } }) };
+  };
+
+  const stored = await supabaseService.getStoredCloserPersonalReport({
+    closer: 'Claudio Nicolini',
+    month: '2026-07'
+  });
+
+  assert.match(requestedUrl, /\.json\?v=\d+$/);
+  assert.equal(requestedConfig.headers['Cache-Control'], 'no-cache, no-store, max-age=0');
+  assert.equal(requestedConfig.headers.Pragma, 'no-cache');
+  assert.equal(stored.report.metrics.cierrePct, 22.22);
 });
