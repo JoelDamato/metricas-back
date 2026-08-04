@@ -2,6 +2,19 @@ const axios = require('axios');
 const env = require('../config/env');
 const submissionCache = new Map();
 const SUBMISSION_TTL_MS = 15 * 60 * 1000;
+const MAX_CHEQUES = 6;
+const MAX_PAYMENT_COUNT = 6;
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_TOTAL_ATTACHMENT_BYTES = 30 * 1024 * 1024;
+const NOTION_REQUEST_TIMEOUT_MS = 30 * 1000;
+const NOTION_UPLOAD_TIMEOUT_MS = 60 * 1000;
+const ACCEPTED_ATTACHMENT_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf'
+]);
+const ACCEPTED_ATTACHMENT_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.pdf']);
 
 const DEFAULT_PRODUCTS = [
   'Club',
@@ -345,9 +358,30 @@ function requiredNumber(value, label) {
   return parsed;
 }
 
+function requiredPositiveNumber(value, label) {
+  const parsed = requiredNumber(value, label);
+  if (parsed <= 0) {
+    const error = new Error(`${label} debe ser mayor a cero`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return parsed;
+}
+
 function requiredDate(value, label) {
   const text = requiredString(value, label);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = match
+    ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+    : null;
+  const isValid = Boolean(
+    match
+    && date
+    && date.getUTCFullYear() === Number(match[1])
+    && date.getUTCMonth() === Number(match[2]) - 1
+    && date.getUTCDate() === Number(match[3])
+  );
+  if (!isValid) {
     const error = new Error(`${label} debe venir en formato YYYY-MM-DD`);
     error.statusCode = 400;
     throw error;
@@ -355,13 +389,45 @@ function requiredDate(value, label) {
   return text;
 }
 
-function ensureFileSize(file, maxBytes = 20 * 1024 * 1024) {
-  const size = Number(file?.size || 0);
+function attachmentExtension(fileName = '') {
+  const match = String(fileName).trim().toLowerCase().match(/(\.[a-z0-9]+)$/);
+  return match?.[1] || '';
+}
+
+function decodedBase64Size(base64 = '') {
+  try {
+    const source = String(base64).replace(/\s+/g, '');
+    if (!source || source.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(source)) return 0;
+    const buffer = Buffer.from(source, 'base64');
+    if (!buffer.length || buffer.toString('base64') !== source) return 0;
+    return buffer.length;
+  } catch (error) {
+    return 0;
+  }
+}
+
+function ensureAttachmentIsValid(file, maxBytes = MAX_FILE_BYTES) {
+  const type = String(file?.type || '').trim().toLowerCase();
+  const extension = attachmentExtension(file?.name);
+  if (!ACCEPTED_ATTACHMENT_TYPES.has(type) || !ACCEPTED_ATTACHMENT_EXTENSIONS.has(extension)) {
+    const error = new Error(`El archivo ${file?.name || ''} debe ser JPG, PNG, WEBP o PDF`.trim());
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const size = decodedBase64Size(file?.base64);
+  if (!size) {
+    const error = new Error(`El archivo ${file?.name || ''} está vacío o no se pudo leer`.trim());
+    error.statusCode = 400;
+    throw error;
+  }
   if (size > maxBytes) {
     const error = new Error(`El archivo ${file.name || ''} supera el límite de 20 MB`.trim());
     error.statusCode = 400;
     throw error;
   }
+  file.size = size;
+  return size;
 }
 
 function parseRelationId(value) {
@@ -535,7 +601,8 @@ async function fetchProductsFromNotion() {
         page_size: 100
       },
       {
-        headers: buildNotionHeaders()
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
       }
     );
 
@@ -563,7 +630,8 @@ async function fetchRelationOptions(databaseId) {
         page_size: 100
       },
       {
-        headers: buildNotionHeaders()
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
       }
     );
 
@@ -590,7 +658,8 @@ async function fetchNotionUsers() {
     do {
       const response = await axios.get('https://api.notion.com/v1/users', {
         headers: buildNotionHeaders(),
-        params: nextCursor ? { start_cursor: nextCursor } : {}
+        params: nextCursor ? { start_cursor: nextCursor } : {},
+        timeout: NOTION_REQUEST_TIMEOUT_MS
       });
 
       users.push(...(response.data?.results || []));
@@ -622,7 +691,8 @@ async function fetchAssignedResponsibleVentaCandidates() {
           ...(nextCursor ? { start_cursor: nextCursor } : {})
         },
         {
-          headers: buildNotionHeaders()
+          headers: buildNotionHeaders(),
+          timeout: NOTION_REQUEST_TIMEOUT_MS
         }
       );
 
@@ -674,7 +744,8 @@ async function fetchComprobantesDatabaseSchema() {
     const response = await axios.get(
       `https://api.notion.com/v1/databases/${databaseId}`,
       {
-        headers: buildNotionHeaders()
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
       }
     );
 
@@ -704,7 +775,7 @@ async function getBootstrap(user) {
     responsibleVentaDefault: standardizeResponsibleVenta(user),
     tipoOptions: DEFAULT_TYPES,
     mediosDePagoOptions: paymentOptions.length ? paymentOptions : DEFAULT_PAYMENT_METHODS,
-    cantidadPagosOptions: [1, 2, 3, 4],
+    cantidadPagosOptions: Array.from({ length: MAX_PAYMENT_COUNT }, (_, index) => index + 1),
     productsSource: notionProducts.length ? 'notion' : 'fixed',
     products,
     uploadAcceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
@@ -786,6 +857,7 @@ async function lookupRelatedSaleById(rawSaleId) {
   if (supabaseRow) {
     return {
       notionPageId: supabaseRow.id || null,
+      ghlId: supabaseRow.ghlid || null,
       cliente: supabaseRow.cliente || supabaseRow.cliente_format || '',
       producto: supabaseRow.producto_format || '',
       fechaVenta: supabaseRow.f_venta || null,
@@ -796,7 +868,8 @@ async function lookupRelatedSaleById(rawSaleId) {
   }
 
   const response = await axios.get(`https://api.notion.com/v1/pages/${saleId}`, {
-    headers: buildNotionHeaders()
+    headers: buildNotionHeaders(),
+    timeout: NOTION_REQUEST_TIMEOUT_MS
   });
   const properties = response.data?.properties || {};
   const tipo = properties.Tipo?.select?.name || '';
@@ -808,6 +881,9 @@ async function lookupRelatedSaleById(rawSaleId) {
 
   return {
     notionPageId: response.data?.id || saleId,
+    ghlId: properties['GHL ID']?.formula?.string
+      || (properties['GHL ID']?.rich_text || []).map((item) => item.plain_text).join('')
+      || null,
     cliente: (properties.Identificador?.title || []).map((item) => item.plain_text).join('') || '',
     producto: properties['Producto Format']?.formula?.string || '',
     fechaVenta: properties['F.venta respaldo']?.date?.start || null,
@@ -888,7 +964,8 @@ async function findLatestVentaInNotion(clientName = '') {
         ]
       },
       {
-        headers: buildNotionHeaders()
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
       }
     );
 
@@ -923,13 +1000,16 @@ function buildChequeRows(payload) {
         row?.fechaAcreditacion || payload.fechaAcreditacion,
         `la fecha de acreditación del cheque ${index + 1}`
       )
-    }))
-    .filter((row) => row.montoArs !== null);
+    }));
 }
 
-function validateChequeRows(chequeRows, expectedCount, totalCashArs, options = {}) {
-  if (!expectedCount || expectedCount < 1) {
-    const error = new Error('Si el medio de pago es cheque tenés que indicar la cantidad de cheques');
+function validateChequeRows(chequeRows, expectedCount, totalCashArs, attachmentFiles = [], options = {}) {
+  if (!Array.isArray(attachmentFiles)) {
+    options = attachmentFiles || {};
+    attachmentFiles = [];
+  }
+  if (!Number.isInteger(expectedCount) || expectedCount < 1 || expectedCount > MAX_CHEQUES) {
+    const error = new Error(`La cantidad de cheques debe ser un número entero entre 1 y ${MAX_CHEQUES}`);
     error.statusCode = 400;
     throw error;
   }
@@ -940,10 +1020,41 @@ function validateChequeRows(chequeRows, expectedCount, totalCashArs, options = {
     throw error;
   }
 
+  const invalidAmountIndex = chequeRows.findIndex((row) => row.montoArs === null || row.montoArs <= 0);
+  if (invalidAmountIndex >= 0) {
+    const error = new Error(`El monto del cheque ${invalidAmountIndex + 1} debe ser mayor a cero`);
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (options.requireFiles !== false && chequeRows.some((row) => !row.archivoNombre)) {
     const error = new Error('Tenés que adjuntar el archivo o foto de cada cheque');
     error.statusCode = 400;
     throw error;
+  }
+
+  if (options.requireFiles !== false) {
+    const fileNames = attachmentFiles.map((file) => file.name);
+    const uniqueFileNames = new Set(fileNames);
+    if (uniqueFileNames.size !== fileNames.length) {
+      const error = new Error('Los archivos adjuntos deben tener nombres únicos');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const chequeFileNames = chequeRows.map((row) => row.archivoNombre);
+    if (new Set(chequeFileNames).size !== chequeFileNames.length) {
+      const error = new Error('Cada cheque debe tener un archivo distinto');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const missingFileName = chequeFileNames.find((name) => !uniqueFileNames.has(name));
+    if (missingFileName) {
+      const error = new Error(`No encontré el archivo ${missingFileName} entre los adjuntos enviados`);
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   const totalCheques = chequeRows.reduce((sum, row) => sum + Number(row.montoArs || 0), 0);
@@ -956,6 +1067,7 @@ function validateChequeRows(chequeRows, expectedCount, totalCashArs, options = {
 
 function buildInfoComprobantesText(normalized) {
   const parts = [];
+  if (normalized.submissionKey) parts.push(`Carga ID: ${normalized.submissionKey}`);
   if (normalized.responsableVenta) parts.push(`Responsable venta: ${normalized.responsableVenta}`);
   if (normalized.infoComprobantes) parts.push(normalized.infoComprobantes);
   if (normalized.mesesSoporte !== null) parts.push(`Meses de soporte: ${normalized.mesesSoporte}`);
@@ -970,7 +1082,8 @@ async function createNotionFileUpload(file) {
     'https://api.notion.com/v1/file_uploads',
     {},
     {
-      headers: buildNotionHeaders({ 'Notion-Version': '2025-09-03' })
+      headers: buildNotionHeaders({ 'Notion-Version': '2025-09-03' }),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
     }
   );
 
@@ -989,6 +1102,7 @@ async function createNotionFileUpload(file) {
       Authorization: `Bearer ${env.notionApiKey}`,
       'Notion-Version': '2025-09-03'
     },
+    signal: AbortSignal.timeout(NOTION_UPLOAD_TIMEOUT_MS),
     body: form
   });
 
@@ -1025,7 +1139,8 @@ async function attachFilesToNotionPage(pageId, files = []) {
       }
     },
     {
-      headers: buildNotionHeaders({ 'Notion-Version': '2025-09-03' })
+      headers: buildNotionHeaders({ 'Notion-Version': '2025-09-03' }),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
     }
   );
 }
@@ -1040,15 +1155,24 @@ function normalizePayload(payload = {}, user, options = {}) {
 
   const ghlId = requiredString(payload.ghlId, 'el GHL ID');
   const clientName = requiredString(payload.clientName, 'el cliente');
-  const clientPageId = optionalString(payload.clientPageId);
+  const clientPageId = requiredString(payload.clientPageId, 'la relación con el cliente');
+  if (!parseRelationId(clientPageId)) {
+    const error = new Error('La relación con el cliente no tiene un Notion ID válido');
+    error.statusCode = 400;
+    throw error;
+  }
   const responsableVenta = requiredString(
     standardizeResponsibleVenta(user, payload.responsableVenta),
     'el responsable de venta'
   );
-  const fechaVenta = requiredDate(payload.fechaVenta, 'la fecha de venta');
+  const fechaVenta = tipo === 'Venta'
+    ? requiredDate(payload.fechaVenta, 'la fecha de venta')
+    : (optionalString(payload.fechaVenta)
+      ? requiredDate(payload.fechaVenta, 'la fecha de venta')
+      : null);
   const fechaAcreditacion = requiredDate(payload.fechaAcreditacion, 'la fecha de acreditación');
-  const tc = requiredNumber(payload.tc, 'la tasa de cambio');
-  const cashCollectedArs = requiredNumber(payload.cashCollectedArs, 'cash collected ARS');
+  const tc = requiredPositiveNumber(payload.tc, 'La tasa de cambio');
+  const cashCollectedArs = requiredPositiveNumber(payload.cashCollectedArs, 'Cash collected ARS');
   const medioPago = requiredString(payload.medioPago, 'el medio de pago');
   const rawProductName = optionalString(payload.productName);
   const dniCuit = tipo === 'Venta' && isClubProduct(rawProductName)
@@ -1062,9 +1186,6 @@ function normalizePayload(payload = {}, user, options = {}) {
     ? null
     : toInteger(payload.sesiones);
   const bonusMati = Boolean(payload.bonusMati);
-  const attachmentNames = Array.isArray(payload.attachmentNames)
-    ? payload.attachmentNames.map((item) => optionalString(item)).filter(Boolean)
-    : [];
   const attachmentFiles = Array.isArray(payload.attachmentFiles)
     ? payload.attachmentFiles
         .map((file) => ({
@@ -1075,7 +1196,22 @@ function normalizePayload(payload = {}, user, options = {}) {
         }))
     : [];
 
-  attachmentFiles.forEach((file) => ensureFileSize(file));
+  const attachmentNames = attachmentFiles.map((file) => file.name);
+  if (new Set(attachmentNames).size !== attachmentNames.length) {
+    const error = new Error('Los archivos adjuntos deben tener nombres únicos');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const totalAttachmentBytes = attachmentFiles.reduce(
+    (total, file) => total + ensureAttachmentIsValid(file),
+    0
+  );
+  if (totalAttachmentBytes > MAX_TOTAL_ATTACHMENT_BYTES) {
+    const error = new Error('El total de archivos supera el límite de 30 MB por carga');
+    error.statusCode = 400;
+    throw error;
+  }
 
   if (!attachmentFiles.length && !options.allowMissingAttachments) {
     const error = new Error('Debés adjuntar el comprobante para crear el registro');
@@ -1125,36 +1261,34 @@ function normalizePayload(payload = {}, user, options = {}) {
 
   if (tipo === 'Venta') {
     normalized.productName = requiredString(payload.productName, 'el producto adquirido');
-    normalized.facturacionUsd = requiredNumber(payload.facturacionUsd, 'la facturación USD');
+    normalized.facturacionUsd = requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD');
     normalized.cantidadPagos = toInteger(payload.cantidadPagos);
 
-    if (!normalized.cantidadPagos || normalized.cantidadPagos < 1 || normalized.cantidadPagos > 4) {
-      const error = new Error('Cantidad de pagos inválida');
+    if (!normalized.cantidadPagos || normalized.cantidadPagos < 1 || normalized.cantidadPagos > MAX_PAYMENT_COUNT) {
+      const error = new Error(`La cantidad de pagos debe ser un número entero entre 1 y ${MAX_PAYMENT_COUNT}`);
       error.statusCode = 400;
       throw error;
     }
+  }
 
-    const maxAllowedCash = normalized.facturacionUsd + 5;
-    const cashUsd = normalized.cashCollectedArs / tc;
-    if (cashUsd > maxAllowedCash) {
-      const error = new Error('Cash AR no puede ser mayor a la facturación con un margen de hasta 5 USD');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    if (isChequePaymentMethod(medioPago)) {
-      normalized.chequeCount = toInteger(payload.chequeCount);
-      normalized.cheques = buildChequeRows(payload);
-      validateChequeRows(normalized.cheques, normalized.chequeCount, normalized.cashCollectedArs, {
-        requireFiles: !options.allowMissingAttachments
-      });
-    }
+  const hasChequeFlow = (tipo === 'Venta' || tipo === 'Cobranza') && isChequePaymentMethod(medioPago);
+  if (hasChequeFlow) {
+    normalized.chequeCount = toInteger(payload.chequeCount);
+    normalized.cheques = buildChequeRows(payload);
+    validateChequeRows(
+      normalized.cheques,
+      normalized.chequeCount,
+      normalized.cashCollectedArs,
+      normalized.attachmentFiles,
+      { requireFiles: !options.allowMissingAttachments }
+    );
+    if (tipo === 'Venta') normalized.cantidadPagos = normalized.chequeCount;
   }
 
   if (tipo === 'Devolución') {
     normalized.facturacionUsd = payload.facturacionUsd === '' || payload.facturacionUsd === null || payload.facturacionUsd === undefined
       ? null
-      : requiredNumber(payload.facturacionUsd, 'la facturación USD');
+      : requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD');
   }
 
   if (tipo === 'Cobranza' || tipo === 'Devolución') {
@@ -1208,16 +1342,33 @@ function buildDraftOperations(normalized) {
     return Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined));
   }
 
-  if (normalized.tipo === 'Venta' && isChequePaymentMethod(normalized.medioPago) && normalized.cheques.length > 1) {
+  const hasChequeFlow = (normalized.tipo === 'Venta' || normalized.tipo === 'Cobranza')
+    && isChequePaymentMethod(normalized.medioPago)
+    && normalized.cheques.length > 0;
+
+  if (hasChequeFlow) {
+    const chequeAttachmentNames = new Set(
+      normalized.cheques.map((cheque) => cheque.archivoNombre).filter(Boolean)
+    );
+    const supplementalAttachmentNames = normalized.attachmentNames.filter(
+      (name) => !chequeAttachmentNames.has(name)
+    );
+
     return normalized.cheques.map((cheque, index) => ({
-      localType: index === 0 ? 'Venta' : 'Cobranza',
-      properties: buildOperationPayload(index === 0 ? 'Venta' : 'Cobranza', {
+      localType: normalized.tipo === 'Venta' && index === 0 ? 'Venta' : 'Cobranza',
+      properties: buildOperationPayload(
+        normalized.tipo === 'Venta' && index === 0 ? 'Venta' : 'Cobranza',
+        {
         cashCollectedArs: cheque.montoArs,
         fechaAcreditacion: cheque.fechaAcreditacion,
         cheque: true,
-        finalizar: index > 0
-      }),
-      attachmentNames: cheque.archivoNombre ? [cheque.archivoNombre] : []
+        finalizar: normalized.tipo === 'Cobranza' || index > 0
+        }
+      ),
+      attachmentNames: [
+        ...(cheque.archivoNombre ? [cheque.archivoNombre] : []),
+        ...(index === 0 ? supplementalAttachmentNames : [])
+      ]
     }));
   }
 
@@ -1248,7 +1399,8 @@ async function createNotionPage(properties) {
       properties
     },
     {
-      headers: buildNotionHeaders()
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
     }
   );
 
@@ -1262,90 +1414,294 @@ async function updateNotionPageProperties(pageId, properties) {
     `https://api.notion.com/v1/pages/${pageId}`,
     { properties },
     {
-      headers: buildNotionHeaders()
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
     }
   );
 
   return response.data;
 }
 
+async function archiveNotionPage(pageId) {
+  if (!pageId) return null;
+  const response = await axios.patch(
+    `https://api.notion.com/v1/pages/${pageId}`,
+    { archived: true },
+    {
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
+    }
+  );
+  return response.data;
+}
+
+async function archiveNotionPages(pageIds = []) {
+  const uniqueIds = [...new Set(pageIds.filter(Boolean))];
+  if (!uniqueIds.length) return;
+  const results = await Promise.allSettled(uniqueIds.map((pageId) => archiveNotionPage(pageId)));
+  const failedIds = results
+    .map((result, index) => (result.status === 'rejected' ? uniqueIds[index] : null))
+    .filter(Boolean);
+  if (failedIds.length) {
+    const error = new Error('No pude revertir todos los registros parciales de la carga');
+    error.statusCode = 502;
+    error.rollbackFailedIds = failedIds;
+    throw error;
+  }
+}
+
+async function findNotionPagesBySubmissionKey(submissionKey) {
+  if (!submissionKey) return [];
+  const databaseId = getComprobantesDatabaseId();
+  const response = await axios.post(
+    `https://api.notion.com/v1/databases/${databaseId}/query`,
+    {
+      page_size: 100,
+      filter: {
+        property: 'Info Comprobantes',
+        rich_text: { contains: submissionKey }
+      },
+      sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+    },
+    {
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
+    }
+  );
+  return response.data?.results || [];
+}
+
+function notionSubmissionIsComplete(pages, operations) {
+  if (pages.length !== operations.length) return false;
+  return pages.every((page, index) => {
+    const operation = operations[index];
+    const properties = page?.properties || {};
+    const notionType = normalizeText(properties.Tipo?.select?.name);
+    const expectedType = normalizeText(operation.localType === 'Devolución' ? 'Devolucion' : operation.localType);
+    const files = properties.Comprobante?.files || [];
+    const expectedCashArs = operation.properties?.['Cash AR']?.number;
+    const actualCashArs = properties['Cash AR']?.number;
+    const relation = properties['Venta relacionada']?.relation || [];
+    const needsRelation = operation.localType === 'Venta' || operation.localType === 'Cobranza';
+    return notionType === expectedType
+      && files.length === operation.attachmentNames.length
+      && Math.abs(Number(actualCashArs || 0) - Number(expectedCashArs || 0)) <= 1
+      && (!needsRelation || relation.length > 0);
+  });
+}
+
+function buildExistingSubmissionResult(pages, operations) {
+  return {
+    created: pages.map((page, index) => ({
+      id: page.id,
+      url: page.url,
+      type: operations[index].localType
+    })),
+    operations,
+    dryRun: false,
+    idempotentReplay: true
+  };
+}
+
+async function resolveRelatedSale(normalized) {
+  if (normalized.tipo !== 'Cobranza' && normalized.tipo !== 'Devolución') return null;
+
+  let sale = null;
+  if (normalized.latestSaleId) {
+    if (!parseRelationId(normalized.latestSaleId)) {
+      const error = new Error('La venta relacionada no tiene un Notion ID válido');
+      error.statusCode = 400;
+      throw error;
+    }
+    sale = await lookupRelatedSaleById(normalized.latestSaleId);
+  } else {
+    sale = await findLatestVentaByGhlId(normalized.ghlId, normalized.clientName);
+  }
+
+  if (!sale?.notionPageId) {
+    const error = new Error('No encontré una venta relacionada para este cliente');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (sale.ghlId && normalizeText(sale.ghlId) !== normalizeText(normalized.ghlId)) {
+    const error = new Error('La venta relacionada pertenece a otro cliente');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!sale.fechaVenta) {
+    const error = new Error('La venta relacionada no tiene fecha de venta');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  normalized.latestSaleId = sale.notionPageId;
+  normalized.fechaVenta = requiredDate(
+    String(sale.fechaVenta).slice(0, 10),
+    'la fecha de la venta relacionada'
+  );
+  return sale;
+}
+
 async function createComprobante(payload, user, options = {}) {
   const normalized = normalizePayload(payload, user, options);
   const submissionKey = normalized.submissionKey;
+  if (!submissionKey) {
+    const error = new Error('Falta el identificador único de la carga; recargá la pantalla e intentá de nuevo');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!/^[A-Za-z0-9-]{16,100}$/.test(submissionKey)) {
+    const error = new Error('El identificador único de la carga no es válido; recargá la pantalla e intentá de nuevo');
+    error.statusCode = 400;
+    throw error;
+  }
   const cached = submissionKey ? getSubmissionCacheEntry(submissionKey) : null;
   if (cached?.status === 'done') return cached.result;
   if (cached?.status === 'pending' && cached.promise) return cached.promise;
 
   const run = (async () => {
-  const schema = await fetchComprobantesDatabaseSchema();
-  const productsDatabaseId = schema?.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
-  const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
-  const [productOptions, mediosOptions, notionUsers] = await Promise.all([
-    fetchRelationOptions(productsDatabaseId),
-    fetchRelationOptions(mediosDatabaseId),
-    fetchResponsibleVentaCandidates()
-  ]);
-
-  normalized.productIds = normalized.productName ? [findBestOptionIdByName(productOptions, normalized.productName)].filter(Boolean) : [];
-  normalized.medioPagoIds = normalized.medioPago ? [findBestOptionIdByName(mediosOptions, normalized.medioPago)].filter(Boolean) : [];
-  const responsibleMatch = findBestNotionUserMatch(notionUsers, normalized.responsableVenta, user);
-  normalized.responsableVentaUserIds = responsibleMatch ? [responsibleMatch.id] : [];
-
-  if (normalized.tipo === 'Cobranza' && !normalized.latestSaleId) {
-    const latestSale = await findLatestVentaByGhlId(normalized.ghlId);
-    normalized.latestSaleId = latestSale?.notionPageId || null;
-  }
-
-  const operations = buildDraftOperations(normalized);
-
-  try {
-    const results = [];
-    let createdVentaId = null;
-    for (const operation of operations) {
-      if (operation.localType === 'Cobranza' && createdVentaId) {
-        operation.properties['Venta relacionada'] = notionRelationValue(createdVentaId);
+    const createdPageIds = [];
+    let operations = [];
+    try {
+      const verifiedClient = await lookupClientByGhlId(normalized.ghlId);
+      if (!verifiedClient?.pageId || parseRelationId(verifiedClient.pageId) !== parseRelationId(normalized.clientPageId)) {
+        const error = new Error('La relación del cliente no coincide con el GHL ID buscado');
+        error.statusCode = 400;
+        throw error;
       }
-      const created = await createNotionPage(operation.properties);
-      const referencedFiles = operation.attachmentNames.length
-        ? normalized.attachmentFiles.filter((file) => operation.attachmentNames.includes(file.name))
-        : [];
-      const operationFiles = referencedFiles.length
-        ? referencedFiles
-        : (operations.length === 1 || operation.localType === normalized.tipo ? normalized.attachmentFiles : []);
-      if (operationFiles.length) {
-        await attachFilesToNotionPage(created.id, operationFiles);
+
+      const schema = await fetchComprobantesDatabaseSchema();
+      if (!schema?.properties) {
+        const error = new Error('No pude leer la estructura de Comprobantes en Notion');
+        error.statusCode = 502;
+        throw error;
       }
-      if (operation.localType === 'Venta') {
-        createdVentaId = created.id;
-        await updateNotionPageProperties(created.id, {
-          Finalizado: notionCheckboxValue(true),
-          'Venta relacionada': notionRelationValue(created.id)
+
+      const productsDatabaseId = schema.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
+      const mediosDatabaseId = schema.properties?.['Medios de pago']?.relation?.database_id || null;
+      if (!mediosDatabaseId) {
+        const error = new Error('La propiedad Medios de pago de Notion no está configurada como relación');
+        error.statusCode = 502;
+        throw error;
+      }
+
+      const [productOptions, mediosOptions, notionUsers] = await Promise.all([
+        fetchRelationOptions(productsDatabaseId),
+        fetchRelationOptions(mediosDatabaseId),
+        fetchResponsibleVentaCandidates()
+      ]);
+
+      const productId = normalized.productName
+        ? findBestOptionIdByName(productOptions, normalized.productName)
+        : null;
+      if (normalized.tipo === 'Venta' && !productId) {
+        const error = new Error(`No encontré el producto ${normalized.productName} en Notion`);
+        error.statusCode = 400;
+        throw error;
+      }
+      normalized.productIds = productId ? [productId] : [];
+
+      const medioPagoId = findBestOptionIdByName(mediosOptions, normalized.medioPago);
+      if (!medioPagoId) {
+        const error = new Error(`No encontré el medio de pago ${normalized.medioPago} en Notion`);
+        error.statusCode = 400;
+        throw error;
+      }
+      normalized.medioPagoIds = [medioPagoId];
+
+      const responsibleMatch = findBestNotionUserMatch(notionUsers, normalized.responsableVenta, user);
+      if (!responsibleMatch) {
+        const error = new Error(`No encontré a ${normalized.responsableVenta} como responsable en Notion`);
+        error.statusCode = 400;
+        throw error;
+      }
+      normalized.responsableVentaUserIds = [responsibleMatch.id];
+
+      await resolveRelatedSale(normalized);
+      operations = buildDraftOperations(normalized);
+
+      for (const operation of operations) {
+        const availableNames = new Set(normalized.attachmentFiles.map((file) => file.name));
+        const missingName = operation.attachmentNames.find((name) => !availableNames.has(name));
+        if (missingName) {
+          const error = new Error(`No encontré el archivo ${missingName} para una de las operaciones`);
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const existingPages = await findNotionPagesBySubmissionKey(submissionKey);
+      if (notionSubmissionIsComplete(existingPages, operations)) {
+        return buildExistingSubmissionResult(existingPages, operations);
+      }
+      if (existingPages.length) {
+        await archiveNotionPages(existingPages.map((page) => page.id));
+      }
+
+      const results = [];
+      let createdVentaId = null;
+      for (const operation of operations) {
+        if (operation.localType === 'Cobranza' && createdVentaId) {
+          operation.properties['Venta relacionada'] = notionRelationValue(createdVentaId);
+        }
+        const created = await createNotionPage(operation.properties);
+        if (!created?.id) {
+          const error = new Error('Notion no devolvió el ID del comprobante creado');
+          error.statusCode = 502;
+          throw error;
+        }
+        createdPageIds.push(created.id);
+        const operationFiles = normalized.attachmentFiles.filter(
+          (file) => operation.attachmentNames.includes(file.name)
+        );
+        if (operationFiles.length) {
+          await attachFilesToNotionPage(created.id, operationFiles);
+        }
+        if (operation.localType === 'Venta') {
+          createdVentaId = created.id;
+          await updateNotionPageProperties(created.id, {
+            Finalizado: notionCheckboxValue(true),
+            'Venta relacionada': notionRelationValue(created.id)
+          });
+        }
+        results.push({
+          id: created.id,
+          url: created.url,
+          type: operation.localType
         });
       }
-      results.push({
-        id: created.id,
-        url: created.url,
-        type: operation.localType
-      });
-    }
 
-    return {
-      created: results,
-      operations,
-      dryRun: false
-    };
-  } catch (error) {
-    const wrapped = new Error(
-      error.response?.data?.message
-      || 'No pude crear el comprobante en Notion. Revisá token, propiedades y permisos de la base.'
-    );
-    wrapped.statusCode = error.response?.status || error.statusCode || 502;
-    wrapped.details = {
-      notion: error.response?.data || null,
-      operations
-    };
-    throw wrapped;
-  }
+      return {
+        created: results,
+        operations,
+        dryRun: false
+      };
+    } catch (error) {
+      let rollbackError = null;
+      if (createdPageIds.length) {
+        try {
+          await archiveNotionPages(createdPageIds);
+        } catch (caughtRollbackError) {
+          rollbackError = caughtRollbackError;
+        }
+      }
+
+      const wrapped = new Error(
+        error.response?.data?.message
+        || error.message
+        || 'No pude crear el comprobante en Notion. Revisá token, propiedades y permisos de la base.'
+      );
+      wrapped.statusCode = rollbackError
+        ? 502
+        : (error.response?.status || error.statusCode || 502);
+      wrapped.details = {
+        notion: error.response?.data || null,
+        operations,
+        rolledBackPageIds: rollbackError ? [] : createdPageIds,
+        rollbackFailedIds: rollbackError?.rollbackFailedIds || []
+      };
+      throw wrapped;
+    }
   })();
 
   setSubmissionCachePending(submissionKey, run);

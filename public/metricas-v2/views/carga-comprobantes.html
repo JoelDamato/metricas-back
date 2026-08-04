@@ -169,8 +169,8 @@
 
           <section id="cashSection" class="carga-section">
             <div class="carga-section-head">
-              <h2>Cash y validación</h2>
-              <p>El cash ARS es obligatorio y se controla contra la facturación USD cargada manualmente.</p>
+              <h2>Cash</h2>
+              <p>El cash ARS es obligatorio. El equivalente en USD es informativo y se calcula con la tasa de cambio.</p>
             </div>
             <div class="carga-grid carga-grid--three">
               <label class="carga-field">
@@ -182,8 +182,8 @@
                 <input id="cashCollectedUsd" name="cashCollectedUsd" type="text" readonly />
               </label>
               <div id="cashValidationCard" class="carga-validation-card">
-                <strong>Validación</strong>
-                <p>Completá TC, cash ARS y facturación USD para validar el margen.</p>
+                <strong>Cash informativo</strong>
+                <p>Completá TC y cash ARS para calcular el equivalente en USD.</p>
               </div>
             </div>
           </section>
@@ -191,12 +191,20 @@
           <section id="chequeFields" class="carga-section" hidden>
             <div class="carga-section-head">
               <h2>Cheques</h2>
-              <p>Subí el archivo o la foto en cada cheque. El primero se toma como venta y los siguientes se preparan como cobranzas.</p>
+              <p id="chequeHelpText">Subí el archivo o la foto de cada cheque.</p>
             </div>
             <div class="carga-grid carga-grid--three">
               <label class="carga-field">
                 <span>Cantidad de cheques</span>
-                <input id="chequeCount" name="chequeCount" type="number" min="1" max="12" step="1" />
+                <select id="chequeCount" name="chequeCount">
+                  <option value="">Elegí cantidad</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                </select>
               </label>
             </div>
             <div id="chequeRows" class="carga-cheque-list"></div>
@@ -205,7 +213,7 @@
           <section id="attachmentsSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Adjuntos e info</h2>
-              <p>Podés subir imágenes o PDF del comprobante para que queden adjuntos en Notion.</p>
+              <p>Podés subir JPG, PNG, WEBP o PDF. Máximo 20 MB por archivo y 30 MB en total.</p>
             </div>
             <div class="carga-grid carga-grid--two">
               <label class="carga-field carga-field--full">

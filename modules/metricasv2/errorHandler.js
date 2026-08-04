@@ -8,9 +8,12 @@ function metricasV2ErrorHandler(err, req, res, next) {
     console.error('[metricas-v2 details]', JSON.stringify(err.details));
   }
 
-  return res.status(err.statusCode || 500).json({
+  const isPayloadTooLarge = err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413;
+  return res.status(isPayloadTooLarge ? 413 : (err.statusCode || 500)).json({
     ok: false,
-    message: err.message || 'Error interno en métricas'
+    message: isPayloadTooLarge
+      ? 'Los archivos superan el tamaño máximo de la carga. Reducilos a 30 MB en total e intentá de nuevo.'
+      : (err.message || 'Error interno en métricas')
   });
 }
 

@@ -5,8 +5,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const googleScriptUrl = process.env.GOOGLE_SCRIPT_WEBHOOK || "https://script.google.com/macros/s/AKfycbxij3VPCpyGs3-adtVGEjzC1rVd9tgDyGs19_ChKUo5SytA_-K_pz_vghfFBQSVh6ZdHg/exec";
 const GOOGLE_SHEETS_TIMEOUT_MS = parseInt(process.env.GOOGLE_SHEETS_TIMEOUT_MS || '120000', 10);
 
-const queue = [];
-let isProcessing = false;
+let sheetsQueue = Promise.resolve();
 
 
 
@@ -173,6 +172,9 @@ function getValue(prop) {
     
     case 'people':
       return prop.people?.[0]?.name ?? null;
+
+    case 'relation':
+      return prop.relation?.[0]?.id ?? null;
     
     case 'files':
       return prop.files?.[0]?.name ?? null;
@@ -298,9 +300,70 @@ function mapToSupabase(payload) {
   return row;
 }
 
+function extractDeletedPageId(payload) {
+  if (payload?.type !== 'page.deleted') return null;
+  const notionId = typeof payload?.entity?.id === 'string' ? payload.entity.id.trim() : '';
+  const compactId = notionId.replace(/-/g, '');
+  return /^[a-f0-9]{32}$/i.test(compactId) ? notionId : null;
+}
 
+
+
+async function deleteFromSupabase(payload) {
+  const deletedPageId = extractDeletedPageId(payload);
+  if (!deletedPageId) {
+    const error = new Error('El evento page.deleted no incluye entity.id');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const notionResponse = await axios.get(
+    `https://api.notion.com/v1/pages/${deletedPageId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28'
+      },
+      timeout: 30000
+    }
+  );
+  if (notionResponse.data?.archived !== true && notionResponse.data?.in_trash !== true) {
+    const error = new Error('Notion no confirma que la página esté archivada');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const response = await supabaseWithLimit(() => axios.delete(
+    `${SUPABASE_URL}/rest/v1/comprobantes`,
+    {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      params: { id: `eq.${deletedPageId}` }
+    }
+  ));
+
+  await saveLog({
+    webhook_type: 'com',
+    type: 'deleted',
+    message: 'Comprobante eliminado de Supabase',
+    http_status: response.status,
+    notion_id: deletedPageId,
+    attempted_data: { id: deletedPageId },
+    payload
+  });
+  console.log(`✅ Comprobante eliminado de Supabase: ${deletedPageId}`);
+  return response;
+}
 
 async function sendToSupabase(payload) {
+  if (payload?.type === 'page.deleted') {
+    return deleteFromSupabase(payload);
+  }
+
   const data = payload.data || payload;
   const p = data.properties || {};
   
@@ -323,7 +386,9 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ No se envía: ID inválido');
-    return;
+    const error = new Error(errorLog.message);
+    error.statusCode = 400;
+    throw error;
   }
 
   try {
@@ -368,7 +433,31 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ Error Supabase:', err.response?.status, err.response?.data || err.message);
+    throw err;
   }
+}
+
+function enqueueGoogleSheets(payload) {
+  sheetsQueue = sheetsQueue.then(async () => {
+    try {
+      console.log("⏳ Procesando Sheets (Comprobantes)...");
+      await axios.post(googleScriptUrl, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: GOOGLE_SHEETS_TIMEOUT_MS
+      });
+      console.log("✅ Google Sheets procesado exitosamente");
+    } catch (error) {
+      console.error("❌ Error al procesar Google Sheets:", error.message);
+      await saveLog({
+        webhook_type: 'com',
+        type: 'google_sheets_error',
+        message: error.message,
+        payload
+      });
+    }
+  });
+
+  return sheetsQueue;
 }
 
 // Helper: delay
@@ -414,45 +503,6 @@ async function supabaseWithLimit(fn) {
   }
 }
 
-async function processQueue() {
-  if (isProcessing || queue.length === 0) return;
-  isProcessing = true;
-
-  const { payload } = queue.shift();
-  
-  // Procesar Google Sheets (no bloqueante)
-  try {
-    console.log("⏳ Procesando Sheets (Comprobantes)...");
-    await axios.post(googleScriptUrl, payload, { 
-      headers: { 'Content-Type': 'application/json' },
-      timeout: GOOGLE_SHEETS_TIMEOUT_MS
-    });
-    console.log("✅ Google Sheets procesado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al procesar Google Sheets:", error.message);
-    console.error("⚠️  Continuando con Supabase de todos modos...");
-  }
-  
-  // Procesar Supabase (independiente de Sheets)
-  try {
-    console.log("⏳ Procesando Supabase (Comprobantes)...");
-    await sendToSupabase(payload);
-  } catch (error) {
-    console.error("❌ Error al procesar Supabase:", error.message);
-    
-    // Log del error de Supabase
-    await saveLog({
-      webhook_type: 'com',
-      type: 'supabase_process_error',
-      message: error.message,
-      payload: payload
-    });
-  }
-  
-  isProcessing = false;
-  if (queue.length > 0) setImmediate(processQueue);
-}
-
 exports.handleWebhook = async (req, res) => {
   try {
     console.log('📥 Webhook recibido (Comprobantes)');
@@ -474,27 +524,38 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ error: 'Payload inválido', received: payload.type || 'unknown' });
     }
 
-    res.status(200).json({
+    try {
+      console.log('⏳ Procesando Supabase (Comprobantes)...');
+      await sendToSupabase(payload);
+    } catch (error) {
+      console.error('❌ Error al procesar Supabase:', error.message);
+      await saveLog({
+        webhook_type: 'com',
+        type: 'supabase_process_error',
+        message: error.message,
+        payload
+      });
+      const statusCode = Number(error.statusCode || error.response?.status || 502);
+      return res.status(statusCode >= 400 && statusCode < 500 ? statusCode : 502).json({
+        error: 'No pude persistir el webhook de comprobantes',
+        message: error.message
+      });
+    }
+
+    // Sheets conserva su propia cola y no demora la confirmación de la réplica crítica.
+    enqueueGoogleSheets(payload);
+    return res.status(200).json({
       status: 'ok',
-      message: 'Webhook de comprobantes recibido y encolado',
+      message: 'Webhook de comprobantes persistido en Supabase',
       receivedAt: new Date().toISOString()
     });
-    
-    try {
-      queue.push({ payload: req.body });
-      processQueue();
-    } catch (err) {
-      console.error('❌ Error al encolar payload:', err.message);
-      const errorLog = {
-        webhook_type: 'com',
-        type: 'enqueue_error',
-        message: err.message,
-        payload: req.body
-      };
-      await saveLog(errorLog);
-    }
   } catch (err) {
     console.error('❌ Error en handler de Comprobantes:', err.message);
     return res.status(500).json({ error: 'Error interno en el handler de Comprobantes' });
   }
 };
+
+exports.getValue = getValue;
+exports.mapToSupabase = mapToSupabase;
+exports.extractDeletedPageId = extractDeletedPageId;
+exports.deleteFromSupabase = deleteFromSupabase;
