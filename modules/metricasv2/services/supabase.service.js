@@ -32,10 +32,10 @@ function buildStorageHeaders(extra = {}) {
 
 function parseLimit(rawLimit) {
   const limit = Number(rawLimit || 100);
-  if (Number.isNaN(limit) || limit <= 0 || limit > 1000) {
+  if (!Number.isFinite(limit) || limit <= 0) {
     return 100;
   }
-  return limit;
+  return Math.min(Math.floor(limit), 1000);
 }
 
 function parseOffset(rawOffset) {

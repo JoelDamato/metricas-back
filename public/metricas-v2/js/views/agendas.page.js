@@ -1011,8 +1011,8 @@ async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones de filtros...';
 
-  const response = await window.metricasApi.fetchRows(AGENDA_RESOURCE, {
-    limit: 2000,
+  const response = await window.metricasApi.fetchAllRows(AGENDA_RESOURCE, {
+    limit: 1000,
     orderBy: 'anio',
     orderDir: 'desc'
   });
@@ -1060,7 +1060,7 @@ async function loadAgendaTotales() {
     }
 
     const query = {
-      limit: 2000,
+      limit: 1000,
       orderBy: 'mes',
       orderDir: 'asc',
       eq_anio: selectedYear
@@ -1077,7 +1077,7 @@ async function loadAgendaTotales() {
     });
 
     const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
-      window.metricasApi.fetchRows(AGENDA_RESOURCE, query),
+      window.metricasApi.fetchAllRows(AGENDA_RESOURCE, query),
       fetchAovDia1Safely(yearRange, filters),
       ...aovRequests
     ]);
