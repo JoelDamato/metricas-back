@@ -740,6 +740,7 @@
 <script src="/js/auth-shell.js"></script>
 <script src="/js/mag-theme.js"></script>
 <script src="/js/agenda-operational-alerts.js"></script>
+<script src="/js/agenda-bonus-policy.js"></script>
 <script>
 /* ═══ CONSTANTS ═══ */
 const TARGET=20000,FLOOR=16500,STEP=5000;
@@ -1713,14 +1714,16 @@ function getBonusWeekRows(){
       baseMiss
     };
   });
-  const hasClosedBaseMiss=baseRows.some((row)=>row.baseMiss);
-  return baseRows.map((row)=>({
-    ...row,
-    revoked: row.pct>0 && hasClosedBaseMiss,
-    counted: row.pct>0 && !hasClosedBaseMiss,
-    payablePool: row.pct>0 && !hasClosedBaseMiss ? row.generatedPool : 0,
-    hasClosedBaseMiss
-  }));
+  return baseRows.map((row)=>{
+    const revokedByLaterBaseMiss=row.pct>0
+      && window.agendaBonusPolicy.hasLaterClosedBaseMiss(baseRows,row.index);
+    return {
+      ...row,
+      revoked: revokedByLaterBaseMiss,
+      counted: row.pct>0 && !revokedByLaterBaseMiss,
+      payablePool: row.pct>0 && !revokedByLaterBaseMiss ? row.generatedPool : 0
+    };
+  });
 }
 
 /* ═══ CATEGORY CHAIN ═══ */
@@ -2211,8 +2214,8 @@ function renderBonus(){
     html+='<div class="empty">Sin datos de bonus aún.</div>';
   }
 
-  if(rows.some((row)=>row.baseMiss)){
-    html+='<div class="bonus-alert">Hay una semana cerrada debajo de base. Los bonus que se hayan generado en el mes quedan revocados hasta cumplir la regla mensual.</div>';
+  if(rows.some((row)=>row.revoked)){
+    html+='<div class="bonus-alert">Un bonus generado fue revocado porque una semana posterior cerró debajo de la base. Las semanas malas anteriores no anulan un objetivo alcanzado después.</div>';
   }
 
   rows.forEach((row)=>{
