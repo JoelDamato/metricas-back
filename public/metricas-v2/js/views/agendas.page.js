@@ -566,6 +566,25 @@ function combineAovDia1Responses(responses) {
   };
 }
 
+function emptyAovDia1Response(error = null) {
+  return {
+    aovDia1: 0,
+    ventasDia1: 0,
+    facturacionDia1: 0,
+    cashCollectedDia1: 0,
+    unavailable: Boolean(error)
+  };
+}
+
+async function fetchAovDia1Safely(range, filters) {
+  try {
+    return await fetchAovDia1ForFilters(range, filters);
+  } catch (error) {
+    console.warn('No se pudo cargar el AOV día 1; las agendas se mostrarán igualmente.', error);
+    return emptyAovDia1Response(error);
+  }
+}
+
 async function fetchAovDia1ForFilters(range, filters) {
   const selectedOrigins = filters.origenes || [];
   const baseOptions = {
@@ -1054,12 +1073,12 @@ async function loadAgendaTotales() {
     const yearRange = getYearRange(selectedYear);
     const aovRequests = MONTHS.map((month) => {
       const range = getMonthRange(selectedYear, month.value);
-      return fetchAovDia1ForFilters(range, filters);
+      return fetchAovDia1Safely(range, filters);
     });
 
     const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
       window.metricasApi.fetchRows(AGENDA_RESOURCE, query),
-      fetchAovDia1ForFilters(yearRange, filters),
+      fetchAovDia1Safely(yearRange, filters),
       ...aovRequests
     ]);
     const rows = applyLocalFilters(sanitizeRowsForYear(response.rows, selectedYear), filters);
@@ -1073,7 +1092,9 @@ async function loadAgendaTotales() {
 
     buildKpis(rows);
     buildMatrixTable(rows, filters, aovDia1Data);
-    status.textContent = `Filas: ${rows.length} | año ${selectedYear} | ${AGENDA_ORIGIN_LABEL.toLowerCase()} ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}`;
+    const aovUnavailable = totalAovDia1Response?.unavailable === true
+      || monthAovResponses.some((responseItem) => responseItem?.unavailable === true);
+    status.textContent = `Filas: ${rows.length} | año ${selectedYear} | ${AGENDA_ORIGIN_LABEL.toLowerCase()} ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}${aovUnavailable ? ' | AOV día 1 no disponible' : ''}`;
   } catch (error) {
     status.textContent = error.message;
   }
