@@ -265,10 +265,45 @@
       </section>
     </main>
 
-    <div id="comprobanteCreatingPopup" class="loading-popup" hidden>
-      <div class="loading-popup-card">
-        <div class="carga-loader-spinner" aria-hidden="true"></div>
-        <p>Creando comprobante...</p>
+    <div
+      id="comprobanteCreatingPopup"
+      class="loading-popup"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="comprobanteProgressTitle"
+      aria-describedby="comprobanteProgressMessage comprobanteProgressPatience"
+      tabindex="-1"
+      hidden
+    >
+      <div class="loading-popup-card carga-creating-card">
+        <div class="carga-creating-heading">
+          <div class="carga-loader-spinner" aria-hidden="true"></div>
+          <div>
+            <span id="comprobanteProgressKicker" class="carga-creating-kicker">Carga en curso</span>
+            <h3 id="comprobanteProgressTitle">Preparando la carga</h3>
+          </div>
+        </div>
+        <p id="comprobanteProgressMessage" class="carga-creating-message" role="status" aria-live="polite">
+          Organizando los datos y archivos antes de enviarlos.
+        </p>
+        <div class="carga-progress-meta">
+          <span id="comprobanteProgressStep">Progreso estimado · Preparación</span>
+          <strong id="comprobanteProgressPercent">0%</strong>
+        </div>
+        <div
+          id="comprobanteProgressBar"
+          class="carga-progress-track"
+          role="progressbar"
+          aria-label="Progreso estimado de la carga"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <span id="comprobanteProgressFill" class="carga-progress-fill"></span>
+        </div>
+        <small id="comprobanteProgressPatience" class="carga-creating-patience">
+          No cierres esta ventana mientras se guardan los registros y sus archivos.
+        </small>
       </div>
     </div>
   </body>

@@ -7,6 +7,9 @@
   const MAX_TOTAL_FILE_BYTES = 30 * 1024 * 1024;
   const ALLOWED_FILE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'pdf']);
   const ALLOWED_FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+  const SUBMISSION_PROGRESS_TICK_MS = 200;
+  const SUBMISSION_PROGRESS_MAX_PENDING = 92;
+  const SUBMISSION_LONG_WAIT_ROTATION_MS = 5500;
 
   const state = {
     bootstrap: null,
@@ -19,7 +22,14 @@
     relatedSaleLookupInFlight: false,
     previewPayload: null,
     submissionKey: null,
-    isSubmitting: false
+    isSubmitting: false,
+    submissionProgressTimer: null,
+    submissionProgressStartedAt: 0,
+    submissionProgressStages: [],
+    submissionProgressStageIndex: -1,
+    submissionProgressLongWaitIndex: -1,
+    submissionProgressValue: 0,
+    submissionPreviousFocus: null
   };
 
   const refs = {
@@ -79,6 +89,14 @@
     editPreviewBtn: document.getElementById('editPreviewBtn'),
     confirmSubmitBtn: document.getElementById('confirmSubmitBtn'),
     creatingPopup: document.getElementById('comprobanteCreatingPopup'),
+    creatingKicker: document.getElementById('comprobanteProgressKicker'),
+    creatingTitle: document.getElementById('comprobanteProgressTitle'),
+    creatingMessage: document.getElementById('comprobanteProgressMessage'),
+    creatingStep: document.getElementById('comprobanteProgressStep'),
+    creatingPercent: document.getElementById('comprobanteProgressPercent'),
+    creatingProgressBar: document.getElementById('comprobanteProgressBar'),
+    creatingProgressFill: document.getElementById('comprobanteProgressFill'),
+    creatingPatience: document.getElementById('comprobanteProgressPatience'),
     clientSection: document.getElementById('clientSection'),
     baseSection: document.getElementById('baseSection'),
     cashSection: document.getElementById('cashSection'),
@@ -392,7 +410,231 @@
 
   function setCreatingPopup(isVisible) {
     if (!refs.creatingPopup) return;
+    if (isVisible) {
+      state.submissionPreviousFocus = document.activeElement;
+      refs.creatingPopup.classList.remove('is-complete', 'is-error');
+      refs.creatingPopup.hidden = false;
+      if (refs.form) refs.form.inert = true;
+      refs.creatingPopup.focus({ preventScroll: true });
+      return;
+    }
     refs.creatingPopup.hidden = !isVisible;
+    if (refs.form) refs.form.inert = false;
+    const previousFocus = state.submissionPreviousFocus;
+    state.submissionPreviousFocus = null;
+    if (previousFocus?.isConnected && typeof previousFocus.focus === 'function') {
+      window.setTimeout(() => {
+        if (
+          previousFocus.isConnected
+          && !previousFocus.disabled
+          && !previousFocus.closest?.('[inert]')
+        ) {
+          previousFocus.focus({ preventScroll: true });
+        }
+      }, 0);
+    }
+  }
+
+  function submissionProgressStages(operationCount) {
+    const count = Math.max(1, Number(operationCount) || 1);
+    const plural = count === 1 ? 'pago' : 'pagos';
+    const recordPlural = count === 1 ? 'registro' : 'registros';
+    return [
+      {
+        afterMs: 0,
+        progress: 8,
+        title: `Preparando ${count} ${plural}`,
+        message: 'Organizando los datos y archivos antes de enviarlos.',
+        step: 'Preparación'
+      },
+      {
+        afterMs: 700,
+        progress: 20,
+        title: 'Validando la carga',
+        message: 'Revisando importes, fechas y comprobantes adjuntos.',
+        step: 'Validación'
+      },
+      {
+        afterMs: 1800,
+        progress: 36,
+        title: 'Enviando los comprobantes',
+        message: 'Subiendo los archivos de forma segura. Puede tomar unos segundos.',
+        step: 'Envío de archivos'
+      },
+      {
+        afterMs: 3400,
+        progress: 54,
+        title: `Guardando ${count} ${recordPlural}`,
+        message: 'Los pagos se están guardando en la base de datos.',
+        step: 'Guardado de registros'
+      },
+      {
+        afterMs: 5400,
+        progress: 70,
+        title: 'Vinculando la información',
+        message: 'Relacionando pagos, fechas, venta y cobranzas.',
+        step: 'Relaciones'
+      },
+      {
+        afterMs: 7800,
+        progress: 84,
+        title: 'Verificando la carga',
+        message: `Confirmando que ${count === 1 ? 'el registro quede completo' : `los ${count} registros queden completos`}.`,
+        step: 'Verificación'
+      },
+      {
+        afterMs: 11000,
+        progress: SUBMISSION_PROGRESS_MAX_PENDING,
+        title: count === 1 ? 'El comprobante sigue procesándose' : `Los ${count} pagos siguen procesándose`,
+        message: 'La carga continúa activa y segura. No cierres ni recargues esta ventana.',
+        step: 'Procesamiento prolongado',
+        longWaitMessages: [
+          {
+            title: count === 1 ? 'El comprobante sigue procesándose' : `Los ${count} pagos siguen procesándose`,
+            message: 'La carga continúa activa y segura. No cierres ni recargues esta ventana.',
+            step: 'Procesamiento prolongado'
+          },
+          {
+            title: 'Seguimos guardando la información',
+            message: 'Cuando hay varios archivos, cada registro puede necesitar unos segundos adicionales.',
+            step: 'Guardado en curso'
+          },
+          {
+            title: 'La carga sigue activa',
+            message: 'Estamos esperando la confirmación final del servidor. Podés dejar esta ventana abierta.',
+            step: 'Esperando confirmación'
+          }
+        ]
+      }
+    ];
+  }
+
+  function renderSubmissionProgress({ value, title, message, step }) {
+    const progress = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    state.submissionProgressValue = progress;
+    if (refs.creatingTitle && title) refs.creatingTitle.textContent = title;
+    if (refs.creatingMessage && message) refs.creatingMessage.textContent = message;
+    if (refs.creatingStep && step) refs.creatingStep.textContent = `Progreso estimado · ${step}`;
+    if (refs.creatingPercent) refs.creatingPercent.textContent = `${progress}%`;
+    if (refs.creatingProgressFill) refs.creatingProgressFill.style.width = `${progress}%`;
+    if (refs.creatingProgressBar) refs.creatingProgressBar.setAttribute('aria-valuenow', String(progress));
+  }
+
+  function clearSubmissionProgressTimer() {
+    if (state.submissionProgressTimer !== null) {
+      window.clearInterval(state.submissionProgressTimer);
+      state.submissionProgressTimer = null;
+    }
+  }
+
+  function stopSubmissionProgress({ reset = false } = {}) {
+    clearSubmissionProgressTimer();
+    state.submissionProgressStages = [];
+    state.submissionProgressStageIndex = -1;
+    state.submissionProgressLongWaitIndex = -1;
+    state.submissionProgressStartedAt = 0;
+    if (reset) {
+      renderSubmissionProgress({
+        value: 0,
+        title: 'Preparando la carga',
+        message: 'Organizando los datos y archivos antes de enviarlos.',
+        step: 'Preparación'
+      });
+    }
+  }
+
+  function updateSubmissionProgressFromElapsed() {
+    const stages = state.submissionProgressStages;
+    if (!stages.length || !state.submissionProgressStartedAt) return;
+
+    const elapsed = Date.now() - state.submissionProgressStartedAt;
+    let stageIndex = 0;
+    for (let index = 1; index < stages.length; index += 1) {
+      if (elapsed < stages[index].afterMs) break;
+      stageIndex = index;
+    }
+
+    const stage = stages[stageIndex];
+    const nextStage = stages[stageIndex + 1];
+    let progress = stage.progress;
+    if (nextStage) {
+      const duration = Math.max(1, nextStage.afterMs - stage.afterMs);
+      const ratio = Math.max(0, Math.min(1, (elapsed - stage.afterMs) / duration));
+      progress += (nextStage.progress - stage.progress - 2) * ratio;
+    }
+    progress = Math.min(SUBMISSION_PROGRESS_MAX_PENDING, Math.max(state.submissionProgressValue, progress));
+
+    let displayedStage = stage;
+    let longWaitIndex = -1;
+    if (Array.isArray(stage.longWaitMessages) && stage.longWaitMessages.length) {
+      longWaitIndex = Math.floor(
+        Math.max(0, elapsed - stage.afterMs) / SUBMISSION_LONG_WAIT_ROTATION_MS
+      ) % stage.longWaitMessages.length;
+      displayedStage = { ...stage, ...stage.longWaitMessages[longWaitIndex] };
+    }
+
+    const stageChanged = stageIndex !== state.submissionProgressStageIndex
+      || longWaitIndex !== state.submissionProgressLongWaitIndex;
+    state.submissionProgressStageIndex = stageIndex;
+    state.submissionProgressLongWaitIndex = longWaitIndex;
+    renderSubmissionProgress({
+      value: progress,
+      title: stageChanged ? displayedStage.title : '',
+      message: stageChanged ? displayedStage.message : '',
+      step: stageChanged ? displayedStage.step : ''
+    });
+    refs.submitStatus.textContent = displayedStage.title;
+  }
+
+  function startSubmissionProgress(operationCount) {
+    stopSubmissionProgress({ reset: true });
+    const count = Math.max(1, Number(operationCount) || 1);
+    state.submissionProgressStages = submissionProgressStages(count);
+    state.submissionProgressStartedAt = Date.now();
+    state.submissionProgressStageIndex = -1;
+    state.submissionProgressLongWaitIndex = -1;
+    if (refs.creatingKicker) refs.creatingKicker.textContent = 'Carga en curso';
+    if (refs.creatingPatience) {
+      refs.creatingPatience.textContent = count === 1
+        ? 'No cierres esta ventana mientras se guarda el comprobante y su archivo.'
+        : `Tené paciencia: al cargar ${count} pagos, cada registro y archivo se guarda por separado. No cierres ni recargues esta ventana.`;
+    }
+    setCreatingPopup(true);
+    updateSubmissionProgressFromElapsed();
+    state.submissionProgressTimer = window.setInterval(
+      updateSubmissionProgressFromElapsed,
+      SUBMISSION_PROGRESS_TICK_MS
+    );
+  }
+
+  function completeSubmissionProgress(createdCount) {
+    clearSubmissionProgressTimer();
+    const count = Math.max(1, Number(createdCount) || 1);
+    refs.creatingPopup?.classList.add('is-complete');
+    if (refs.creatingKicker) refs.creatingKicker.textContent = 'Carga completada';
+    renderSubmissionProgress({
+      value: 100,
+      title: 'Carga completada',
+      message: `${count === 1 ? 'El registro quedó guardado' : `Los ${count} registros quedaron guardados`} correctamente.`,
+      step: 'Listo'
+    });
+    refs.submitStatus.textContent = 'Carga completada.';
+  }
+
+  function failSubmissionProgress(message) {
+    clearSubmissionProgressTimer();
+    refs.creatingPopup?.classList.add('is-error');
+    if (refs.creatingKicker) refs.creatingKicker.textContent = 'Carga interrumpida';
+    renderSubmissionProgress({
+      value: state.submissionProgressValue,
+      title: 'No se pudo completar la carga',
+      message: message || 'Revisá el mensaje del formulario y volvé a intentarlo.',
+      step: 'Carga interrumpida'
+    });
+  }
+
+  function waitForUi(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
   }
 
   function setSectionVisibility(node, isVisible) {
@@ -1261,6 +1503,7 @@
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (state.isSubmitting) return;
     refs.submitBtn.disabled = true;
     refs.submitStatus.textContent = 'Preparando la revisión...';
     try {
@@ -1288,19 +1531,29 @@
     state.isSubmitting = true;
     refs.submitBtn.disabled = true;
     refs.confirmSubmitBtn.disabled = true;
-    refs.submitStatus.textContent = 'Creando comprobante...';
-    setCreatingPopup(true);
+    refs.editPreviewBtn.disabled = true;
+    refs.form.setAttribute('aria-busy', 'true');
+    refs.submitStatus.textContent = 'Preparando la carga...';
+    let progressStarted = false;
+    let finalStatusMessage = '';
 
     try {
       const payload = state.previewPayload || await buildPayload();
       const warnings = buildPreviewWarnings(payload);
       if (warnings.length) {
-        refs.submitStatus.textContent = 'Faltan datos para continuar.';
+        finalStatusMessage = 'Faltan datos para continuar.';
+        refs.submitStatus.textContent = finalStatusMessage;
         refs.previewSection.hidden = true;
         showValidationPopup(warnings);
         return;
       }
+      const operationCount = countDraftOperations(payload);
+      startSubmissionProgress(operationCount);
+      progressStarted = true;
       const response = await api.createComprobanteManual(payload);
+      completeSubmissionProgress(response.created.length);
+      await waitForUi(450);
+      setCreatingPopup(false);
       refs.submitStatus.textContent = `Comprobante creado. Registros generados: ${response.created.length}.`;
       showSuccessPopup(response);
       refs.form.reset();
@@ -1319,12 +1572,22 @@
       updateStepFlow();
       invalidatePreview();
     } catch (error) {
-      refs.submitStatus.textContent = error.message || 'No pude crear el comprobante.';
+      const errorMessage = error.message || 'No pude crear el comprobante.';
+      finalStatusMessage = errorMessage;
+      refs.submitStatus.textContent = errorMessage;
+      if (progressStarted) {
+        failSubmissionProgress(errorMessage);
+        await waitForUi(1300);
+      }
     } finally {
       state.isSubmitting = false;
+      stopSubmissionProgress();
       setCreatingPopup(false);
-      refs.submitBtn.disabled = false;
-      refs.confirmSubmitBtn.disabled = false;
+      refs.form.removeAttribute('aria-busy');
+      refs.confirmSubmitBtn.disabled = refs.previewSection.hidden;
+      refs.editPreviewBtn.disabled = refs.previewSection.hidden;
+      updateStepFlow();
+      if (finalStatusMessage) refs.submitStatus.textContent = finalStatusMessage;
     }
   }
 

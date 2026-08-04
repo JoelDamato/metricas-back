@@ -2376,6 +2376,152 @@ th {
   font-weight: 700;
 }
 
+.carga-creating-card {
+  width: min(480px, calc(100vw - 32px));
+  min-width: 0;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 28px;
+  text-align: left;
+}
+
+.carga-creating-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.carga-creating-heading .carga-loader-spinner {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-width: 4px;
+}
+
+.carga-creating-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: #2b61de;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.carga-creating-card h3 {
+  margin: 0;
+  color: #14346f;
+  font-size: 1.28rem;
+  line-height: 1.25;
+}
+
+.loading-popup-card .carga-creating-message {
+  min-height: 44px;
+  margin: 18px 0 16px;
+  color: #425d8e;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.carga-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  color: #58709d;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.carga-progress-meta strong {
+  color: #2458d8;
+  font-size: 0.94rem;
+}
+
+.carga-progress-track {
+  position: relative;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(64, 104, 190, 0.14);
+  box-shadow: inset 0 1px 2px rgba(21, 52, 111, 0.08);
+}
+
+.carga-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  min-width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2459e6 0%, #3e8aff 58%, #6eb8ff 100%);
+  box-shadow: 0 4px 14px rgba(44, 105, 239, 0.3);
+  transition: width 240ms ease;
+}
+
+.carga-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 24%, rgba(255, 255, 255, 0.5) 48%, transparent 72%);
+  transform: translateX(-100%);
+  animation: carga-progress-shimmer 1.5s ease-in-out infinite;
+}
+
+.loading-popup.is-complete .carga-progress-fill {
+  background: linear-gradient(90deg, #168a50 0%, #2fbd74 100%);
+}
+
+.loading-popup.is-error .carga-progress-fill {
+  background: linear-gradient(90deg, #c73a4b 0%, #ef6676 100%);
+}
+
+.loading-popup.is-complete .carga-progress-fill::after,
+.loading-popup.is-error .carga-progress-fill::after,
+.loading-popup.is-complete .carga-loader-spinner,
+.loading-popup.is-error .carga-loader-spinner {
+  animation: none;
+}
+
+.loading-popup.is-complete .carga-loader-spinner {
+  border-color: #2fbd74;
+}
+
+.loading-popup.is-error .carga-loader-spinner {
+  border-color: #ef6676;
+}
+
+@keyframes carga-progress-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.carga-creating-patience {
+  display: block;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(61, 118, 229, 0.14);
+  border-radius: 14px;
+  background: rgba(49, 111, 238, 0.07);
+  color: #53698f;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carga-progress-fill {
+    transition: none;
+  }
+
+  .carga-progress-fill::after,
+  .carga-creating-heading .carga-loader-spinner {
+    animation: none;
+  }
+}
+
 .marketing-page .container {
   width: min(1320px, 96vw);
 }
@@ -7168,6 +7314,30 @@ th {
   color: var(--muted);
 }
 
+:root[data-theme='dark'] .carga-creating-card h3 {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .carga-creating-kicker,
+:root[data-theme='dark'] .carga-progress-meta strong {
+  color: #91b9ff;
+}
+
+:root[data-theme='dark'] .carga-progress-meta,
+:root[data-theme='dark'] .carga-creating-patience {
+  color: var(--muted);
+}
+
+:root[data-theme='dark'] .carga-progress-track {
+  background: rgba(126, 161, 219, 0.16);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='dark'] .carga-creating-patience {
+  border-color: rgba(126, 161, 219, 0.16);
+  background: rgba(75, 127, 224, 0.1);
+}
+
 :root[data-theme='dark'] .marketing-table th {
   background: linear-gradient(180deg, rgba(31, 56, 92, 0.96), rgba(23, 42, 72, 0.94));
   color: var(--text);
@@ -7405,6 +7575,10 @@ th {
   .carga-comprobantes-panel,
   .carga-section {
     padding: 22px 18px;
+  }
+
+  .carga-creating-card {
+    padding: 24px 20px;
   }
 }
 
