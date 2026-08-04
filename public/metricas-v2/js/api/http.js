@@ -1,6 +1,7 @@
 async function getJson(url) {
   const res = await fetch(url, {
-    credentials: 'same-origin'
+    credentials: 'same-origin',
+    cache: 'no-store'
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

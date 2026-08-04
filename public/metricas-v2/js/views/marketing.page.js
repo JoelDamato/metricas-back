@@ -676,7 +676,17 @@ function normalizeText(value) {
 }
 
 function normalizeOriginGroup(value) {
-  const raw = String(value || '').trim();
+  const encodedValue = String(value || '').trim();
+  let raw = encodedValue;
+
+  if (/%[0-9a-f]{2}/i.test(encodedValue)) {
+    try {
+      raw = decodeURIComponent(encodedValue);
+    } catch (error) {
+      raw = encodedValue;
+    }
+  }
+
   if (!raw) return 'Sin origen';
   if (!/^postulación meg - /i.test(raw)) return raw;
 
@@ -1609,14 +1619,17 @@ function renderDashboard(rows, investment, extras = {}) {
 }
 
 async function loadOrigins() {
-  const response = await window.metricasApi.fetchAllRows('kpi_marketing_diario', {
+  const response = await window.metricasApi.fetchAllRows('leads_raw', {
     limit: 1000,
-    orderBy: 'fecha',
-    orderDir: 'desc'
+    select: 'origen_actual',
+    orderBy: 'origen_actual',
+    orderDir: 'asc'
   });
 
   const origins = [...new Set((response.rows || [])
-    .map((row) => String(row.origen || '').trim())
+    .map((row) => String(row.origen_actual || '').trim())
+    .filter(Boolean)
+    .map(normalizeOriginGroup)
     .filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
   setOriginOptions(origins);
