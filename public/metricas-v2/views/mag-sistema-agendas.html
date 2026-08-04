@@ -463,6 +463,7 @@
   <button class="tb" data-tab="reg" onclick="showTab('reg',this)">Reglas del Sistema</button>
   <button class="tb" data-tab="manual" onclick="showTab('manual',this)">Manual Closers</button>
   <button class="tb" data-tab="reportes-closers" onclick="showTab('reportes-closers',this)">Reporte Closers</button>
+  <button class="tb" data-tab="reporte-mensual-final" onclick="showTab('reporte-mensual-final',this)">Reporte Mensual Final</button>
   <button class="tb" data-tab="strike-checkpoints" onclick="showTab('strike-checkpoints',this)">Checks, Strikes y Pendientes</button>
 </div>
 
@@ -662,6 +663,22 @@
       class="manual-frame"
       src="/views/mag-reporte-closers-2026.html?embed=1"
       title="Reporte Closers"
+      loading="lazy"
+    ></iframe>
+  </div>
+</div>
+
+<div id="tab-reporte-mensual-final" class="tab-content">
+  <div class="manual-frame-wrap">
+    <div class="manual-frame-head">
+      <h3>Reporte Mensual Final de Closers</h3>
+      <p>Resumen ejecutivo, puntaje, pendientes, KPIs, cash oficial, semanas, bonus y recomendaciones para cualquier mes.</p>
+    </div>
+    <iframe
+      id="monthlyReportFrame"
+      class="manual-frame"
+      src="/views/mag-reporte-mensual-final.html?embed=1"
+      title="Reporte Mensual Final de Closers"
       loading="lazy"
     ></iframe>
   </div>
@@ -2622,6 +2639,15 @@ function setStatus(id,s){
   const c=closers.find(x=>x.id===id);
   if(c){c.status=s;renderAll();}
 }
+function syncMonthlyReportFrame(year,month){
+  const frame=document.getElementById('monthlyReportFrame');
+  if(!frame || !year || !month) return;
+  const nextUrl=new URL(frame.getAttribute('src') || '/views/mag-reporte-mensual-final.html?embed=1',window.location.origin);
+  nextUrl.searchParams.set('embed','1');
+  nextUrl.searchParams.set('month',`${year}-${String(month).padStart(2,'0')}`);
+  const nextSrc=`${nextUrl.pathname}${nextUrl.search}`;
+  if(frame.getAttribute('src')!==nextSrc) frame.setAttribute('src',nextSrc);
+}
 function showTab(tab,btn){
   const content=document.getElementById('tab-'+tab);
   const tabButton=btn || document.querySelector(`.tb[data-tab="${tab}"]`);
@@ -2640,6 +2666,10 @@ function showTab(tab,btn){
   }
   if(tab==='alertas-operativas'){
     loadAgendaOperationalAlerts();
+  }
+  if(tab==='reporte-mensual-final'){
+    const {year,month}=getSelectedPeriod();
+    syncMonthlyReportFrame(year,month);
   }
 }
 
@@ -2719,6 +2749,7 @@ async function boot(){
   }
 
   renderAll();
+  syncMonthlyReportFrame(yr,mo);
 }
 syncCurrentPeriodDefaults();
 initStrikeCheckpointControls();

@@ -13,6 +13,7 @@ const PAGE_OPTIONS = [
   { value: 'mag-sistema-agendas.html', label: 'Sistema de agendas' },
   { value: 'mag-reportes-personales.html', label: 'Reportes personales de closers' },
   { value: 'mag-reporte-closers-2026.html', label: 'Reporte closers' },
+  { value: 'mag-reporte-mensual-final.html', label: 'Reporte mensual final de closers' },
   { value: 'mag-manual-closers.html', label: 'Manual closers' },
   { value: 'reporte_mayo_checkpoints_strikes.html', label: 'Strike y checkpoints' },
   { value: 'leads-bdd.html', label: 'Informe por respuestas' },
