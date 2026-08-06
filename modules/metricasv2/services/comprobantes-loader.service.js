@@ -2006,7 +2006,7 @@ async function listMyComprobantes(user, options = {}) {
 
   while (true) {
     const params = {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes',
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,rebotar_pago,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes',
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,
       offset
@@ -2038,14 +2038,18 @@ async function listMyComprobantes(user, options = {}) {
     ? titleCaseName(requestedResponsible)
     : responsibleName;
   const normalizedSelectedResponsible = normalizeText(selectedResponsible);
-  const resolvedRows = rows.filter((row) => {
+  const resolvedRows = rows.flatMap((row) => {
     const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {
-      return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible;
+      return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible
+        ? [{ ...row, accessScope: 'all' }]
+        : [];
     }
     const isOwnComprobante = resolvedResponsible === normalizedResponsibleName;
     const isAssignedSetter = setterNames.includes(titleCaseName(row.setter));
-    return isOwnComprobante || isAssignedSetter;
+    if (isOwnComprobante) return [{ ...row, accessScope: 'mine' }];
+    if (isAssignedSetter) return [{ ...row, accessScope: 'setter' }];
+    return [];
   });
 
   const responsibleOptions = uniqueSorted(
@@ -2077,6 +2081,7 @@ module.exports = {
     validateChequeRows,
     normalizePayload,
     hasSaleOwnership,
-    canViewAllComprobantes
+    canViewAllComprobantes,
+    getComprobantesSetterNames
   }
 };

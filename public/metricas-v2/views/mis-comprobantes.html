@@ -14,12 +14,12 @@
     <script defer src="/js/views/mis-comprobantes.page.js"></script>
   </head>
   <body class="carga-comprobantes-page mis-comprobantes-page">
-    <main class="container carga-comprobantes-layout">
+    <main class="container carga-comprobantes-layout mis-comprobantes-layout">
       <section class="metric-page-hero carga-comprobantes-hero">
         <div class="metric-page-hero-copy">
           <span class="metric-page-eyebrow">Operación Comercial</span>
           <h1>Mis comprobantes</h1>
-          <p>Vista filtrada por el responsable de venta asignado en cada comprobante, con búsqueda rápida por cliente.</p>
+          <p>Consultá tus comprobantes y, cuando corresponda, las operaciones donde figurás como setter.</p>
           <div class="metric-page-hero-meta">
             <span id="misComprobantesOwnerChip" class="metric-chip">Responsable: cargando...</span>
             <span class="metric-chip">Filtro por cliente</span>
@@ -30,14 +30,26 @@
           <div class="carga-comprobantes-hero-icon">✓</div>
           <h2>Qué ves acá</h2>
           <ol>
-            <li>Solo comprobantes donde figurás como responsable de venta.</li>
-            <li>Totales rápidos de cantidad, facturación y cash.</li>
-            <li>Búsqueda por cliente o GHL ID sin salir de la vista.</li>
+            <li>Tus comprobantes como responsable de venta.</li>
+            <li>Una pestaña aparte para las operaciones donde figurás como setter.</li>
+            <li>Filtros de conciliación, Club, mes y búsqueda por cliente o GHL ID.</li>
           </ol>
         </div>
       </section>
 
       <section class="carga-comprobantes-panel">
+        <div id="misComprobantesScopeTabs" class="mis-comprobantes-tabs" role="tablist" aria-label="Alcance de comprobantes" hidden>
+          <button type="button" class="mis-comprobantes-tab is-active" data-comprobante-scope="mine" role="tab" aria-selected="true">Mis comprobantes</button>
+          <button type="button" class="mis-comprobantes-tab" data-comprobante-scope="setter" role="tab" aria-selected="false">Como setter</button>
+        </div>
+
+        <div id="misComprobantesReconciliationTabs" class="mis-comprobantes-tabs mis-comprobantes-reconciliation-tabs" role="tablist" aria-label="Estado de conciliación">
+          <button type="button" class="mis-comprobantes-tab is-active" data-reconciliation="all" role="tab" aria-selected="true">Todas</button>
+          <button type="button" class="mis-comprobantes-tab" data-reconciliation="conciliated" role="tab" aria-selected="false">Conciliadas</button>
+          <button type="button" class="mis-comprobantes-tab" data-reconciliation="not_conciliated" role="tab" aria-selected="false">No conciliadas</button>
+          <button type="button" class="mis-comprobantes-tab" data-reconciliation="bounced" role="tab" aria-selected="false">Rebotadas</button>
+        </div>
+
         <div class="carga-comprobantes-toolbar mis-comprobantes-toolbar">
           <div class="carga-comprobantes-toolbar-copy">
             <strong>Vista personal</strong>
@@ -48,11 +60,6 @@
               <option value="">Todos los responsables</option>
             </select>
             <input id="misComprobantesMonth" type="month" />
-            <select id="misComprobantesReconciliationFilter">
-              <option value="all">Todas</option>
-              <option value="conciliated">Conciliadas</option>
-              <option value="not_conciliated">No conciliadas</option>
-            </select>
             <select id="misComprobantesClubFilter">
               <option value="all">Todos</option>
               <option value="exclude">Excluir Club</option>

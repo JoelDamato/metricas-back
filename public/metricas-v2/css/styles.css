@@ -6012,6 +6012,11 @@ th {
   padding-bottom: 72px;
 }
 
+.mis-comprobantes-page .mis-comprobantes-layout {
+  width: calc(100vw - clamp(24px, 4vw, 72px));
+  max-width: none;
+}
+
 .carga-comprobantes-page {
   background:
     radial-gradient(circle at top center, rgba(57, 117, 255, 0.18), transparent 28%),
@@ -6173,6 +6178,44 @@ th {
   align-items: flex-end;
 }
 
+.mis-comprobantes-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 8px;
+  border: 1px solid rgba(108, 148, 234, 0.18);
+  border-radius: 20px;
+  background: rgba(238, 245, 255, 0.72);
+}
+
+.mis-comprobantes-reconciliation-tabs {
+  margin-bottom: 20px;
+}
+
+.mis-comprobantes-tab {
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 10px 16px;
+  background: transparent;
+  color: #385483;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mis-comprobantes-tab:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.mis-comprobantes-tab.is-active {
+  background: linear-gradient(180deg, #3c89ff, #2d58ed);
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(41, 89, 221, 0.24);
+}
+
 .mis-comprobantes-toolbar-actions {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -6244,7 +6287,7 @@ th {
 }
 
 .mis-comprobantes-page .mis-comprobantes-table {
-  min-width: 1120px;
+  min-width: 1260px;
 }
 
 .carga-comprobantes-toolbar {
@@ -6894,6 +6937,19 @@ th {
   background: rgba(12, 21, 40, 0.92);
   border-color: rgba(83, 116, 184, 0.28);
   color: var(--text);
+}
+
+:root[data-theme='dark'] .mis-comprobantes-tabs {
+  background: rgba(9, 20, 42, 0.76);
+  border-color: rgba(83, 116, 184, 0.28);
+}
+
+:root[data-theme='dark'] .mis-comprobantes-tab {
+  color: #bed0f5;
+}
+
+:root[data-theme='dark'] .mis-comprobantes-tab:hover {
+  background: rgba(126, 161, 219, 0.12);
 }
 
 :root[data-theme='dark'] .comisiones-pinned-cell {

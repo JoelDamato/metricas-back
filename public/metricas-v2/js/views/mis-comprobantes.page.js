@@ -6,6 +6,8 @@
     ownerName: '',
     canViewAll: false,
     canViewBySetter: false,
+    scope: 'mine',
+    reconciliation: 'all',
     selectedResponsible: '',
     responsibleOptions: [],
     rows: [],
@@ -20,7 +22,8 @@
     reload: document.getElementById('reloadMisComprobantes'),
     month: document.getElementById('misComprobantesMonth'),
     responsibleFilter: document.getElementById('misComprobantesResponsibleFilter'),
-    reconciliationFilter: document.getElementById('misComprobantesReconciliationFilter'),
+    scopeTabs: document.getElementById('misComprobantesScopeTabs'),
+    reconciliationTabs: document.getElementById('misComprobantesReconciliationTabs'),
     clubFilter: document.getElementById('misComprobantesClubFilter'),
     search: document.getElementById('misComprobantesSearch'),
     ownerChip: document.getElementById('misComprobantesOwnerChip')
@@ -111,10 +114,32 @@
     return status.includes('concili');
   }
 
+  function isBouncedRow(row) {
+    return normalizeText(row?.estado).includes('rebot') || row?.rebotar_pago === true;
+  }
+
   function getReconciliationLabel(value) {
     if (value === 'conciliated') return 'Conciliadas';
     if (value === 'not_conciliated') return 'No conciliadas';
+    if (value === 'bounced') return 'Rebotadas';
     return 'Todas';
+  }
+
+  function setActiveTab(container, attribute, value) {
+    container?.querySelectorAll(`[${attribute}]`).forEach((button) => {
+      const isActive = button.getAttribute(attribute) === value;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-selected', String(isActive));
+    });
+  }
+
+  function renderScopeTabs() {
+    if (!refs.scopeTabs) return;
+    refs.scopeTabs.hidden = !state.canViewBySetter;
+    if (state.canViewBySetter) {
+      setActiveTab(refs.scopeTabs, 'data-comprobante-scope', state.scope);
+    }
+    setActiveTab(refs.reconciliationTabs, 'data-reconciliation', state.reconciliation);
   }
 
   function renderResponsibleFilter() {
@@ -138,12 +163,14 @@
   function filterRows() {
     const query = normalizeText(refs.search?.value || '');
     const selectedMonth = String(refs.month?.value || '').trim();
-    const reconciliationMode = String(refs.reconciliationFilter?.value || 'all').trim();
+    const reconciliationMode = state.reconciliation;
     const selectedClubMode = String(refs.clubFilter?.value || 'all').trim();
     state.filteredRows = state.rows.filter((row) => {
+      if (state.canViewBySetter && row.accessScope !== state.scope) return false;
       if (selectedMonth && getRowMonthValue(row) !== selectedMonth) return false;
       if (reconciliationMode === 'conciliated' && !isConciliatedRow(row)) return false;
-      if (reconciliationMode === 'not_conciliated' && isConciliatedRow(row)) return false;
+      if (reconciliationMode === 'not_conciliated' && (isConciliatedRow(row) || isBouncedRow(row))) return false;
+      if (reconciliationMode === 'bounced' && !isBouncedRow(row)) return false;
       if (selectedClubMode === 'exclude' && isClubRow(row)) return false;
       if (selectedClubMode === 'only' && !isClubRow(row)) return false;
       if (!query) return true;
@@ -229,16 +256,17 @@
   }
 
   function renderAll() {
+    renderScopeTabs();
     filterRows();
     renderSummary();
     renderTable();
     const selectedMonth = String(refs.month?.value || '').trim();
-    const reconciliationLabel = getReconciliationLabel(String(refs.reconciliationFilter?.value || 'all').trim());
+    const reconciliationLabel = getReconciliationLabel(state.reconciliation);
     const clubLabel = refs.clubFilter?.selectedOptions?.[0]?.textContent || 'Todos';
     const scopeLabel = state.canViewAll
       ? (state.selectedResponsible ? state.selectedResponsible : 'todos los responsables')
-      : state.canViewBySetter
-        ? `${state.ownerName || 'tu usuario'} y tus operaciones como setter`
+      : state.canViewBySetter && state.scope === 'setter'
+        ? `${state.ownerName || 'tu usuario'} como setter`
         : (state.ownerName || 'tu usuario');
     refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles para ${scopeLabel}${selectedMonth ? ` en ${selectedMonth}` : ''}. Conciliación: ${reconciliationLabel}. Club: ${clubLabel}.`;
     refs.status.hidden = true;
@@ -257,6 +285,7 @@
       state.ownerName = String(response?.responsibleName || '').trim();
       state.canViewAll = response?.canViewAll === true;
       state.canViewBySetter = response?.canViewBySetter === true;
+      if (!state.canViewBySetter) state.scope = 'mine';
       state.selectedResponsible = String(response?.selectedResponsible || '').trim();
       state.responsibleOptions = Array.isArray(response?.responsibleOptions) ? response.responsibleOptions : [];
       refs.ownerChip.textContent = state.canViewAll
@@ -282,7 +311,18 @@
   refs.reload?.addEventListener('click', loadPage);
   refs.responsibleFilter?.addEventListener('change', loadPage);
   refs.month?.addEventListener('change', renderAll);
-  refs.reconciliationFilter?.addEventListener('change', renderAll);
+  refs.scopeTabs?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-comprobante-scope]');
+    if (!button || !state.canViewBySetter) return;
+    state.scope = button.dataset.comprobanteScope === 'setter' ? 'setter' : 'mine';
+    renderAll();
+  });
+  refs.reconciliationTabs?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-reconciliation]');
+    if (!button) return;
+    state.reconciliation = button.dataset.reconciliation || 'all';
+    renderAll();
+  });
   refs.clubFilter?.addEventListener('change', renderAll);
   refs.search?.addEventListener('input', renderAll);
 

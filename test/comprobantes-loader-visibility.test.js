@@ -48,6 +48,7 @@ test('cada vendedor recibe sólo sus comprobantes cargados', async (t) => {
   assert.equal(result.canViewAll, false);
   assert.equal(result.selectedResponsible, 'Mauro Gaitan');
   assert.deepEqual(result.rows.map((row) => row.id), ['own']);
+  assert.deepEqual(result.rows.map((row) => row.accessScope), ['mine']);
 });
 
 test('Nadia puede ver todos o filtrar por responsable', async (t) => {
@@ -69,6 +70,7 @@ test('Nadia puede ver todos o filtrar por responsable', async (t) => {
   assert.equal(requestParams[1].responsable_venta, undefined);
   assert.equal(global.canViewAll, true);
   assert.deepEqual(global.rows.map((row) => row.id), ['mauro', 'nadia']);
+  assert.deepEqual(global.rows.map((row) => row.accessScope), ['all', 'all']);
   assert.deepEqual(filtered.rows.map((row) => row.id), ['mauro']);
   assert.deepEqual(filtered.responsibleOptions, ['Mauro Gaitan', 'Nadia Cavallini']);
 });
@@ -91,4 +93,5 @@ test('Nahuel ve sus comprobantes y los que tiene asignados como setter', async (
   assert.equal(result.canViewAll, false);
   assert.equal(result.canViewBySetter, true);
   assert.deepEqual(result.rows.map((row) => row.id), ['own', 'setter']);
+  assert.deepEqual(result.rows.map((row) => row.accessScope), ['mine', 'setter']);
 });
