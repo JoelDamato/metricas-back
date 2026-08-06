@@ -142,6 +142,16 @@
     setActiveTab(refs.reconciliationTabs, 'data-reconciliation', state.reconciliation);
   }
 
+  function getRowAccessScope(row) {
+    if (row?.accessScope === 'mine' || row?.accessScope === 'setter') {
+      return row.accessScope;
+    }
+
+    return normalizeText(row?.responsable_venta) === normalizeText(state.ownerName)
+      ? 'mine'
+      : 'setter';
+  }
+
   function renderResponsibleFilter() {
     if (!refs.responsibleFilter) return;
     if (!state.canViewAll) {
@@ -166,7 +176,7 @@
     const reconciliationMode = state.reconciliation;
     const selectedClubMode = String(refs.clubFilter?.value || 'all').trim();
     state.filteredRows = state.rows.filter((row) => {
-      if (state.canViewBySetter && row.accessScope !== state.scope) return false;
+      if (state.canViewBySetter && getRowAccessScope(row) !== state.scope) return false;
       if (selectedMonth && getRowMonthValue(row) !== selectedMonth) return false;
       if (reconciliationMode === 'conciliated' && !isConciliatedRow(row)) return false;
       if (reconciliationMode === 'not_conciliated' && (isConciliatedRow(row) || isBouncedRow(row))) return false;
@@ -311,17 +321,18 @@
   refs.reload?.addEventListener('click', loadPage);
   refs.responsibleFilter?.addEventListener('change', loadPage);
   refs.month?.addEventListener('change', renderAll);
-  refs.scopeTabs?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-comprobante-scope]');
-    if (!button || !state.canViewBySetter) return;
-    state.scope = button.dataset.comprobanteScope === 'setter' ? 'setter' : 'mine';
-    renderAll();
+  refs.scopeTabs?.querySelectorAll('[data-comprobante-scope]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!state.canViewBySetter) return;
+      state.scope = button.dataset.comprobanteScope === 'setter' ? 'setter' : 'mine';
+      renderAll();
+    });
   });
-  refs.reconciliationTabs?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-reconciliation]');
-    if (!button) return;
-    state.reconciliation = button.dataset.reconciliation || 'all';
-    renderAll();
+  refs.reconciliationTabs?.querySelectorAll('[data-reconciliation]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.reconciliation = button.dataset.reconciliation || 'all';
+      renderAll();
+    });
   });
   refs.clubFilter?.addEventListener('change', renderAll);
   refs.search?.addEventListener('input', renderAll);

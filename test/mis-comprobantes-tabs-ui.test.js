@@ -12,7 +12,9 @@ test('Mis comprobantes ofrece pestañas separadas para registros propios y como 
   assert.match(html, /id="misComprobantesScopeTabs"/);
   assert.match(html, /data-comprobante-scope="mine"/);
   assert.match(html, /data-comprobante-scope="setter"/);
-  assert.match(script, /row\.accessScope !== state\.scope/);
+  assert.match(script, /function getRowAccessScope/);
+  assert.match(script, /getRowAccessScope\(row\) !== state\.scope/);
+  assert.match(script, /querySelectorAll\('\[data-comprobante-scope\]'\)/);
 });
 
 test('Mis comprobantes ofrece filtros por conciliación, no conciliación y rebote', () => {
@@ -21,6 +23,7 @@ test('Mis comprobantes ofrece filtros por conciliación, no conciliación y rebo
   assert.match(html, /data-reconciliation="bounced"/);
   assert.match(script, /function isBouncedRow/);
   assert.match(script, /reconciliationMode === 'bounced'/);
+  assert.match(script, /querySelectorAll\('\[data-reconciliation\]'\)/);
 });
 
 test('la tabla de Mis comprobantes aprovecha el ancho disponible de pantalla', () => {
