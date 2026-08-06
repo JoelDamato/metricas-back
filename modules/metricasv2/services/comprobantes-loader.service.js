@@ -1815,7 +1815,11 @@ function buildDraftOperations(normalized) {
       Cliente: notionRelationValue(normalized.clientPageId),
       'Responsable venta': notionPeopleValue(normalized.responsableVentaUserIds || []),
       Tipo: notionSelectValue(operationTipo),
-      Productos: notionRelationArrayValue(overrides.productIds || normalized.productIds || []),
+      // En una venta con varios cheques, sólo el primer registro es la venta.
+      // Los restantes son cobranzas vinculadas y no deben heredar el producto.
+      Productos: notionRelationArrayValue(
+        operationType === 'Venta' ? (overrides.productIds || normalized.productIds || []) : []
+      ),
       Facturacion: (operationType === 'Venta' || operationType === 'Devolución') ? notionNumberValue(normalized.facturacionUsd) : undefined,
       'Cash collected': notionNumberValue(cashUsd),
       'Cash AR': notionNumberValue(amountArs),

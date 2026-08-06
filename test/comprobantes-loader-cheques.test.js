@@ -72,7 +72,7 @@ test('genera una venta y dos cobranzas con las fechas de cada cheque', () => {
     attachmentNames: ['cheque-1.png', 'cheque-2.png', 'cheque-3.png'],
     facturacionUsd: 2295.92,
     productName: 'Meg 2.1',
-    productIds: [],
+    productIds: ['11111111-1111-1111-1111-111111111111'],
     cantidadPagos: 3,
     latestSaleId: null,
     autoFinalizar: false,
@@ -100,6 +100,9 @@ test('genera una venta y dos cobranzas con las fechas de cada cheque', () => {
     operations.map((operation) => operation.properties['Cheque?'].checkbox),
     [true, true, true]
   );
+  assert.deepEqual(operations[0].properties.Productos.relation, [{ id: '11111111111111111111111111111111' }]);
+  assert.equal(operations[1].properties.Productos, undefined);
+  assert.equal(operations[2].properties.Productos, undefined);
 });
 
 test('permite una venta nueva en cuatro cheques sin exigir una venta previa', () => {

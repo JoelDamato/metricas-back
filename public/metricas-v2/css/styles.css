@@ -6309,16 +6309,19 @@ th {
 }
 
 .mis-comprobantes-editor {
-  padding: 20px;
-  overflow: auto;
+  padding: 12px;
+  overflow: hidden;
 }
 
 .mis-comprobantes-editor-card {
-  width: min(960px, calc(100vw - 40px));
+  box-sizing: border-box;
+  width: min(1240px, calc(100vw - 24px));
   min-width: 0;
-  max-height: calc(100vh - 40px);
-  overflow: auto;
-  padding: 28px;
+  height: calc(100dvh - 24px);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 30px;
   text-align: left;
 }
 
@@ -6382,11 +6385,17 @@ th {
 }
 
 .mis-comprobantes-editor-actions {
+  position: sticky;
+  bottom: -24px;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 16px;
+  margin: 16px -30px -24px;
+  padding: 16px 30px;
+  border-top: 1px solid rgba(100, 142, 225, 0.18);
+  background: rgba(250, 253, 255, 0.96);
+  backdrop-filter: blur(8px);
 }
 
 .mis-comprobantes-delete-button {
@@ -7747,6 +7756,7 @@ th {
 
   .mis-comprobantes-editor-card {
     width: min(100%, calc(100vw - 20px));
+    height: calc(100dvh - 20px);
     max-height: calc(100vh - 20px);
     padding: 20px;
   }
@@ -7756,7 +7766,10 @@ th {
   }
 
   .mis-comprobantes-editor-actions {
+    bottom: -20px;
     justify-content: stretch;
+    margin: 16px -20px -20px;
+    padding: 14px 20px;
   }
 
   .mis-comprobantes-editor-actions button {
