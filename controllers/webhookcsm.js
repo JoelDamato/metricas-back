@@ -188,6 +188,9 @@ function mapToSupabase(payload) {
       
       case 'files':
         return prop.files?.[0]?.name ?? null;
+
+      case 'relation':
+        return prop.relation?.map((item) => item.id).filter(Boolean).join(', ') || null;
       
       case 'created_time':
       case 'last_edited_time':

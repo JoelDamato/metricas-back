@@ -5,6 +5,7 @@
   const state = {
     ownerName: '',
     canViewAll: false,
+    canViewBySetter: false,
     selectedResponsible: '',
     responsibleOptions: [],
     rows: [],
@@ -194,6 +195,7 @@
             <tr>
               <th>Cliente</th>
               <th>Responsable de venta</th>
+              <th>Setter</th>
               <th>Tipo</th>
               <th>Producto</th>
               <th>Fecha</th>
@@ -209,6 +211,7 @@
               <tr>
                 <td>${renderDetailCell(row.cliente_format || 'Sin nombre', row.ghlid || '')}</td>
                 <td>${escapeHtml(row.responsable_venta || row.creado_por || '-')}</td>
+                <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.tipo || '-')}</td>
                 <td>${escapeHtml(row.producto_format || '-')}</td>
                 <td>${escapeHtml(formatDate(row.f_venta || row.f_acreditacion || row.fecha_creado || row.created_at))}</td>
@@ -234,7 +237,9 @@
     const clubLabel = refs.clubFilter?.selectedOptions?.[0]?.textContent || 'Todos';
     const scopeLabel = state.canViewAll
       ? (state.selectedResponsible ? state.selectedResponsible : 'todos los responsables')
-      : (state.ownerName || 'tu usuario');
+      : state.canViewBySetter
+        ? `${state.ownerName || 'tu usuario'} y tus operaciones como setter`
+        : (state.ownerName || 'tu usuario');
     refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles para ${scopeLabel}${selectedMonth ? ` en ${selectedMonth}` : ''}. Conciliación: ${reconciliationLabel}. Club: ${clubLabel}.`;
     refs.status.hidden = true;
   }
@@ -251,11 +256,14 @@
       });
       state.ownerName = String(response?.responsibleName || '').trim();
       state.canViewAll = response?.canViewAll === true;
+      state.canViewBySetter = response?.canViewBySetter === true;
       state.selectedResponsible = String(response?.selectedResponsible || '').trim();
       state.responsibleOptions = Array.isArray(response?.responsibleOptions) ? response.responsibleOptions : [];
       refs.ownerChip.textContent = state.canViewAll
         ? `Vista global: ${state.selectedResponsible || 'todos'}`
-        : `Responsable: ${state.ownerName || 'sin asignar'}`;
+        : state.canViewBySetter
+          ? `Responsable + setter: ${state.ownerName || 'sin asignar'}`
+          : `Responsable: ${state.ownerName || 'sin asignar'}`;
       renderResponsibleFilter();
       state.rows = (response?.rows || [])
         .sort((left, right) => String(right.fecha_creado || right.created_at || '').localeCompare(String(left.fecha_creado || left.created_at || '')));

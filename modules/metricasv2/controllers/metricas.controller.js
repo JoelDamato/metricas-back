@@ -665,7 +665,13 @@ async function lookupComprobantesLoaderClient(req, res, next) {
 
 async function lookupComprobantesLoaderRelatedSale(req, res, next) {
   try {
-    const sale = await comprobantesLoaderService.lookupRelatedSaleById(req.query.saleId || req.query.id || '');
+    const sale = await comprobantesLoaderService.lookupRelatedSaleById(
+      req.query.saleId || req.query.id || '',
+      {
+        ghlId: req.query.ghlId || '',
+        clientPageId: req.query.clientPageId || ''
+      }
+    );
     res.json({
       ok: true,
       sale
@@ -697,6 +703,7 @@ async function listMyComprobantes(req, res, next) {
       ok: true,
       responsibleName: result.responsibleName,
       canViewAll: result.canViewAll === true,
+      canViewBySetter: result.canViewBySetter === true,
       selectedResponsible: result.selectedResponsible || result.responsibleName,
       responsibleOptions: result.responsibleOptions || [],
       count: result.rows.length,

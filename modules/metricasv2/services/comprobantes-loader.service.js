@@ -113,8 +113,24 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+const COMPROBANTES_GLOBAL_VIEWER_EMAILS = new Set([
+  'matirandazzo@gmail.com',
+  'nadia.cavallini@gmail.com'
+]);
+
+const COMPROBANTES_SETTER_VIEWER_NAMES_BY_EMAIL = {
+  'nahuerandazzo@gmail.com': ['Nahue Randazzo', 'Nahue', 'Nahuel'],
+  'iascinahuel@gmail.com': ['Nahuel Iasci', 'Nahuel']
+};
+
 function canViewAllComprobantes(user = {}) {
-  return normalizeEmail(user?.email) === 'matirandazzo@gmail.com';
+  return COMPROBANTES_GLOBAL_VIEWER_EMAILS.has(normalizeEmail(user?.email));
+}
+
+function getComprobantesSetterNames(user = {}) {
+  return uniqueSorted(
+    COMPROBANTES_SETTER_VIEWER_NAMES_BY_EMAIL[normalizeEmail(user?.email)] || []
+  );
 }
 
 function titleCaseName(value) {
@@ -782,7 +798,198 @@ async function getBootstrap(user) {
   };
 }
 
-async function lookupClientByGhlId(rawGhlInput) {
+function sameGhlId(left, right) {
+  const first = String(left || '').trim();
+  const second = String(right || '').trim();
+  return Boolean(first && second && first === second);
+}
+
+function uniqueRelationIds(values = []) {
+  return [...new Set(
+    values
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .map((value) => parseRelationId(value))
+      .filter(Boolean)
+  )];
+}
+
+function extractNotionPageIds(values = []) {
+  const flattened = values.flatMap((value) => (Array.isArray(value) ? value : [value]));
+  const matches = flattened.flatMap((value) => {
+    if (value && typeof value === 'object' && value.id) return [value.id];
+    return String(value || '').match(
+      /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32}/gi
+    ) || [];
+  });
+  return uniqueRelationIds(matches);
+}
+
+function clientIdentity(client = {}) {
+  return {
+    ghlId: String(client.ghlId || '').trim(),
+    clientPageIds: uniqueRelationIds([client.pageId, client.pageIds || []])
+  };
+}
+
+function saleClientPageIds(sale = {}) {
+  return uniqueRelationIds([
+    sale.clientPageId,
+    sale.clientPageIds || [],
+    sale.cliente
+  ]);
+}
+
+function hasSaleOwnership(sale, identity, relatedClientGhlIds = []) {
+  const expectedPageIds = new Set(uniqueRelationIds(identity?.clientPageIds || []));
+  const relatedPageIds = saleClientPageIds(sale);
+  if (relatedPageIds.length) {
+    if (relatedPageIds.length !== 1) return false;
+    if (relatedPageIds.some((id) => expectedPageIds.has(id))) return true;
+    return relatedClientGhlIds.some((ghlId) => sameGhlId(ghlId, identity?.ghlId));
+  }
+  return sameGhlId(sale?.ghlId, identity?.ghlId);
+}
+
+function notionPropertyText(property) {
+  if (!property) return '';
+  if (property.formula?.string != null) return String(property.formula.string);
+  if (property.rollup?.type === 'array') {
+    return property.rollup.array.map((item) => notionPropertyText(item)).filter(Boolean).join('');
+  }
+  for (const key of ['title', 'rich_text']) {
+    if (Array.isArray(property[key])) {
+      return property[key].map((item) => item.plain_text || '').join('');
+    }
+  }
+  return '';
+}
+
+function notionPropertyRelationIds(property) {
+  return uniqueRelationIds([
+    (property?.relation || []).map((item) => item.id),
+    extractNotionPageIds([
+      notionPropertyText(property),
+      property?.url
+    ])
+  ]);
+}
+
+async function resolveCsmCrmClientPageIds(csmRows, expectedGhlId) {
+  const directPageIds = extractNotionPageIds(csmRows.map((row) => row.crm_2_0));
+  const rowsMissingCrmId = csmRows.filter(
+    (row) => !extractNotionPageIds([row.crm_2_0]).length
+  );
+  const discoveredPageIds = [...directPageIds];
+  let csmLookupFailed = false;
+
+  if (rowsMissingCrmId.length && env.notionApiKey) {
+    const csmPages = await Promise.allSettled(
+      rowsMissingCrmId.map((row) => axios.get(`https://api.notion.com/v1/pages/${row.id}`, {
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
+      }))
+    );
+    csmPages.forEach((result) => {
+      if (result.status !== 'fulfilled') {
+        csmLookupFailed = true;
+        return;
+      }
+      const property = result.value.data?.properties?.['Crm 2.0'];
+      discoveredPageIds.push(...notionPropertyRelationIds(property));
+    });
+  }
+
+  const candidatePageIds = uniqueRelationIds(discoveredPageIds);
+  if (!candidatePageIds.length) {
+    const error = new Error(
+      csmLookupFailed
+        ? 'No pude verificar la relación del cliente de CSM con CRM 2.0'
+        : 'El cliente está en CSM pero no tiene una relación válida con CRM 2.0'
+    );
+    error.statusCode = csmLookupFailed ? 502 : 409;
+    throw error;
+  }
+  if (!env.notionApiKey) {
+    const error = new Error('No pude verificar la relación del cliente de CSM con CRM 2.0');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const crmPages = await Promise.allSettled(
+    candidatePageIds.map((id) => axios.get(`https://api.notion.com/v1/pages/${id}`, {
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
+    }))
+  );
+  const verifiedPageIds = [];
+  let failedLookup = false;
+  crmPages.forEach((result) => {
+    if (result.status !== 'fulfilled') {
+      failedLookup = true;
+      return;
+    }
+    const crmGhlId = notionPropertyText(result.value.data?.properties?.['GHL ID']);
+    if (sameGhlId(crmGhlId, expectedGhlId)) {
+      verifiedPageIds.push(result.value.data?.id);
+    }
+  });
+
+  if (!verifiedPageIds.length) {
+    const error = new Error(
+      failedLookup
+        ? 'No pude verificar la relación del cliente de CSM con CRM 2.0'
+        : 'La relación CRM 2.0 del cliente de CSM pertenece a otro GHL ID'
+    );
+    error.statusCode = failedLookup ? 502 : 409;
+    throw error;
+  }
+
+  return uniqueRelationIds(verifiedPageIds);
+}
+
+function mapSupabaseSale(row = {}) {
+  const relatedClientIds = uniqueRelationIds([row.cliente]);
+  return {
+    notionPageId: row.id || null,
+    ghlId: row.ghlid || null,
+    clientPageId: relatedClientIds[0] || null,
+    clientPageIds: relatedClientIds,
+    cliente: row.cliente_format || '',
+    producto: row.producto_format || '',
+    fechaVenta: row.f_venta || null,
+    fechaAcreditacion: row.f_acreditacion || null,
+    fechaCreado: row.fecha_creado || null,
+    facturacionUsd: toNumber(row.facturacion),
+    cashCollectedArs: toNumber(row.cash_ar ?? row.cash_collected_ar ?? row.cash_collected_ars),
+    cashCollectedTotal: toNumber(row.cash_collected_total)
+  };
+}
+
+function mapNotionSalePage(page = {}) {
+  const properties = page.properties || {};
+  const relatedClientIds = uniqueRelationIds(
+    (properties.Cliente?.relation || []).map((item) => item.id)
+  );
+  return {
+    notionPageId: page.id || null,
+    ghlId: notionPropertyText(properties['GHL ID']) || null,
+    clientPageId: relatedClientIds[0] || null,
+    clientPageIds: relatedClientIds,
+    cliente: notionPropertyText(properties.Identificador) || '',
+    producto: properties['Producto Format']?.formula?.string || '',
+    fechaVenta: properties['F.venta respaldo']?.date?.start || null,
+    fechaAcreditacion: properties['Fecha de acreditacion']?.date?.start || null,
+    fechaCreado: page.created_time || null,
+    facturacionUsd: properties.Facturacion?.number ?? null,
+    cashCollectedArs: properties['Cash AR']?.number
+      ?? properties['Cash collected AR']?.number
+      ?? properties['Cash collected ARS']?.number
+      ?? null,
+    cashCollectedTotal: properties['Cash collected Total']?.formula?.number ?? null
+  };
+}
+
+async function lookupClientRecordByGhlId(rawGhlInput) {
   const ghlId = parseGhlIdFromInput(rawGhlInput);
   if (!ghlId) {
     const error = new Error('No pude encontrar un GHL ID válido en el valor ingresado');
@@ -794,24 +1001,29 @@ async function lookupClientByGhlId(rawGhlInput) {
     select: 'id,ghlid,nombre,mail,telefono,etapa',
     ghlid: `eq.${ghlId}`,
     order: 'last_edited_time.desc',
-    limit: 5
+    limit: 100
   });
 
-  let row = (leadsResponse.data || [])[0] || null;
+  let matchingRows = leadsResponse.data || [];
+  let row = matchingRows[0] || null;
   let source = 'leads_raw';
 
   if (!row) {
     const csmResponse = await supabaseRequest('csm', {
-      select: 'id,ghlid,nombre,mail,telefono,actividad',
+      select: 'id,ghlid,nombre,mail,telefono,actividad,crm_2_0',
       ghlid: `eq.${ghlId}`,
       order: 'updated_at.desc.nullslast,created_at.desc.nullslast',
       limit: 5
     });
 
-    const csmRow = (csmResponse.data || [])[0] || null;
+    const csmRows = csmResponse.data || [];
+    const csmRow = csmRows[0] || null;
     if (csmRow) {
+      const crmClientPageIds = await resolveCsmCrmClientPageIds(csmRows, ghlId);
+      matchingRows = crmClientPageIds.map((id) => ({ ...csmRow, id }));
       row = {
         ...csmRow,
+        id: crmClientPageIds[0],
         etapa: csmRow.actividad || ''
       };
       source = 'csm';
@@ -824,21 +1036,80 @@ async function lookupClientByGhlId(rawGhlInput) {
     throw error;
   }
 
-  const latestSale = await findLatestVentaByGhlId(ghlId, row.nombre || '');
-
   return {
     pageId: row.id || null,
+    pageIds: uniqueRelationIds(matchingRows.map((item) => item.id)),
     ghlId,
     nombre: row.nombre || '',
     mail: row.mail || '',
     telefono: row.telefono || '',
     etapa: row.etapa || '',
-    source,
-    latestSale
+    source
   };
 }
 
-async function lookupRelatedSaleById(rawSaleId) {
+async function fetchRelatedClientGhlIds(pageIds = []) {
+  const notionIds = uniqueRelationIds(pageIds).map((id) => parseNotionUuid(id)).filter(Boolean);
+  if (!notionIds.length) return [];
+
+  const response = await supabaseRequest('leads_raw', {
+    select: 'id,ghlid',
+    id: `in.(${notionIds.join(',')})`,
+    limit: notionIds.length
+  });
+  const resolvedById = new Map();
+  (response.data || []).forEach((row) => {
+    const rowId = parseRelationId(row.id);
+    const rowGhlId = String(row.ghlid || '').trim();
+    if (rowId && rowGhlId) resolvedById.set(rowId, rowGhlId);
+  });
+  const missingIds = notionIds.filter((id) => !resolvedById.has(parseRelationId(id)));
+
+  if (missingIds.length && env.notionApiKey) {
+    const notionResults = await Promise.allSettled(
+      missingIds.map((id) => axios.get(`https://api.notion.com/v1/pages/${id}`, {
+        headers: buildNotionHeaders(),
+        timeout: NOTION_REQUEST_TIMEOUT_MS
+      }))
+    );
+    notionResults.forEach((result, index) => {
+      if (result.status !== 'fulfilled') return;
+      const relatedGhlId = notionPropertyText(result.value.data?.properties?.['GHL ID']);
+      if (relatedGhlId) resolvedById.set(parseRelationId(missingIds[index]), relatedGhlId);
+    });
+  }
+
+  return [...resolvedById.values()].filter(Boolean);
+}
+
+async function saleBelongsToClient(sale, identity) {
+  const relatedPageIds = saleClientPageIds(sale);
+  if (!relatedPageIds.length) return hasSaleOwnership(sale, identity);
+  if (relatedPageIds.length !== 1) return false;
+  const expectedPageIds = new Set(uniqueRelationIds(identity?.clientPageIds || []));
+  if (relatedPageIds.some((id) => expectedPageIds.has(id))) return true;
+  const relatedGhlIds = await fetchRelatedClientGhlIds(relatedPageIds);
+  return hasSaleOwnership(sale, identity, relatedGhlIds);
+}
+
+function assertRequestedClientPage(client, requestedPageId) {
+  const requestedId = parseRelationId(requestedPageId);
+  const validIds = new Set(clientIdentity(client).clientPageIds);
+  if (!requestedId || !validIds.has(requestedId)) {
+    const error = new Error('La relación del cliente no coincide con el GHL ID buscado');
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+async function assertSaleOwnership(sale, client) {
+  if (await saleBelongsToClient(sale, clientIdentity(client))) return;
+  const error = new Error('La venta relacionada pertenece a otro cliente');
+  error.statusCode = 400;
+  throw error;
+}
+
+async function lookupRelatedSaleById(rawSaleId, expectedClient = null) {
   const saleId = parseRelationId(rawSaleId);
   if (!saleId) {
     const error = new Error('No pude leer un Notion ID válido para la venta relacionada');
@@ -847,145 +1118,146 @@ async function lookupRelatedSaleById(rawSaleId) {
   }
 
   const supabaseResponse = await supabaseRequest('comprobantes', {
-    select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_collected_total,tipo',
+    select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_ar,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo',
     id: `eq.${saleId}`,
     tipo: 'eq.Venta',
     limit: 1
   });
 
   const supabaseRow = (supabaseResponse.data || [])[0];
-  if (supabaseRow) {
-    return {
-      notionPageId: supabaseRow.id || null,
-      ghlId: supabaseRow.ghlid || null,
-      cliente: supabaseRow.cliente || supabaseRow.cliente_format || '',
-      producto: supabaseRow.producto_format || '',
-      fechaVenta: supabaseRow.f_venta || null,
-      fechaAcreditacion: supabaseRow.f_acreditacion || null,
-      facturacionUsd: toNumber(supabaseRow.facturacion),
-      cashCollectedTotal: toNumber(supabaseRow.cash_collected_total)
-    };
+  let sale = supabaseRow ? mapSupabaseSale(supabaseRow) : null;
+
+  if (!sale) {
+    const response = await axios.get(`https://api.notion.com/v1/pages/${saleId}`, {
+      headers: buildNotionHeaders(),
+      timeout: NOTION_REQUEST_TIMEOUT_MS
+    });
+    const properties = response.data?.properties || {};
+    const tipo = properties.Tipo?.select?.name || '';
+    if (normalizeText(tipo) !== 'venta') {
+      const error = new Error('La página relacionada no es una venta');
+      error.statusCode = 400;
+      throw error;
+    }
+    sale = mapNotionSalePage(response.data);
   }
 
-  const response = await axios.get(`https://api.notion.com/v1/pages/${saleId}`, {
-    headers: buildNotionHeaders(),
-    timeout: NOTION_REQUEST_TIMEOUT_MS
-  });
-  const properties = response.data?.properties || {};
-  const tipo = properties.Tipo?.select?.name || '';
-  if (normalizeText(tipo) !== 'venta') {
-    const error = new Error('La página relacionada no es una venta');
-    error.statusCode = 400;
-    throw error;
+  if (expectedClient) {
+    const verifiedClient = expectedClient.verifiedClient
+      || await lookupClientRecordByGhlId(expectedClient.ghlId);
+    assertRequestedClientPage(
+      verifiedClient,
+      expectedClient.clientPageId || verifiedClient.pageId
+    );
+    await assertSaleOwnership(sale, verifiedClient);
   }
 
-  return {
-    notionPageId: response.data?.id || saleId,
-    ghlId: properties['GHL ID']?.formula?.string
-      || (properties['GHL ID']?.rich_text || []).map((item) => item.plain_text).join('')
-      || null,
-    cliente: (properties.Identificador?.title || []).map((item) => item.plain_text).join('') || '',
-    producto: properties['Producto Format']?.formula?.string || '',
-    fechaVenta: properties['F.venta respaldo']?.date?.start || null,
-    fechaAcreditacion: properties['Fecha de acreditacion']?.date?.start || null,
-    facturacionUsd: properties.Facturacion?.number ?? null,
-    cashCollectedTotal: properties['Cash collected Total']?.formula?.number ?? null
-  };
+  return sale;
 }
 
-async function findLatestVentaByGhlId(ghlId, clientName = '') {
-  const saleQueries = [];
-
-  if (ghlId) {
-    saleQueries.push({
-      ghlid: `eq.${ghlId}`,
-      tipo: 'eq.Venta',
-      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
-      limit: 10
-    });
-  }
-
-  const normalizedClientName = String(clientName || '').trim();
-  if (normalizedClientName) {
-    saleQueries.push({
-      cliente_format: `ilike.*${normalizedClientName}*`,
-      tipo: 'eq.Venta',
-      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
-      limit: 10
-    });
-  }
-
-  let row = null;
-  for (const query of saleQueries) {
-    const response = await supabaseRequest('comprobantes', {
-      select: 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_ar,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo',
-      ...query
-    });
-    row = (response.data || [])[0] || null;
-    if (row) break;
-  }
-
-  if (!row) {
-    row = await findLatestVentaInNotion(clientName);
-  }
-
-  if (!row) return null;
-
-  return {
-    notionPageId: row.id || null,
-    cliente: row.cliente || row.cliente_format || '',
-    producto: row.producto_format || '',
-    fechaVenta: row.f_venta || null,
-    fechaAcreditacion: row.f_acreditacion || null,
-    facturacionUsd: toNumber(row.facturacion),
-    cashCollectedArs: toNumber(row.cash_ar ?? row.cash_collected_ar ?? row.cash_collected_ars),
-    cashCollectedTotal: toNumber(row.cash_collected_total)
-  };
+function saleSortTime(sale = {}) {
+  const parsed = Date.parse(sale.fechaVenta || sale.fechaCreado || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-async function findLatestVentaInNotion(clientName = '') {
+function compareSalesNewestFirst(left = {}, right = {}) {
+  const leftHasSaleDate = Number.isFinite(Date.parse(left.fechaVenta || ''));
+  const rightHasSaleDate = Number.isFinite(Date.parse(right.fechaVenta || ''));
+  if (leftHasSaleDate !== rightHasSaleDate) return leftHasSaleDate ? -1 : 1;
+  return saleSortTime(right) - saleSortTime(left);
+}
+
+async function findLatestVentaForClient(client) {
+  const identity = clientIdentity(client);
+  const notionPageIds = identity.clientPageIds.map((id) => parseNotionUuid(id)).filter(Boolean);
+  const baseSelect = 'id,cliente,cliente_format,ghlid,producto_format,f_venta,fecha_creado,f_acreditacion,facturacion,cash_ar,cash_collected_ar,cash_collected_ars,cash_collected_total,tipo';
+  const queryPromises = [];
+
+  if (identity.ghlId) {
+    queryPromises.push(supabaseRequest('comprobantes', {
+      select: baseSelect,
+      ghlid: `eq.${identity.ghlId}`,
+      tipo: 'eq.Venta',
+      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
+      limit: 20
+    }));
+  }
+  if (notionPageIds.length) {
+    queryPromises.push(supabaseRequest('comprobantes', {
+      select: baseSelect,
+      cliente: `in.(${notionPageIds.join(',')})`,
+      tipo: 'eq.Venta',
+      order: 'f_venta.desc.nullslast,fecha_creado.desc.nullslast',
+      limit: 20
+    }));
+  }
+
+  const supabaseResults = await Promise.all(queryPromises);
+  const supabaseCandidates = [...new Map(
+    supabaseResults
+      .flatMap((response) => response.data || [])
+      .map((row) => [parseRelationId(row.id), mapSupabaseSale(row)])
+  ).values()].sort(compareSalesNewestFirst);
+
+  for (const candidate of supabaseCandidates) {
+    if (await saleBelongsToClient(candidate, identity)) return candidate;
+  }
+
   const databaseId = getComprobantesDatabaseId();
-  const safeClientName = String(clientName || '').trim();
-  if (!env.notionApiKey || !databaseId || !safeClientName) return null;
+  if (!env.notionApiKey || !databaseId || !notionPageIds.length) return null;
 
   try {
+    const relationFilters = notionPageIds.map((id) => ({
+      property: 'Cliente',
+      relation: { contains: id }
+    }));
     const response = await axios.post(
       `https://api.notion.com/v1/databases/${databaseId}/query`,
       {
-        page_size: 10,
+        page_size: 20,
         filter: {
           and: [
             { property: 'Tipo', select: { equals: 'Venta' } },
-            { property: 'Identificador', title: { contains: safeClientName } }
+            relationFilters.length === 1 ? relationFilters[0] : { or: relationFilters }
           ]
         },
-        sorts: [
-          { property: 'Fecha creado', direction: 'descending' }
-        ]
+        sorts: [{ property: 'Fecha creado', direction: 'descending' }]
       },
       {
         headers: buildNotionHeaders(),
         timeout: NOTION_REQUEST_TIMEOUT_MS
       }
     );
+    const candidates = (response.data?.results || [])
+      .map(mapNotionSalePage)
+      .sort(compareSalesNewestFirst);
+    for (const candidate of candidates) {
+      if (await saleBelongsToClient(candidate, identity)) return candidate;
+    }
+    return null;
+  } catch (error) {
+    const wrapped = new Error('No pude verificar las ventas relacionadas en Notion');
+    wrapped.statusCode = 502;
+    wrapped.cause = error;
+    throw wrapped;
+  }
+}
 
-    const page = (response.data?.results || [])[0];
-    if (!page) return null;
-    const properties = page.properties || {};
-
+async function lookupClientByGhlId(rawGhlInput) {
+  const client = await lookupClientRecordByGhlId(rawGhlInput);
+  try {
     return {
-      id: page.id,
-      cliente_format: safeClientName,
-      producto_format: properties['Producto Format']?.formula?.string || '',
-      f_venta: properties['F.venta respaldo']?.date?.start || null,
-      f_acreditacion: properties['Fecha de acreditacion']?.date?.start || null,
-      facturacion: properties.Facturacion?.number ?? null,
-      cash_ar: properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
-      cash_collected_ar: properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? properties['Cash collected ARS']?.number ?? null,
-      cash_collected_ars: properties['Cash collected ARS']?.number ?? properties['Cash AR']?.number ?? properties['Cash collected AR']?.number ?? null
+      ...client,
+      latestSale: await findLatestVentaForClient(client),
+      latestSaleLookupError: null
     };
   } catch (error) {
-    return null;
+    console.error('[comprobantes-loader] Falló la búsqueda de venta relacionada:', error.message);
+    return {
+      ...client,
+      latestSale: null,
+      latestSaleLookupError: error.message || 'No pude verificar las ventas relacionadas'
+    };
   }
 }
 
@@ -1503,7 +1775,7 @@ function buildExistingSubmissionResult(pages, operations) {
   };
 }
 
-async function resolveRelatedSale(normalized) {
+async function resolveRelatedSale(normalized, verifiedClient) {
   if (normalized.tipo !== 'Cobranza' && normalized.tipo !== 'Devolución') return null;
 
   let sale = null;
@@ -1513,18 +1785,17 @@ async function resolveRelatedSale(normalized) {
       error.statusCode = 400;
       throw error;
     }
-    sale = await lookupRelatedSaleById(normalized.latestSaleId);
+    sale = await lookupRelatedSaleById(normalized.latestSaleId, {
+      ghlId: normalized.ghlId,
+      clientPageId: normalized.clientPageId,
+      verifiedClient
+    });
   } else {
-    sale = await findLatestVentaByGhlId(normalized.ghlId, normalized.clientName);
+    sale = await findLatestVentaForClient(verifiedClient);
   }
 
   if (!sale?.notionPageId) {
     const error = new Error('No encontré una venta relacionada para este cliente');
-    error.statusCode = 400;
-    throw error;
-  }
-  if (sale.ghlId && normalizeText(sale.ghlId) !== normalizeText(normalized.ghlId)) {
-    const error = new Error('La venta relacionada pertenece a otro cliente');
     error.statusCode = 400;
     throw error;
   }
@@ -1563,12 +1834,10 @@ async function createComprobante(payload, user, options = {}) {
     const createdPageIds = [];
     let operations = [];
     try {
-      const verifiedClient = await lookupClientByGhlId(normalized.ghlId);
-      if (!verifiedClient?.pageId || parseRelationId(verifiedClient.pageId) !== parseRelationId(normalized.clientPageId)) {
-        const error = new Error('La relación del cliente no coincide con el GHL ID buscado');
-        error.statusCode = 400;
-        throw error;
-      }
+      const verifiedClient = await lookupClientRecordByGhlId(normalized.ghlId);
+      assertRequestedClientPage(verifiedClient, normalized.clientPageId);
+      normalized.ghlId = verifiedClient.ghlId;
+      normalized.clientName = verifiedClient.nombre || normalized.clientName;
 
       const schema = await fetchComprobantesDatabaseSchema();
       if (!schema?.properties) {
@@ -1617,7 +1886,7 @@ async function createComprobante(payload, user, options = {}) {
       }
       normalized.responsableVentaUserIds = [responsibleMatch.id];
 
-      await resolveRelatedSale(normalized);
+      await resolveRelatedSale(normalized, verifiedClient);
       operations = buildDraftOperations(normalized);
 
       for (const operation of operations) {
@@ -1720,10 +1989,12 @@ async function listMyComprobantes(user, options = {}) {
   const responsibleName = standardizeResponsibleVenta(user);
   const requestedResponsible = titleCaseName(optionalString(options.responsible));
   const allowAll = canViewAllComprobantes(user);
-  if (!responsibleName) {
+  const setterNames = allowAll ? [] : getComprobantesSetterNames(user);
+  if (!responsibleName && !allowAll && !setterNames.length) {
     return {
       responsibleName: '',
       canViewAll: allowAll,
+      canViewBySetter: false,
       selectedResponsible: requestedResponsible || '',
       rows: []
     };
@@ -1735,14 +2006,23 @@ async function listMyComprobantes(user, options = {}) {
 
   while (true) {
     const params = {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,info_comprobantes',
+      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes',
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,
       offset
     };
 
     if (!allowAll) {
-      params.responsable_venta = `eq.${responsibleName}`;
+      const visibilityFilters = [
+        ...(responsibleName ? [`responsable_venta.eq.${responsibleName}`] : []),
+        ...setterNames.map((name) => `setter.eq.${name}`)
+      ];
+      if (visibilityFilters.length === 1) {
+        const [column, operator, value] = visibilityFilters[0].split('.');
+        params[column] = `${operator}.${value}`;
+      } else {
+        params.or = `(${visibilityFilters.join(',')})`;
+      }
     }
 
     const response = await supabaseRequest('comprobantes', params);
@@ -1763,7 +2043,9 @@ async function listMyComprobantes(user, options = {}) {
     if (allowAll) {
       return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible;
     }
-    return resolvedResponsible === normalizedResponsibleName;
+    const isOwnComprobante = resolvedResponsible === normalizedResponsibleName;
+    const isAssignedSetter = setterNames.includes(titleCaseName(row.setter));
+    return isOwnComprobante || isAssignedSetter;
   });
 
   const responsibleOptions = uniqueSorted(
@@ -1775,6 +2057,7 @@ async function listMyComprobantes(user, options = {}) {
   return {
     responsibleName,
     canViewAll: allowAll,
+    canViewBySetter: setterNames.length > 0,
     selectedResponsible,
     responsibleOptions,
     rows: resolvedRows
@@ -1792,6 +2075,8 @@ module.exports = {
     buildChequeRows,
     buildDraftOperations,
     validateChequeRows,
-    normalizePayload
+    normalizePayload,
+    hasSaleOwnership,
+    canViewAllComprobantes
   }
 };

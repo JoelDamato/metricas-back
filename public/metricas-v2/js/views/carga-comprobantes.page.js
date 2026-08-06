@@ -19,7 +19,11 @@
     chequeDrafts: [],
     chequeFiles: [],
     loading: false,
+    clientLookupRequestId: 0,
+    clientLookupInFlight: false,
+    relatedSaleLookupRequestId: 0,
     relatedSaleLookupInFlight: false,
+    relatedSaleLookupKey: '',
     previewPayload: null,
     submissionKey: null,
     isSubmitting: false,
@@ -401,11 +405,53 @@
     return String(value || '').replace(/-/g, '').trim().toLowerCase();
   }
 
+  function exactGhlId(value) {
+    return String(value || '').trim();
+  }
+
+  function compactClientPageIds(value = {}) {
+    return [...new Set(
+      [value.pageId, value.clientPageId, ...(Array.isArray(value.pageIds) ? value.pageIds : []), ...(Array.isArray(value.clientPageIds) ? value.clientPageIds : [])]
+        .map((item) => compactNotionId(item?.id || item))
+        .filter(Boolean)
+    )];
+  }
+
+  function relatedSaleMatchesClient(sale, client) {
+    if (!sale || !client) return false;
+
+    const expectedGhlId = exactGhlId(client.ghlId);
+    const saleGhlId = exactGhlId(sale.ghlId);
+    const expectedPageIds = new Set(compactClientPageIds(client));
+    const salePageIds = compactClientPageIds(sale);
+    if (salePageIds.length) {
+      if (salePageIds.length !== 1 || !expectedPageIds.size) return false;
+      return expectedPageIds.has(salePageIds[0]);
+    }
+
+    return Boolean(saleGhlId && expectedGhlId && saleGhlId === expectedGhlId);
+  }
+
+  function invalidateRelatedSaleLookup(disableButton = false) {
+    state.relatedSaleLookupRequestId += 1;
+    state.relatedSaleLookupInFlight = false;
+    state.relatedSaleLookupKey = '';
+    if (refs.searchRelatedSaleBtn) refs.searchRelatedSaleBtn.disabled = disableButton;
+  }
+
   function hasValidatedRelatedSale() {
     const inputId = compactNotionId(refs.latestSaleId?.value);
     const saleId = compactNotionId(state.relatedSale?.notionPageId);
     const saleDate = toDateInputValue(state.relatedSale?.fechaVenta);
-    return Boolean(inputId && saleId && inputId === saleId && isIsoDate(saleDate));
+    return Boolean(
+      !state.clientLookupInFlight
+      && !state.relatedSaleLookupInFlight
+      && inputId
+      && saleId
+      && inputId === saleId
+      && isIsoDate(saleDate)
+      && relatedSaleMatchesClient(state.relatedSale, state.client)
+    );
   }
 
   function setCreatingPopup(isVisible) {
@@ -849,7 +895,7 @@
       return;
     }
 
-    const clientCard = window.metricasGhl?.renderContactCell(client.nombre || 'Sin nombre', client.ghlid || '') || `<strong>${escapeHtml(client.nombre || 'Sin nombre')}</strong>`;
+    const clientCard = window.metricasGhl?.renderContactCell(client.nombre || 'Sin nombre', client.ghlId || client.ghlid || '') || `<strong>${escapeHtml(client.nombre || 'Sin nombre')}</strong>`;
     refs.clientSummary.innerHTML = `
       ${clientCard}
       <span>Mail: ${escapeHtml(client.mail || '-')}</span>
@@ -857,11 +903,16 @@
       <span>Etapa: ${escapeHtml(client.etapa || '-')}</span>
     `;
 
-    const sale = client.latestSale;
+    const suggestedSale = client.latestSale;
+    const sale = relatedSaleMatchesClient(suggestedSale, client) ? suggestedSale : null;
     state.relatedSale = sale || null;
     refs.latestSaleId.value = sale?.notionPageId || '';
     if (!sale) {
-      renderLatestSaleSummary(null, 'No encontré una venta previa cargada para este cliente.');
+      const emptyText = client.latestSaleLookupError
+        || (suggestedSale
+        ? 'No vinculé la venta sugerida porque no coincide con la identidad de este cliente.'
+        : 'No encontré una venta previa vinculada exactamente a este cliente.');
+      renderLatestSaleSummary(null, emptyText);
       syncAutomaticDates();
       return;
     }
@@ -1380,12 +1431,20 @@
       return;
     }
 
+    const requestId = ++state.clientLookupRequestId;
+    let finalStatusMessage = '';
+    state.clientLookupInFlight = true;
+    invalidateRelatedSaleLookup(true);
     refs.searchClientBtn.disabled = true;
+    refs.submitBtn.disabled = true;
+    invalidatePreview();
     refs.submitStatus.textContent = 'Buscando cliente...';
     try {
       const response = await api.lookupComprobantesLoaderClient(rawInput);
-      const previousClientId = normalizeText(state.client?.ghlId || refs.ghlId.value);
-      const nextClientId = normalizeText(response.client?.ghlId);
+      if (requestId !== state.clientLookupRequestId || refs.ghlInput.value.trim() !== rawInput) return;
+
+      const previousClientId = exactGhlId(state.client?.ghlId || refs.ghlId.value);
+      const nextClientId = exactGhlId(response.client?.ghlId);
       if (previousClientId && previousClientId !== nextClientId) {
         resetTransactionForClientChange();
       }
@@ -1395,10 +1454,17 @@
       refs.clientPageId.value = response.client.pageId || '';
       updateIdentificador();
       setClientSummary(response.client);
-      refs.submitStatus.textContent = 'Cliente encontrado y relación lista.';
+      state.clientLookupInFlight = false;
       updateStepFlow();
+      finalStatusMessage = response.client.latestSaleLookupError
+        || (response.client.latestSale && !state.relatedSale
+          ? 'Cliente encontrado. La venta sugerida no coincide con este cliente y no fue vinculada.'
+          : 'Cliente encontrado y relación lista.');
+      refs.submitStatus.textContent = finalStatusMessage;
       invalidatePreview();
     } catch (error) {
+      if (requestId !== state.clientLookupRequestId || refs.ghlInput.value.trim() !== rawInput) return;
+
       if (!state.client) {
         refs.ghlInput.value = '';
         refs.clientName.value = '';
@@ -1409,19 +1475,31 @@
       } else {
         refs.ghlInput.value = state.client.ghlId || refs.ghlId.value;
       }
-      refs.submitStatus.textContent = error.message || 'No pude encontrar al cliente.';
+      state.clientLookupInFlight = false;
       updateStepFlow();
+      finalStatusMessage = error.message || 'No pude encontrar al cliente.';
+      refs.submitStatus.textContent = finalStatusMessage;
     } finally {
-      refs.searchClientBtn.disabled = false;
+      if (requestId === state.clientLookupRequestId) {
+        state.clientLookupInFlight = false;
+        refs.searchClientBtn.disabled = false;
+        if (refs.searchRelatedSaleBtn) refs.searchRelatedSaleBtn.disabled = false;
+        updateStepFlow();
+        if (finalStatusMessage) refs.submitStatus.textContent = finalStatusMessage;
+      }
     }
   }
 
   async function lookupRelatedSaleFromInput() {
     if (refs.tipo.value !== 'Cobranza' && refs.tipo.value !== 'Devolución') return;
-    if (state.relatedSaleLookupInFlight) return;
+    if (state.clientLookupInFlight) {
+      refs.submitStatus.textContent = 'Esperá a que termine la búsqueda del cliente.';
+      return;
+    }
 
     const saleId = String(refs.latestSaleId.value || '').trim();
     if (!saleId) {
+      invalidateRelatedSaleLookup();
       state.relatedSale = null;
       renderLatestSaleSummary(null, 'Pegá el Notion ID de la venta para traer la referencia.');
       syncAutomaticDates();
@@ -1430,27 +1508,76 @@
       return;
     }
 
+    const ghlId = exactGhlId(refs.ghlId.value);
+    const clientPageId = String(refs.clientPageId.value || '').trim();
+    if (!ghlId || !clientPageId || !state.client) {
+      state.relatedSale = null;
+      renderLatestSaleSummary(null, 'Primero buscá y validá el cliente antes de vincular una venta.');
+      syncAutomaticDates();
+      updateStepFlow();
+      invalidatePreview();
+      return;
+    }
+
+    const lookupKey = `${compactNotionId(saleId)}|${ghlId}|${compactNotionId(clientPageId)}`;
+    if (state.relatedSaleLookupInFlight && state.relatedSaleLookupKey === lookupKey) return;
+
+    const requestId = ++state.relatedSaleLookupRequestId;
+    let finalStatusMessage = '';
+    const clientRequestId = state.clientLookupRequestId;
+    const clientSnapshot = {
+      ...state.client,
+      ghlId,
+      pageId: clientPageId
+    };
     state.relatedSaleLookupInFlight = true;
+    state.relatedSaleLookupKey = lookupKey;
     refs.searchRelatedSaleBtn.disabled = true;
+    refs.submitBtn.disabled = true;
+    invalidatePreview();
     refs.submitStatus.textContent = 'Buscando venta relacionada...';
     try {
-      const response = await api.lookupComprobantesLoaderRelatedSale(saleId);
+      const response = await api.lookupComprobantesLoaderRelatedSale(saleId, { ghlId, clientPageId });
+      const isCurrentRequest = requestId === state.relatedSaleLookupRequestId
+        && clientRequestId === state.clientLookupRequestId
+        && exactGhlId(refs.ghlId.value) === ghlId
+        && compactNotionId(refs.clientPageId.value) === compactNotionId(clientPageId)
+        && compactNotionId(refs.latestSaleId.value) === compactNotionId(saleId);
+      if (!isCurrentRequest) return;
+      if (!relatedSaleMatchesClient(response.sale, clientSnapshot)) {
+        throw new Error('La venta relacionada no coincide con el cliente seleccionado.');
+      }
+
       state.relatedSale = response.sale || null;
       refs.latestSaleId.value = response.sale?.notionPageId || saleId;
       renderLatestSaleSummary(response.sale);
       syncAutomaticDates();
-      refs.submitStatus.textContent = 'Venta relacionada cargada como referencia.';
+      finalStatusMessage = 'Venta relacionada cargada como referencia.';
+      refs.submitStatus.textContent = finalStatusMessage;
     } catch (error) {
+      if (
+        requestId !== state.relatedSaleLookupRequestId
+        || clientRequestId !== state.clientLookupRequestId
+        || exactGhlId(refs.ghlId.value) !== ghlId
+        || compactNotionId(refs.clientPageId.value) !== compactNotionId(clientPageId)
+        || compactNotionId(refs.latestSaleId.value) !== compactNotionId(saleId)
+      ) return;
+
       state.relatedSale = null;
       refs.latestSaleId.value = '';
       renderLatestSaleSummary(null, error.message || 'No pude encontrar la venta relacionada.');
       syncAutomaticDates();
-      refs.submitStatus.textContent = error.message || 'No pude encontrar la venta relacionada.';
+      finalStatusMessage = error.message || 'No pude encontrar la venta relacionada.';
+      refs.submitStatus.textContent = finalStatusMessage;
     } finally {
-      state.relatedSaleLookupInFlight = false;
-      refs.searchRelatedSaleBtn.disabled = false;
-      updateStepFlow();
-      invalidatePreview();
+      if (requestId === state.relatedSaleLookupRequestId) {
+        state.relatedSaleLookupInFlight = false;
+        state.relatedSaleLookupKey = '';
+        refs.searchRelatedSaleBtn.disabled = false;
+        updateStepFlow();
+        invalidatePreview();
+        if (finalStatusMessage) refs.submitStatus.textContent = finalStatusMessage;
+      }
     }
   }
 
@@ -1599,6 +1726,19 @@
       searchClient();
     }
   });
+  refs.ghlInput?.addEventListener('input', () => {
+    state.clientLookupRequestId += 1;
+    state.clientLookupInFlight = false;
+    invalidateRelatedSaleLookup(true);
+    state.client = null;
+    refs.clientName.value = '';
+    refs.ghlId.value = '';
+    refs.clientPageId.value = '';
+    setClientSummary(null);
+    updateIdentificador();
+    updateStepFlow();
+    invalidatePreview();
+  });
   refs.searchRelatedSaleBtn?.addEventListener('click', lookupRelatedSaleFromInput);
   refs.latestSaleId?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -1608,6 +1748,7 @@
   });
   refs.latestSaleId?.addEventListener('input', () => {
     if (hasValidatedRelatedSale()) return;
+    invalidateRelatedSaleLookup();
     state.relatedSale = null;
     syncAutomaticDates();
     renderLatestSaleSummary(null, 'Presioná Buscar venta para validar el Notion ID.');

@@ -257,8 +257,12 @@ async function lookupComprobantesLoaderClient(ghlId) {
   return window.http.getJson(`/api/metricas/comprobantes-loader/cliente?${qs}`);
 }
 
-async function lookupComprobantesLoaderRelatedSale(saleId) {
-  const qs = queryString({ saleId });
+async function lookupComprobantesLoaderRelatedSale(saleId, client = {}) {
+  const qs = queryString({
+    saleId,
+    ghlId: client.ghlId,
+    clientPageId: client.clientPageId || client.pageId
+  });
   return window.http.getJson(`/api/metricas/comprobantes-loader/venta-relacionada?${qs}`);
 }
 
