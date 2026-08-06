@@ -40,6 +40,13 @@ test('la vista ofrece edición y borrado sólo para filas autorizadas', () => {
   assert.match(script, /deleteEditableComprobante/);
 });
 
+test('Mis comprobantes filtra y muestra exclusivamente por fecha de venta', () => {
+  assert.match(script, /return String\(row\.f_venta \|\| ''\)\.slice\(0, 10\)/);
+  assert.match(script, /<th>Fecha de venta<\/th>/);
+  assert.match(script, /formatDate\(row\.f_venta\)/);
+  assert.doesNotMatch(script, /row\.f_venta \|\| row\.f_acreditacion/);
+});
+
 test('los clics en las pestañas actualizan el listado de comprobantes', async () => {
   const listenerMap = new Map();
   const makeClassList = () => ({
