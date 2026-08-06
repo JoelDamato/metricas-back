@@ -86,7 +86,7 @@
   }
 
   function getRowDateValue(row) {
-    return String(row.f_venta || '').slice(0, 10);
+    return String(row.f_acreditacion || '').slice(0, 10);
   }
 
   function getRowMonthValue(row) {
@@ -237,7 +237,7 @@
               <th>Setter</th>
               <th>Tipo</th>
               <th>Producto</th>
-              <th>Fecha de venta</th>
+              <th>Fecha de acreditación</th>
               <th>Facturación USD</th>
               <th>Cash USD</th>
               <th>Cash AR</th>
@@ -254,7 +254,7 @@
                 <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.tipo || '-')}</td>
                 <td>${escapeHtml(row.producto_format || '-')}</td>
-                <td>${escapeHtml(formatDate(row.f_venta))}</td>
+                <td>${escapeHtml(formatDate(row.f_acreditacion))}</td>
                 <td>${escapeHtml(row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-')}</td>
                 <td>${escapeHtml(resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-')}</td>
                 <td>${escapeHtml(resolveCashAr(row) ? formatCurrency(resolveCashAr(row), 'ARS') : '-')}</td>

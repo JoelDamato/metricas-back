@@ -40,10 +40,10 @@ test('la vista ofrece edición y borrado sólo para filas autorizadas', () => {
   assert.match(script, /deleteEditableComprobante/);
 });
 
-test('Mis comprobantes filtra y muestra exclusivamente por fecha de venta', () => {
-  assert.match(script, /return String\(row\.f_venta \|\| ''\)\.slice\(0, 10\)/);
-  assert.match(script, /<th>Fecha de venta<\/th>/);
-  assert.match(script, /formatDate\(row\.f_venta\)/);
+test('Mis comprobantes filtra y muestra exclusivamente por fecha de acreditación', () => {
+  assert.match(script, /return String\(row\.f_acreditacion \|\| ''\)\.slice\(0, 10\)/);
+  assert.match(script, /<th>Fecha de acreditación<\/th>/);
+  assert.match(script, /formatDate\(row\.f_acreditacion\)/);
   assert.doesNotMatch(script, /row\.f_venta \|\| row\.f_acreditacion/);
 });
 
@@ -138,8 +138,8 @@ test('los clics en las pestañas actualizan el listado de comprobantes', async (
           responsibleName: 'Nahue Randazzo',
           canViewBySetter: true,
           rows: [
-            { id: 'own', cliente_format: 'Propio', responsable_venta: 'Nahue Randazzo', f_venta: '2026-08-01', estado: 'Conciliado', accessScope: 'mine' },
-            { id: 'setter', cliente_format: 'Setter', responsable_venta: 'Otro closer', f_venta: '2026-08-02', estado: 'Sin conciliar', accessScope: 'setter' }
+            { id: 'own', cliente_format: 'Propio', responsable_venta: 'Nahue Randazzo', f_acreditacion: '2026-08-01', estado: 'Conciliado', accessScope: 'mine' },
+            { id: 'setter', cliente_format: 'Setter', responsable_venta: 'Otro closer', f_acreditacion: '2026-08-02', estado: 'Sin conciliar', accessScope: 'setter' }
           ]
         })
       }
