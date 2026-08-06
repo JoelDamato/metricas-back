@@ -95,3 +95,13 @@ test('Nahuel ve sus comprobantes y los que tiene asignados como setter', async (
   assert.deepEqual(result.rows.map((row) => row.id), ['own', 'setter']);
   assert.deepEqual(result.rows.map((row) => row.accessScope), ['mine', 'setter']);
 });
+
+test('sólo quien creó un comprobante no conciliado o rebotado puede gestionarlo', () => {
+  const { canManageOwnComprobante } = comprobantesLoaderService._test;
+  const creator = { nombre: 'Nahuel Iasci' };
+
+  assert.equal(canManageOwnComprobante({ responsable_venta: 'Nahuel Iasci', estado: 'Sin conciliar' }, creator), true);
+  assert.equal(canManageOwnComprobante({ info_comprobantes: 'Cargado por: Nahuel Iasci', estado: 'Conciliado' }, creator), false);
+  assert.equal(canManageOwnComprobante({ info_comprobantes: 'Cargado por: Nahuel Iasci', estado: 'Conciliado', rebotar_pago: true }, creator), true);
+  assert.equal(canManageOwnComprobante({ info_comprobantes: 'Cargado por: Otra persona', responsable_venta: 'Nahuel Iasci', estado: 'Sin conciliar' }, creator), false);
+});

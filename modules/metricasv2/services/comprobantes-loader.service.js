@@ -149,6 +149,13 @@ function extractResponsibleVenta(infoComprobantes = '') {
   return titleCaseName(match?.[1] || '');
 }
 
+function extractComprobanteUploader(infoComprobantes = '') {
+  const raw = String(infoComprobantes || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/cargado por:\s*([^|]+)/i);
+  return titleCaseName(match?.[1] || '');
+}
+
 function resolveComprobanteResponsible(row = {}) {
   return titleCaseName(
     row.responsable_venta
@@ -163,6 +170,210 @@ function resolveComprobanteResponsibleVentaOnly(row = {}) {
     row.responsable_venta
     || extractResponsibleVenta(row.info_comprobantes)
   );
+}
+
+function isComprobanteConciliated(row = {}) {
+  const status = normalizeText(row.estado);
+  return Boolean(status) && !status.includes('sin conciliar') && status.includes('concili');
+}
+
+function canEditComprobanteStatus(row = {}) {
+  return row.rebotar_pago === true || !isComprobanteConciliated(row);
+}
+
+function canManageOwnComprobante(row = {}, user = {}) {
+  const uploader = normalizeText(
+    extractComprobanteUploader(row.info_comprobantes)
+    || resolveComprobanteResponsibleVentaOnly(row)
+  );
+  const userNames = new Set([
+    normalizeText(user.nombre),
+    normalizeText(standardizeResponsibleVenta(user))
+  ].filter(Boolean));
+  return userNames.has(uploader) && canEditComprobanteStatus(row);
+}
+
+function validComprobanteId(value) {
+  const id = parseNotionUuid(value);
+  if (!id) {
+    const error = new Error('El comprobante indicado no es válido');
+    error.statusCode = 400;
+    throw error;
+  }
+  return id;
+}
+
+async function getComprobanteForManagement(id) {
+  const response = await supabaseRequest('comprobantes', {
+    select: 'id,cliente_format,ghlid,tipo,producto_format,medios_de_pago_format,f_venta,f_acreditacion,facturacion,cash_ar,cash_collected_ar,cash_collected_ars,tc,dni_cuit,cantidad_de_pagos,info_comprobantes,estado,rebotar_pago,cheque,venta_relacionada,responsable_venta,creado_por',
+    id: `eq.${id}`,
+    limit: 1
+  });
+  const row = response.data?.[0] || null;
+  if (!row) {
+    const error = new Error('No encontré ese comprobante');
+    error.statusCode = 404;
+    throw error;
+  }
+  return row;
+}
+
+async function assertCanManageOwnComprobante(id, user) {
+  const row = await getComprobanteForManagement(validComprobanteId(id));
+  if (!canManageOwnComprobante(row, user)) {
+    const error = new Error('Sólo quien cargó un comprobante no conciliado o rebotado puede editarlo o eliminarlo');
+    error.statusCode = 403;
+    throw error;
+  }
+  return row;
+}
+
+function parsePaymentCount(value) {
+  const match = String(value || '').match(/\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function editableComprobanteData(row = {}, bootstrap = {}) {
+  const tipo = String(row.tipo || '').replace('Devolucion', 'Devolución');
+  return {
+    id: row.id,
+    tipo,
+    clientName: row.cliente_format || '',
+    ghlId: row.ghlid || '',
+    responsibleName: row.responsable_venta || '',
+    createdBy: row.creado_por || '',
+    isCheque: row.cheque === true,
+    fechaVenta: String(row.f_venta || '').slice(0, 10),
+    fechaAcreditacion: String(row.f_acreditacion || '').slice(0, 10),
+    dniCuit: row.dni_cuit || '',
+    medioPago: row.medios_de_pago_format || '',
+    tc: row.tc ?? '',
+    cashCollectedArs: row.cash_ar ?? row.cash_collected_ar ?? row.cash_collected_ars ?? '',
+    productName: row.producto_format || '',
+    facturacionUsd: row.facturacion ?? '',
+    cantidadPagos: parsePaymentCount(row.cantidad_de_pagos) || '',
+    infoComprobantes: row.info_comprobantes || '',
+    mediosDePagoOptions: bootstrap.mediosDePagoOptions || DEFAULT_PAYMENT_METHODS,
+    products: bootstrap.products || DEFAULT_PRODUCTS,
+    cantidadPagosOptions: bootstrap.cantidadPagosOptions || Array.from({ length: MAX_PAYMENT_COUNT }, (_, index) => index + 1)
+  };
+}
+
+async function getEditableComprobante(id, user) {
+  const row = await assertCanManageOwnComprobante(id, user);
+  return editableComprobanteData(row, await getBootstrap(user));
+}
+
+async function updateEditableComprobante(id, payload, user) {
+  const row = await assertCanManageOwnComprobante(id, user);
+  const tipo = String(row.tipo || '').replace('Devolucion', 'Devolución');
+  if (!DEFAULT_TYPES.includes(tipo)) {
+    const error = new Error('El tipo actual del comprobante no permite edición desde esta vista');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const fechaAcreditacion = requiredDate(payload.fechaAcreditacion, 'la fecha de acreditación');
+  const fechaVenta = tipo === 'Venta' ? requiredDate(payload.fechaVenta, 'la fecha de venta') : null;
+  const tc = requiredPositiveNumber(payload.tc, 'La tasa de cambio');
+  const cashCollectedArs = requiredPositiveNumber(payload.cashCollectedArs, 'Cash collected ARS');
+  const medioPago = requiredString(payload.medioPago, 'el medio de pago');
+  const dniCuit = requiredString(payload.dniCuit, 'el DNI / CUIT');
+  const infoComprobantes = preserveComprobanteAuditInfo(
+    row.info_comprobantes,
+    optionalString(payload.infoComprobantes),
+    user
+  );
+  const facturacionUsd = tipo === 'Venta'
+    ? requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD')
+    : tipo === 'Devolución' && optionalString(payload.facturacionUsd)
+      ? requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD')
+      : null;
+  const productName = tipo === 'Venta'
+    ? requiredString(payload.productName, 'el producto adquirido')
+    : '';
+  const editChequePuntual = row.cheque === true;
+  const cantidadPagos = tipo === 'Venta' && !editChequePuntual ? toInteger(payload.cantidadPagos) : null;
+  if (tipo === 'Venta' && !editChequePuntual && (!cantidadPagos || cantidadPagos < 1 || cantidadPagos > MAX_PAYMENT_COUNT)) {
+    const error = new Error(`La cantidad de pagos debe ser un número entero entre 1 y ${MAX_PAYMENT_COUNT}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const schema = await fetchComprobantesDatabaseSchema();
+  const productsDatabaseId = schema?.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
+  const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
+  if (!mediosDatabaseId) {
+    const error = new Error('No pude leer los medios de pago para actualizar el comprobante');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const [productOptions, medioPagoOptions] = await Promise.all([
+    tipo === 'Venta' ? fetchRelationOptions(productsDatabaseId) : Promise.resolve([]),
+    fetchRelationOptions(mediosDatabaseId)
+  ]);
+  const medioPagoId = findBestOptionIdByName(medioPagoOptions, medioPago);
+  const productId = tipo === 'Venta' ? findBestOptionIdByName(productOptions, productName) : null;
+  if (!medioPagoId || (tipo === 'Venta' && !productId)) {
+    const error = new Error('El producto o medio de pago elegido ya no existe en Notion');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const properties = {
+    'Fecha de acreditacion': notionDateValue(fechaAcreditacion),
+    'Cash collected': notionNumberValue(Number((cashCollectedArs / tc).toFixed(2))),
+    'Cash AR': notionNumberValue(cashCollectedArs),
+    TC: notionNumberValue(tc),
+    'Dni/cuit': notionRichTextValue(dniCuit),
+    'Info Comprobantes': notionRichTextValue(infoComprobantes),
+    'Medios de pago': notionRelationArrayValue([medioPagoId]),
+    'Cheque?': notionCheckboxValue(isChequePaymentMethod(medioPago))
+  };
+  if (tipo === 'Venta') {
+    Object.assign(properties, {
+      Productos: notionRelationArrayValue([productId]),
+      Facturacion: notionNumberValue(facturacionUsd),
+      'Fecha respaldo': notionDateValue(fechaVenta),
+      'F.venta respaldo': notionDateValue(fechaVenta)
+    });
+    if (!editChequePuntual) {
+      properties['Cantidad de pagos'] = notionSelectValue(`${cantidadPagos} ${cantidadPagos === 1 ? 'Pago' : 'Pagos'}`);
+    }
+  } else if (tipo === 'Devolución') {
+    properties.Facturacion = notionNumberValue(facturacionUsd);
+  }
+
+  await updateNotionPageProperties(row.id, Object.fromEntries(
+    Object.entries(properties).filter(([, value]) => value !== undefined)
+  ));
+
+  return {
+    id: row.id,
+    message: 'Cambios guardados. La vista se actualizará con la sincronización de Notion.',
+    updated: {
+      fechaVenta,
+      fechaAcreditacion,
+      dniCuit,
+      medioPago,
+      tc,
+      cashCollectedArs,
+      productName,
+      facturacionUsd,
+      cantidadPagos,
+      infoComprobantes
+    }
+  };
+}
+
+async function deleteEditableComprobante(id, user) {
+  const row = await assertCanManageOwnComprobante(id, user);
+  await archiveNotionPage(row.id);
+  return {
+    id: row.id,
+    message: 'Comprobante archivado. Se eliminará de la vista al sincronizar Notion.'
+  };
 }
 
 function cleanupSubmissionCache(now = Date.now()) {
@@ -1340,6 +1551,7 @@ function validateChequeRows(chequeRows, expectedCount, totalCashArs, attachmentF
 function buildInfoComprobantesText(normalized) {
   const parts = [];
   if (normalized.submissionKey) parts.push(`Carga ID: ${normalized.submissionKey}`);
+  if (normalized.cargadoPor) parts.push(`Cargado por: ${normalized.cargadoPor}`);
   if (normalized.responsableVenta) parts.push(`Responsable venta: ${normalized.responsableVenta}`);
   if (normalized.infoComprobantes) parts.push(normalized.infoComprobantes);
   if (normalized.mesesSoporte !== null) parts.push(`Meses de soporte: ${normalized.mesesSoporte}`);
@@ -1347,6 +1559,23 @@ function buildInfoComprobantesText(normalized) {
   if (normalized.bonusMati) parts.push('Bonus Mati: Sí');
   if (normalized.attachmentNames.length) parts.push(`Adjuntos: ${normalized.attachmentNames.join(', ')}`);
   return parts.join(' | ');
+}
+
+function preserveComprobanteAuditInfo(originalInfo, requestedInfo, user) {
+  const auditPattern = /^(carga id|cargado por|responsable venta):/i;
+  const originalSegments = String(originalInfo || '')
+    .split('|')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const auditSegments = originalSegments.filter((item) => auditPattern.test(item));
+  if (!auditSegments.some((item) => /^cargado por:/i.test(item))) {
+    auditSegments.push(`Cargado por: ${standardizeResponsibleVenta(user)}`);
+  }
+  const requestedSegments = String(requestedInfo || '')
+    .split('|')
+    .map((item) => item.trim())
+    .filter((item) => item && !auditPattern.test(item));
+  return [...auditSegments, ...requestedSegments].join(' | ');
 }
 
 async function createNotionFileUpload(file) {
@@ -1509,6 +1738,7 @@ function normalizePayload(payload = {}, user, options = {}) {
     clientName,
     clientPageId,
     responsableVenta,
+    cargadoPor: standardizeResponsibleVenta(user),
     fechaVenta,
     fechaAcreditacion,
     tc,
@@ -2042,13 +2272,13 @@ async function listMyComprobantes(user, options = {}) {
     const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {
       return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible
-        ? [{ ...row, accessScope: 'all' }]
+        ? [{ ...row, accessScope: 'all', canManage: canManageOwnComprobante(row, user) }]
         : [];
     }
     const isOwnComprobante = resolvedResponsible === normalizedResponsibleName;
     const isAssignedSetter = setterNames.includes(titleCaseName(row.setter));
-    if (isOwnComprobante) return [{ ...row, accessScope: 'mine' }];
-    if (isAssignedSetter) return [{ ...row, accessScope: 'setter' }];
+    if (isOwnComprobante) return [{ ...row, accessScope: 'mine', canManage: canManageOwnComprobante(row, user) }];
+    if (isAssignedSetter) return [{ ...row, accessScope: 'setter', canManage: canManageOwnComprobante(row, user) }];
     return [];
   });
 
@@ -2073,6 +2303,9 @@ module.exports = {
   lookupClientByGhlId,
   lookupRelatedSaleById,
   createComprobante,
+  getEditableComprobante,
+  updateEditableComprobante,
+  deleteEditableComprobante,
   listMyComprobantes,
   _test: {
     isChequePaymentMethod,
@@ -2082,6 +2315,8 @@ module.exports = {
     normalizePayload,
     hasSaleOwnership,
     canViewAllComprobantes,
-    getComprobantesSetterNames
+    getComprobantesSetterNames,
+    canManageOwnComprobante,
+    canEditComprobanteStatus
   }
 };

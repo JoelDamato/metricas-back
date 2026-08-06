@@ -270,6 +270,18 @@ async function createComprobanteManual(payload = {}) {
   return window.http.postJson('/api/metricas/comprobantes-loader', payload);
 }
 
+async function fetchEditableComprobante(id) {
+  return window.http.getJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}/editable`);
+}
+
+async function updateEditableComprobante(id, payload = {}) {
+  return window.http.patchJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}`, payload);
+}
+
+async function deleteEditableComprobante(id) {
+  return window.http.deleteJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}`, {});
+}
+
 async function generateCloserPersonalReport(payload = {}) {
   return window.http.postJson('/api/metricas/closers/personal-report', payload);
 }
@@ -351,6 +363,9 @@ window.metricasApi = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  fetchEditableComprobante,
+  updateEditableComprobante,
+  deleteEditableComprobante,
   generateCloserPersonalReport,
   fetchCloserPersonalReport,
   fetchAuthUsers,

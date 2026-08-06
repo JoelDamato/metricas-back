@@ -693,6 +693,33 @@ async function createComprobanteManual(req, res, next) {
   }
 }
 
+async function getEditableComprobante(req, res, next) {
+  try {
+    const comprobante = await comprobantesLoaderService.getEditableComprobante(req.params.id, req.authUser);
+    res.json({ ok: true, comprobante });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateEditableComprobante(req, res, next) {
+  try {
+    const result = await comprobantesLoaderService.updateEditableComprobante(req.params.id, req.body || {}, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteEditableComprobante(req, res, next) {
+  try {
+    const result = await comprobantesLoaderService.deleteEditableComprobante(req.params.id, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function listMyComprobantes(req, res, next) {
   try {
     const result = await comprobantesLoaderService.listMyComprobantes(req.authUser, {
@@ -1017,6 +1044,9 @@ module.exports = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  getEditableComprobante,
+  updateEditableComprobante,
+  deleteEditableComprobante,
   listMyComprobantes,
   listUtmBuilderPresets,
   saveUtmBuilderPreset,

@@ -6287,7 +6287,112 @@ th {
 }
 
 .mis-comprobantes-page .mis-comprobantes-table {
-  min-width: 1260px;
+  min-width: 1380px;
+}
+
+.mis-comprobantes-manage-button,
+.mis-comprobantes-delete-button {
+  border: 1px solid rgba(48, 101, 217, 0.26);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(48, 101, 217, 0.1);
+  color: #2350b2;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mis-comprobantes-readonly {
+  color: #8494b3;
+}
+
+.mis-comprobantes-editor {
+  padding: 20px;
+  overflow: auto;
+}
+
+.mis-comprobantes-editor-card {
+  width: min(960px, calc(100vw - 40px));
+  min-width: 0;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 28px;
+  text-align: left;
+}
+
+.mis-comprobantes-editor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.mis-comprobantes-editor-head h2 {
+  margin: 4px 0 8px;
+  color: #14346f;
+}
+
+.mis-comprobantes-editor-head p,
+.mis-comprobantes-editor-note {
+  margin: 0;
+  color: #52698f;
+  line-height: 1.45;
+}
+
+.mis-comprobantes-editor-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(47, 87, 160, 0.1);
+  color: #244577;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mis-comprobantes-editor-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 20px 0 12px;
+  padding: 14px;
+  border: 1px solid rgba(100, 142, 225, 0.18);
+  border-radius: 16px;
+  background: rgba(238, 245, 255, 0.72);
+  color: #304e82;
+  font-size: 0.9rem;
+}
+
+.mis-comprobantes-editor-note {
+  font-size: 0.86rem;
+}
+
+.mis-comprobantes-editor-form {
+  margin-top: 20px;
+}
+
+.mis-comprobantes-editor-status {
+  min-height: 24px;
+  margin: 16px 0 0;
+  color: #52698f;
+  font-weight: 700;
+}
+
+.mis-comprobantes-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.mis-comprobantes-delete-button {
+  border-color: rgba(205, 63, 79, 0.28);
+  background: rgba(205, 63, 79, 0.1);
+  color: #ad2940;
 }
 
 .carga-comprobantes-toolbar {
@@ -6950,6 +7055,22 @@ th {
 
 :root[data-theme='dark'] .mis-comprobantes-tab:hover {
   background: rgba(126, 161, 219, 0.12);
+}
+
+:root[data-theme='dark'] .mis-comprobantes-editor-head h2 {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .mis-comprobantes-editor-context {
+  background: rgba(9, 20, 42, 0.76);
+  border-color: rgba(83, 116, 184, 0.28);
+  color: #c5d6f4;
+}
+
+:root[data-theme='dark'] .mis-comprobantes-editor-head p,
+:root[data-theme='dark'] .mis-comprobantes-editor-note,
+:root[data-theme='dark'] .mis-comprobantes-editor-status {
+  color: #afc3e6;
 }
 
 :root[data-theme='dark'] .comisiones-pinned-cell {
@@ -7622,6 +7743,24 @@ th {
   .mis-comprobantes-toolbar-actions select,
   .mis-comprobantes-toolbar-actions input {
     min-width: 0;
+  }
+
+  .mis-comprobantes-editor-card {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100vh - 20px);
+    padding: 20px;
+  }
+
+  .mis-comprobantes-editor-context {
+    grid-template-columns: 1fr;
+  }
+
+  .mis-comprobantes-editor-actions {
+    justify-content: stretch;
+  }
+
+  .mis-comprobantes-editor-actions button {
+    width: 100%;
   }
 
   .carga-preview-grid {

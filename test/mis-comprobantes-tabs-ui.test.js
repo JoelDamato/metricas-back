@@ -33,6 +33,13 @@ test('la tabla de Mis comprobantes aprovecha el ancho disponible de pantalla', (
   assert.match(styles, /width: calc\(100vw - clamp\(24px, 4vw, 72px\)\)/);
 });
 
+test('la vista ofrece edición y borrado sólo para filas autorizadas', () => {
+  assert.match(html, /id="misComprobantesEditor"/);
+  assert.match(script, /row\.canManage === true/);
+  assert.match(script, /data-edit-comprobante/);
+  assert.match(script, /deleteEditableComprobante/);
+});
+
 test('los clics en las pestañas actualizan el listado de comprobantes', async () => {
   const listenerMap = new Map();
   const makeClassList = () => ({

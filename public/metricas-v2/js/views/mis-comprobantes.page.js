@@ -26,7 +26,9 @@
     reconciliationTabs: document.getElementById('misComprobantesReconciliationTabs'),
     clubFilter: document.getElementById('misComprobantesClubFilter'),
     search: document.getElementById('misComprobantesSearch'),
-    ownerChip: document.getElementById('misComprobantesOwnerChip')
+    ownerChip: document.getElementById('misComprobantesOwnerChip'),
+    editor: document.getElementById('misComprobantesEditor'),
+    editorBody: document.getElementById('misComprobantesEditorBody')
   };
 
   function escapeHtml(value) {
@@ -241,6 +243,7 @@
               <th>Cash AR</th>
               <th>Estado</th>
               <th>GHL ID</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -257,12 +260,138 @@
                 <td>${escapeHtml(resolveCashAr(row) ? formatCurrency(resolveCashAr(row), 'ARS') : '-')}</td>
                 <td>${escapeHtml(row.estado || 'Sin estado')}</td>
                 <td>${escapeHtml(row.ghlid || '-')}</td>
+                <td>${row.canManage === true
+                  ? `<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">Editar / borrar</button>`
+                  : '<span class="mis-comprobantes-readonly">—</span>'}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>
     `;
+  }
+
+  function editorOption(value, selectedValue, label = value) {
+    const selected = String(value) === String(selectedValue) ? ' selected' : '';
+    return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
+  }
+
+  function renderEditor(comprobante) {
+    const isVenta = comprobante.tipo === 'Venta';
+    const isDevolucion = comprobante.tipo === 'Devolución';
+    const paymentOptions = [...new Set([comprobante.medioPago, ...(comprobante.mediosDePagoOptions || [])].filter(Boolean))];
+    const productOptions = [...new Set([comprobante.productName, ...(comprobante.products || [])].filter(Boolean))];
+    const paymentCountOptions = [...new Set([comprobante.cantidadPagos, ...(comprobante.cantidadPagosOptions || [])].filter(Boolean))];
+    refs.editorBody.innerHTML = `
+      <div class="mis-comprobantes-editor-head">
+        <div>
+          <span class="carga-creating-kicker">Edición habilitada</span>
+          <h2 id="misComprobantesEditorTitle">Editar comprobante</h2>
+          <p>${comprobante.isCheque ? 'Cheque individual: los cambios se aplican sólo a este comprobante.' : 'Podés corregir los datos operativos de este comprobante.'}</p>
+        </div>
+        <button type="button" class="mis-comprobantes-editor-close" data-editor-action="close" aria-label="Cerrar">×</button>
+      </div>
+      <div class="mis-comprobantes-editor-context">
+        <span><strong>Cliente:</strong> ${escapeHtml(comprobante.clientName || '—')}</span>
+        <span><strong>GHL:</strong> ${escapeHtml(comprobante.ghlId || '—')}</span>
+        <span><strong>Responsable:</strong> ${escapeHtml(comprobante.responsibleName || '—')}</span>
+        <span><strong>Tipo:</strong> ${escapeHtml(comprobante.tipo || '—')}</span>
+      </div>
+      <p class="mis-comprobantes-editor-note">Cliente, GHL, responsable, venta relacionada, adjuntos y los demás cheques no se modifican desde acá.</p>
+      <form id="misComprobantesEditorForm" class="mis-comprobantes-editor-form" data-comprobante-id="${escapeHtml(comprobante.id)}">
+        <div class="carga-grid carga-grid--three">
+          ${isVenta ? `<label class="carga-field"><span>Fecha de venta</span><input name="fechaVenta" type="date" value="${escapeHtml(comprobante.fechaVenta)}" required /></label>` : ''}
+          <label class="carga-field"><span>Fecha de acreditación</span><input name="fechaAcreditacion" type="date" value="${escapeHtml(comprobante.fechaAcreditacion)}" required /></label>
+          <label class="carga-field"><span>DNI / CUIT</span><input name="dniCuit" value="${escapeHtml(comprobante.dniCuit)}" required /></label>
+          <label class="carga-field"><span>Medio de pago</span><select name="medioPago" required>${paymentOptions.map((item) => editorOption(item, comprobante.medioPago)).join('')}</select></label>
+          <label class="carga-field"><span>Tasa de cambio</span><input name="tc" inputmode="decimal" value="${escapeHtml(comprobante.tc)}" required /></label>
+          <label class="carga-field"><span>Cash AR</span><input name="cashCollectedArs" inputmode="decimal" value="${escapeHtml(comprobante.cashCollectedArs)}" required /></label>
+          ${isVenta ? `<label class="carga-field carga-field--full"><span>Producto adquirido</span><select name="productName" required>${productOptions.map((item) => editorOption(item, comprobante.productName)).join('')}</select></label>` : ''}
+          ${(isVenta || isDevolucion) ? `<label class="carga-field"><span>Facturación USD</span><input name="facturacionUsd" inputmode="decimal" value="${escapeHtml(comprobante.facturacionUsd)}" ${isVenta ? 'required' : ''} /></label>` : ''}
+          ${isVenta && !comprobante.isCheque ? `<label class="carga-field"><span>Cantidad de pagos</span><select name="cantidadPagos" required>${paymentCountOptions.map((item) => editorOption(item, comprobante.cantidadPagos)).join('')}</select></label>` : ''}
+          <label class="carga-field carga-field--full"><span>Info Comprobantes</span><textarea name="infoComprobantes" rows="4">${escapeHtml(comprobante.infoComprobantes)}</textarea></label>
+        </div>
+        <p id="misComprobantesEditorStatus" class="mis-comprobantes-editor-status">Revisá los datos antes de guardar.</p>
+        <div class="mis-comprobantes-editor-actions">
+          <button type="button" class="metricas-secondary-button" data-editor-action="close">Cancelar</button>
+          <button type="button" class="mis-comprobantes-delete-button" data-editor-action="delete">Eliminar comprobante</button>
+          <button type="submit" class="metricas-primary-button">Guardar cambios</button>
+        </div>
+      </form>
+    `;
+    refs.editor.hidden = false;
+  }
+
+  function closeEditor() {
+    refs.editor.hidden = true;
+    refs.editorBody.innerHTML = '';
+  }
+
+  function updateLocalRow(id, updated) {
+    state.rows = state.rows.map((row) => {
+      if (row.id !== id) return row;
+      return {
+        ...row,
+        f_venta: updated.fechaVenta || row.f_venta,
+        f_acreditacion: updated.fechaAcreditacion || row.f_acreditacion,
+        dni_cuit: updated.dniCuit,
+        medios_de_pago_format: updated.medioPago,
+        tc: updated.tc,
+        cash_ar: updated.cashCollectedArs,
+        producto_format: updated.productName || row.producto_format,
+        facturacion: updated.facturacionUsd ?? row.facturacion,
+        cantidad_de_pagos: updated.cantidadPagos || row.cantidad_de_pagos,
+        info_comprobantes: updated.infoComprobantes
+      };
+    });
+  }
+
+  async function openEditor(id) {
+    try {
+      refs.status.hidden = false;
+      refs.status.querySelector('span').textContent = 'Preparando el comprobante para editar...';
+      const response = await api.fetchEditableComprobante(id);
+      refs.status.hidden = true;
+      renderEditor(response.comprobante);
+    } catch (error) {
+      refs.status.hidden = false;
+      refs.status.querySelector('span').textContent = error.message || 'No pude abrir el editor del comprobante.';
+    }
+  }
+
+  async function submitEditor(form) {
+    const id = form.dataset.comprobanteId;
+    const status = document.getElementById('misComprobantesEditorStatus');
+    const submit = form.querySelector('[type="submit"]');
+    const payload = Object.fromEntries(new FormData(form).entries());
+    submit.disabled = true;
+    status.textContent = 'Guardando cambios en Notion...';
+    try {
+      const response = await api.updateEditableComprobante(id, payload);
+      updateLocalRow(id, response.updated || {});
+      renderAll();
+      closeEditor();
+      refs.hint.textContent = response.message || 'Cambios guardados.';
+    } catch (error) {
+      status.textContent = error.message || 'No pude guardar los cambios.';
+      submit.disabled = false;
+    }
+  }
+
+  async function deleteFromEditor(form) {
+    const id = form.dataset.comprobanteId;
+    if (!window.confirm('¿Eliminar este comprobante? Esta acción lo archivará en Notion.')) return;
+    const status = document.getElementById('misComprobantesEditorStatus');
+    status.textContent = 'Archivando comprobante...';
+    try {
+      const response = await api.deleteEditableComprobante(id);
+      state.rows = state.rows.filter((row) => row.id !== id);
+      renderAll();
+      closeEditor();
+      refs.hint.textContent = response.message || 'Comprobante archivado.';
+    } catch (error) {
+      status.textContent = error.message || 'No pude eliminar el comprobante.';
+    }
   }
 
   function renderAll() {
@@ -336,6 +465,20 @@
   });
   refs.clubFilter?.addEventListener('change', renderAll);
   refs.search?.addEventListener('input', renderAll);
+  refs.table?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-comprobante]');
+    if (button) openEditor(button.dataset.editComprobante);
+  });
+  refs.editor?.addEventListener('click', (event) => {
+    if (event.target === refs.editor || event.target.closest('[data-editor-action="close"]')) closeEditor();
+    const deleteButton = event.target.closest('[data-editor-action="delete"]');
+    if (deleteButton) deleteFromEditor(document.getElementById('misComprobantesEditorForm'));
+  });
+  refs.editor?.addEventListener('submit', (event) => {
+    if (event.target.id !== 'misComprobantesEditorForm') return;
+    event.preventDefault();
+    submitEditor(event.target);
+  });
 
   ensureDefaultMonth();
   loadPage();

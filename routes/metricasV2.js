@@ -66,7 +66,10 @@ router.get('/comprobantes-loader/bootstrap', controller.getComprobantesLoaderBoo
 router.get('/comprobantes-loader/mine', controller.listMyComprobantes);
 router.get('/comprobantes-loader/cliente', controller.lookupComprobantesLoaderClient);
 router.get('/comprobantes-loader/venta-relacionada', controller.lookupComprobantesLoaderRelatedSale);
+router.get('/comprobantes-loader/:id/editable', controller.getEditableComprobante);
 router.post('/comprobantes-loader', controller.createComprobanteManual);
+router.patch('/comprobantes-loader/:id', controller.updateEditableComprobante);
+router.delete('/comprobantes-loader/:id', controller.deleteEditableComprobante);
 router.post('/assistant/ask', controller.askAssistant);
 router.get('/closers/personal-report', controller.getCloserPersonalReport);
 router.post('/closers/personal-report', controller.generateCloserPersonalReport);
