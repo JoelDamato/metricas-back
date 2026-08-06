@@ -316,3 +316,19 @@ test('lookup manual falla cerrado si una venta tiene relaciones de clientes mezc
     }
   );
 });
+
+test('una venta de Notion puede usar Fecha correspondiente cuando falta F.venta respaldo', () => {
+  const { mapNotionSalePage } = comprobantesLoaderService._test;
+  const sale = mapNotionSalePage({
+    id: FOREIGN_SALE_PAGE_ID,
+    properties: {
+      'Fecha correspondiente': {
+        formula: { date: { start: '2025-11-28' } }
+      },
+      'Fecha de acreditacion': { date: { start: '2026-08-06' } }
+    }
+  });
+
+  assert.equal(sale.fechaVenta, '2025-11-28');
+  assert.equal(sale.fechaAcreditacion, '2026-08-06');
+});

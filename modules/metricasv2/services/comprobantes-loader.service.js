@@ -1188,7 +1188,14 @@ function mapNotionSalePage(page = {}) {
     clientPageIds: relatedClientIds,
     cliente: notionPropertyText(properties.Identificador) || '',
     producto: properties['Producto Format']?.formula?.string || '',
-    fechaVenta: properties['F.venta respaldo']?.date?.start || null,
+    // Algunas ventas históricas no tienen F.venta respaldo, pero sí conservan
+    // la fecha equivalente en el respaldo o en la fórmula Fecha correspondiente.
+    // Cualquiera de ellas sirve para relacionar una cobranza sin bloquear la carga.
+    fechaVenta: properties['F.venta respaldo']?.date?.start
+      || properties['Fecha respaldo']?.date?.start
+      || properties['Fecha correspondiente']?.formula?.date?.start
+      || properties['Fecha correspondiente']?.date?.start
+      || null,
     fechaAcreditacion: properties['Fecha de acreditacion']?.date?.start || null,
     fechaCreado: page.created_time || null,
     facturacionUsd: properties.Facturacion?.number ?? null,
@@ -2321,6 +2328,7 @@ module.exports = {
     canViewAllComprobantes,
     getComprobantesSetterNames,
     canManageOwnComprobante,
-    canEditComprobanteStatus
+    canEditComprobanteStatus,
+    mapNotionSalePage
   }
 };
