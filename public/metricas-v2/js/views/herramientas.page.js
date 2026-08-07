@@ -275,6 +275,7 @@
   function collectFormValues() {
     const customParams = collectCustomParams();
     const currentOrigin = String(document.getElementById('utmCurrentOrigin')?.value || '').trim();
+    const subOrigin = String(document.getElementById('utmSubOrigin')?.value || '').trim();
     const presetName = String(document.getElementById('utmPresetName')?.value || '').trim();
     const params = {};
     const source = String(document.getElementById('utmSource')?.value || '').trim();
@@ -289,6 +290,7 @@
     }
 
     params.origen_actual = currentOrigin;
+    if (subOrigin) params.sub_origen = subOrigin;
     if (source) params.utm_source = source;
     if (medium) params.utm_medium = medium;
     if (campaign) params.utm_campaign = campaign;
@@ -297,7 +299,7 @@
     if (includeContactId) params.Contact_id = '{{contact.id}}';
 
     customParams.forEach((row) => {
-      if (normalizeSearchText(row.key) === 'origen_actual') return;
+      if (normalizeSearchText(row.key) === 'origen_actual' || normalizeSearchText(row.key) === 'sub_origen') return;
       if (normalizeSearchText(row.key) === 'contact_id' && includeContactId) return;
       params[row.key] = row.value;
     });
@@ -306,6 +308,7 @@
       baseUrl: String(document.getElementById('utmBaseUrl')?.value || '').trim(),
       presetName,
       origin: currentOrigin,
+      subOrigin,
       includeContactId,
       params
     };
@@ -322,6 +325,7 @@
     document.getElementById('utmBaseUrl').value = preset.base_url || '';
     document.getElementById('utmPresetName').value = preset.name || '';
     document.getElementById('utmCurrentOrigin').value = String(params.origen_actual || '').trim();
+    document.getElementById('utmSubOrigin').value = String(params.sub_origen || '').trim();
     document.getElementById('utmSource').value = String(params.utm_source || '').trim();
     document.getElementById('utmMedium').value = String(params.utm_medium || '').trim();
     document.getElementById('utmCampaign').value = String(params.utm_campaign || '').trim();
@@ -330,7 +334,7 @@
     document.getElementById('utmIncludeContactId').checked = String(params.Contact_id || '').trim() === '{{contact.id}}';
 
     const customRows = Object.entries(params)
-      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && key !== 'origen_actual' && key !== 'Contact_id' && String(value || '').trim())
+      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && key !== 'origen_actual' && key !== 'sub_origen' && key !== 'Contact_id' && String(value || '').trim())
       .map(([key, value]) => ({ key, value: String(value || '').trim() }));
 
     resetCustomParamRows(customRows);
@@ -462,6 +466,7 @@
     document.getElementById('utmBaseUrl').value = '';
     document.getElementById('utmPresetName').value = '';
     document.getElementById('utmCurrentOrigin').value = '';
+    document.getElementById('utmSubOrigin').value = '';
     document.getElementById('utmSource').value = '';
     document.getElementById('utmMedium').value = '';
     document.getElementById('utmCampaign').value = '';
