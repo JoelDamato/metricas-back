@@ -7,6 +7,13 @@
       mergeTag: '{{contact.phone}}',
       fullKey: 'contact.phone',
       dataType: 'TEXT'
+    },
+    {
+      key: 'sub_origen',
+      name: 'Sub origen',
+      mergeTag: '{{contact.sub_origen}}',
+      fullKey: 'contact.sub_origen',
+      dataType: 'TEXT'
     }
   ];
   const state = {

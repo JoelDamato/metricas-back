@@ -10,6 +10,8 @@ const script = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/herr
 test('el generador permite guardar sub_origen como campo GHL dentro del preset', () => {
   assert.match(html, /id="utmSubOrigin"/);
   assert.match(html, /sub_origen <small>\(campo GHL\)<\/small>/);
+  assert.match(script, /key: 'sub_origen'/);
+  assert.match(script, /mergeTag: '\{\{contact\.sub_origen\}\}'/);
   assert.match(script, /params\.sub_origen = subOrigin/);
   assert.match(script, /params\.sub_origen \|\| ''/);
   assert.match(script, /key !== 'sub_origen'/);
