@@ -94,4 +94,13 @@ async function getPublicDiagnostico(token) {
   return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
 }
 
-module.exports = { listDiagnosticos, createDiagnostico, updateDiagnostico, deleteDiagnostico, getPublicDiagnostico };
+async function getPublicDiagnosticoByGhlId(ghlId) {
+  const safeGhlId = String(ghlId || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!safeGhlId) { const error = new Error('GHL ID inválido'); error.statusCode = 404; throw error; }
+  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'client_name,business_name,csm_name,data,updated_at', client_ghlid: `eq.${safeGhlId}`, limit: 1 } });
+  const row = response.data?.[0];
+  if (!row) { const error = new Error('Este cliente todavía no tiene un diagnóstico'); error.statusCode = 404; throw error; }
+  return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
+}
+
+module.exports = { listDiagnosticos, createDiagnostico, updateDiagnostico, deleteDiagnostico, getPublicDiagnostico, getPublicDiagnosticoByGhlId };

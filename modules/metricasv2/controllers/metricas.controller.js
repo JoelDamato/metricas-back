@@ -47,6 +47,10 @@ async function getPublicDiagnostico(req, res, next) {
   try { res.json({ ok: true, diagnostico: await diagnosticosService.getPublicDiagnostico(req.params.token) }); } catch (error) { next(error); }
 }
 
+async function getPublicDiagnosticoByGhlId(req, res, next) {
+  try { res.json({ ok: true, diagnostico: await diagnosticosService.getPublicDiagnosticoByGhlId(req.params.ghlId) }); } catch (error) { next(error); }
+}
+
 async function getResources(req, res, next) {
   try {
     const resources = await supabaseService.listResources();
@@ -1042,6 +1046,7 @@ module.exports = {
   updateDiagnostico,
   deleteDiagnostico,
   getPublicDiagnostico,
+  getPublicDiagnosticoByGhlId,
   health,
   getCommissionConfig,
   getCommissionsDashboard,
