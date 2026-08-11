@@ -5,6 +5,7 @@ const closerPersonalReportService = require('../services/closer-personal-report.
 const mercadoPagoService = require('../services/mercado-pago.service');
 const arcaPdfService = require('../services/arca-pdf.service');
 const commissionsService = require('../services/commissions.service');
+const diagnosticosService = require('../services/diagnosticos.service');
 const access = require('../../auth/access');
 
 async function health(req, res) {
@@ -13,6 +14,26 @@ async function health(req, res) {
     service: 'metricas',
     date: new Date().toISOString()
   });
+}
+
+async function listDiagnosticos(req, res, next) {
+  try { res.json({ ok: true, diagnosticos: await diagnosticosService.listDiagnosticos() }); } catch (error) { next(error); }
+}
+
+async function createDiagnostico(req, res, next) {
+  try { res.json({ ok: true, diagnostico: await diagnosticosService.createDiagnostico(req.body || {}, req.authUser) }); } catch (error) { next(error); }
+}
+
+async function updateDiagnostico(req, res, next) {
+  try { res.json({ ok: true, diagnostico: await diagnosticosService.updateDiagnostico(req.params.id, req.body || {}, req.authUser) }); } catch (error) { next(error); }
+}
+
+async function deleteDiagnostico(req, res, next) {
+  try { res.json({ ok: true, ...(await diagnosticosService.deleteDiagnostico(req.params.id)) }); } catch (error) { next(error); }
+}
+
+async function getPublicDiagnostico(req, res, next) {
+  try { res.json({ ok: true, diagnostico: await diagnosticosService.getPublicDiagnostico(req.params.token) }); } catch (error) { next(error); }
 }
 
 async function getResources(req, res, next) {
@@ -1004,6 +1025,11 @@ async function viewMercadoPagoClubInvoice(req, res, next) {
 }
 
 module.exports = {
+  listDiagnosticos,
+  createDiagnostico,
+  updateDiagnostico,
+  deleteDiagnostico,
+  getPublicDiagnostico,
   health,
   getCommissionConfig,
   getCommissionsDashboard,

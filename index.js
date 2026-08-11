@@ -20,6 +20,7 @@ let isReady = false;
 // --- 4. RUTAS ---
 const routes = require('./routes/rutas');
 const metricasV2Routes = require('./routes/metricasV2');
+const metricasV2Controller = require('./modules/metricasv2/controllers/metricas.controller');
 const metricasV2ErrorHandler = require('./modules/metricasv2/errorHandler');
 const authMiddleware = require('./modules/auth/middleware');
 
@@ -53,6 +54,9 @@ app.use('/metricas', (req, res) => {
 app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
 });
+app.use('/diagnostico', express.static(path.join(__dirname, 'public/diagnostico'), { index: false, redirect: false }));
+app.get('/diagnostico', (req, res) => res.sendFile(path.join(__dirname, 'public/diagnostico/index.html')));
+app.get('/api/diagnostico/:token', metricasV2Controller.getPublicDiagnostico);
 
 app.use('/api', routes);
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
