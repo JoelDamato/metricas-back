@@ -20,6 +20,17 @@ async function listDiagnosticos(req, res, next) {
   try { res.json({ ok: true, diagnosticos: await diagnosticosService.listDiagnosticos() }); } catch (error) { next(error); }
 }
 
+async function listDiagnosticoClients(req, res, next) {
+  try {
+    const rows = await supabaseService.listRows('csm', { limit: 1000, select: 'nombre,ghlid,modelo_negocio' });
+    const clients = rows
+      .map((row) => ({ ghlId: String(row.ghlid || '').trim(), name: String(row.nombre || '').trim(), businessName: String(row.modelo_negocio || '').trim() }))
+      .filter((row) => row.ghlId && row.name)
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    res.json({ ok: true, clients });
+  } catch (error) { next(error); }
+}
+
 async function createDiagnostico(req, res, next) {
   try { res.json({ ok: true, diagnostico: await diagnosticosService.createDiagnostico(req.body || {}, req.authUser) }); } catch (error) { next(error); }
 }
@@ -1026,6 +1037,7 @@ async function viewMercadoPagoClubInvoice(req, res, next) {
 
 module.exports = {
   listDiagnosticos,
+  listDiagnosticoClients,
   createDiagnostico,
   updateDiagnostico,
   deleteDiagnostico,

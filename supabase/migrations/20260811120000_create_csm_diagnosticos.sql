@@ -1,5 +1,6 @@
 create table if not exists public.csm_diagnosticos (
   id uuid primary key default gen_random_uuid(),
+  client_ghlid text,
   client_name text not null,
   business_name text,
   client_email text,

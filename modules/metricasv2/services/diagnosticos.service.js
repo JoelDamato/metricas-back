@@ -13,15 +13,16 @@ function headers(extra = {}) {
 
 function cleanText(value, limit = 400) { return String(value || '').trim().slice(0, limit); }
 function cleanData(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
-function tableUrl(suffix = '') { return `${env.supabaseUrl}/rest/v1/csm_diagnosticos${suffix}`; }
+function tableUrl() { return `${env.supabaseUrl}/rest/v1/csm_diagnosticos`; }
+function safeId(value) { return String(value || '').replace(/[^a-f0-9-]/gi, ''); }
 
 function normalize(row) {
   if (!row) return null;
   return {
     id: row.id,
+    clientGhlId: row.client_ghlid || '',
     clientName: row.client_name || '',
     businessName: row.business_name || '',
-    clientEmail: row.client_email || '',
     csmName: row.csm_name || '',
     data: cleanData(row.data),
     publicToken: row.public_token || '',
@@ -31,16 +32,17 @@ function normalize(row) {
 }
 
 function payloadFrom(input = {}, user = {}) {
+  const clientGhlId = cleanText(input.clientGhlId, 180);
   const clientName = cleanText(input.clientName, 180);
-  if (!clientName) {
-    const error = new Error('El nombre del cliente es obligatorio');
+  if (!clientGhlId || !clientName) {
+    const error = new Error('Elegí un cliente válido de la base CSM');
     error.statusCode = 400;
     throw error;
   }
   return {
+    client_ghlid: clientGhlId,
     client_name: clientName,
     business_name: cleanText(input.businessName, 180) || null,
-    client_email: cleanText(input.clientEmail, 180).toLowerCase() || null,
     csm_name: cleanText(input.csmName, 180) || null,
     data: cleanData(input.data),
     updated_by_email: cleanText(user.email, 180).toLowerCase() || null,
@@ -49,27 +51,36 @@ function payloadFrom(input = {}, user = {}) {
 }
 
 async function listDiagnosticos() {
-  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_name,business_name,client_email,csm_name,data,public_token,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
+  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,public_token,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
   return (response.data || []).map(normalize).filter(Boolean);
 }
 
 async function createDiagnostico(input, user) {
   const body = { ...payloadFrom(input, user), public_token: crypto.randomBytes(24).toString('base64url'), created_by_email: cleanText(user.email, 180).toLowerCase() || null };
-  const response = await axios.post(tableUrl(), body, { headers: headers({ Prefer: 'return=representation' }) });
-  return normalize(response.data?.[0]);
+  try {
+    const response = await axios.post(tableUrl(), body, { headers: headers({ Prefer: 'return=representation' }) });
+    return normalize(response.data?.[0]);
+  } catch (error) {
+    if (error.response?.status === 409) {
+      const exists = new Error('Ese cliente ya tiene un diagnóstico. Abrilo desde el listado para continuarlo.');
+      exists.statusCode = 409;
+      throw exists;
+    }
+    throw error;
+  }
 }
 
 async function updateDiagnostico(id, input, user) {
-  const safeId = String(id || '').replace(/[^a-f0-9-]/gi, '');
-  if (!safeId) { const error = new Error('Diagnóstico inválido'); error.statusCode = 400; throw error; }
-  const response = await axios.patch(tableUrl(), payloadFrom(input, user), { headers: headers({ Prefer: 'return=representation' }), params: { id: `eq.${safeId}` } });
+  const recordId = safeId(id);
+  if (!recordId) { const error = new Error('Diagnóstico inválido'); error.statusCode = 400; throw error; }
+  const response = await axios.patch(tableUrl(), payloadFrom(input, user), { headers: headers({ Prefer: 'return=representation' }), params: { id: `eq.${recordId}` } });
   if (!response.data?.[0]) { const error = new Error('No encontré ese diagnóstico'); error.statusCode = 404; throw error; }
   return normalize(response.data[0]);
 }
 
 async function deleteDiagnostico(id) {
-  const safeId = String(id || '').replace(/[^a-f0-9-]/gi, '');
-  const response = await axios.delete(tableUrl(), { headers: headers({ Prefer: 'return=representation' }), params: { id: `eq.${safeId}` } });
+  const safe = safeId(id);
+  const response = await axios.delete(tableUrl(), { headers: headers({ Prefer: 'return=representation' }), params: { id: `eq.${safe}` } });
   if (!response.data?.[0]) { const error = new Error('No encontré ese diagnóstico'); error.statusCode = 404; throw error; }
   return { deleted: true };
 }

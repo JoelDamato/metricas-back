@@ -14,6 +14,7 @@ router.patch('/auth/users/:id/password', authController.updateUserPassword);
 router.delete('/auth/users/:id', authController.deleteUser);
 router.get('/health', controller.health);
 router.get('/diagnosticos', controller.listDiagnosticos);
+router.get('/diagnosticos/clientes-csm', controller.listDiagnosticoClients);
 router.post('/diagnosticos', controller.createDiagnostico);
 router.patch('/diagnosticos/:id', controller.updateDiagnostico);
 router.delete('/diagnosticos/:id', controller.deleteDiagnostico);

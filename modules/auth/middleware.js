@@ -174,6 +174,13 @@ async function metricasApiGuard(req, res, next) {
       return next();
     }
 
+    if (reqPath === '/diagnosticos' || reqPath.startsWith('/diagnosticos/')) {
+      if (!['total', 'csm'].includes(req.authUser?.role)) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para usar Diagnósticos CSM' });
+      }
+      return next();
+    }
+
     if (reqPath === '/comprobantes-loader' || reqPath.startsWith('/comprobantes-loader/')) {
       if (!access.canAccessPageForUser(req.authUser, 'carga-comprobantes.html')) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para cargar comprobantes' });
