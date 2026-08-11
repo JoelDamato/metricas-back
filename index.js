@@ -57,7 +57,6 @@ app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
 app.use('/diagnostico', express.static(path.join(__dirname, 'public/diagnostico'), { index: false, redirect: false }));
 app.get('/diagnostico', (req, res) => res.sendFile(path.join(__dirname, 'public/diagnostico/index.html')));
 app.get('/api/diagnostico/cliente/:ghlId', metricasV2Controller.getPublicDiagnosticoByGhlId);
-app.get('/api/diagnostico/:token', metricasV2Controller.getPublicDiagnostico);
 
 app.use('/api', routes);
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);

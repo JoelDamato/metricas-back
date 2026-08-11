@@ -25,7 +25,6 @@ function normalize(row) {
     businessName: row.business_name || '',
     csmName: row.csm_name || '',
     data: cleanData(row.data),
-    publicToken: row.public_token || '',
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null
   };
@@ -51,7 +50,7 @@ function payloadFrom(input = {}, user = {}) {
 }
 
 async function listDiagnosticos() {
-  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,public_token,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
+  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
   return (response.data || []).map(normalize).filter(Boolean);
 }
 
@@ -85,15 +84,6 @@ async function deleteDiagnostico(id) {
   return { deleted: true };
 }
 
-async function getPublicDiagnostico(token) {
-  const safeToken = String(token || '').replace(/[^A-Za-z0-9_-]/g, '');
-  if (safeToken.length < 24) { const error = new Error('Link de diagnóstico inválido'); error.statusCode = 404; throw error; }
-  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'client_name,business_name,csm_name,data,updated_at', public_token: `eq.${safeToken}`, limit: 1 } });
-  const row = response.data?.[0];
-  if (!row) { const error = new Error('Este diagnóstico no está disponible'); error.statusCode = 404; throw error; }
-  return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
-}
-
 async function getPublicDiagnosticoByGhlId(ghlId) {
   const safeGhlId = String(ghlId || '').replace(/[^A-Za-z0-9_-]/g, '');
   if (!safeGhlId) { const error = new Error('GHL ID inválido'); error.statusCode = 404; throw error; }
@@ -103,4 +93,4 @@ async function getPublicDiagnosticoByGhlId(ghlId) {
   return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
 }
 
-module.exports = { listDiagnosticos, createDiagnostico, updateDiagnostico, deleteDiagnostico, getPublicDiagnostico, getPublicDiagnosticoByGhlId };
+module.exports = { listDiagnosticos, createDiagnostico, updateDiagnostico, deleteDiagnostico, getPublicDiagnosticoByGhlId };
