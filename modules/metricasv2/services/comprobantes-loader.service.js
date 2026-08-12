@@ -109,6 +109,44 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
+function findNotionProperty(properties = {}, expectedName = '') {
+  const target = normalizeText(expectedName);
+  return Object.entries(properties).find(([name]) => normalizeText(name) === target)?.[1] || null;
+}
+
+function notionPropertyDisplayText(property) {
+  if (!property) return '';
+  if (property.formula?.string != null) return String(property.formula.string);
+  if (property.formula?.number != null) return String(property.formula.number);
+  if (typeof property.formula?.boolean === 'boolean') return String(property.formula.boolean);
+  if (property.rollup?.type === 'number' && property.rollup.number != null) return String(property.rollup.number);
+  if (property.select?.name) return String(property.select.name);
+  if (property.status?.name) return String(property.status.name);
+  if (Array.isArray(property.multi_select)) return property.multi_select.map((item) => item?.name || '').filter(Boolean).join(', ');
+  if (property.number != null) return String(property.number);
+  if (property.email) return String(property.email);
+  if (property.phone_number) return String(property.phone_number);
+  if (property.url) return String(property.url);
+  for (const key of ['title', 'rich_text']) {
+    if (Array.isArray(property[key])) {
+      return property[key].map((item) => item.plain_text || item.text?.content || '').join('');
+    }
+  }
+  return '';
+}
+
+function isNotionPaymentMethodActive(properties = {}) {
+  const activeProperty = findNotionProperty(properties, 'Activo');
+  // Mantiene compatibles las bases antiguas que todavía no tienen la columna.
+  if (!activeProperty) return true;
+  if (typeof activeProperty.checkbox === 'boolean') return activeProperty.checkbox;
+  if (typeof activeProperty.formula?.boolean === 'boolean') return activeProperty.formula.boolean;
+
+  const value = normalizeText(notionPropertyDisplayText(activeProperty));
+  if (!value) return false;
+  return ['activo', 'activa', 'si', 'sí', 'true', '1', 'yes'].includes(value);
+}
+
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -313,10 +351,13 @@ async function updateEditableComprobante(id, payload, user) {
     tipo === 'Venta' ? fetchRelationOptions(productsDatabaseId) : Promise.resolve([]),
     fetchRelationOptions(mediosDatabaseId)
   ]);
-  const medioPagoId = findBestOptionIdByName(medioPagoOptions, medioPago);
+  const medioPagoOption = medioPagoOptions.find(
+    (option) => normalizeText(option.name) === normalizeText(medioPago)
+  );
+  const medioPagoId = medioPagoOption?.active ? medioPagoOption.id : null;
   const productId = tipo === 'Venta' ? findBestOptionIdByName(productOptions, productName) : null;
   if (!medioPagoId || (tipo === 'Venta' && !productId)) {
-    const error = new Error('El producto o medio de pago elegido ya no existe en Notion');
+    const error = new Error('El producto no existe o el medio de pago elegido no está activo en Notion');
     error.statusCode = 400;
     throw error;
   }
@@ -867,7 +908,12 @@ async function fetchRelationOptions(databaseId) {
         const properties = page.properties || {};
         const titleProperty = Object.values(properties).find((property) => property?.type === 'title');
         const name = titleProperty?.title?.map((item) => item.plain_text).join('') || '';
-        return { id: page.id, name };
+        return {
+          id: page.id,
+          name,
+          active: isNotionPaymentMethodActive(properties),
+          account: notionPropertyDisplayText(findNotionProperty(properties, 'Cuenta'))
+        };
       })
       .filter((item) => item.name);
   } catch (error) {
@@ -994,14 +1040,18 @@ async function getBootstrap(user) {
       ...notionProducts.map((item) => item.name).filter((name) => DEFAULT_PRODUCTS.includes(name))
     ])
     : DEFAULT_PRODUCTS.slice();
+  const activePaymentMethods = notionPaymentMethods.filter((item) => item.active);
   const paymentOptions = notionPaymentMethods.length
-    ? notionPaymentMethods.map((item) => item.name)
+    ? activePaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
 
   return {
     responsibleVentaDefault: standardizeResponsibleVenta(user),
     tipoOptions: DEFAULT_TYPES,
-    mediosDePagoOptions: paymentOptions.length ? paymentOptions : DEFAULT_PAYMENT_METHODS,
+    mediosDePagoOptions: notionPaymentMethods.length ? paymentOptions : DEFAULT_PAYMENT_METHODS,
+    mediosDePago: notionPaymentMethods.length ? activePaymentMethods : DEFAULT_PAYMENT_METHODS.map((name) => ({
+      id: '', name, active: true, account: ''
+    })),
     cantidadPagosOptions: Array.from({ length: MAX_PAYMENT_COUNT }, (_, index) => index + 1),
     productsSource: notionProducts.length ? 'notion' : 'fixed',
     products,
@@ -2111,9 +2161,12 @@ async function createComprobante(payload, user, options = {}) {
       }
       normalized.productIds = productId ? [productId] : [];
 
-      const medioPagoId = findBestOptionIdByName(mediosOptions, normalized.medioPago);
+      const medioPagoOption = mediosOptions.find(
+        (option) => normalizeText(option.name) === normalizeText(normalized.medioPago)
+      );
+      const medioPagoId = medioPagoOption?.active ? medioPagoOption.id : null;
       if (!medioPagoId) {
-        const error = new Error(`No encontré el medio de pago ${normalized.medioPago} en Notion`);
+        const error = new Error(`El medio de pago ${normalized.medioPago} no existe o está inactivo en Notion`);
         error.statusCode = 400;
         throw error;
       }
@@ -2320,6 +2373,8 @@ module.exports = {
   listMyComprobantes,
   _test: {
     isChequePaymentMethod,
+    isNotionPaymentMethodActive,
+    notionPropertyDisplayText,
     buildChequeRows,
     buildDraftOperations,
     validateChequeRows,

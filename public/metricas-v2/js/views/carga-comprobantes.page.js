@@ -54,6 +54,7 @@
     fechaVenta: document.getElementById('fechaVenta'),
     fechaAcreditacion: document.getElementById('fechaAcreditacion'),
     dniCuit: document.getElementById('dniCuit'),
+    paymentAccountHint: document.getElementById('paymentAccountHint'),
     medioPago: document.getElementById('medioPago'),
     tc: document.getElementById('tc'),
     ventaFields: document.getElementById('ventaFields'),
@@ -845,6 +846,16 @@
     selectNode.innerHTML = options.join('');
   }
 
+  function updatePaymentAccountHint() {
+    if (!refs.paymentAccountHint) return;
+    const selectedMethod = (state.bootstrap?.mediosDePago || []).find(
+      (method) => normalizeText(method?.name) === normalizeText(refs.medioPago?.value)
+    );
+    const account = String(selectedMethod?.account || '').trim();
+    refs.paymentAccountHint.textContent = account ? `Cuenta: ${account}` : '';
+    refs.paymentAccountHint.hidden = !account;
+  }
+
   function updateIdentificador() {
     const clientName = refs.clientName.value.trim();
     refs.identificador.value = clientName ? `Transaccion de ${clientName}` : '';
@@ -1395,6 +1406,7 @@
 
       populateSelect(refs.tipo, response.bootstrap.tipoOptions || [], 'Elegí el tipo');
       populateSelect(refs.medioPago, response.bootstrap.mediosDePagoOptions || [], 'Elegí el medio');
+      updatePaymentAccountHint();
       const cantidadPagosOptions = [...new Set([
         ...(response.bootstrap.cantidadPagosOptions || []).map(Number),
         ...Array.from({ length: MAX_CHEQUES }, (_, index) => index + 1)
@@ -1757,6 +1769,7 @@
   refs.clientName?.addEventListener('input', updateIdentificador);
   refs.tipo?.addEventListener('change', updateVisibility);
   refs.medioPago?.addEventListener('change', () => {
+    updatePaymentAccountHint();
     if (!isChequePaymentMethod(refs.medioPago.value)) {
       resetChequeDraft();
     }

@@ -11,7 +11,7 @@
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js"></script>
     <script defer src="/js/auth-shell.js"></script>
-    <script defer src="/js/views/carga-comprobantes.page.js"></script>
+    <script defer src="/js/views/carga-comprobantes.page.js?v=20260812-payment-methods-1"></script>
   </head>
   <body class="carga-comprobantes-page">
     <main class="container carga-comprobantes-layout">
@@ -112,6 +112,7 @@
               <label class="carga-field">
                 <span>DNI / CUIT</span>
                 <input id="dniCuit" name="dniCuit" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 20123456789" />
+                <small id="paymentAccountHint" class="carga-field-help" hidden></small>
               </label>
               <label class="carga-field">
                 <span>Medio de pago</span>
