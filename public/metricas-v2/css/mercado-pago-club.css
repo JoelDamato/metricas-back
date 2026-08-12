@@ -17,7 +17,7 @@ body.mp-club-page { margin: 0; min-height: 100vh; background: #f4f7fb; color: #1
 .workflow-tab, .workflow-actions button { border: 0; border-radius: 9px; padding: 9px 13px; font: 700 13px "DM Sans", sans-serif; cursor: pointer; }
 .workflow-tab { color: #53647b; background: #eef3f8; }.workflow-tab.active { color: white; background: #1267c4; }
 .workflow-tab strong { display: inline-grid; place-items: center; min-width: 20px; margin-left: 5px; padding: 2px 5px; border-radius: 99px; background: rgba(255,255,255,.7); color: #35506f; font-size: 10px; }.workflow-tab.active strong { background: rgba(255,255,255,.2); color: white; }
-.workflow-actions span { color: #6f7f94; font-size: 12px; }.workflow-actions button { color: white; background: #087342; }.workflow-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.workflow-actions span { color: #6f7f94; font-size: 12px; }.workflow-actions button { color: white; background: #087342; }.workflow-actions .export-excel-button { background: #1267c4; }.workflow-actions button:disabled { cursor: not-allowed; opacity: .45; }
 .demo-link { border: 1px solid #b7c4d5; border-radius: 9px; padding: 9px 13px; color: #17375f; background: #fff; font: 700 12px "DM Sans", sans-serif; text-decoration: none; }.demo-link:hover { border-color: #17375f; }
 .workflow-state { display: inline-flex; border-radius: 99px; padding: 5px 9px; font-weight: 700; font-size: 11px; }.workflow-state.pending { color: #73510b; background: #fff1c9; }.workflow-state.reconciled { color: #0558ad; background: #e4f1ff; }.workflow-state.invoiced { color: #087342; background: #dff8ec; }
 .workflow-state.credit_notes { color: #a42e2e; background: #ffe5e5; }

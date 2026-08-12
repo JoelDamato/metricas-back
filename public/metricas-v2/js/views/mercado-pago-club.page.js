@@ -9,6 +9,7 @@ const recordsTableNode = document.querySelector('#recordsTable');
 const selectedCountNode = document.querySelector('#selectedCount');
 const reconcileButton = document.querySelector('#reconcileSelected');
 const invoiceButton = document.querySelector('#invoiceSelected');
+const exportInvoicedButton = document.querySelector('#exportInvoiced');
 const selectAllNode = document.querySelector('#selectAll');
 const loadingNode = document.querySelector('#loading');
 const loadingTextNode = document.querySelector('#loadingText');
@@ -63,6 +64,79 @@ function updateSelectionUi() {
   reconcileButton.disabled = activeWorkflow !== 'pending' || !selected.length;
   invoiceButton.hidden = activeWorkflow !== 'reconciled';
   invoiceButton.disabled = activeWorkflow !== 'reconciled' || !selected.length;
+  exportInvoicedButton.hidden = activeWorkflow !== 'invoiced';
+  exportInvoicedButton.disabled = activeWorkflow !== 'invoiced' || !allRecords.length;
+}
+
+function escapeSpreadsheetXml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char]);
+}
+
+function exportDate(value) {
+  if (!value) return '';
+  const text = String(value);
+  if (/^\d{8}$/.test(text)) return `${text.slice(6, 8)}/${text.slice(4, 6)}/${text.slice(0, 4)}`;
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T12:00:00Z` : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? text : new Intl.DateTimeFormat('es-AR', { timeZone: 'UTC' }).format(date);
+}
+
+function splitRecipientAddress(value) {
+  const source = String(value || '').trim();
+  if (!source) return { address: '', locality: '', province: '' };
+  const parts = source.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
+  const provinces = new Map([
+    ['buenos aires', 'Buenos Aires'], ['ciudad autonoma de buenos aires', 'Ciudad Autónoma de Buenos Aires'], ['caba', 'Ciudad Autónoma de Buenos Aires'], ['catamarca', 'Catamarca'], ['chaco', 'Chaco'], ['chubut', 'Chubut'], ['cordoba', 'Córdoba'], ['corrientes', 'Corrientes'], ['entre rios', 'Entre Ríos'], ['formosa', 'Formosa'], ['jujuy', 'Jujuy'], ['la pampa', 'La Pampa'], ['la rioja', 'La Rioja'], ['mendoza', 'Mendoza'], ['misiones', 'Misiones'], ['neuquen', 'Neuquén'], ['rio negro', 'Río Negro'], ['salta', 'Salta'], ['san juan', 'San Juan'], ['san luis', 'San Luis'], ['santa cruz', 'Santa Cruz'], ['santa fe', 'Santa Fe'], ['santiago del estero', 'Santiago del Estero'], ['tierra del fuego', 'Tierra del Fuego'], ['tucuman', 'Tucumán']
+  ]);
+  const normalized = (text) => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const province = provinces.get(normalized(parts.at(-1))) || '';
+  if (province) parts.pop();
+  const locality = province && parts.length > 1 ? parts.pop() : '';
+  return { address: parts.join(' - ') || (!province ? source : ''), locality, province };
+}
+
+function spreadsheetCell(value, type = 'String') {
+  const empty = value === null || value === undefined || value === '';
+  return `<Cell ss:StyleID="data"><Data ss:Type="${type}">${empty ? '' : escapeSpreadsheetXml(value)}</Data></Cell>`;
+}
+
+function invoiceExportRows(records) {
+  return records.map((row) => {
+    const amounts = row.arcaAmounts || {};
+    const address = splitRecipientAddress(row.arcaRecipientAddress || row.payerAddress);
+    const [pointOfSale = row.arcaPointOfSale || '', invoiceNumber = ''] = String(row.arcaInvoiceNumber || '').split('-');
+    return [
+      exportDate(row.arcaIssuedAt || row.invoicedAt), exportDate(row.date), exportDate(row.arcaServiceFrom), exportDate(row.arcaServiceTo),
+      `Factura ${row.arcaInvoiceType || ''}`.trim(), pointOfSale, invoiceNumber, row.arcaCae || '', exportDate(row.arcaCaeExpiration),
+      row.arcaRecipientName || row.payer || '', row.identificationType || '', row.identificationNumber || '', row.arcaVatCondition || '',
+      address.address, address.locality, address.province, row.payerEmail || '', row.arcaDescription || row.description || '',
+      Number(amounts.net || 0), Number(amounts.exempt || 0), Number(amounts.vat || 0), Number(amounts.total ?? row.amount ?? 0),
+      row.paymentMethod || '', row.id || '', row.creditNoteNumber || ''
+    ];
+  });
+}
+
+function createInvoiceSpreadsheet(month, records) {
+  const headers = ['Fecha emisión', 'Fecha operación', 'Período desde', 'Período hasta', 'Tipo comprobante', 'Punto de venta', 'Número', 'CAE', 'Vto. CAE', 'Receptor / Razón social', 'Tipo doc.', 'CUIT / DNI', 'Condición IVA', 'Domicilio', 'Localidad', 'Provincia', 'Email', 'Concepto', 'Neto gravado', 'Exento', 'IVA', 'Total', 'Medio de pago', 'ID Mercado Pago', 'Nota de crédito'];
+  const numericColumns = new Set([18, 19, 20, 21]);
+  const header = headers.map((value) => `<Cell ss:StyleID="header"><Data ss:Type="String">${escapeSpreadsheetXml(value)}</Data></Cell>`).join('');
+  const data = invoiceExportRows(records).map((row) => `<Row>${row.map((value, index) => spreadsheetCell(value, numericColumns.has(index) ? 'Number' : 'String')).join('')}</Row>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1267C4" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/></Style><Style ss:ID="data"><Alignment ss:Vertical="Center" ss:WrapText="1"/></Style></Styles><Worksheet ss:Name="Facturas ${escapeSpreadsheetXml(month)}"><Table>${headers.map(() => '<Column ss:Width="115"/>').join('')}<Row ss:Height="32">${header}</Row>${data}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane><Panes><Pane><Number>3</Number></Pane></Panes></WorksheetOptions></Worksheet></Workbook>`;
+}
+
+function exportInvoicedRecords() {
+  const records = allRecords.filter((row) => row.workflowStatus === 'invoiced');
+  if (!records.length) { statusNode.textContent = 'No hay facturas emitidas para exportar en este mes.'; return; }
+  const blob = new Blob([createInvoiceSpreadsheet(monthInput.value, records)], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `facturas-club-${monthInput.value}.xls`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  statusNode.textContent = `Excel descargado: ${records.length} factura${records.length === 1 ? '' : 's'} de ${monthInput.value}.`;
 }
 
 function proposedInvoiceType(row) {
@@ -522,6 +596,7 @@ function openManualForm(existing = null) {
 }
 
 newManualButton.addEventListener('click', () => openManualForm());
+exportInvoicedButton.addEventListener('click', exportInvoicedRecords);
 
 async function loadRecords() {
   reloadButton.disabled = true;
