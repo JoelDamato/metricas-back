@@ -8,6 +8,13 @@
       fullKey: 'contact.phone',
       dataType: 'TEXT'
     },
+    {
+      key: 'sub_origen',
+      name: 'Sub origen',
+      mergeTag: '{{contact.sub_origen}}',
+      fullKey: 'contact.sub_origen',
+      dataType: 'TEXT'
+    }
   ];
   const state = {
     presets: [],
@@ -282,7 +289,6 @@
     const campaign = String(document.getElementById('utmCampaign')?.value || '').trim();
     const content = String(document.getElementById('utmContent')?.value || '').trim();
     const term = String(document.getElementById('utmTerm')?.value || '').trim();
-    const subOrigin = String(document.getElementById('utmSubOrigin')?.value || '').trim();
     const includeContactId = document.getElementById('utmIncludeContactId')?.checked === true;
 
     if (!currentOrigin) {
@@ -295,12 +301,10 @@
     if (campaign) params.utm_campaign = campaign;
     if (content) params.utm_content = content;
     if (term) params.utm_term = term;
-    if (subOrigin) params.sub_origen = subOrigin;
     if (includeContactId) params.Contact_id = '{{contact.id}}';
 
     customParams.forEach((row) => {
       if (normalizeSearchText(row.key) === 'origen_actual') return;
-      if (normalizeSearchText(row.key) === 'sub_origen') return;
       if (normalizeSearchText(row.key) === 'contact_id' && includeContactId) return;
       params[row.key] = row.value;
     });
@@ -309,7 +313,6 @@
       baseUrl: String(document.getElementById('utmBaseUrl')?.value || '').trim(),
       presetName,
       origin: currentOrigin,
-      subOrigin,
       includeContactId,
       params
     };
@@ -331,11 +334,10 @@
     document.getElementById('utmCampaign').value = String(params.utm_campaign || '').trim();
     document.getElementById('utmContent').value = String(params.utm_content || '').trim();
     document.getElementById('utmTerm').value = String(params.utm_term || '').trim();
-    document.getElementById('utmSubOrigin').value = String(params.sub_origen || '').trim();
     document.getElementById('utmIncludeContactId').checked = String(params.Contact_id || '').trim() === '{{contact.id}}';
 
     const customRows = Object.entries(params)
-      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && key !== 'origen_actual' && key !== 'sub_origen' && key !== 'Contact_id' && String(value || '').trim())
+      .filter(([key, value]) => !STANDARD_PARAM_KEYS.includes(key) && key !== 'origen_actual' && key !== 'Contact_id' && String(value || '').trim())
       .map(([key, value]) => ({ key, value: String(value || '').trim() }));
 
     resetCustomParamRows(customRows);
@@ -472,7 +474,6 @@
     document.getElementById('utmCampaign').value = '';
     document.getElementById('utmContent').value = '';
     document.getElementById('utmTerm').value = '';
-    document.getElementById('utmSubOrigin').value = '';
     document.getElementById('utmIncludeContactId').checked = false;
     document.getElementById('utmPresetSelect').value = '';
     document.getElementById('utmOutput').value = '';
