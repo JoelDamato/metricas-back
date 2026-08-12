@@ -11,6 +11,7 @@ test('el generador ofrece sub_origen como parámetro extra de GHL dentro del pre
   assert.doesNotMatch(html, /id="utmSubOrigin"/);
   assert.match(script, /key: 'sub_origen'/);
   assert.match(script, /mergeTag: '\{\{contact\.sub_origen\}\}'/);
+  assert.match(script, /row\.clave_unica \|\| row\.key/);
   assert.match(script, /normalizeSearchText\(row\.key\) === 'origen_actual'/);
   assert.doesNotMatch(script, /const subOrigin =/);
 });

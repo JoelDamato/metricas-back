@@ -94,10 +94,10 @@
   }
 
   function normalizeGhlField(row = {}) {
-    const key = String(row.clave_unica || '').trim();
-    const name = String(row.nombre || '').trim();
-    const mergeTag = String(row.merge_tag || '').trim();
-    const fullKey = String(row.fieldKey_completo || '').trim();
+    const key = String(row.clave_unica || row.key || '').trim();
+    const name = String(row.nombre || row.name || '').trim();
+    const mergeTag = String(row.merge_tag || row.mergeTag || '').trim();
+    const fullKey = String(row.fieldKey_completo || row.fullKey || '').trim();
     const dataType = String(row.dataType || '').trim();
     const id = String(row.id || '').trim();
 
