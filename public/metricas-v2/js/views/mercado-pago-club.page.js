@@ -11,12 +11,15 @@ const reconcileButton = document.querySelector('#reconcileSelected');
 const invoiceButton = document.querySelector('#invoiceSelected');
 const exportInvoicedButton = document.querySelector('#exportInvoiced');
 const selectAllNode = document.querySelector('#selectAll');
+const paginationNode = document.querySelector('#pagination');
 const loadingNode = document.querySelector('#loading');
 const loadingTextNode = document.querySelector('#loadingText');
 const newManualButton = document.querySelector('#newManual');
 let allRecords = [];
 let activeWorkflow = 'pending';
+let currentPage = 1;
 const selectedKeys = new Set();
+const PENDING_PAGE_SIZE = 40;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -33,6 +36,18 @@ function formatDate(value) {
 }
 
 function recordKey(row) { return `${row.kind}:${row.id}`; }
+
+function activeRecords() {
+  return allRecords.filter((row) => row.workflowStatus === activeWorkflow);
+}
+
+function visibleRecords(records = activeRecords()) {
+  if (activeWorkflow !== 'pending') return records;
+  const totalPages = Math.max(1, Math.ceil(records.length / PENDING_PAGE_SIZE));
+  currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const from = (currentPage - 1) * PENDING_PAGE_SIZE;
+  return records.slice(from, from + PENDING_PAGE_SIZE);
+}
 
 function recipientDataButton(row) {
   return `<button class="recipient-data-button" type="button" data-recipient-key="${escapeHtml(recordKey(row))}">Datos fiscales</button>`;
@@ -58,7 +73,7 @@ function renderRowActions(row) {
 }
 
 function updateSelectionUi() {
-  const selected = allRecords.filter((row) => selectedKeys.has(recordKey(row)));
+  const selected = visibleRecords().filter((row) => selectedKeys.has(recordKey(row)));
   selectedCountNode.textContent = `${selected.length} seleccionada${selected.length === 1 ? '' : 's'}`;
   reconcileButton.hidden = activeWorkflow !== 'pending';
   reconcileButton.disabled = activeWorkflow !== 'pending' || !selected.length;
@@ -66,6 +81,21 @@ function updateSelectionUi() {
   invoiceButton.disabled = activeWorkflow !== 'reconciled' || !selected.length;
   exportInvoicedButton.hidden = activeWorkflow !== 'invoiced';
   exportInvoicedButton.disabled = activeWorkflow !== 'invoiced' || !allRecords.length;
+}
+
+function renderPagination(records) {
+  const needsPagination = activeWorkflow === 'pending' && records.length > PENDING_PAGE_SIZE;
+  paginationNode.hidden = !needsPagination;
+  if (!needsPagination) { paginationNode.innerHTML = ''; return; }
+  const totalPages = Math.ceil(records.length / PENDING_PAGE_SIZE);
+  const from = ((currentPage - 1) * PENDING_PAGE_SIZE) + 1;
+  const to = Math.min(currentPage * PENDING_PAGE_SIZE, records.length);
+  paginationNode.innerHTML = `<span>Tanda ${currentPage} de ${totalPages} · ${from}-${to} de ${records.length}</span><button type="button" data-page="previous" ${currentPage === 1 ? 'disabled' : ''}>← Anterior</button><button type="button" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente →</button>`;
+  paginationNode.querySelectorAll('[data-page]').forEach((button) => button.addEventListener('click', () => {
+    currentPage += button.dataset.page === 'next' ? 1 : -1;
+    selectedKeys.clear();
+    renderRecords();
+  }));
 }
 
 function escapeSpreadsheetXml(value) {
@@ -301,11 +331,17 @@ function showInvoicePreview(records) {
 }
 
 function renderRecords() {
-  const records = allRecords.filter((row) => row.workflowStatus === activeWorkflow);
+  const matchingRecords = activeRecords();
+  const records = visibleRecords(matchingRecords);
   recordsTableNode.classList.toggle('compact', activeWorkflow === 'invoiced');
-  countNode.textContent = `${records.length} resultado${records.length === 1 ? '' : 's'}`;
-  emptyNode.hidden = records.length > 0;
+  const pageLabel = activeWorkflow === 'pending' && matchingRecords.length > PENDING_PAGE_SIZE
+    ? ` · tanda ${currentPage}`
+    : '';
+  countNode.textContent = `${matchingRecords.length} resultado${matchingRecords.length === 1 ? '' : 's'}${pageLabel}`;
+  emptyNode.hidden = matchingRecords.length > 0;
   selectAllNode.checked = records.length > 0 && records.every((row) => selectedKeys.has(recordKey(row)));
+  selectAllNode.indeterminate = records.some((row) => selectedKeys.has(recordKey(row))) && !selectAllNode.checked;
+  selectAllNode.setAttribute('aria-label', activeWorkflow === 'pending' ? `Seleccionar la tanda visible de hasta ${PENDING_PAGE_SIZE} pendientes` : 'Seleccionar todos los registros visibles');
   rowsNode.innerHTML = records.map((row) => `
     <tr>
       <td><input class="record-check" type="checkbox" data-key="${escapeHtml(recordKey(row))}" ${selectedKeys.has(recordKey(row)) ? 'checked' : ''} /></td>
@@ -321,6 +357,7 @@ function renderRecords() {
       <td><code>${escapeHtml(row.id)}</code></td>
       <td class="row-actions">${renderRowActions(row)}</td>
     </tr>`).join('');
+  renderPagination(matchingRecords);
   updateSelectionUi();
 }
 
@@ -346,6 +383,7 @@ function render(data) {
 
 document.querySelectorAll('.workflow-tab').forEach((button) => button.addEventListener('click', () => {
   activeWorkflow = button.dataset.workflow;
+  currentPage = 1;
   selectedKeys.clear();
   document.querySelectorAll('.workflow-tab').forEach((tab) => tab.classList.toggle('active', tab === button));
   loadRecords();
@@ -437,7 +475,7 @@ rowsNode.addEventListener('click', async (event) => {
 });
 
 selectAllNode.addEventListener('change', () => {
-  allRecords.filter((row) => row.workflowStatus === activeWorkflow).forEach((row) => {
+  visibleRecords().forEach((row) => {
     if (selectAllNode.checked) selectedKeys.add(recordKey(row));
     else selectedKeys.delete(recordKey(row));
   });
@@ -625,6 +663,6 @@ async function loadRecords() {
 
 const now = new Date();
 monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-reloadButton.addEventListener('click', loadRecords);
-monthInput.addEventListener('change', loadRecords);
+reloadButton.addEventListener('click', () => { currentPage = 1; loadRecords(); });
+monthInput.addEventListener('change', () => { currentPage = 1; loadRecords(); });
 loadRecords();

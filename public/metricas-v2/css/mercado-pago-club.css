@@ -44,6 +44,7 @@ body.mp-club-page { margin: 0; min-height: 100vh; background: #f4f7fb; color: #1
 .table-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 22px; border-bottom: 1px solid #edf1f6; }
 .table-head h2 { margin: 0; font: 700 18px "Space Grotesk", sans-serif; }
 .table-head span { color: #728198; font-size: 13px; }
+.records-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 13px 18px; border-top: 1px solid #edf1f6; color: #65758b; font-size: 12px; font-weight: 700; }.records-pagination button { border: 1px solid #cbd8e8; border-radius: 8px; padding: 7px 10px; color: #17375f; background: #fff; font: inherit; cursor: pointer; }.records-pagination button:disabled { cursor: not-allowed; opacity: .45; }
 .table-scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 1050px; }
 th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #edf1f6; font-size: 13px; vertical-align: top; }
