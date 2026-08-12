@@ -16,6 +16,8 @@ test('interpreta Activo de Notion y obtiene la leyenda de Cuenta', () => {
   assert.equal(isNotionPaymentMethodActive({ Activo: { type: 'formula', formula: { boolean: true } } }), true);
   assert.equal(isNotionPaymentMethodActive({ Activo: { type: 'select', select: { name: 'Activo' } } }), true);
   assert.equal(isNotionPaymentMethodActive({ Activo: { type: 'status', status: { name: 'No activo' } } }), false);
+  assert.equal(isNotionPaymentMethodActive({ Status: { type: 'status', status: { name: 'Activo' } } }), true);
+  assert.equal(isNotionPaymentMethodActive({ Status: { type: 'status', status: { name: 'Inactivo' } } }), false);
   assert.equal(
     notionPropertyDisplayText({ type: 'rich_text', rich_text: [{ plain_text: 'Banco Nación · 12345' }] }),
     'Banco Nación · 12345'

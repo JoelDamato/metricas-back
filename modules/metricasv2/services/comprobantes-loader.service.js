@@ -136,7 +136,12 @@ function notionPropertyDisplayText(property) {
 }
 
 function isNotionPaymentMethodActive(properties = {}) {
-  const activeProperty = findNotionProperty(properties, 'Activo');
+  const activeProperty = [
+    'Activo',
+    'Activo / no activo',
+    'Activo/no activo',
+    'Status'
+  ].map((name) => findNotionProperty(properties, name)).find(Boolean);
   // Mantiene compatibles las bases antiguas que todavía no tienen la columna.
   if (!activeProperty) return true;
   if (typeof activeProperty.checkbox === 'boolean') return activeProperty.checkbox;
