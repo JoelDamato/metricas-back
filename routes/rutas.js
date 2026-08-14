@@ -9,6 +9,7 @@ const webhookController6 = require('../controllers/webhookcom.js');
 const webhookDistribuidor = require('../controllers/webhookDistribuidor.js');
 const metricasController = require('../modules/metricasv2/controllers/metricas.controller');
 const contactStatusController = require('../controllers/contactStatus');
+const ghlAppointmentDiscordController = require('../controllers/ghlAppointmentDiscord');
 const authMiddleware = require('../modules/auth/middleware');
 
 /*Sheets*/
@@ -20,6 +21,7 @@ router.post('/distribuidor', webhookDistribuidor.handleWebhook);
 router.get('/distribuidor/last-verification', webhookDistribuidor.getLastVerification);
 router.get('/contacto-estado/:ghlId?', contactStatusController.getContactStatus);
 router.post('/contacto-instagram-webhook', metricasController.receiveContactoInstagramWebhook);
+router.post('/ghl/appointment-booked', ghlAppointmentDiscordController.handleAppointmentBooked);
 
 // Compatibilidad: reglas KPI Closers vía router principal /api
 router.get('/metricas/kpi-closers/rules', authMiddleware.metricasApiGuard, metricasController.getKpiCloserRules);

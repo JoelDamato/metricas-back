@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guía simple para enviar notificaciones de agendas desde GoHighLevel a Discord.">
+  <title>GHL → Discord · Guía de configuración</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18222f;
+      --muted: #647286;
+      --line: #dfe5ed;
+      --soft: #f5f7fa;
+      --paper: #ffffff;
+      --green: #16845b;
+      --green-soft: #e8f7f0;
+      --blue: #3157d5;
+      --blue-soft: #eef2ff;
+      --amber: #9a6100;
+      --amber-soft: #fff6df;
+      --red: #a83a3a;
+      --radius: 18px;
+      --shadow: 0 16px 45px rgba(27, 39, 55, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(49, 87, 213, 0.08), transparent 34rem),
+        var(--soft);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    button, code, pre { font: inherit; }
+
+    .page {
+      width: min(920px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0 72px;
+    }
+
+    .hero {
+      padding: clamp(28px, 6vw, 52px);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 18px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      content: "";
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      max-width: 700px;
+      margin-bottom: 16px;
+      font-size: clamp(34px, 6vw, 58px);
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+    }
+
+    .hero > p {
+      max-width: 690px;
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 24px 0 0;
+    }
+
+    .flow div {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+      font-weight: 750;
+    }
+
+    .flow span {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--blue);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .section { margin-top: 28px; }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin: 0 0 14px;
+    }
+
+    .step-number {
+      display: inline-grid;
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 11px;
+      background: var(--blue);
+      color: white;
+      font-weight: 850;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-size: 23px;
+      letter-spacing: -0.025em;
+    }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+      box-shadow: 0 8px 28px rgba(27, 39, 55, 0.04);
+    }
+
+    .card-body { padding: 22px; }
+
+    .instruction {
+      margin-bottom: 18px;
+      color: var(--muted);
+    }
+
+    .code-block {
+      position: relative;
+      overflow: hidden;
+      border-radius: 13px;
+      background: #17202d;
+      color: #ecf3ff;
+    }
+
+    .code-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+      padding: 8px 10px 8px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: #aebbd0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 0;
+      padding: 18px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .copy {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .copy:hover { background: rgba(255, 255, 255, 0.16); }
+    .copy:focus-visible { outline: 3px solid #9db2ff; outline-offset: 2px; }
+
+    .settings {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      margin: 0;
+    }
+
+    .settings dt,
+    .settings dd {
+      margin: 0;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .settings dt {
+      background: var(--soft);
+      font-weight: 800;
+    }
+
+    .settings dd { overflow-wrap: anywhere; }
+    .settings dt:last-of-type, .settings dd:last-of-type { border-bottom: 0; }
+
+    .callout {
+      margin-top: 16px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--amber);
+      border-radius: 10px;
+      background: var(--amber-soft);
+      color: #664300;
+    }
+
+    .callout strong { display: block; margin-bottom: 3px; }
+
+    .checklist {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      position: relative;
+      padding: 14px 16px 14px 48px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+
+    .checklist li::before {
+      position: absolute;
+      top: 13px;
+      left: 15px;
+      display: grid;
+      width: 24px;
+      height: 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green);
+      content: "✓";
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .result {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .result-card {
+      padding: 20px;
+      border-radius: 15px;
+    }
+
+    .result-card.good { background: var(--green-soft); color: #125f43; }
+    .result-card.bad { background: #fff0f0; color: var(--red); }
+    .result-card h3 { margin-bottom: 8px; font-size: 17px; }
+    .result-card p { margin-bottom: 0; }
+
+    .privacy {
+      margin-top: 28px;
+      padding: 18px 20px;
+      border: 1px solid #cbd5ff;
+      border-radius: 14px;
+      background: var(--blue-soft);
+      color: #294196;
+    }
+
+    .privacy strong { display: block; margin-bottom: 4px; }
+
+    footer {
+      padding-top: 28px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    @media (max-width: 680px) {
+      .page { width: min(100% - 20px, 920px); padding-top: 10px; }
+      .hero { border-radius: 18px; }
+      .flow, .result { grid-template-columns: 1fr; }
+      .settings { grid-template-columns: 1fr; }
+      .settings dt { padding-bottom: 5px; border-bottom: 0; }
+      .settings dd { padding-top: 5px; }
+    }
+
+    @media print {
+      body { background: white; }
+      .page { width: 100%; padding: 0; }
+      .hero, .card { box-shadow: none; }
+      .copy { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">Configuración en 5 minutos</div>
+      <h1>Notificaciones de agendas GHL → Discord</h1>
+      <p>GHL envía solamente el ID del contacto y el canal de Discord. El servidor busca automáticamente la cita, el closer y las respuestas de la encuesta.</p>
+
+      <div class="flow" aria-label="Resumen del flujo">
+        <div><span>1 · GHL</span>Envía el ID</div>
+        <div><span>2 · Servidor</span>Busca toda la información</div>
+        <div><span>3 · Discord</span>Recibe una sola notificación</div>
+      </div>
+    </header>
+
+    <section class="section" aria-labelledby="trigger-title">
+      <div class="section-heading">
+        <span class="step-number">1</span>
+        <h2 id="trigger-title">Crear el workflow en GHL</h2>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <ul class="checklist">
+            <li>Ir a <strong>Automatizaciones → Workflows</strong>.</li>
+            <li>Usar el trigger <strong>Customer Booked Appointment</strong>.</li>
+            <li>Filtrar los calendarios o estados que deban generar la notificación.</li>
+            <li>Agregar una espera de <strong>30 a 60 segundos</strong> después del trigger.</li>
+            <li>Agregar la acción <strong>Custom Webhook</strong>.</li>
+          </ul>
+          <div class="callout">
+            <strong>¿Por qué hay que esperar?</strong>
+            Así GHL termina de guardar la cita y la encuesta antes de que el servidor las consulte.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="endpoint-title">
+      <div class="section-heading">
+        <span class="step-number">2</span>
+        <h2 id="endpoint-title">Configurar el Custom Webhook</h2>
+      </div>
+      <div class="card">
+        <dl class="settings">
+          <dt>Método</dt>
+          <dd><strong>POST</strong></dd>
+          <dt>URL</dt>
+          <dd>https://central.matirandazzook.com/api/ghl/appointment-booked</dd>
+        </dl>
+        <div class="card-body">
+          <div class="code-block">
+            <div class="code-label">
+              <span>Endpoint</span>
+              <button class="copy" type="button" data-copy="endpoint-code">Copiar</button>
+            </div>
+            <pre id="endpoint-code">https://central.matirandazzook.com/api/ghl/appointment-booked</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="headers-title">
+      <div class="section-heading">
+        <span class="step-number">3</span>
+        <h2 id="headers-title">Agregar dos headers</h2>
+      </div>
+      <div class="card">
+        <dl class="settings">
+          <dt>Header 1</dt>
+          <dd><code>Content-Type</code> → <code>application/json</code></dd>
+          <dt>Header 2</dt>
+          <dd><code>X-Webhook-Secret</code> → usar el secreto temporal indicado debajo</dd>
+        </dl>
+        <div class="card-body">
+          <div class="code-block">
+            <div class="code-label">
+              <span>Valor de X-Webhook-Secret</span>
+              <button class="copy" type="button" data-copy="secret-code">Copiar</button>
+            </div>
+            <pre id="secret-code">822310e49855db0b52184e01ae7b3b0c3a6cbb3a0a6a6a271fe995537e8c3355</pre>
+          </div>
+          <div class="callout">
+            <strong>No pegues el token de la API de GHL acá.</strong>
+            En este header va solamente el secreto temporal de arriba. Debe coincidir exactamente con <code>GHL_APPOINTMENT_WEBHOOK_SECRET</code> en Render.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="body-title">
+      <div class="section-heading">
+        <span class="step-number">4</span>
+        <h2 id="body-title">Pegar este body JSON</h2>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <p class="instruction">En GHL, elegí <strong>Contact ID</strong> desde el selector de valores dinámicos. Después reemplazá el webhook de ejemplo por el del canal de Discord.</p>
+          <div class="code-block">
+            <div class="code-label">
+              <span>Body JSON</span>
+              <button class="copy" type="button" data-copy="body-code">Copiar</button>
+            </div>
+            <pre id="body-code">{
+  "contact_id": "{{contact.id}}",
+  "discord_webhook_url": "https://discord.com/api/webhooks/ID/TOKEN"
+}</pre>
+          </div>
+          <div class="callout">
+            <strong>Eso es todo lo que envía GHL.</strong>
+            No hace falta mandar fecha, closer, calendario, nombre, email, respuestas ni ID de la cita.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="publish-title">
+      <div class="section-heading">
+        <span class="step-number">5</span>
+        <h2 id="publish-title">Guardar, publicar y probar</h2>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <ul class="checklist">
+            <li>Guardar la acción <strong>Custom Webhook</strong>.</li>
+            <li>Publicar el workflow.</li>
+            <li>Crear una cita de prueba con un contacto que haya completado una de las cuatro encuestas.</li>
+            <li>Esperar aproximadamente un minuto y revisar el canal de Discord.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="result-title">
+      <div class="section-heading">
+        <span class="step-number">✓</span>
+        <h2 id="result-title">Qué debería pasar</h2>
+      </div>
+      <div class="result">
+        <article class="result-card good">
+          <h3>En Discord</h3>
+          <p>Llega un único mensaje con lead, teléfono, email, fecha, closer, calendario, enlace al contacto y respuestas de la encuesta.</p>
+        </article>
+        <article class="result-card bad">
+          <h3>No se envía</h3>
+          <p>No aparece el enlace de la reunión. Tampoco se muestran IP, UTMs, campañas, IDs publicitarios, score ni datos internos.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="errors-title">
+      <div class="section-heading">
+        <span class="step-number">?</span>
+        <h2 id="errors-title">Si no llega la notificación</h2>
+      </div>
+      <div class="card">
+        <dl class="settings">
+          <dt>Error 400</dt>
+          <dd>Falta el <code>contact_id</code> o el webhook de Discord no es válido.</dd>
+          <dt>Error 401</dt>
+          <dd>El valor de <code>X-Webhook-Secret</code> no coincide con Render.</dd>
+          <dt>Error 404</dt>
+          <dd>No se encontró una cita reciente de ese contacto en las agendas configuradas.</dd>
+          <dt>Error 503</dt>
+          <dd>Falta alguna credencial o variable necesaria en el servidor.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <aside class="privacy">
+      <strong>Importante después de la prueba</strong>
+      Este documento contiene el secreto temporal para facilitar el test del desarrollador. Cuando termine la validación, generá otro valor para <code>GHL_APPOINTMENT_WEBHOOK_SECRET</code>, actualizalo en Render y en el workflow de GHL, y eliminá el anterior.
+    </aside>
+
+    <footer>Guía GHL → Discord · Sistema de agendas MEG</footer>
+  </main>
+
+  <script>
+    document.querySelectorAll('[data-copy]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const target = document.getElementById(button.dataset.copy);
+        if (!target) return;
+        try {
+          await navigator.clipboard.writeText(target.textContent.trim());
+          const previous = button.textContent;
+          button.textContent = 'Copiado ✓';
+          window.setTimeout(() => { button.textContent = previous; }, 1600);
+        } catch {
+          window.getSelection().selectAllChildren(target);
+          button.textContent = 'Seleccionado';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
