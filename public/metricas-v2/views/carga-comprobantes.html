@@ -11,7 +11,7 @@
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js"></script>
     <script defer src="/js/auth-shell.js"></script>
-    <script defer src="/js/views/carga-comprobantes.page.js?v=20260812-payment-methods-1"></script>
+    <script defer src="/js/views/carga-comprobantes.page.js?v=20260814-club-prices-1"></script>
   </head>
   <body class="carga-comprobantes-page">
     <main class="container carga-comprobantes-layout">
@@ -160,6 +160,11 @@
               <label id="facturacionUsdField" class="carga-field">
                 <span>Facturación USD</span>
                 <input id="facturacionUsd" name="facturacionUsd" type="text" inputmode="decimal" placeholder="Ej: 2.500" />
+              </label>
+              <label id="clubPriceField" class="carga-field" hidden>
+                <span>Precio de Club</span>
+                <select id="clubPriceKey" name="clubPriceKey"></select>
+                <small class="carga-field-help">Importes actualizados desde el producto Club en Notion.</small>
               </label>
               <label id="cantidadPagosField" class="carga-field">
                 <span>Cantidad de pagos</span>

@@ -35,6 +35,11 @@ const DEFAULT_PAYMENT_METHODS = [
 
 const DEFAULT_TYPES = ['Venta', 'Cobranza', 'Devolución'];
 
+const CLUB_PRICE_DEFINITIONS = [
+  { key: 'club1', propertyName: 'Precio club 1', label: 'Precio Club 1' },
+  { key: 'club2', propertyName: 'Precio club 2', label: 'Precio Club 2' }
+];
+
 const RESPONSABLE_VENTA_BY_EMAIL = {
   'charliecarlostu@gmail.com': 'Carlos Tu',
   'meg.claudionicolini@gmail.com': 'Claudio Nicolini',
@@ -133,6 +138,42 @@ function notionPropertyDisplayText(property) {
     }
   }
   return '';
+}
+
+function notionPropertyNumber(property) {
+  const value = property?.number
+    ?? property?.formula?.number
+    ?? (property?.rollup?.type === 'number' ? property.rollup.number : null);
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getClubPriceOptions(properties = {}) {
+  return CLUB_PRICE_DEFINITIONS.flatMap((definition) => {
+    const amountArs = notionPropertyNumber(findNotionProperty(properties, definition.propertyName));
+    return amountArs > 0
+      ? [{ key: definition.key, label: definition.label, amountArs }]
+      : [];
+  });
+}
+
+function applySelectedClubPrice(normalized, productOption) {
+  if (!normalized || normalized.tipo !== 'Venta' || !isClubProduct(normalized.productName)) {
+    return normalized;
+  }
+
+  const selectedPrice = (productOption?.clubPriceOptions || [])
+    .find((option) => option.key === normalized.clubPriceKey);
+  if (!selectedPrice || !(Number(selectedPrice.amountArs) > 0)) {
+    const error = new Error('El precio de Club elegido no existe o no tiene un importe válido en Notion');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  normalized.cashCollectedArs = Number(selectedPrice.amountArs);
+  normalized.facturacionUsd = Number((normalized.cashCollectedArs / normalized.tc).toFixed(2));
+  normalized.clubPriceLabel = selectedPrice.label;
+  return normalized;
 }
 
 function isNotionPaymentMethodActive(properties = {}) {
@@ -917,7 +958,8 @@ async function fetchRelationOptions(databaseId) {
           id: page.id,
           name,
           active: isNotionPaymentMethodActive(properties),
-          account: notionPropertyDisplayText(findNotionProperty(properties, 'Cuenta'))
+          account: notionPropertyDisplayText(findNotionProperty(properties, 'Cuenta')),
+          clubPriceOptions: getClubPriceOptions(properties)
         };
       })
       .filter((item) => item.name);
@@ -1049,6 +1091,7 @@ async function getBootstrap(user) {
   const paymentOptions = notionPaymentMethods.length
     ? activePaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
+  const clubPriceOptions = notionProducts.find((item) => isClubProduct(item.name))?.clubPriceOptions || [];
 
   return {
     responsibleVentaDefault: standardizeResponsibleVenta(user),
@@ -1060,6 +1103,7 @@ async function getBootstrap(user) {
     cantidadPagosOptions: Array.from({ length: MAX_PAYMENT_COUNT }, (_, index) => index + 1),
     productsSource: notionProducts.length ? 'notion' : 'fixed',
     products,
+    clubPriceOptions,
     uploadAcceptedTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
   };
 }
@@ -1615,6 +1659,9 @@ function buildInfoComprobantesText(normalized) {
   if (normalized.submissionKey) parts.push(`Carga ID: ${normalized.submissionKey}`);
   if (normalized.cargadoPor) parts.push(`Cargado por: ${normalized.cargadoPor}`);
   if (normalized.responsableVenta) parts.push(`Responsable venta: ${normalized.responsableVenta}`);
+  if (normalized.clubPriceLabel && normalized.cashCollectedArs) {
+    parts.push(`${normalized.clubPriceLabel}: ARS ${normalized.cashCollectedArs}`);
+  }
   if (normalized.infoComprobantes) parts.push(normalized.infoComprobantes);
   if (normalized.mesesSoporte !== null) parts.push(`Meses de soporte: ${normalized.mesesSoporte}`);
   if (normalized.sesiones !== null) parts.push(`Sesiones: ${normalized.sesiones}`);
@@ -1735,10 +1782,13 @@ function normalizePayload(payload = {}, user, options = {}) {
       : null);
   const fechaAcreditacion = requiredDate(payload.fechaAcreditacion, 'la fecha de acreditación');
   const tc = requiredPositiveNumber(payload.tc, 'La tasa de cambio');
-  const cashCollectedArs = requiredPositiveNumber(payload.cashCollectedArs, 'Cash collected ARS');
   const medioPago = requiredString(payload.medioPago, 'el medio de pago');
   const rawProductName = optionalString(payload.productName);
-  const dniCuit = tipo === 'Venta' && isClubProduct(rawProductName)
+  const isClubSale = tipo === 'Venta' && isClubProduct(rawProductName);
+  const cashCollectedArs = isClubSale
+    ? null
+    : requiredPositiveNumber(payload.cashCollectedArs, 'Cash collected ARS');
+  const dniCuit = isClubSale
     ? optionalString(payload.dniCuit)
     : requiredString(payload.dniCuit, 'el DNI / CUIT');
   const infoComprobantes = optionalString(payload.infoComprobantes);
@@ -1815,6 +1865,8 @@ function normalizePayload(payload = {}, user, options = {}) {
     attachmentFiles,
     facturacionUsd: null,
     productName: null,
+    clubPriceKey: null,
+    clubPriceLabel: null,
     cantidadPagos: null,
     chequeCount: null,
     cheques: [],
@@ -1825,7 +1877,16 @@ function normalizePayload(payload = {}, user, options = {}) {
 
   if (tipo === 'Venta') {
     normalized.productName = requiredString(payload.productName, 'el producto adquirido');
-    normalized.facturacionUsd = requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD');
+    if (isClubSale) {
+      normalized.clubPriceKey = requiredString(payload.clubPriceKey, 'el precio de Club');
+      if (!CLUB_PRICE_DEFINITIONS.some((option) => option.key === normalized.clubPriceKey)) {
+        const error = new Error('El precio de Club elegido no es válido');
+        error.statusCode = 400;
+        throw error;
+      }
+    } else {
+      normalized.facturacionUsd = requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD');
+    }
     normalized.cantidadPagos = toInteger(payload.cantidadPagos);
 
     if (!normalized.cantidadPagos || normalized.cantidadPagos < 1 || normalized.cantidadPagos > MAX_PAYMENT_COUNT) {
@@ -1839,13 +1900,15 @@ function normalizePayload(payload = {}, user, options = {}) {
   if (hasChequeFlow) {
     normalized.chequeCount = toInteger(payload.chequeCount);
     normalized.cheques = buildChequeRows(payload);
-    validateChequeRows(
-      normalized.cheques,
-      normalized.chequeCount,
-      normalized.cashCollectedArs,
-      normalized.attachmentFiles,
-      { requireFiles: !options.allowMissingAttachments }
-    );
+    if (!isClubSale) {
+      validateChequeRows(
+        normalized.cheques,
+        normalized.chequeCount,
+        normalized.cashCollectedArs,
+        normalized.attachmentFiles,
+        { requireFiles: !options.allowMissingAttachments }
+      );
+    }
     if (tipo === 'Venta') normalized.cantidadPagos = normalized.chequeCount;
   }
 
@@ -2156,15 +2219,29 @@ async function createComprobante(payload, user, options = {}) {
         fetchResponsibleVentaCandidates()
       ]);
 
-      const productId = normalized.productName
-        ? findBestOptionIdByName(productOptions, normalized.productName)
+      const productOption = normalized.productName
+        ? productOptions.find((option) => option.id === findBestOptionIdByName(productOptions, normalized.productName))
         : null;
+      const productId = productOption?.id || null;
       if (normalized.tipo === 'Venta' && !productId) {
         const error = new Error(`No encontré el producto ${normalized.productName} en Notion`);
         error.statusCode = 400;
         throw error;
       }
       normalized.productIds = productId ? [productId] : [];
+
+      if (normalized.tipo === 'Venta' && isClubProduct(normalized.productName)) {
+        applySelectedClubPrice(normalized, productOption);
+        if (isChequePaymentMethod(normalized.medioPago)) {
+          validateChequeRows(
+            normalized.cheques,
+            normalized.chequeCount,
+            normalized.cashCollectedArs,
+            normalized.attachmentFiles,
+            { requireFiles: !options.allowMissingAttachments }
+          );
+        }
+      }
 
       const medioPagoOption = mediosOptions.find(
         (option) => normalizeText(option.name) === normalizeText(normalized.medioPago)
@@ -2380,6 +2457,8 @@ module.exports = {
     isChequePaymentMethod,
     isNotionPaymentMethodActive,
     notionPropertyDisplayText,
+    getClubPriceOptions,
+    applySelectedClubPrice,
     buildChequeRows,
     buildDraftOperations,
     validateChequeRows,

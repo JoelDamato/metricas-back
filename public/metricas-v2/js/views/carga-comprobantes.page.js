@@ -63,6 +63,8 @@
     productsSourceText: document.getElementById('productsSourceText'),
     facturacionUsdField: document.getElementById('facturacionUsdField'),
     facturacionUsd: document.getElementById('facturacionUsd'),
+    clubPriceField: document.getElementById('clubPriceField'),
+    clubPriceKey: document.getElementById('clubPriceKey'),
     cantidadPagosField: document.getElementById('cantidadPagosField'),
     cantidadPagos: document.getElementById('cantidadPagos'),
     cashCollectedArs: document.getElementById('cashCollectedArs'),
@@ -177,6 +179,33 @@
 
   function isClubProduct(value) {
     return normalizeText(value) === 'club';
+  }
+
+  function getClubPriceOptions() {
+    return Array.isArray(state.bootstrap?.clubPriceOptions)
+      ? state.bootstrap.clubPriceOptions
+      : [];
+  }
+
+  function getSelectedClubPrice() {
+    const key = refs.clubPriceKey?.value || '';
+    return getClubPriceOptions().find((option) => option.key === key) || null;
+  }
+
+  function isClubSale() {
+    return refs.tipo?.value === 'Venta' && isClubProduct(refs.productName?.value);
+  }
+
+  function effectiveCashCollectedArs() {
+    if (isClubSale()) return Number(getSelectedClubPrice()?.amountArs || 0);
+    return parseLocaleNumber(refs.cashCollectedArs?.value);
+  }
+
+  function effectiveFacturacionUsd() {
+    if (!isClubSale()) return parseLocaleNumber(refs.facturacionUsd?.value);
+    const tc = parseLocaleNumber(refs.tc?.value);
+    const amountArs = effectiveCashCollectedArs();
+    return tc > 0 && amountArs > 0 ? Number((amountArs / tc).toFixed(2)) : 0;
   }
 
   function parseLocaleNumber(value) {
@@ -697,6 +726,7 @@
     const isCheque = isChequePaymentMethod(refs.medioPago.value);
     const chequeFlow = isChequeFlow(tipo, refs.medioPago.value);
     const isClubSale = isVenta && isClubProduct(refs.productName.value);
+    const selectedClubPrice = isClubSale ? getSelectedClubPrice() : null;
     const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
     const baseReady = clientReady
       && Boolean(tipo)
@@ -707,11 +737,13 @@
     const ventaReady = isVenta
       ? (
           Boolean(refs.productName.value)
-          && isPositiveNumber(refs.facturacionUsd.value)
+          && (isClubSale ? Number(selectedClubPrice?.amountArs) > 0 : isPositiveNumber(refs.facturacionUsd.value))
           && Boolean(refs.cantidadPagos.value)
         )
       : true;
-    const cashReady = baseReady && isPositiveNumber(refs.cashCollectedArs.value);
+    const cashReady = baseReady && (isClubSale
+      ? Number(selectedClubPrice?.amountArs) > 0
+      : isPositiveNumber(refs.cashCollectedArs.value));
     const chequeCount = getChequeCount();
     const chequeRows = collectChequeRows();
     const chequeAmountsReady = chequeRows.every((row) => isPositiveNumber(row.montoArs));
@@ -722,7 +754,7 @@
         (_, index) => Boolean(state.chequeFiles[index]?.uploadFile)
       ).every(Boolean);
     const chequeTotal = chequeRows.reduce((sum, row) => sum + parseLocaleNumber(row.montoArs), 0);
-    const chequeTotalMatchesCash = Math.abs(chequeTotal - parseLocaleNumber(refs.cashCollectedArs.value)) <= 1;
+    const chequeTotalMatchesCash = Math.abs(chequeTotal - effectiveCashCollectedArs()) <= 1;
     const chequeReady = !chequeFlow || (
       chequeCount > 0
       && chequeRows.length === chequeCount
@@ -746,6 +778,7 @@
       isDevolucion,
       isCheque,
       chequeFlow,
+      isClubSale,
       clientReady,
       baseReady,
       ventaReady,
@@ -774,6 +807,7 @@
     setSectionVisibility(
       refs.cashSection,
       stepState.baseReady
+        && !stepState.isClubSale
         && (!stepState.isVenta || stepState.ventaReady)
         && (stepState.relationReady || !(stepState.tipo === 'Cobranza' || stepState.tipo === 'Devolución'))
     );
@@ -806,7 +840,9 @@
       return;
     }
     if (stepState.isVenta && !stepState.ventaReady) {
-      refs.submitStatus.textContent = 'Completá producto, facturación USD y cantidad de pagos para seguir.';
+      refs.submitStatus.textContent = stepState.isClubSale
+        ? 'Elegí Precio Club 1 o Precio Club 2 y la cantidad de pagos para seguir.'
+        : 'Completá producto, facturación USD y cantidad de pagos para seguir.';
       return;
     }
     if (!stepState.relationReady) {
@@ -814,7 +850,9 @@
       return;
     }
     if (!stepState.cashReady) {
-      refs.submitStatus.textContent = 'Completá el cash collected ARS con un importe mayor a cero para seguir.';
+      refs.submitStatus.textContent = stepState.isClubSale
+        ? 'Elegí un precio de Club válido para seguir.'
+        : 'Completá el cash collected ARS con un importe mayor a cero para seguir.';
       return;
     }
     if (!stepState.chequeReady) {
@@ -844,6 +882,17 @@
       options.push(`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);
     });
     selectNode.innerHTML = options.join('');
+  }
+
+  function populateClubPriceSelect(values = []) {
+    if (!refs.clubPriceKey) return;
+    const options = [
+      `<option value="">${values.length ? 'Elegí un precio de Club' : 'No hay precios de Club disponibles'}</option>`,
+      ...values.map((option) => (
+        `<option value="${escapeHtml(option.key)}">${escapeHtml(option.label)} — ${escapeHtml(formatCurrency(option.amountArs, 'ARS'))}</option>`
+      ))
+    ];
+    refs.clubPriceKey.innerHTML = options.join('');
   }
 
   function updatePaymentAccountHint() {
@@ -1079,6 +1128,7 @@
     const isDevolucion = tipo === 'Devolución';
     const isCheque = isChequePaymentMethod(refs.medioPago.value);
     const chequeFlow = isChequeFlow(tipo, refs.medioPago.value);
+    const isClubSale = isVenta && isClubProduct(refs.productName.value);
 
     refs.ventaFields.hidden = !(isVenta || isDevolucion);
     refs.chequeFields.hidden = !chequeFlow;
@@ -1087,8 +1137,9 @@
     setSectionVisibility(refs.sesionesField, isVenta);
     setSectionVisibility(refs.bonusMatiField, isVenta);
     setSectionVisibility(refs.productNameField, isVenta);
+    setSectionVisibility(refs.clubPriceField, isClubSale);
     setSectionVisibility(refs.cantidadPagosField, isVenta);
-    setSectionVisibility(refs.facturacionUsdField, isVenta || isDevolucion);
+    setSectionVisibility(refs.facturacionUsdField, isDevolucion || (isVenta && !isClubSale));
 
     refs.productName.disabled = !isVenta;
     refs.dniCuit.required = !(isVenta && isClubProduct(refs.productName.value));
@@ -1103,6 +1154,7 @@
 
     if (!isVenta && !isDevolucion) {
       refs.facturacionUsd.value = '';
+      refs.clubPriceKey.value = '';
       refs.cantidadPagos.value = '';
       refs.productName.value = '';
       refs.mesesSoporte.value = '';
@@ -1113,6 +1165,7 @@
     if (isDevolucion) {
       refs.cantidadPagos.value = '';
       refs.productName.value = '';
+      refs.clubPriceKey.value = '';
     }
 
     if (!chequeFlow) {
@@ -1133,7 +1186,7 @@
 
   function updateCashValidation() {
     const tc = parseLocaleNumber(refs.tc.value);
-    const cashArs = parseLocaleNumber(refs.cashCollectedArs.value);
+    const cashArs = effectiveCashCollectedArs();
     const tipo = refs.tipo.value;
     const chequeFlow = isChequeFlow(tipo, refs.medioPago.value);
 
@@ -1203,6 +1256,7 @@
 
     if (payload.tipo === 'Venta') {
       if (!payload.productName) warnings.push('Falta elegir el producto adquirido.');
+      if (isClubSale && !payload.clubPriceKey) warnings.push('Falta elegir Precio Club 1 o Precio Club 2.');
       if (!isPositiveNumber(payload.facturacionUsd)) warnings.push('La facturación USD debe ser mayor a cero.');
       if (!payload.cantidadPagos) warnings.push('Falta la cantidad de pagos.');
     }
@@ -1255,6 +1309,11 @@
 
     if (payload.tipo === 'Venta' || payload.tipo === 'Devolución') {
       if (payload.tipo === 'Venta') rows.push(['Producto adquirido', payload.productName || '-']);
+      if (payload.tipo === 'Venta' && isClubProduct(payload.productName)) {
+        rows.push(['Precio de Club', getSelectedClubPrice()
+          ? `${getSelectedClubPrice().label} — ${formatCurrency(getSelectedClubPrice().amountArs, 'ARS')}`
+          : '-']);
+      }
       rows.push(['Facturación USD', payload.facturacionUsd ? formatCurrency(parseLocaleNumber(payload.facturacionUsd)) : '-']);
       if (payload.tipo === 'Venta') rows.push(['Cantidad de pagos', payload.cantidadPagos || '-']);
     }
@@ -1416,6 +1475,7 @@
         .map(String);
       populateSelect(refs.cantidadPagos, cantidadPagosOptions, 'Elegí pagos');
       populateSelect(refs.productName, response.bootstrap.products || [], 'Elegí un producto');
+      populateClubPriceSelect(response.bootstrap.clubPriceOptions || []);
 
       refs.responsableVenta.value = response.bootstrap.responsibleVentaDefault || '';
       refs.productsSourceText.textContent = response.bootstrap.productsSource === 'notion'
@@ -1611,6 +1671,7 @@
   async function buildPayload() {
     const attachmentFiles = await serializeAttachments();
     const usesRelatedSaleDate = refs.tipo.value === 'Cobranza' || refs.tipo.value === 'Devolución';
+    const clubSale = isClubSale();
     return {
       tipo: refs.tipo.value,
       ghlId: refs.ghlId.value || refs.ghlInput.value.trim(),
@@ -1624,9 +1685,10 @@
       medioPago: refs.medioPago.value,
       tc: refs.tc.value,
       productName: refs.productName.value,
-      facturacionUsd: refs.facturacionUsd.value,
+      clubPriceKey: clubSale ? refs.clubPriceKey.value : '',
+      facturacionUsd: clubSale ? effectiveFacturacionUsd() : refs.facturacionUsd.value,
       cantidadPagos: refs.cantidadPagos.value,
-      cashCollectedArs: refs.cashCollectedArs.value,
+      cashCollectedArs: clubSale ? effectiveCashCollectedArs() : refs.cashCollectedArs.value,
       chequeCount: refs.chequeCount.value,
       cheques: collectChequeRows(),
       latestSaleId: refs.latestSaleId.value,
@@ -1776,6 +1838,8 @@
     updateVisibility();
   });
   refs.tipo?.addEventListener('change', syncAutomaticDates);
+  refs.productName?.addEventListener('change', updateVisibility);
+  refs.clubPriceKey?.addEventListener('change', updateCashValidation);
   refs.tc?.addEventListener('input', updateCashValidation);
   refs.cashCollectedArs?.addEventListener('input', updateCashValidation);
   refs.facturacionUsd?.addEventListener('input', updateCashValidation);
@@ -1804,6 +1868,7 @@
     refs.dniCuit,
     refs.tc,
     refs.productName,
+    refs.clubPriceKey,
     refs.facturacionUsd,
     refs.cantidadPagos,
     refs.cashCollectedArs,
