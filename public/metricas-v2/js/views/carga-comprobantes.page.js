@@ -738,7 +738,7 @@
       ? (
           Boolean(refs.productName.value)
           && (isClubSale ? Number(selectedClubPrice?.amountArs) > 0 : isPositiveNumber(refs.facturacionUsd.value))
-          && Boolean(refs.cantidadPagos.value)
+          && (isClubSale || Boolean(refs.cantidadPagos.value))
         )
       : true;
     const cashReady = baseReady && (isClubSale
@@ -841,7 +841,7 @@
     }
     if (stepState.isVenta && !stepState.ventaReady) {
       refs.submitStatus.textContent = stepState.isClubSale
-        ? 'Elegí Precio Club 1 o Precio Club 2 y la cantidad de pagos para seguir.'
+        ? 'Elegí Precio Club 1 o Precio Club 2 para seguir.'
         : 'Completá producto, facturación USD y cantidad de pagos para seguir.';
       return;
     }
@@ -1138,12 +1138,19 @@
     setSectionVisibility(refs.bonusMatiField, isVenta);
     setSectionVisibility(refs.productNameField, isVenta);
     setSectionVisibility(refs.clubPriceField, isClubSale);
-    setSectionVisibility(refs.cantidadPagosField, isVenta);
+    setSectionVisibility(refs.cantidadPagosField, isVenta && !isClubSale);
     setSectionVisibility(refs.facturacionUsdField, isDevolucion || (isVenta && !isClubSale));
 
     refs.productName.disabled = !isVenta;
     refs.dniCuit.required = !(isVenta && isClubProduct(refs.productName.value));
-    refs.cantidadPagos.disabled = !isVenta || (isVenta && isCheque && getChequeCount() > 0);
+    if (isClubSale) {
+      refs.cantidadPagos.dataset.clubAutomatic = 'true';
+      refs.cantidadPagos.value = '1';
+    } else if (refs.cantidadPagos.dataset.clubAutomatic === 'true') {
+      delete refs.cantidadPagos.dataset.clubAutomatic;
+      refs.cantidadPagos.value = '';
+    }
+    refs.cantidadPagos.disabled = !isVenta || isClubSale || (isVenta && isCheque && getChequeCount() > 0);
     refs.latestSaleId.readOnly = !(isCobranza || isDevolucion);
     if (refs.searchRelatedSaleBtn) refs.searchRelatedSaleBtn.hidden = !(isCobranza || isDevolucion);
     if (refs.chequeHelpText) {
@@ -1687,7 +1694,9 @@
       productName: refs.productName.value,
       clubPriceKey: clubSale ? refs.clubPriceKey.value : '',
       facturacionUsd: clubSale ? effectiveFacturacionUsd() : refs.facturacionUsd.value,
-      cantidadPagos: refs.cantidadPagos.value,
+      cantidadPagos: clubSale
+        ? (isChequeFlow(refs.tipo.value, refs.medioPago.value) ? refs.chequeCount.value : '1')
+        : refs.cantidadPagos.value,
       cashCollectedArs: clubSale ? effectiveCashCollectedArs() : refs.cashCollectedArs.value,
       chequeCount: refs.chequeCount.value,
       cheques: collectChequeRows(),

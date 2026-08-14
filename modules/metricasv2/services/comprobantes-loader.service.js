@@ -1887,7 +1887,7 @@ function normalizePayload(payload = {}, user, options = {}) {
     } else {
       normalized.facturacionUsd = requiredPositiveNumber(payload.facturacionUsd, 'La facturación USD');
     }
-    normalized.cantidadPagos = toInteger(payload.cantidadPagos);
+    normalized.cantidadPagos = isClubSale ? 1 : toInteger(payload.cantidadPagos);
 
     if (!normalized.cantidadPagos || normalized.cantidadPagos < 1 || normalized.cantidadPagos > MAX_PAYMENT_COUNT) {
       const error = new Error(`La cantidad de pagos debe ser un número entero entre 1 y ${MAX_PAYMENT_COUNT}`);
