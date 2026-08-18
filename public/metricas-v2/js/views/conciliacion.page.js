@@ -18,7 +18,8 @@
     summary: document.getElementById('conciliacionSummary'),
     table: document.getElementById('conciliacionTable'),
     responsible: document.getElementById('conciliacionResponsibleFilter'),
-    month: document.getElementById('conciliacionMonth'),
+    dateFrom: document.getElementById('conciliacionDateFrom'),
+    dateTo: document.getElementById('conciliacionDateTo'),
     club: document.getElementById('conciliacionClubFilter'),
     search: document.getElementById('conciliacionSearch'),
     reload: document.getElementById('reloadConciliacion')
@@ -88,9 +89,9 @@
     return `<span class="conciliacion-state-badge is-${escapeHtml(value)}">${escapeHtml(stateLabel(value))}</span>`;
   }
 
-  function rowMonth(row) {
+  function rowDate(row) {
     const date = String(row?.f_acreditacion || '').slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
   }
 
   function isClubRow(row) {
@@ -126,12 +127,15 @@
 
   function applyFilters() {
     const query = normalizeText(refs.search.value);
-    const month = refs.month.value;
+    const dateFrom = refs.dateFrom.value;
+    const dateTo = refs.dateTo.value;
     const responsible = normalizeText(refs.responsible.value);
     const clubMode = refs.club.value;
 
     state.baseFilteredRows = state.rows.filter((row) => {
-      if (month && rowMonth(row) !== month) return false;
+      const date = rowDate(row);
+      if (dateFrom && (!date || date < dateFrom)) return false;
+      if (dateTo && (!date || date > dateTo)) return false;
       if (responsible && normalizeText(row.responsable_venta || row.creado_por) !== responsible) return false;
       if (clubMode === 'only' && !isClubRow(row)) return false;
       if (clubMode === 'exclude' && isClubRow(row)) return false;
@@ -250,7 +254,11 @@
     renderTabs();
     renderSummary();
     renderTable();
-    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.`;
+    const range = [
+      refs.dateFrom.value ? `desde ${formatDate(refs.dateFrom.value)}` : '',
+      refs.dateTo.value ? `hasta ${formatDate(refs.dateTo.value)}` : ''
+    ].filter(Boolean).join(' ');
+    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${range ? ` Acreditación ${range}.` : ''}`;
     refs.totalChip.textContent = `${state.rows.length} comprobantes`;
     refs.status.hidden = true;
   }
@@ -309,7 +317,7 @@
     renderAll();
   });
 
-  [refs.responsible, refs.month, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
+  [refs.responsible, refs.dateFrom, refs.dateTo, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
   refs.search?.addEventListener('input', renderAll);
   refs.reload?.addEventListener('click', loadRows);
   refs.table?.addEventListener('change', (event) => {

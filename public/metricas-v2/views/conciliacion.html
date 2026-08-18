@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css?v=20260817-conciliacion-1" />
+    <link rel="stylesheet" href="/css/styles.css?v=20260817-conciliacion-2" />
     <script defer src="/js/api/http.js"></script>
-    <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-1"></script>
+    <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-2"></script>
     <script defer src="/js/auth-shell.js"></script>
-    <script defer src="/js/views/conciliacion.page.js?v=20260817-conciliacion-1"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20260817-conciliacion-2"></script>
   </head>
   <body class="carga-comprobantes-page mis-comprobantes-page conciliacion-page">
     <main class="container carga-comprobantes-layout mis-comprobantes-layout">
@@ -56,7 +56,14 @@
             <select id="conciliacionResponsibleFilter" aria-label="Filtrar por responsable">
               <option value="">Todos los responsables</option>
             </select>
-            <input id="conciliacionMonth" type="month" aria-label="Filtrar por mes de acreditación" />
+            <label class="conciliacion-date-filter">
+              <span>Desde</span>
+              <input id="conciliacionDateFrom" type="date" aria-label="Fecha de acreditación desde" />
+            </label>
+            <label class="conciliacion-date-filter">
+              <span>Hasta</span>
+              <input id="conciliacionDateTo" type="date" aria-label="Fecha de acreditación hasta" />
+            </label>
             <select id="conciliacionClubFilter" aria-label="Filtrar Club">
               <option value="all">Todos los productos</option>
               <option value="exclude">Excluir Club</option>
