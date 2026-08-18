@@ -368,6 +368,88 @@ function buildMonthlyComparisonContext(rows, closerName, selectedMonthValue, lim
     .filter(Boolean);
 }
 
+function buildTeamMetricsPayload(teamRows, monthValue) {
+  const summary = summarizeRows(teamRows);
+
+  return {
+    reportType: 'team',
+    monthValue,
+    monthLabel: formatMonthLabel(monthValue),
+    activeClosers: teamRows.length,
+    teamSummary: {
+      agendas: summary.agendas,
+      aplicables: summary.aplicables,
+      efectuadas: summary.efectuadas,
+      noAsistidas: summary.noAsistidas,
+      ventas: summary.ventas,
+      paidUpfront: summary.paidUpfront,
+      facturacionAgenda: summary.facturacionAgenda,
+      facturacionTotalMes: summary.facturacionTotalMes,
+      cashAgendasMes: summary.cashAgendasMes,
+      cashRealMes: summary.cashRealMes,
+      cashOtrosMeses: summary.cashOtrosMeses,
+      tasaCierrePct: safeDiv(summary.ventas * 100, summary.efectuadas),
+      tasaEfectuadasPct: safeDiv(summary.efectuadas * 100, summary.aplicables),
+      noAsistidasPct: safeDiv(summary.noAsistidas * 100, summary.aplicables),
+      cashSobreFacturacionPct: safeDiv(summary.cashAgendasMes * 100, summary.facturacionAgenda),
+      cashPorAgenda: safeDiv(summary.cashAgendasMes, summary.agendas),
+      cashPorReunion: safeDiv(summary.cashAgendasMes, summary.efectuadas),
+      ticketPromedio: safeDiv(summary.facturacionAgenda, summary.ventas),
+      cashPorVenta: safeDiv(summary.cashAgendasMes, summary.ventas),
+      paidUpfrontPct: safeDiv(summary.paidUpfront * 100, summary.facturacionTotalMes)
+    },
+    closerBreakdown: teamRows.map((row, index) => ({
+      closer: row.closer,
+      rankingPosition: index + 1,
+      shareOfTeamCashPct: safeDiv(row.cashAgendasMes * 100, summary.cashAgendasMes),
+      agendas: row.agendas,
+      aplicables: row.aplicables,
+      efectuadas: row.efectuadas,
+      noAsistidas: row.noAsistidas,
+      noAsistidasPct: row.noAsistidasPct,
+      ventas: row.ventas,
+      cierrePct: row.cierrePct,
+      efectuadasSobreAplicablesPct: row.efectuadasSobreAplicablesPct,
+      facturacionAgenda: row.facturacionAgenda,
+      cashAgendasMes: row.cashAgendasMes,
+      cashPorAgenda: row.cashPorAgenda,
+      cashPorReunion: row.cashPorReunion,
+      ticketPromedio: row.ticketPromedio,
+      cashSobreFacturacionPct: row.cashSobreFacturacionPct
+    }))
+  };
+}
+
+function buildTeamMonthlyComparisonContext(rows, selectedMonthValue, limitPerDirection = 6) {
+  const selectedIndex = Number(String(selectedMonthValue || '').replace('-', ''));
+  const months = new Map();
+
+  (rows || []).forEach((row) => {
+    const monthValue = `${row.anio}-${String(row.mes).padStart(2, '0')}`;
+    const monthIndex = Number(monthValue.replace('-', ''));
+    if (!Number.isFinite(monthIndex) || monthIndex === selectedIndex) return;
+    if (!months.has(monthValue)) months.set(monthValue, []);
+    months.get(monthValue).push(row);
+  });
+
+  const sortedMonths = [...months.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const selectedMonths = [
+    ...sortedMonths.filter(([value]) => Number(value.replace('-', '')) < selectedIndex).slice(-limitPerDirection),
+    ...sortedMonths.filter(([value]) => Number(value.replace('-', '')) > selectedIndex).slice(0, limitPerDirection)
+  ];
+
+  return selectedMonths.map(([monthValue, monthRows]) => {
+    const teamRows = aggregateByCloser(monthRows);
+    const metrics = buildTeamMetricsPayload(teamRows, monthValue);
+    return {
+      monthValue,
+      monthLabel: metrics.monthLabel,
+      activeClosers: metrics.activeClosers,
+      ...metrics.teamSummary
+    };
+  });
+}
+
 function requireOpenAi() {
   if (!env.openAiApiKey) {
     const error = new Error('Falta OPENAI_API_KEY para generar el reporte con GPT');
@@ -615,6 +697,185 @@ ${additionalPrompt ? `\nPEDIDO ADICIONAL DEL USUARIO, OBLIGATORIO DE INTEGRAR EN
   }
 }
 
+async function generateTeamNarrative(metrics, options = {}) {
+  requireOpenAi();
+  const additionalPrompt = String(options.additionalPrompt || '').trim();
+
+  const schema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['chips', 'kpis', 'fortalezas', 'atencion', 'analisisHistorico', 'lecturaIntegrantes', 'mensaje', 'pedidoAdicionalRespuesta', 'pasos', 'sistemaMsg'],
+    properties: {
+      chips: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 2,
+        maxItems: 4
+      },
+      kpis: {
+        type: 'array',
+        minItems: 6,
+        maxItems: 6,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['lbl', 'val', 'sub', 'cls'],
+          properties: {
+            lbl: { type: 'string' },
+            val: { type: 'string' },
+            sub: { type: 'string' },
+            cls: { type: 'string', enum: ['', 'highlight', 'warn', 'danger'] }
+          }
+        }
+      },
+      fortalezas: {
+        type: 'array',
+        minItems: 2,
+        maxItems: 5,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['dot', 'txt'],
+          properties: {
+            dot: { type: 'string', enum: ['green', 'amber', 'blue'] },
+            txt: { type: 'string' }
+          }
+        }
+      },
+      atencion: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 5,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['dot', 'txt'],
+          properties: {
+            dot: { type: 'string', enum: ['green', 'amber', 'blue'] },
+            txt: { type: 'string' }
+          }
+        }
+      },
+      analisisHistorico: { type: 'string' },
+      lecturaIntegrantes: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 12,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['closer', 'titulo', 'txt', 'cls'],
+          properties: {
+            closer: { type: 'string' },
+            titulo: { type: 'string' },
+            txt: { type: 'string' },
+            cls: { type: 'string', enum: ['highlight', 'warn', 'neutral'] }
+          }
+        }
+      },
+      mensaje: { type: 'string' },
+      pedidoAdicionalRespuesta: { type: 'string' },
+      pasos: {
+        type: 'array',
+        minItems: 3,
+        maxItems: 4,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['num', 'color', 'txt'],
+          properties: {
+            num: { type: 'string' },
+            color: { type: 'string', enum: ['#3A7BF5', '#14B87A', '#E8950A', '#E84A4A', '#8B5CF6', '#F472B6', '#34D399'] },
+            txt: { type: 'string' }
+          }
+        }
+      },
+      sistemaMsg: { type: 'string' }
+    }
+  };
+
+  const instructions = [
+    'Sos un director comercial senior de Central de Métricas.',
+    'Escribís en español rioplatense y analizás al conjunto como equipo, no como reporte personal.',
+    'Usá SOLO los números recibidos; no inventes métricas, objetivos, meses ni hechos.',
+    'El tono debe ser ejecutivo, directo, constructivo y útil para liderar al equipo.',
+    'No uses markdown, emojis ni HTML.',
+    'Tomá como tasa de cierre la relación ventas sobre reuniones efectuadas.',
+    'Tomá como tasa de efectuadas la relación efectuadas sobre agendas aplicables.',
+    'Los 6 KPI tienen que representar resultados consolidados del equipo.',
+    'Explicá cómo interactúan volumen, asistencia, conversión, facturación y cash.',
+    'En lecturaIntegrantes incluí exactamente una lectura breve por cada closer presente en closerBreakdown y no agregues personas ausentes.',
+    'Evaluá a cada integrante en contexto, usando aporte al cash, volumen y conversión sin convertir el reporte en una colección de reportes personales.',
+    'Usá monthlyComparisonContext para analizar evolución contra los meses disponibles.',
+    'No afirmes tendencias con un único punto histórico y aclaralo cuando la evidencia sea limitada.',
+    'Identificá fortalezas colectivas, cuellos de botella del proceso y próximos pasos accionables para el equipo.',
+    'Si hay un pedido adicional, respondelo de forma completa en pedidoAdicionalRespuesta.',
+    'Si el pedido no puede resolverse con los datos base, indicalo con claridad y no inventes.'
+  ].join(' ');
+
+  const input = `
+Generá el reporte del equipo completo de closers para ${metrics.monthLabel}.
+
+Datos base:
+${JSON.stringify(metrics, null, 2)}
+
+${additionalPrompt ? `PEDIDO ADICIONAL DEL USUARIO, OBLIGATORIO:\n${additionalPrompt}\nRespondelo también en pedidoAdicionalRespuesta.` : 'No hay pedido adicional. Devolvé pedidoAdicionalRespuesta como string vacío.'}
+`;
+
+  const response = await requestOpenAiReport({
+    model: env.openAiReportModel,
+    reasoning: { effort: env.openAiReportReasoningEffort },
+    instructions,
+    input,
+    text: {
+      verbosity: 'high',
+      format: {
+        type: 'json_schema',
+        name: 'closer_team_report',
+        strict: true,
+        schema
+      }
+    }
+  });
+
+  const text = extractResponseText(response.data);
+  if (!text) {
+    const error = new Error('OpenAI no devolvió contenido para el reporte de equipo');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    const error = new Error('OpenAI devolvió un JSON inválido para el reporte de equipo');
+    error.statusCode = 502;
+    error.details = { provider: 'openai', message: err.message };
+    throw error;
+  }
+}
+
+function normalizeTeamMemberInsights(narrative, closerBreakdown) {
+  const generatedByCloser = new Map(
+    (Array.isArray(narrative?.lecturaIntegrantes) ? narrative.lecturaIntegrantes : [])
+      .map((item) => [normalizeText(item?.closer), item])
+      .filter(([key]) => key)
+  );
+
+  return (closerBreakdown || []).map((closer) => {
+    const generated = generatedByCloser.get(normalizeText(closer.closer));
+    if (generated) return { ...generated, closer: closer.closer };
+    const salesLabel = Number(closer.ventas || 0) === 1 ? 'venta' : 'ventas';
+
+    return {
+      closer: closer.closer,
+      titulo: `Posición #${closer.rankingPosition} por aporte de cash`,
+      txt: `Aportó ${formatCurrency(closer.cashAgendasMes)} (${formatPercent(closer.shareOfTeamCashPct)} del cash del equipo), con ${formatInteger(closer.ventas)} ${salesLabel} y ${formatPercent(closer.cierrePct)} de cierre sobre reuniones efectuadas.`,
+      cls: closer.rankingPosition === 1 ? 'highlight' : closer.ventas === 0 ? 'warn' : 'neutral'
+    };
+  });
+}
+
 async function generateCloserPersonalReport({ closer, month, additionalPrompt }) {
   const closerName = canonicalizeCloserName(closer);
   if (!closerName) {
@@ -697,9 +958,68 @@ async function generateAndStoreCloserPersonalReport({ closer, month, additionalP
   return stored.report || payload;
 }
 
+async function generateCloserTeamReport({ month, additionalPrompt }) {
+  const { year, month: monthNumber, monthValue } = parseMonthValue(month);
+  const historyYears = [year - 1, year];
+  const historicalRows = normalizeRows((await Promise.all(historyYears.map((historyYear) => (
+    supabaseService.listRows(RESOURCE, {
+      limit: 1000,
+      orderBy: 'mes',
+      orderDir: 'asc',
+      eqFilters: { anio: historyYear }
+    })
+  )))).flat());
+  const monthRows = historicalRows.filter((row) => row.anio === year && row.mes === monthNumber);
+  const teamRows = aggregateByCloser(monthRows);
+
+  if (!teamRows.length) {
+    const error = new Error(`No encontré datos del equipo en ${monthValue}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const metrics = buildTeamMetricsPayload(teamRows, monthValue);
+  metrics.monthlyComparisonContext = buildTeamMonthlyComparisonContext(historicalRows, monthValue, 6);
+  const normalizedAdditionalPrompt = String(additionalPrompt || '').trim();
+  const narrative = await generateTeamNarrative(metrics, { additionalPrompt: normalizedAdditionalPrompt });
+  narrative.lecturaIntegrantes = normalizeTeamMemberInsights(narrative, metrics.closerBreakdown);
+
+  return {
+    reportType: 'team',
+    month: monthValue,
+    monthLabel: metrics.monthLabel,
+    activeClosers: metrics.activeClosers,
+    metrics: {
+      teamSummary: metrics.teamSummary,
+      closerBreakdown: metrics.closerBreakdown,
+      monthlyComparisonContext: metrics.monthlyComparisonContext
+    },
+    style: { color: '#5B6CF9', colorDark: '#18245E' },
+    report: narrative,
+    additionalPrompt: normalizedAdditionalPrompt || null,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+async function getStoredCloserTeamReport({ month }) {
+  return supabaseService.getStoredCloserTeamReport({ month });
+}
+
+async function generateAndStoreCloserTeamReport({ month, additionalPrompt }, user) {
+  const payload = await generateCloserTeamReport({ month, additionalPrompt });
+  const stored = await supabaseService.saveCloserTeamReport({ month: payload.month }, payload, user);
+  return stored.report || payload;
+}
+
 module.exports = {
   generateCloserPersonalReport,
   getStoredCloserPersonalReport,
   generateAndStoreCloserPersonalReport,
-  buildMonthlyComparisonContext
+  generateCloserTeamReport,
+  getStoredCloserTeamReport,
+  generateAndStoreCloserTeamReport,
+  buildMonthlyComparisonContext,
+  buildTeamMetricsPayload,
+  buildTeamMonthlyComparisonContext,
+  normalizeTeamMemberInsights
 };

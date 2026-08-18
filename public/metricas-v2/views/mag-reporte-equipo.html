@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte IA del Equipo</title>
+  <link rel="icon" type="image/svg+xml" href="/metricas-assets/favicon-mr.svg">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css?v=20260817-team-report-1">
+  <link rel="stylesheet" href="/css/mag-theme.css?v=20260817-team-report-1">
+  <style>
+    :root{--team-bg:#f3f6fc;--team-card:#fff;--team-text:#171b2d;--team-muted:#69738f;--team-border:#dfe5f2;--team-blue:#4b67f2;--team-green:#14a875;--team-amber:#dc8b0c;--team-red:#df5252;}
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--team-bg);color:var(--team-text);font-family:'DM Sans',sans-serif;}
+    .team-toolbar{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:20px 28px;background:#161b2d;color:#fff;}
+    .team-toolbar-field{display:grid;gap:6px;}
+    .team-toolbar label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.58);}
+    .team-month,.team-button,.team-prompt{border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.09);color:#fff;font:inherit;}
+    .team-month,.team-button{min-height:40px;padding:8px 13px;}
+    .team-month::-webkit-calendar-picker-indicator{filter:invert(1);}
+    .team-button{cursor:pointer;font-size:13px;font-weight:700;}
+    .team-button:hover{background:rgba(255,255,255,.16);}
+    .team-button.primary{background:#4b67f2;border-color:#7186f8;}
+    .team-button[disabled]{opacity:.62;cursor:wait;}
+    .team-prompt-field{flex:1 1 430px;}
+    .team-prompt{width:100%;min-height:72px;padding:10px 12px;resize:vertical;line-height:1.45;}
+    .team-prompt::placeholder{color:rgba(255,255,255,.4);}
+    .team-actions{display:flex;gap:10px;align-items:flex-end;align-self:stretch;}
+    .team-status{flex:1 0 100%;font-size:12px;color:rgba(255,255,255,.64);}
+    .team-report{max-width:1040px;margin:0 auto;padding:34px 24px 64px;}
+    .team-empty,.team-loader{padding:72px 30px;text-align:center;color:var(--team-muted);}
+    .team-loader{display:grid;justify-items:center;gap:14px;}
+    .team-spinner{width:36px;height:36px;border:3px solid rgba(75,103,242,.18);border-top-color:var(--team-blue);border-radius:50%;animation:spin .75s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .team-hero{position:relative;overflow:hidden;margin-bottom:22px;padding:34px 38px;border-radius:20px;background:linear-gradient(135deg,#18245e,#5b6cf9);color:#fff;}
+    .team-hero::after{content:'';position:absolute;inset:-60% -20% auto 45%;height:280px;border-radius:50%;background:rgba(255,255,255,.08);}
+    .team-hero-content{position:relative;z-index:1;}
+    .team-eyebrow{margin-bottom:8px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.62);}
+    .team-title{margin:0 0 6px;font-size:34px;letter-spacing:-.035em;}
+    .team-period{color:rgba(255,255,255,.7);font-size:14px;}
+    .team-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;}
+    .team-chip{padding:6px 11px;border:1px solid rgba(255,255,255,.16);border-radius:8px;background:rgba(255,255,255,.11);font-size:12px;}
+    .team-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+    .team-kpi,.team-card,.member-card,.team-step{border:1px solid var(--team-border);background:var(--team-card);box-shadow:0 10px 28px rgba(34,51,90,.05);}
+    .team-kpi{padding:17px 18px;border-radius:14px;}
+    .team-kpi.highlight{border-color:#a9e3cf;background:#eaf8f3;}
+    .team-kpi.warn{border-color:#f1d398;background:#fff8e9;}
+    .team-kpi.danger{border-color:#efbbbb;background:#fff1f1;}
+    .team-kpi-label,.team-card-title{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--team-muted);}
+    .team-kpi-value{margin:7px 0 3px;font:500 23px 'DM Mono',monospace;}
+    .team-kpi-sub{font-size:11px;line-height:1.45;color:var(--team-muted);}
+    .team-two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+    .team-card{padding:21px 22px;border-radius:15px;margin-bottom:18px;}
+    .team-card-title{margin-bottom:14px;}
+    .team-list{display:grid;gap:10px;margin:0;padding:0;list-style:none;}
+    .team-list li{display:flex;align-items:flex-start;gap:9px;color:var(--team-muted);font-size:13px;line-height:1.6;}
+    .team-dot{width:7px;height:7px;margin-top:7px;flex:none;border-radius:50%;background:var(--team-blue);}
+    .team-dot.green{background:var(--team-green);}.team-dot.amber{background:var(--team-amber);}
+    .members-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .member-card{padding:18px;border-radius:13px;border-left:4px solid #94a0bb;}
+    .member-card.highlight{border-left-color:var(--team-green);}.member-card.warn{border-left-color:var(--team-amber);}
+    .member-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:10px;}
+    .member-name{font-size:15px;font-weight:800;}.member-rank{font:500 12px 'DM Mono',monospace;color:var(--team-muted);}
+    .member-metrics{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+    .member-metric{padding:5px 8px;border-radius:7px;background:#f1f4fa;color:#4c5874;font-size:10px;font-weight:700;}
+    .member-title{margin-bottom:5px;font-size:12px;font-weight:800;color:#3b496b;}
+    .member-text,.team-copy{color:var(--team-muted);font-size:13px;line-height:1.7;}
+    .team-message{border-color:#273b73;background:#1d315f;color:#fff;}
+    .team-message .team-card-title{color:rgba(255,255,255,.65);}.team-message .team-copy{color:#fff;}
+    .team-additional{border-color:#b9cdfa;background:#edf3ff;}
+    .team-additional .team-copy + .team-copy{margin-top:10px;}
+    .team-steps{display:grid;gap:9px;}
+    .team-step{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-radius:11px;}
+    .team-step-number{display:grid;place-items:center;width:25px;height:25px;flex:none;border-radius:50%;color:#fff;font-size:11px;font-weight:800;}
+    .team-step-text{padding-top:2px;color:var(--team-muted);font-size:13px;line-height:1.55;}
+    :root[data-theme='dark'] body,body.mag-theme-dark{--team-bg:#0b1322;--team-card:#111d31;--team-text:#edf3ff;--team-muted:#a6b4cf;--team-border:#263a59;}
+    body.mag-theme-dark .member-metric{background:#192945;color:#c5d5f3;}
+    body.mag-theme-dark .team-kpi.highlight{background:#123426;}body.mag-theme-dark .team-kpi.warn{background:#332710;}body.mag-theme-dark .team-kpi.danger{background:#351b21;}
+    body.mag-theme-dark .team-additional{background:#102f52;border-color:#315d91;}
+    @media(max-width:720px){.team-toolbar{padding:18px}.team-actions{width:100%;flex-wrap:wrap}.team-button{flex:1}.team-kpis,.team-two-col,.members-grid{grid-template-columns:1fr}.team-report{padding:24px 14px 48px}.team-hero{padding:28px 24px}.team-title{font-size:28px;}}
+    @media print{@page{size:A4;margin:13mm}.team-toolbar{display:none}.team-report{max-width:none;padding:0}.team-hero,.team-kpi,.team-card,.member-card,.team-step{break-inside:avoid;box-shadow:none}.team-kpis{grid-template-columns:repeat(3,1fr)}.members-grid,.team-two-col{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body class="mag-view">
+  <div class="mag-theme-shell">
+    <header class="team-toolbar">
+      <div class="team-toolbar-field">
+        <label for="teamReportMonth">Mes del reporte</label>
+        <input id="teamReportMonth" class="team-month" type="month">
+      </div>
+      <div class="team-toolbar-field team-prompt-field">
+        <label for="teamReportPrompt">Pedido adicional para GPT</label>
+        <textarea id="teamReportPrompt" class="team-prompt" placeholder="Opcional: enfocá el análisis en asistencia, conversión, distribución del cash o un objetivo del equipo."></textarea>
+      </div>
+      <div class="team-actions">
+        <button id="generateTeamReport" class="team-button primary" type="button" hidden>Generar reporte del equipo</button>
+        <button class="team-button" type="button" onclick="window.print()">Imprimir / Exportar</button>
+      </div>
+      <div id="teamReportStatus" class="team-status">Preparando reporte del equipo...</div>
+    </header>
+
+    <main id="teamReport" class="team-report">
+      <div class="team-empty">Elegí un mes para ver el reporte integral del equipo.</div>
+    </main>
+  </div>
+
+  <script src="/js/api/http.js"></script>
+  <script src="/js/api/metricas.api.js?v=20260817-team-report-1"></script>
+  <script>
+    let canGenerateTeamReport = false;
+    let renderToken = 0;
+
+    function currentMonthValue() {
+      const queryMonth = new URLSearchParams(window.location.search).get('month');
+      if (/^\d{4}-\d{2}$/.test(queryMonth || '')) return queryMonth;
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function monthLabel(value) {
+      const [year, month] = String(value || '').split('-').map(Number);
+      if (!year || !month) return 'sin mes';
+      return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date(year, month - 1, 1));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function textBlock(value) {
+      return escapeHtml(value || '').replace(/\n/g, '<br>');
+    }
+
+    function currency(value) {
+      return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Number(value || 0));
+    }
+
+    function percent(value) {
+      return `${Number(value || 0).toFixed(1).replace('.', ',')}%`;
+    }
+
+    function setLoading(message) {
+      document.getElementById('teamReport').innerHTML = `<div class="team-loader"><div class="team-spinner"></div><div>${escapeHtml(message)}</div></div>`;
+    }
+
+    function setEmpty(message) {
+      document.getElementById('teamReport').innerHTML = `<div class="team-empty">${escapeHtml(message)}</div>`;
+    }
+
+    function setGenerating(active) {
+      const button = document.getElementById('generateTeamReport');
+      button.disabled = active;
+      button.textContent = active ? 'Generando...' : 'Generar reporte del equipo';
+    }
+
+    function renderTeamReport(payload) {
+      const report = payload?.report || {};
+      const metrics = payload?.metrics || {};
+      const summary = metrics.teamSummary || {};
+      const closerByName = new Map((metrics.closerBreakdown || []).map((row) => [row.closer, row]));
+      const kpis = (report.kpis || []).map((item) => `<article class="team-kpi ${escapeHtml(item.cls || '')}"><div class="team-kpi-label">${escapeHtml(item.lbl)}</div><div class="team-kpi-value">${escapeHtml(item.val)}</div><div class="team-kpi-sub">${escapeHtml(item.sub)}</div></article>`).join('');
+      const strengths = (report.fortalezas || []).map((item) => `<li><span class="team-dot ${escapeHtml(item.dot || 'green')}"></span><span>${textBlock(item.txt)}</span></li>`).join('');
+      const attention = (report.atencion || []).map((item) => `<li><span class="team-dot ${escapeHtml(item.dot || 'amber')}"></span><span>${textBlock(item.txt)}</span></li>`).join('');
+      const members = (report.lecturaIntegrantes || []).map((item) => {
+        const data = closerByName.get(item.closer) || {};
+        return `<article class="member-card ${escapeHtml(item.cls || 'neutral')}"><div class="member-head"><div class="member-name">${escapeHtml(item.closer)}</div><div class="member-rank">#${escapeHtml(data.rankingPosition || '—')}</div></div><div class="member-metrics"><span class="member-metric">Cash ${escapeHtml(currency(data.cashAgendasMes))}</span><span class="member-metric">${escapeHtml(data.ventas || 0)} ventas</span><span class="member-metric">Cierre ${escapeHtml(percent(data.cierrePct))}</span><span class="member-metric">Aporte ${escapeHtml(percent(data.shareOfTeamCashPct))}</span></div><div class="member-title">${escapeHtml(item.titulo)}</div><div class="member-text">${textBlock(item.txt)}</div></article>`;
+      }).join('');
+      const steps = (report.pasos || []).map((item) => `<div class="team-step"><div class="team-step-number" style="background:${escapeHtml(item.color || '#4B67F2')}">${escapeHtml(item.num)}</div><div class="team-step-text">${textBlock(item.txt)}</div></div>`).join('');
+      const additionalPrompt = String(payload?.additionalPrompt || '').trim();
+      const additionalAnswer = String(report.pedidoAdicionalRespuesta || '').trim();
+
+      document.getElementById('teamReport').innerHTML = `
+        <section class="team-hero"><div class="team-hero-content"><div class="team-eyebrow">Reporte IA del equipo · ${escapeHtml(payload.monthLabel || monthLabel(payload.month))}</div><h1 class="team-title">Equipo de Closers</h1><div class="team-period">${escapeHtml(payload.activeClosers || 0)} integrantes activos · análisis consolidado del mes</div><div class="team-chips">${(report.chips || []).map((chip) => `<span class="team-chip">${escapeHtml(chip)}</span>`).join('')}</div></div></section>
+        <section class="team-kpis">${kpis}</section>
+        <section class="team-two-col"><article class="team-card"><div class="team-card-title">Fortalezas del equipo</div><ul class="team-list">${strengths}</ul></article><article class="team-card"><div class="team-card-title">Puntos de atención</div><ul class="team-list">${attention}</ul></article></section>
+        <section class="team-card"><div class="team-card-title">Lectura por integrante dentro del equipo</div><div class="members-grid">${members}</div></section>
+        <section class="team-card team-message"><div class="team-card-title">Cómo le fue al equipo</div><div class="team-copy">${textBlock(report.mensaje)}</div></section>
+        ${report.analisisHistorico ? `<section class="team-card"><div class="team-card-title">Evolución del equipo entre meses</div><div class="team-copy">${textBlock(report.analisisHistorico)}</div></section>` : ''}
+        ${(additionalPrompt || additionalAnswer) ? `<section class="team-card team-additional"><div class="team-card-title">Pedido adicional</div>${additionalPrompt ? `<div class="team-copy"><strong>Pedido:</strong> ${textBlock(additionalPrompt)}</div>` : ''}${additionalAnswer ? `<div class="team-copy"><strong>Respuesta:</strong> ${textBlock(additionalAnswer)}</div>` : ''}</section>` : ''}
+        <section class="team-card"><div class="team-card-title">Próximos pasos del equipo</div><div class="team-steps">${steps}</div></section>
+        <section class="team-card"><div class="team-card-title">Lectura ejecutiva del sistema</div><div class="team-copy">${textBlock(report.sistemaMsg)}</div></section>
+      `;
+    }
+
+    async function loadStoredReport() {
+      const token = ++renderToken;
+      const month = document.getElementById('teamReportMonth').value;
+      const status = document.getElementById('teamReportStatus');
+      if (!month) {
+        setEmpty('Elegí un mes para revisar el reporte del equipo.');
+        status.textContent = 'Falta seleccionar el mes.';
+        return;
+      }
+      setLoading(`Buscando reporte del equipo para ${monthLabel(month)}...`);
+      try {
+        const response = await window.metricasApi.fetchCloserTeamReport({ month });
+        if (token !== renderToken) return;
+        if (response?.exists && response?.report) {
+          renderTeamReport(response.report);
+          status.textContent = `Mostrando el reporte guardado del equipo para ${monthLabel(month)}.`;
+        } else {
+          setEmpty(`Todavía no hay un reporte del equipo generado para ${monthLabel(month)}.`);
+          status.textContent = canGenerateTeamReport ? 'Podés generarlo con GPT.' : 'Todavía no hay un reporte guardado para ese mes.';
+        }
+      } catch (error) {
+        if (token !== renderToken) return;
+        setEmpty(error.message || 'No pude cargar el reporte del equipo.');
+        status.textContent = error.message || 'No pude cargar el reporte del equipo.';
+      }
+    }
+
+    async function generateReport() {
+      const month = document.getElementById('teamReportMonth').value;
+      const additionalPrompt = String(document.getElementById('teamReportPrompt').value || '').trim();
+      const status = document.getElementById('teamReportStatus');
+      if (!canGenerateTeamReport) {
+        status.textContent = 'No tenés permiso para generar reportes con GPT.';
+        return;
+      }
+      if (!month) {
+        status.textContent = 'Elegí un mes antes de generar el reporte.';
+        return;
+      }
+      setGenerating(true);
+      setLoading(`Analizando al equipo completo para ${monthLabel(month)}...`);
+      status.textContent = 'GPT está analizando las métricas reales y guardando el reporte del equipo...';
+      try {
+        const response = await window.metricasApi.generateCloserTeamReport({ month, additionalPrompt });
+        if (!response?.report) throw new Error('No llegó el reporte generado.');
+        renderTeamReport(response.report);
+        status.textContent = `Reporte del equipo generado y guardado para ${monthLabel(month)}.`;
+      } catch (error) {
+        status.textContent = error.message || 'No pude generar el reporte del equipo.';
+        await loadStoredReport();
+      } finally {
+        setGenerating(false);
+      }
+    }
+
+    async function initPermissions() {
+      const button = document.getElementById('generateTeamReport');
+      try {
+        const response = await window.http.getJson('/api/metricas/auth/session');
+        canGenerateTeamReport = Boolean(response?.user?.permissions?.canGenerateCloserAiReport);
+      } catch (error) {
+        canGenerateTeamReport = false;
+      }
+      button.hidden = !canGenerateTeamReport;
+    }
+
+    document.getElementById('teamReportMonth').value = currentMonthValue();
+    document.getElementById('teamReportMonth').addEventListener('change', loadStoredReport);
+    document.getElementById('generateTeamReport').addEventListener('click', generateReport);
+    (async () => { await initPermissions(); await loadStoredReport(); })();
+  </script>
+  <script src="/js/auth-shell.js"></script>
+  <script src="/js/mag-theme.js"></script>
+</body>
+</html>

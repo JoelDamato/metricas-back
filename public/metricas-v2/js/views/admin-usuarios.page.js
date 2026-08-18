@@ -12,6 +12,7 @@ const PAGE_OPTIONS = [
   { value: 'alertas-operativas.html', label: 'Alertas operativas' },
   { value: 'mag-sistema-agendas.html', label: 'Sistema de agendas' },
   { value: 'mag-reportes-personales.html', label: 'Reportes personales de closers' },
+  { value: 'mag-reporte-equipo.html', label: 'Reporte IA del equipo de closers' },
   { value: 'mag-reporte-closers-2026.html', label: 'Reporte closers' },
   { value: 'mag-reporte-mensual-final.html', label: 'Reporte mensual final de closers' },
   { value: 'mag-manual-closers.html', label: 'Manual closers' },

@@ -306,6 +306,18 @@ async function fetchCloserPersonalReport(params = {}) {
   return window.http.getJson(`/api/metricas/closers/personal-report?${qs}`);
 }
 
+async function generateCloserTeamReport(payload = {}) {
+  return window.http.postJson('/api/metricas/closers/team-report', payload);
+}
+
+async function fetchCloserTeamReport(params = {}) {
+  const qs = queryString({
+    month: params.month,
+    v: Date.now()
+  });
+  return window.http.getJson(`/api/metricas/closers/team-report?${qs}`);
+}
+
 async function fetchAuthUsers() {
   return window.http.getJson('/api/metricas/auth/users');
 }
@@ -381,6 +393,8 @@ window.metricasApi = {
   updateReconciliationComprobante,
   generateCloserPersonalReport,
   fetchCloserPersonalReport,
+  generateCloserTeamReport,
+  fetchCloserTeamReport,
   fetchAuthUsers,
   createAuthUser,
   updateAuthUser,

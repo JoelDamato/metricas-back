@@ -405,16 +405,19 @@
     });
   }
 
-  function syncPersonalFrameMonth(monthValue) {
-    const frame = document.getElementById('personalReportFrame');
-    if (!frame) return;
-    const nextUrl = new URL(frame.getAttribute('src') || '/views/mag-reportes-personales.html?embed=1', window.location.origin);
-    nextUrl.searchParams.set('embed', '1');
-    nextUrl.searchParams.set('month', monthValue);
-    const nextSrc = `${nextUrl.pathname}${nextUrl.search}`;
-    if (frame.getAttribute('src') !== nextSrc) {
-      frame.setAttribute('src', nextSrc);
-    }
+  function syncEmbeddedReportMonths(monthValue) {
+    [
+      ['personalReportFrame', '/views/mag-reportes-personales.html?embed=1'],
+      ['teamReportFrame', '/views/mag-reporte-equipo.html?embed=1']
+    ].forEach(([frameId, fallbackUrl]) => {
+      const frame = document.getElementById(frameId);
+      if (!frame) return;
+      const nextUrl = new URL(frame.getAttribute('src') || fallbackUrl, window.location.origin);
+      nextUrl.searchParams.set('embed', '1');
+      nextUrl.searchParams.set('month', monthValue);
+      const nextSrc = `${nextUrl.pathname}${nextUrl.search}`;
+      if (frame.getAttribute('src') !== nextSrc) frame.setAttribute('src', nextSrc);
+    });
   }
 
   async function loadReport() {
@@ -428,7 +431,7 @@
     const monthValue = monthInput.value;
     const monthLabel = formatMonthLabel(monthValue);
     status.textContent = 'Cargando reporte de closers...';
-    syncPersonalFrameMonth(monthValue);
+    syncEmbeddedReportMonths(monthValue);
 
     try {
       const fetchedRows = await fetchMonthRows(monthValue);

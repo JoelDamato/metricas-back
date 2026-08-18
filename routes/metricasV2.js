@@ -80,5 +80,7 @@ router.patch('/comprobantes-reconciliation/:id', controller.updateReconciliation
 router.post('/assistant/ask', controller.askAssistant);
 router.get('/closers/personal-report', controller.getCloserPersonalReport);
 router.post('/closers/personal-report', controller.generateCloserPersonalReport);
+router.get('/closers/team-report', controller.getCloserTeamReport);
+router.post('/closers/team-report', controller.generateCloserTeamReport);
 
 module.exports = router;

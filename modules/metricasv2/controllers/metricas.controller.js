@@ -895,6 +895,43 @@ async function getCloserPersonalReport(req, res, next) {
   }
 }
 
+async function generateCloserTeamReport(req, res, next) {
+  try {
+    if (!access.canGenerateCloserAiReportForUser(req.authUser)) {
+      const error = new Error('No tenés permiso para generar reportes de equipo con GPT');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const report = await closerPersonalReportService.generateAndStoreCloserTeamReport({
+      month: req.body?.month,
+      additionalPrompt: req.body?.additionalPrompt
+    }, req.authUser);
+
+    res.set('Cache-Control', 'no-store, max-age=0');
+    res.json({ ok: true, report });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getCloserTeamReport(req, res, next) {
+  try {
+    const stored = await closerPersonalReportService.getStoredCloserTeamReport({
+      month: req.query.month
+    });
+
+    res.set('Cache-Control', 'no-store, max-age=0');
+    res.json({
+      ok: true,
+      exists: Boolean(stored?.exists),
+      report: stored?.report || null
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMercadoPagoClubRecords(req, res, next) {
   try {
     const now = new Date();
@@ -1116,6 +1153,8 @@ module.exports = {
   receiveContactoInstagramWebhook,
   generateCloserPersonalReport,
   getCloserPersonalReport,
+  generateCloserTeamReport,
+  getCloserTeamReport,
   getMercadoPagoClubRecords,
   getStoredMercadoPagoClubRecords,
   createManualInvoiceRecord,

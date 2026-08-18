@@ -158,6 +158,22 @@ function normalizeReportePersonalReportParams(params = {}) {
   };
 }
 
+function normalizeCloserTeamReportParams(params = {}) {
+  const month = String(params.month || '').trim();
+
+  if (!validateMonthKey(month)) {
+    const error = new Error('El mes debe venir en formato YYYY-MM');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    bucket: env.reportesPersonalesDataBucket,
+    month,
+    objectPath: `teams/${month}/team-report.json`
+  };
+}
+
 function isDateOnly(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
 }
@@ -3080,6 +3096,93 @@ async function saveCloserPersonalReport(params = {}, reportPayload = {}, user) {
   }
 }
 
+async function getStoredCloserTeamReport(params = {}) {
+  const normalized = normalizeCloserTeamReportParams(params);
+  const url = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}?v=${Date.now()}`;
+
+  try {
+    const response = await axios.get(url, {
+      headers: buildStorageHeaders({
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        Pragma: 'no-cache'
+      }),
+      responseType: 'text'
+    });
+    const raw = typeof response.data === 'string'
+      ? response.data
+      : Buffer.isBuffer(response.data)
+        ? response.data.toString('utf8')
+        : JSON.stringify(response.data || {});
+
+    return {
+      exists: true,
+      month: normalized.month,
+      path: normalized.objectPath,
+      report: JSON.parse(raw)
+    };
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const message = String(err.response?.data?.message || err.message || '');
+    if (status === 400 || status === 404 || /not found/i.test(message)) {
+      return {
+        exists: false,
+        month: normalized.month,
+        path: normalized.objectPath,
+        report: null
+      };
+    }
+
+    const error = new Error(`Error consultando reporte de equipo guardado: ${message}`);
+    error.statusCode = status;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
+async function saveCloserTeamReport(params = {}, reportPayload = {}, user) {
+  const normalized = normalizeCloserTeamReportParams(params);
+
+  if (!reportPayload || typeof reportPayload !== 'object') {
+    const error = new Error('No llegó contenido válido para guardar el reporte de equipo');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await ensureReportesPersonalesDataBucket();
+
+  const uploadUrl = `${env.supabaseUrl}/storage/v1/object/${normalized.bucket}/${encodeStoragePath(normalized.objectPath)}`;
+  const storedReport = {
+    ...reportPayload,
+    savedAt: new Date().toISOString(),
+    savedBy: String(user?.email || '').trim().toLowerCase() || null
+  };
+  const body = Buffer.from(JSON.stringify(storedReport, null, 2), 'utf8');
+
+  try {
+    await axios.post(uploadUrl, body, {
+      headers: buildStorageHeaders({
+        'Content-Type': 'application/json',
+        'x-upsert': 'true',
+        'cache-control': '0'
+      }),
+      maxBodyLength: Infinity
+    });
+
+    return {
+      exists: true,
+      month: normalized.month,
+      path: normalized.objectPath,
+      report: storedReport
+    };
+  } catch (err) {
+    const message = err.response?.data?.message || err.message;
+    const error = new Error(`Error guardando reporte de equipo: ${message}`);
+    error.statusCode = err.response?.status || 500;
+    error.details = err.response?.data || null;
+    throw error;
+  }
+}
+
 module.exports = {
   listResources,
   listRows,
@@ -3115,6 +3218,8 @@ module.exports = {
   uploadCloserPersonalPdf,
   getStoredCloserPersonalReport,
   saveCloserPersonalReport,
+  getStoredCloserTeamReport,
+  saveCloserTeamReport,
   normalizeResourceName,
   parseLimit,
   parseOffset
