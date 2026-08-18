@@ -8,16 +8,14 @@ const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public/metricas-v2/views/conciliacion.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/conciliacion.page.js'), 'utf8');
 
-test('Conciliación permite filtrar por un rango inclusivo de fecha de acreditación', () => {
-  assert.match(html, /id="conciliacionDateFrom" type="date"/);
-  assert.match(html, /id="conciliacionDateTo" type="date"/);
-  assert.match(script, /const date = rowDate\(row\);/);
-  assert.match(script, /date < dateFrom/);
-  assert.match(script, /date > dateTo/);
-  assert.doesNotMatch(script, /conciliacionMonth|rowMonth/);
+test('Conciliación ofrece un único selector de mes de acreditación', () => {
+  assert.match(html, /id="conciliacionMonth" type="month"/);
+  assert.doesNotMatch(html, /conciliacionDateFrom|conciliacionDateTo/);
+  assert.match(script, /refs\.month\.value = currentMonthValue\(\)/);
+  assert.match(script, /rowMonth\(row\) !== month/);
 });
 
-test('los límites son inclusivos y se pueden usar juntos o por separado', async () => {
+test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
   const listeners = new Map();
   const makeElement = (options = {}) => ({
     hidden: false,
@@ -37,6 +35,10 @@ test('los límites son inclusivos y se pueden usar juntos o por separado', async
     },
     change() { listeners.get(this)?.change?.({ target: this }); }
   });
+  const today = new Date();
+  const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const otherDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const otherMonth = `${otherDate.getFullYear()}-${String(otherDate.getMonth() + 1).padStart(2, '0')}`;
   const tab = makeElement({ dataset: { statusFilter: 'all' } });
   const elements = {
     conciliacionTotalChip: makeElement(),
@@ -46,8 +48,7 @@ test('los límites son inclusivos y se pueden usar juntos o por separado', async
     conciliacionSummary: makeElement(),
     conciliacionTable: makeElement(),
     conciliacionResponsibleFilter: makeElement(),
-    conciliacionDateFrom: makeElement(),
-    conciliacionDateTo: makeElement(),
+    conciliacionMonth: makeElement(),
     conciliacionClubFilter: makeElement({ value: 'all' }),
     conciliacionSearch: makeElement(),
     reloadConciliacion: makeElement()
@@ -55,6 +56,7 @@ test('los límites son inclusivos y se pueden usar juntos o por separado', async
   const context = {
     document: { getElementById: (id) => elements[id] || null },
     Intl,
+    Date,
     String,
     Number,
     Array,
@@ -63,10 +65,8 @@ test('los límites son inclusivos y se pueden usar juntos o por separado', async
     window: {
       metricasApi: {
         fetchReconciliationComprobantes: async () => ({ rows: [
-          { id: 'one', cliente_format: 'Inicio', f_acreditacion: '2026-08-15', estado: 'Conciliado' },
-          { id: 'two', cliente_format: 'Medio', f_acreditacion: '2026-08-16', estado: null },
-          { id: 'three', cliente_format: 'Fin', f_acreditacion: '2026-08-17', estado: 'Rebotado' },
-          { id: 'four', cliente_format: 'Sin fecha', f_acreditacion: null, estado: null }
+          { id: 'current', cliente_format: 'Mes actual', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
+          { id: 'other', cliente_format: 'Mes anterior', f_acreditacion: `${otherMonth}-15`, estado: null }
         ] })
       }
     }
@@ -76,15 +76,12 @@ test('los límites son inclusivos y se pueden usar juntos o por separado', async
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
 
-  elements.conciliacionDateFrom.value = '2026-08-16';
-  elements.conciliacionDateFrom.change();
-  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Inicio|Sin fecha/);
-  assert.match(elements.conciliacionTable.innerHTML, /Medio/);
-  assert.match(elements.conciliacionTable.innerHTML, /Fin/);
+  assert.equal(elements.conciliacionMonth.value, currentMonth);
+  assert.match(elements.conciliacionTable.innerHTML, /Mes actual/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes anterior/);
 
-  elements.conciliacionDateTo.value = '2026-08-16';
-  elements.conciliacionDateTo.change();
-  assert.match(elements.conciliacionTable.innerHTML, /Medio/);
-  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Inicio|Fin|Sin fecha/);
-  assert.match(elements.conciliacionHint.textContent, /desde 16\/08\/2026 hasta 16\/08\/2026/);
+  elements.conciliacionMonth.value = otherMonth;
+  elements.conciliacionMonth.change();
+  assert.match(elements.conciliacionTable.innerHTML, /Mes anterior/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes actual/);
 });

@@ -6295,30 +6295,7 @@ th {
 }
 
 .conciliacion-toolbar-actions {
-  grid-template-columns: minmax(170px, 1fr) repeat(2, minmax(145px, 0.8fr)) minmax(160px, 0.9fr) minmax(240px, 1.4fr) minmax(115px, 0.65fr);
-}
-
-.conciliacion-date-filter {
-  position: relative;
-  display: block;
-  min-width: 0;
-}
-
-.conciliacion-date-filter span {
-  position: absolute;
-  top: 6px;
-  left: 16px;
-  z-index: 1;
-  color: #64769d;
-  font-size: 0.68rem;
-  font-weight: 800;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.mis-comprobantes-toolbar-actions .conciliacion-date-filter input {
-  padding-top: 22px;
-  padding-bottom: 7px;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, 0.8fr) minmax(170px, 0.9fr) minmax(260px, 1.5fr) minmax(120px, 0.7fr);
 }
 
 .conciliacion-page .mis-comprobantes-tab strong {

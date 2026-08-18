@@ -18,8 +18,7 @@
     summary: document.getElementById('conciliacionSummary'),
     table: document.getElementById('conciliacionTable'),
     responsible: document.getElementById('conciliacionResponsibleFilter'),
-    dateFrom: document.getElementById('conciliacionDateFrom'),
-    dateTo: document.getElementById('conciliacionDateTo'),
+    month: document.getElementById('conciliacionMonth'),
     club: document.getElementById('conciliacionClubFilter'),
     search: document.getElementById('conciliacionSearch'),
     reload: document.getElementById('reloadConciliacion')
@@ -89,9 +88,13 @@
     return `<span class="conciliacion-state-badge is-${escapeHtml(value)}">${escapeHtml(stateLabel(value))}</span>`;
   }
 
-  function rowDate(row) {
+  function currentMonthValue(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function rowMonth(row) {
     const date = String(row?.f_acreditacion || '').slice(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : '';
   }
 
   function isClubRow(row) {
@@ -127,15 +130,12 @@
 
   function applyFilters() {
     const query = normalizeText(refs.search.value);
-    const dateFrom = refs.dateFrom.value;
-    const dateTo = refs.dateTo.value;
+    const month = refs.month.value;
     const responsible = normalizeText(refs.responsible.value);
     const clubMode = refs.club.value;
 
     state.baseFilteredRows = state.rows.filter((row) => {
-      const date = rowDate(row);
-      if (dateFrom && (!date || date < dateFrom)) return false;
-      if (dateTo && (!date || date > dateTo)) return false;
+      if (month && rowMonth(row) !== month) return false;
       if (responsible && normalizeText(row.responsable_venta || row.creado_por) !== responsible) return false;
       if (clubMode === 'only' && !isClubRow(row)) return false;
       if (clubMode === 'exclude' && isClubRow(row)) return false;
@@ -254,11 +254,8 @@
     renderTabs();
     renderSummary();
     renderTable();
-    const range = [
-      refs.dateFrom.value ? `desde ${formatDate(refs.dateFrom.value)}` : '',
-      refs.dateTo.value ? `hasta ${formatDate(refs.dateTo.value)}` : ''
-    ].filter(Boolean).join(' ');
-    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${range ? ` Acreditación ${range}.` : ''}`;
+    const selectedMonth = refs.month.value ? refs.month.value.split('-').reverse().join('/') : '';
+    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${selectedMonth ? ` Mes de acreditación: ${selectedMonth}.` : ''}`;
     refs.totalChip.textContent = `${state.rows.length} comprobantes`;
     refs.status.hidden = true;
   }
@@ -317,7 +314,7 @@
     renderAll();
   });
 
-  [refs.responsible, refs.dateFrom, refs.dateTo, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
+  [refs.responsible, refs.month, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
   refs.search?.addEventListener('input', renderAll);
   refs.reload?.addEventListener('click', loadRows);
   refs.table?.addEventListener('change', (event) => {
@@ -331,5 +328,6 @@
     if (button) saveState(button.dataset.saveState);
   });
 
+  refs.month.value = currentMonthValue();
   loadRows();
 })();
