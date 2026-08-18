@@ -282,6 +282,17 @@ async function deleteEditableComprobante(id) {
   return window.http.deleteJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}`, {});
 }
 
+async function fetchReconciliationComprobantes() {
+  return window.http.getJson('/api/metricas/comprobantes-reconciliation');
+}
+
+async function updateReconciliationComprobante(id, state) {
+  return window.http.patchJson(
+    `/api/metricas/comprobantes-reconciliation/${encodeURIComponent(id)}`,
+    { state }
+  );
+}
+
 async function generateCloserPersonalReport(payload = {}) {
   return window.http.postJson('/api/metricas/closers/personal-report', payload);
 }
@@ -366,6 +377,8 @@ window.metricasApi = {
   fetchEditableComprobante,
   updateEditableComprobante,
   deleteEditableComprobante,
+  fetchReconciliationComprobantes,
+  updateReconciliationComprobante,
   generateCloserPersonalReport,
   fetchCloserPersonalReport,
   fetchAuthUsers,

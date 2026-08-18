@@ -6290,6 +6290,94 @@ th {
   min-width: 1380px;
 }
 
+.conciliacion-page .carga-comprobantes-layout {
+  padding-top: 128px;
+}
+
+.conciliacion-toolbar-actions {
+  grid-template-columns: minmax(180px, 1.1fr) minmax(155px, 0.8fr) minmax(170px, 0.9fr) minmax(260px, 1.5fr) minmax(120px, 0.7fr);
+}
+
+.conciliacion-page .mis-comprobantes-tab strong {
+  display: inline-grid;
+  min-width: 24px;
+  min-height: 24px;
+  margin-left: 6px;
+  padding: 2px 7px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(48, 101, 217, 0.12);
+  font-size: 0.76rem;
+}
+
+.conciliacion-page .mis-comprobantes-tab.is-active strong {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.conciliacion-table-wrap {
+  overflow-x: auto;
+}
+
+.conciliacion-page .conciliacion-table {
+  min-width: 1780px;
+}
+
+.conciliacion-state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.conciliacion-state-badge.is-conciliated {
+  background: rgba(23, 161, 99, 0.14);
+  color: #087346;
+}
+
+.conciliacion-state-badge.is-not_conciliated {
+  background: rgba(236, 160, 31, 0.15);
+  color: #98600a;
+}
+
+.conciliacion-state-badge.is-bounced {
+  background: rgba(220, 66, 74, 0.14);
+  color: #a7242b;
+}
+
+.conciliacion-state-control {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.conciliacion-state-control select {
+  min-height: 40px;
+  border: 1px solid rgba(108, 148, 234, 0.28);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #f8fbff;
+  color: #17336f;
+  font: inherit;
+  font-weight: 700;
+}
+
+.conciliacion-state-control button {
+  min-height: 40px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.conciliacion-notion-link {
+  color: #2b5dcc;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .mis-comprobantes-manage-button,
 .mis-comprobantes-delete-button {
   border: 1px solid rgba(48, 101, 217, 0.26);

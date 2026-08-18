@@ -1,6 +1,7 @@
 const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
 const comprobantesLoaderService = require('../services/comprobantes-loader.service');
+const comprobantesReconciliationService = require('../services/comprobantes-reconciliation.service');
 const closerPersonalReportService = require('../services/closer-personal-report.service');
 const mercadoPagoService = require('../services/mercado-pago.service');
 const arcaPdfService = require('../services/arca-pdf.service');
@@ -725,6 +726,27 @@ async function createComprobanteManual(req, res, next) {
   }
 }
 
+async function listReconciliationComprobantes(req, res, next) {
+  try {
+    const result = await comprobantesReconciliationService.listAllComprobantes();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateReconciliationComprobante(req, res, next) {
+  try {
+    const result = await comprobantesReconciliationService.updateComprobanteState(
+      req.params.id,
+      req.body?.state
+    );
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getEditableComprobante(req, res, next) {
   try {
     const comprobante = await comprobantesLoaderService.getEditableComprobante(req.params.id, req.authUser);
@@ -1082,6 +1104,8 @@ module.exports = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  listReconciliationComprobantes,
+  updateReconciliationComprobante,
   getEditableComprobante,
   updateEditableComprobante,
   deleteEditableComprobante,

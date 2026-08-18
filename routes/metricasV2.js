@@ -75,6 +75,8 @@ router.get('/comprobantes-loader/:id/editable', controller.getEditableComprobant
 router.post('/comprobantes-loader', controller.createComprobanteManual);
 router.patch('/comprobantes-loader/:id', controller.updateEditableComprobante);
 router.delete('/comprobantes-loader/:id', controller.deleteEditableComprobante);
+router.get('/comprobantes-reconciliation', controller.listReconciliationComprobantes);
+router.patch('/comprobantes-reconciliation/:id', controller.updateReconciliationComprobante);
 router.post('/assistant/ask', controller.askAssistant);
 router.get('/closers/personal-report', controller.getCloserPersonalReport);
 router.post('/closers/personal-report', controller.generateCloserPersonalReport);

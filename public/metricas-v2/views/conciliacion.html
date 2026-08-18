@@ -7,25 +7,74 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=20260817-conciliacion-1" />
+    <script defer src="/js/api/http.js"></script>
+    <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-1"></script>
+    <script defer src="/js/auth-shell.js"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20260817-conciliacion-1"></script>
   </head>
-  <body class="ranking-page dashboard-home-page">
-    <main class="container">
+  <body class="carga-comprobantes-page mis-comprobantes-page conciliacion-page">
+    <main class="container carga-comprobantes-layout mis-comprobantes-layout">
       <div class="nav"><a href="/views/administracion.html">← Volver a Administración</a></div>
-      <section class="ranking-hero dashboard-hero">
-        <h1>Conciliación</h1>
-        <p>Acá vamos a centralizar la conciliación de comprobantes y pagos.</p>
+
+      <section class="metric-page-hero carga-comprobantes-hero conciliacion-hero">
+        <div class="metric-page-hero-copy">
+          <span class="metric-page-eyebrow">Administración</span>
+          <h1>Conciliación de comprobantes</h1>
+          <p>Todos los comprobantes guardados en Supabase, en un único lugar. Filtrá, revisá y mové cada operación entre Conciliado, No conciliado y Rebotado.</p>
+          <div class="metric-page-hero-meta">
+            <span class="metric-chip">Fuente: Supabase</span>
+            <span class="metric-chip">Cambios sincronizados con Notion</span>
+            <span id="conciliacionTotalChip" class="metric-chip">Cargando total...</span>
+          </div>
+        </div>
+        <div class="carga-comprobantes-hero-card">
+          <div class="carga-comprobantes-hero-icon">✓</div>
+          <h2>Flujo de estados</h2>
+          <ol>
+            <li>No conciliado: pendiente de revisión administrativa.</li>
+            <li>Conciliado: confirmado e incluido en las métricas correspondientes.</li>
+            <li>Rebotado: pago rechazado o que requiere seguimiento.</li>
+          </ol>
+        </div>
       </section>
 
-      <section class="cards">
-        <article class="card card-soon">
-          <span class="card-badge">Próximamente</span>
-          <h3>Conciliación de comprobantes</h3>
-          <p>La página ya está preparada. El flujo de conciliación se construirá en la próxima etapa.</p>
-        </article>
+      <section class="carga-comprobantes-panel conciliacion-panel">
+        <div id="conciliacionTabs" class="mis-comprobantes-tabs mis-comprobantes-reconciliation-tabs" role="tablist" aria-label="Estado de conciliación">
+          <button type="button" class="mis-comprobantes-tab is-active" data-status-filter="all" role="tab" aria-selected="true">Todos <strong data-status-count="all">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-status-filter="conciliated" role="tab" aria-selected="false">Conciliados <strong data-status-count="conciliated">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-status-filter="not_conciliated" role="tab" aria-selected="false">No conciliados <strong data-status-count="not_conciliated">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-status-filter="bounced" role="tab" aria-selected="false">Rebotados <strong data-status-count="bounced">0</strong></button>
+        </div>
+
+        <div class="carga-comprobantes-toolbar mis-comprobantes-toolbar">
+          <div class="carga-comprobantes-toolbar-copy">
+            <strong>Base completa de comprobantes</strong>
+            <p id="conciliacionHint">Preparando el listado...</p>
+          </div>
+          <div class="mis-comprobantes-toolbar-actions conciliacion-toolbar-actions">
+            <select id="conciliacionResponsibleFilter" aria-label="Filtrar por responsable">
+              <option value="">Todos los responsables</option>
+            </select>
+            <input id="conciliacionMonth" type="month" aria-label="Filtrar por mes de acreditación" />
+            <select id="conciliacionClubFilter" aria-label="Filtrar Club">
+              <option value="all">Todos los productos</option>
+              <option value="exclude">Excluir Club</option>
+              <option value="only">Solo Club</option>
+            </select>
+            <input id="conciliacionSearch" type="search" placeholder="Cliente, GHL, producto o responsable" aria-label="Buscar comprobantes" />
+            <button id="reloadConciliacion" type="button" class="metricas-secondary-button">Actualizar</button>
+          </div>
+        </div>
+
+        <div id="conciliacionStatus" class="carga-comprobantes-status is-loading">
+          <div class="carga-loader-spinner" aria-hidden="true"></div>
+          <span>Cargando todos los comprobantes desde Supabase...</span>
+        </div>
+
+        <div id="conciliacionSummary" class="mis-comprobantes-summary" hidden></div>
+        <div id="conciliacionTable"></div>
       </section>
     </main>
-    <script src="/js/api/http.js"></script>
-    <script src="/js/auth-shell.js"></script>
   </body>
 </html>
