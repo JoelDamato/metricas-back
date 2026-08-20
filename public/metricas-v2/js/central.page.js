@@ -3,27 +3,25 @@
     tiempo: {
       title: 'CSM · Por Tiempo',
       viewLabel: '"csm"',
-      dateLabel: 'Prioriza campos calculados directos y, si faltan, cae a fechas base como "f_pago_con_acceso", "f_acceso", "f_onboarding", "f_diagnostico", "f_primer_resultado", "caso_de_exito" y "modulo_1" a "modulo_10".',
-      fieldsLabel: '"pago_a_onbo", "pago_a_diagnostico", "diagnostico_7dias", "f_pago_con_acceso", "f_acceso", "f_onboarding", "f_diagnostico", "f_primer_resultado", "caso_de_exito", "modulo_1" a "modulo_10", "ultima_fecha_de_avance".',
+      dateLabel: 'Cada sesión usa su fecha real: "f_diagnostico", "f_costos_1", "f_costos_2", "f_eerr_economico", "f_eerr_financiero" y "f_cashflow".',
+      fieldsLabel: '"f_pago_con_acceso", "f_acceso", "f_onboarding", "f_diagnostico", "f_costos_1", "f_costos_2", "f_eerr_economico", "f_eerr_financiero", "f_cashflow" y "modulo_1" a "modulo_10".',
       logic: [
-        'Este panel concentra tiempos entre hitos del programa. Cuando la tabla "csm" ya trae el indicador calculado, ese valor tiene prioridad; si todavía está vacío, el panel cae a la diferencia entre fechas base.',
-        'Para "Tiempo promedio desde pago a ver onboarding" prioriza la diferencia entre "f_pago_con_acceso" y "f_onboarding". Si en una fila vieja todavía no existe "f_pago_con_acceso", usa "f_acceso"; si faltan ambas fechas, recién ahí cae a "pago_a_onbo".',
-        'Para "Tiempo promedio desde pago a sesión diagnóstico" prioriza "pago_a_diagnostico". Si falta, toma "f_acceso" y la compara contra la fecha operativa de diagnóstico. Prioriza "f_diagnostico" y, si falta, cae a "modulo_1".',
-        'Para "Cantidad de sesiones diagnóstico menor a 7 días" prioriza el flag "diagnostico_7dias". Si todavía no llegó desde Notion, usa el tiempo a diagnóstico resuelto por el panel y marca positivo cuando es menor o igual a 7.',
-        'Para "Tiempo promedio a primer resultado" usa "f_primer_resultado" y calcula el promedio contra "f_onboarding". Si esa fecha todavía no está cargada, usa como respaldo la primera fecha completada entre "modulo_2" y "modulo_10".',
-        'Para "Tiempo promedio a caso de éxito" toma la diferencia entre "f_onboarding" y "caso_de_exito". Para "Tiempo promedio en cada unidad" mide el tramo entre un hito y el siguiente: onboarding a "modulo_1", luego "modulo_1" a "modulo_2" y así sucesivamente.'
+        'Los diagnósticos del mes se cuentan por "f_diagnostico", sin depender del mes en que ingresó el cliente.',
+        'Hasta 7 días y después de 7 días se calculan entre "f_pago_con_acceso" (o "f_acceso" como respaldo) y "f_diagnostico". Los pendientes se muestran aparte como cohorte de ingresos.',
+        'Costos 1, Costos 2, Económica, Financiera y Cashflow se cuentan por la fecha real de cada sesión.',
+        'Los tiempos entre sesiones usan hitos consecutivos con ambas fechas válidas y muestran su cobertura para no confundir falta de carga con un resultado real.'
       ]
     },
     situacion: {
       title: 'CSM · Por Situación',
       viewLabel: '"csm"',
       dateLabel: 'Mixta: snapshot actual del cliente más fechas de hitos como "f_acceso", "f_abandono", "caso_de_exito" y "fecha_final".',
-      fieldsLabel: '"activos", "f_abandono", "caso_de_exito", "insatisfecho", "solicito_devolucion", "nps_1" a "nps_10", "modelo_negocio", "f_acceso", "f_onboarding", "fecha_final", "actividad", "progreso_curso", "ultima_respuesta".',
+      fieldsLabel: '"acceso", "ghlid", "f_pago_con_acceso", "f_abandono", "caso_de_exito", "insatisfecho", "solicito_devolucion", "nps_1" a "nps_10", "modelo_negocio" y fechas de sesiones.',
       logic: [
-        'Este panel apunta a explicar en qué situación está cada cliente y qué porcentaje representa sobre la base total o sobre los activos, según la métrica.',
-        'Las métricas más directas ya salen de campos concretos de "csm": clientes activos con soporte desde "activos", abandonos desde "f_abandono", casos de éxito desde "caso_de_exito", insatisfechos desde "insatisfecho" y solicitudes de devolución desde "solicito_devolucion".',
-        'Las métricas porcentuales se pueden calcular sobre el total de filas de "csm" o sobre el subconjunto con "activos"=true, dependiendo de la definición final que me pases para cada una.',
-        'Para "NPS promedio de cada unidad" la base ya está materializada en "nps_1" a "nps_10". Para el corte por "modelo de negocio" también ya existe el campo "modelo_negocio", con valores como "Reventa", "Fabricante", "Gastronómico" y variantes de servicios.'
+        'El total principal deduplica personas por GHL y deja visibles las filas duplicadas o sin GHL para auditoría.',
+        'Un cliente está activo únicamente cuando "acceso" vale "Acceso"; "Sin acceso" se muestra como inactivo y los vacíos quedan separados como falta de dato.',
+        'Los nuevos ingresos usan "f_pago_con_acceso" y muestran cantidad única, filas, variación mensual y el estado actual de cada cohorte.',
+        'Clientes por año y por rubro también trabajan con clientes únicos. Los conteos de sesiones usan la fecha específica de cada hito.'
       ]
     },
     renovaciones: {

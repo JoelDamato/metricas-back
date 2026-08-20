@@ -7,6 +7,14 @@ const GOOGLE_SHEETS_TIMEOUT_MS = parseInt(process.env.GOOGLE_SHEETS_TIMEOUT_MS |
 
 let sheetsQueue = Promise.resolve();
 
+// Notion puede ocultar el nombre de algunos miembros/guests si la integración
+// no tiene acceso a su información. El ID de usuario sí llega en la propiedad
+// people, así que conservamos el nombre canónico para no dejar stale el closer
+// en Supabase cuando se reasigna un comprobante.
+const NOTION_PERSON_NAME_BY_ID = {
+  '32ed872b-594c-8111-8b96-0002d7decc97': 'Pablo Butera'
+};
+
 
 
 function toNumber(val) {
@@ -171,7 +179,9 @@ function getValue(prop) {
       return null;
     
     case 'people':
-      return prop.people?.[0]?.name ?? null;
+      return prop.people?.[0]?.name
+        ?? NOTION_PERSON_NAME_BY_ID[prop.people?.[0]?.id]
+        ?? null;
 
     case 'relation':
       return prop.relation?.[0]?.id ?? null;

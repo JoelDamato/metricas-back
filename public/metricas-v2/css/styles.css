@@ -1954,6 +1954,14 @@ th {
   .csm-detail-panel:not(.csm-detail-panel-half) {
     grid-column: 1 / -1;
   }
+
+  .csm-page .csm-table {
+    min-width: 720px;
+  }
+
+  .csm-page .csm-detail-table {
+    min-width: 640px;
+  }
 }
 
 .reportes-actions input {

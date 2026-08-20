@@ -30,6 +30,16 @@ test('getValue conserva el mapeo de tipos existentes', () => {
   }), 'Cheque recibido');
 });
 
+test('getValue resuelve a Pablo aunque Notion oculte el nombre del usuario', () => {
+  assert.equal(getValue({
+    type: 'people',
+    people: [{
+      object: 'user',
+      id: '32ed872b-594c-8111-8b96-0002d7decc97'
+    }]
+  }), 'Pablo Butera');
+});
+
 test('mapea Venta relacionada y Cobranza relacionada a sus IDs de Supabase', () => {
   const row = mapToSupabase({
     data: {

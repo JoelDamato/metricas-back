@@ -1,21 +1,321 @@
 (() => {
-  const F = (key,label,type='text',options=[]) => ({key,label,type,options});
-  const commonCost = [F('margenMarcacion','Margen de marcación (%)'),F('margenContribucion','Margen de contribución bruto (%)'),F('productoMasVendido','Producto/servicio más vendido'),F('margenMarcacionProducto','Margen de marcación del producto (%)'),F('margenContribucionProducto','Margen de contribución del producto (%)'),F('costosFinancieros','Costos financieros (%)'),F('impuestosVariables','Impuestos variables (%)'),F('trasladoFinanciero','Traslado de costo financiero','select',['No traslada (lo absorbe)','Sí, con fórmula correcta','Sí, con fórmula incorrecta']),F('trasladoImpositivo','Traslado de impuestos variables','select',['No traslada (lo absorbe)','Sí, con fórmula correcta','Sí, con fórmula incorrecta'])];
-  const defs={inicial:[{key:'costos',label:'Costos y Precios',q:'¿Conoce con precisión costos variables, margen de contribución y margen de marcación?',fields:commonCost},{key:'resultados',label:'Estado de Resultados',q:'¿Sabe si su negocio ganó o perdió el último mes con datos reales?',fields:[F('facturacionPromedio','Facturación promedio mensual ($)'),F('costosFijos','Costos fijos totales ($)'),F('resultadoUltimoMes','Resultado último mes ($)')]},{key:'analisis',label:'Análisis y Planificación',q:'¿Compara resultados y tiene proyecciones?',fields:[F('comparaProyecta','Comparación y proyección','select',['No compara ni proyecta','Compara, no proyecta','Proyecta y compara'])]},{key:'finanzas',label:'Finanzas y Cash Flow',q:'¿Conoce disponible, por cobrar y compromisos a 30 días?',fields:[F('dineroDisponible','Dinero disponible ($)'),F('porCobrar','Por cobrar a 30 días ($)'),F('deudaProveedores','Deuda proveedores 30 días ($)'),F('otrasDeudas','Otras deudas / pagos ($)'),F('fondoEmergencia','Fondo de emergencia ($)'),F('fondoInversiones','Fondo de inversiones ($)')]}],medio:[{key:'costos',label:'Costos y Precios',q:'¿Entendió los márgenes y aplicó mejoras?',fields:commonCost},{key:'resultados',label:'Estado de Resultados',q:'¿Armó su estado de resultados con datos reales?',fields:[F('facturacionPromedio','Facturación promedio mensual ($)'),F('costosFijos','Costos fijos totales ($)'),F('resultadoUltimoMes','Resultado último mes ($)')]},{key:'analisis',label:'Análisis y Planificación',q:'¿Detectó y aplicó mejoras concretas?',fields:[F('comparaProyecta','Comparación y proyección','select',['No compara ni proyecta','Compara, no proyecta','Proyecta y compara'])]}],final:[{key:'rentabilidadFinal',label:'Resumen de Rentabilidad',q:'Cómo empezó vs. cómo termina el programa.',fields:[...commonCost,F('facturacionPromedio','Facturación promedio mensual ($)'),F('costosFijos','Costos fijos totales ($)'),F('ventas','Ventas / facturación de referencia ($)'),F('resultadoUltimoMes','Resultado último mes ($)')]},{key:'finanzas_u6',label:'Finanzas y Cash Flow · Unidad 6',q:'¿Entiende entradas y salidas y separó las cuentas personales?',fields:[]},{key:'finanzas_u7',label:'Finanzas y Cash Flow · Unidad 7',q:'¿Proyecta cobros y pagos y toma decisiones preventivas?',fields:[]}]};
-  const patterns=['No conoce sus costos fijos','No conoce su margen de contribución','Mezcla finanzas personales y del negocio','No revisa sus números mes a mes','No sabe si ganó o perdió el último mes','Vende pero no sabe por qué no ve la plata','No compara ni proyecta resultados','Traslada mal costos financieros','Le cuesta sostener el método','Otro'];
-  let items=[], clients=[], current=null, stage='inicial'; const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  function emptyData(){return {checkpoints:{inicial:{date:'',areas:{}},medio:{date:'',areas:{}},final:{date:'',areas:{}}}}} function normalize(d){d=d&&typeof d==='object'?d:emptyData();d.checkpoints=d.checkpoints||{};for(const s of Object.keys(defs)){d.checkpoints[s]=d.checkpoints[s]||{date:'',areas:{}};d.checkpoints[s].areas=d.checkpoints[s].areas||{};defs[s].forEach(a=>{d.checkpoints[s].areas[a.key]=d.checkpoints[s].areas[a.key]||{score:null,values:{},note:'',patterns:[]};const x=d.checkpoints[s].areas[a.key];x.values=x.values||{};x.patterns=Array.isArray(x.patterns)?x.patterns:[]})}return d}
-  async function request(url,options={}){const r=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'No se pudo completar la operación');return d}
-  function setStatus(text,type=''){const el=$('#saveStatus');el.textContent=text;el.className=`status ${type}`}
-  function link(){return `${location.origin}/diagnostico/?ghl_id=${encodeURIComponent(current.clientGhlId||'')}`}
-  function renderPicker(){const picker=$('#clientPicker'),search=$('#clientSearch'),suggestions=$('#clientSuggestions'),term=String(search?.value||'').trim().toLocaleLowerCase('es');const filtered=term?clients.filter(x=>`${x.name} ${x.businessName}`.toLocaleLowerCase('es').includes(term)).slice(0,8):[];suggestions.innerHTML=term?(filtered.length?filtered.map(x=>`<button type="button" data-client="${esc(x.ghlId)}"><strong>${esc(x.name)}</strong>${x.businessName?`<small>${esc(x.businessName)}</small>`:''}</button>`).join(''):'<span class="small">No encontré coincidencias.</span>'):'';suggestions.querySelectorAll('[data-client]').forEach(button=>button.onclick=()=>{const selected=clients.find(x=>x.ghlId===button.dataset.client);if(!selected)return;picker.value=selected.ghlId;search.value=selected.name+(selected.businessName?` · ${selected.businessName}`:'');suggestions.innerHTML=''})} function renderList(){const el=$('#clientList');el.innerHTML=items.length?items.map(x=>`<div class="client-row"><button data-open="${x.id}"><strong>${esc(x.clientName)}</strong><br><span class="small">${esc(x.businessName||'Sin negocio')} · ${esc(x.csmName||'Sin CSM')}</span></button><span class="small">${new Date(x.updatedAt||Date.now()).toLocaleDateString('es-AR')}</span></div>`).join(''):'<p class="muted">Todavía no hay diagnósticos creados.</p>';el.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>open(b.dataset.open))}
-  function render(){if(!current)return;current.data=normalize(current.data);$('#editor').hidden=false;$('#publicLink').textContent=link();$('#tabs').innerHTML=['inicial','medio','final','rumbo'].map(s=>`<button class="btn tab ${stage===s?'active':''}" data-tab="${s}">${s==='rumbo'?'Carta de rumbo':s[0].toUpperCase()+s.slice(1)}</button>`).join('');$('#tabs').querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{stage=b.dataset.tab;render()});const cp=current.data.checkpoints;if(stage==='rumbo'){const tracks=['costos','resultados','analisis','finanzas'];$('#stageContent').innerHTML=`<h2>Carta de rumbo</h2><p class="muted">Comparativo de puntajes entre los checkpoints guardados.</p>${tracks.map(k=>{const scores=['inicial','medio','final'].map(s=>{const key=s==='final'&&k==='finanzas'?'finanzas_u6':k;return cp[s].areas[key]?.score??'—'});return `<div class="area"><h3>${esc(k==='analisis'?'Análisis y planificación':k[0].toUpperCase()+k.slice(1))}</h3><div class="grid"><div>Inicial: <strong>${scores[0]}/5</strong></div><div>Medio: <strong>${scores[1]}/5</strong></div><div>Final: <strong>${scores[2]}/5</strong></div></div></div>`}).join('')}`;return} const checkpoint=cp[stage];$('#stageContent').innerHTML=`<div class="checkpoint-head"><div class="grid"><label class="field"><span>Fecha checkpoint</span><input type="date" data-date value="${esc(checkpoint.date||'')}"></label></div><button class="btn" type="button" data-save-stage>Guardar ${stage}</button></div>${defs[stage].map(a=>areaHtml(a,checkpoint.areas[a.key])).join('')}`;const dateInput=$('#stageContent').querySelector('[data-date]');dateInput.oninput=dateInput.onchange=e=>checkpoint.date=e.target.value;bindAreaEvents()}
-  function areaHtml(a,v){return `<article class="area" data-area="${a.key}"><div class="area-head"><div><h3>${esc(a.label)}</h3><p class="question">${esc(a.q)}</p></div><div class="score">${[1,2,3,4,5].map(n=>`<button class="btn ${v.score===n?'active':''}" data-score="${n}">${n}</button>`).join('')}</div></div><div class="grid">${a.fields.map(f=>`<label class="field"><span>${esc(f.label)}</span>${f.type==='select'?`<select data-field="${f.key}"><option value="">— Elegir —</option>${f.options.map(o=>`<option ${v.values[f.key]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`:`<input data-field="${f.key}" value="${esc(v.values[f.key]||'')}">`}</label>`).join('')}</div><label class="field" style="margin-top:11px"><span>Nota interna del CSM</span><textarea data-note>${esc(v.note||'')}</textarea></label><label class="field" style="margin-top:11px"><span>Dificultades detectadas</span><select data-pattern multiple size="4">${patterns.map(p=>`<option ${v.patterns.includes(p)?'selected':''}>${esc(p)}</option>`).join('')}</select></label><div class="area-actions"><button class="btn alt" type="button" data-save-area="${a.key}">Guardar ${esc(a.label)}</button></div></article>`}
-  function bindAreaEvents(){document.querySelectorAll('.area').forEach(el=>{const v=current.data.checkpoints[stage].areas[el.dataset.area];el.querySelectorAll('[data-score]').forEach(b=>b.onclick=()=>{const n=+b.dataset.score;v.score=v.score===n?null:n;render()});el.querySelectorAll('[data-field]').forEach(i=>{const sync=()=>v.values[i.dataset.field]=i.value;i.oninput=sync;i.onchange=sync});const n=el.querySelector('[data-note]');if(n)n.oninput=n.onchange=()=>v.note=n.value;const p=el.querySelector('[data-pattern]');if(p)p.onchange=()=>v.patterns=[...p.selectedOptions].map(o=>o.value);el.querySelector('[data-save-area]').onclick=e=>saveCurrent(`Guardaste ${defs[stage].find(a=>a.key===el.dataset.area).label}.`,e.currentTarget)});$('#stageContent').querySelector('[data-save-stage]').onclick=e=>saveCurrent(`Checkpoint ${stage} guardado.`,e.currentTarget)}
-  async function load(){setStatus('Cargando...');try{const [diagnosticos,baseCsm]=await Promise.all([request('/api/metricas/diagnosticos'),request('/api/metricas/diagnosticos/clientes-csm')]);items=diagnosticos.diagnosticos||[];clients=baseCsm.clients||[];renderPicker();$('#clientSearch').addEventListener('input',()=>{$('#clientPicker').value='';renderPicker()});renderList();setStatus('')}catch(e){setStatus(e.message,'error')}} async function open(id){current=items.find(x=>x.id===id);if(!current)return;current.data=normalize(current.data);const selected=clients.find(x=>x.ghlId===current.clientGhlId);$('#clientSearch').value=selected?selected.name+(selected.businessName?` · ${selected.businessName}`:''):current.clientName;$('#clientPicker').value=current.clientGhlId;renderPicker();$('#csmName').value=current.csmName||'';stage='inicial';render();window.scrollTo({top:0,behavior:'smooth'})}
-  $('#newClient').onclick=async()=>{const selected=clients.find(x=>x.ghlId===$('#clientPicker').value);if(!selected)return setStatus('Elegí un cliente de CSM.','error');try{const r=await request('/api/metricas/diagnosticos',{method:'POST',body:JSON.stringify({clientGhlId:selected.ghlId,clientName:selected.name,businessName:selected.businessName,csmName:$('#csmName').value,data:emptyData()})});items.unshift(r.diagnostico);renderList();await open(r.diagnostico.id);setStatus('Diagnóstico creado y vinculado al cliente.','ok')}catch(e){setStatus(e.message,'error')}};
-  async function saveCurrent(successMessage='Cambios guardados.',button){if(!current)return;try{if(button){button.disabled=true;button.textContent='Guardando...'}setStatus('Guardando cambios...');const selected=clients.find(x=>x.ghlId===current.clientGhlId);const r=await request(`/api/metricas/diagnosticos/${current.id}`,{method:'PATCH',body:JSON.stringify({clientGhlId:current.clientGhlId,clientName:selected?.name||current.clientName,businessName:selected?.businessName||current.businessName,csmName:$('#csmName').value,data:current.data})});current=r.diagnostico;items=items.map(x=>x.id===current.id?current:x);renderList();render();setStatus(successMessage,'ok')}catch(e){if(button){button.disabled=false;button.textContent='Reintentar guardado'}setStatus(e.message,'error')}}
-  $('#saveAll').onclick=e=>saveCurrent('Todos los cambios guardados.',e.currentTarget);
-  $('#copyLink').onclick=async()=>{try{await navigator.clipboard.writeText(link());setStatus('Link copiado.','ok')}catch{setStatus('Copiá el link manualmente.','error')}};
-  $('#deleteClient').onclick=async()=>{if(!current||!confirm(`¿Eliminar el diagnóstico de ${current.clientName}?`))return;try{await request(`/api/metricas/diagnosticos/${current.id}`,{method:'DELETE'});items=items.filter(x=>x.id!==current.id);current=null;$('#editor').hidden=true;renderList();setStatus('Diagnóstico eliminado.','ok')}catch(e){setStatus(e.message,'error')}};load();
+  const core = window.DiagnosticCore;
+  if (!core) throw new Error('No se pudo cargar la lógica de la Carta de Rumbo');
+
+  let diagnostics = [];
+  let clients = [];
+  let current = null;
+  let activeStage = 'inicial';
+  const $ = (selector) => document.querySelector(selector);
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+  async function request(url, options = {}) {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || 'No se pudo completar la operación');
+    return data;
+  }
+
+  function setStatus(text, type = '') {
+    const element = $('#saveStatus');
+    element.textContent = text;
+    element.className = `status ${type}`;
+  }
+
+  function publicLink() {
+    return `${location.origin}/diagnostico/?ghl_id=${encodeURIComponent(current?.clientGhlId || '')}`;
+  }
+
+  function scoreBadge(score, id = '') {
+    const scoreBand = core.band(score);
+    const text = score === null || score === undefined ? 'Sin datos aún' : `${score}/5 · ${core.bandLabel(scoreBand)}`;
+    return `<span ${id ? `id="${id}"` : ''} class="score-badge ${scoreBand}">${text}</span>`;
+  }
+
+  function renderPicker() {
+    const picker = $('#clientPicker');
+    const search = $('#clientSearch');
+    const suggestions = $('#clientSuggestions');
+    const term = String(search?.value || '').trim().toLocaleLowerCase('es');
+    const filtered = term
+      ? clients.filter((client) => `${client.name} ${client.businessName}`.toLocaleLowerCase('es').includes(term)).slice(0, 8)
+      : [];
+    suggestions.innerHTML = term
+      ? (filtered.length
+        ? filtered.map((client) => `<button type="button" data-client="${escapeHtml(client.ghlId)}"><strong>${escapeHtml(client.name)}</strong>${client.businessName ? `<small>${escapeHtml(client.businessName)}</small>` : ''}</button>`).join('')
+        : '<span class="small">No encontré coincidencias.</span>')
+      : '';
+    suggestions.querySelectorAll('[data-client]').forEach((button) => {
+      button.onclick = () => {
+        const selected = clients.find((client) => client.ghlId === button.dataset.client);
+        if (!selected) return;
+        picker.value = selected.ghlId;
+        search.value = selected.name + (selected.businessName ? ` · ${selected.businessName}` : '');
+        suggestions.innerHTML = '';
+      };
+    });
+  }
+
+  function renderList() {
+    const list = $('#clientList');
+    list.innerHTML = diagnostics.length
+      ? diagnostics.map((item) => `<div class="client-row"><button data-open="${escapeHtml(item.id)}"><strong>${escapeHtml(item.clientName)}</strong><br><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CSM')}</span></button><span class="small">${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span></div>`).join('')
+      : '<p class="muted">Todavía no hay diagnósticos creados.</p>';
+    list.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDiagnostic(button.dataset.open); });
+  }
+
+  function compareValue(item, field, type) {
+    if (!item.compareStage) return null;
+    const area = current.data.checkpoints[item.compareStage]?.areas?.[item.key];
+    const raw = type === 'select' ? area?.selects?.[field.key] : area?.nums?.[field.key];
+    return type === 'select' ? (raw || '—') : (core.formatField(field.key, raw) || '—');
+  }
+
+  function numberFields(item, area, stage) {
+    const rows = item.numFields.map((field) => {
+      const value = core.formatField(field.key, area.nums?.[field.key] || '');
+      const input = `<div class="field ${field.derivedFrom ? 'derived' : ''}"><span>${escapeHtml(field.label)}${field.derivedFrom ? ' · automática' : ''}</span><input data-stage="${stage}" data-area="${item.key}" data-numfield="${field.key}" value="${escapeHtml(value)}" ${field.derivedFrom ? 'readonly' : ''}/></div>`;
+      if (!item.compareStage) return input;
+      return `<div class="compare-row"><span class="compare-label">${escapeHtml(field.label)}${field.derivedFrom ? ' · automática' : ''}</span><span class="previous">${escapeHtml(compareValue(item, field, 'number'))}</span><span class="arrow">→</span>${input}</div>`;
+    }).join('');
+    return item.compareStage ? `<div class="compare-grid">${rows}</div>` : `<div class="input-grid">${rows}</div>`;
+  }
+
+  function selectFields(item, area, stage) {
+    const rows = item.selectFields.map((field) => {
+      const value = area.selects?.[field.key] || '';
+      const options = ['<option value="">— Elegir —</option>', ...field.options.map((option) => `<option value="${escapeHtml(option)}" ${value === option ? 'selected' : ''}>${escapeHtml(option)}</option>`)].join('');
+      const input = `<div class="field"><span>${escapeHtml(field.label)}</span><select data-stage="${stage}" data-area="${item.key}" data-selectfield="${field.key}">${options}</select></div>`;
+      if (!item.compareStage) return input;
+      return `<div class="compare-row"><span class="compare-label">${escapeHtml(field.label)}</span><span class="previous">${escapeHtml(compareValue(item, field, 'select'))}</span><span class="arrow">→</span>${input}</div>`;
+    }).join('');
+    return item.compareStage ? `<div class="compare-grid">${rows}</div>` : `<div class="input-grid">${rows}</div>`;
+  }
+
+  function profitabilityBlock(stage) {
+    const values = core.calculateStage(current.data.checkpoints[stage]);
+    return `<div class="calcs">
+      <div class="calc-block"><p class="calc-title">Margen de contribución neto</p><div class="calc-row"><span>Costo financiero efectivo</span><strong data-calc="financialCost">${core.formatPercent(values.financialCost)}</strong></div><div class="calc-row"><span>Impuesto variable efectivo</span><strong data-calc="taxCost">${core.formatPercent(values.taxCost)}</strong></div><div class="calc-row total"><span>Margen neto</span><strong data-calc="netMargin">${core.formatPercent(values.netMargin)}</strong></div></div>
+      <div class="calc-block"><p class="calc-title">Rentabilidad calculada</p><div class="calc-row"><span>Ventas</span><strong data-calc="sales">${core.formatMoney(values.sales)}</strong></div><div class="calc-row"><span>Costos variables</span><strong data-calc="variableCosts">${core.formatMoney(values.variableCosts)}</strong></div><div class="calc-row"><span>Contribución marginal</span><strong data-calc="contribution">${core.formatMoney(values.contribution)}</strong></div><div class="calc-row"><span>Costos fijos</span><strong data-calc="fixedCosts">${core.formatMoney(values.fixedCosts)}</strong></div><div class="calc-row total"><span>Resultado del mes</span><strong data-calc="monthlyResult">${core.formatMoney(values.monthlyResult)}</strong></div><div class="calc-row"><span>Rentabilidad neta</span><strong data-calc="netProfitPercent">${core.formatPercent(values.netProfitPercent)}</strong></div><div class="calc-row"><span>Punto de equilibrio</span><strong data-calc="breakEven">${core.formatMoney(values.breakEven)}</strong></div></div>
+    </div>`;
+  }
+
+  function financeBlock(stage) {
+    const values = core.calculateStage(current.data.checkpoints[stage]).finance;
+    return `<div class="calcs"><div class="calc-block"><p class="calc-title">Resultado financiero a 30 días</p><div class="calc-row"><span>Solo proveedores</span><strong data-finance="providersResult">${core.formatMoney(values?.providersResult)}</strong></div><div class="calc-row total"><span>Todas las deudas</span><strong data-finance="totalResult">${core.formatMoney(values?.totalResult)}</strong></div></div><div class="calc-block"><p class="calc-title">Cashflow proyectado a 30 días</p><div class="calc-row"><span>Ingresos proyectados</span><strong data-finance="projectedIncome">${core.formatMoney(values?.projectedIncome)}</strong></div><div class="calc-row"><span>Egresos proyectados</span><strong data-finance="projectedExpense">${core.formatMoney(values?.projectedExpense)}</strong></div><div class="calc-row total"><span>Resultado proyectado</span><strong data-finance="projectedResult">${core.formatMoney(values?.projectedResult)}</strong></div></div></div>`;
+  }
+
+  function areaHtml(item, checkpoint, stage) {
+    const area = checkpoint.areas[item.key];
+    return `<article class="area" data-area-card="${item.key}"><div class="area-head"><div><h3>${escapeHtml(item.label)}</h3><p class="question">${escapeHtml(item.question)}</p></div>${scoreBadge(area.score, `score-${stage}-${item.key}`)}</div>${numberFields(item, area, stage)}${selectFields(item, area, stage)}${item.key === 'resultados' ? profitabilityBlock(stage) : ''}${item.key === 'finanzas' ? financeBlock(stage) : ''}<div class="field" style="margin-top:11px"><span>Nota interna del CSM</span><textarea data-note data-stage="${stage}" data-area="${item.key}" placeholder="Nota breve opcional">${escapeHtml(area.note || '')}</textarea></div></article>`;
+  }
+
+  function summaryHtml(checkpoint, stage) {
+    const summary = core.computeSummary(checkpoint, stage);
+    const alertBand = core.band(summary.patternScore);
+    return `<div class="summary-strip"><div class="summary-chip"><div class="label">Promedio automático</div><div class="value" id="summary-average"><span class="dot ${summary.band}"></span>${summary.average === null ? '—' : summary.average.toFixed(1)}</div></div><div class="summary-chip"><div class="label">Estado general</div><div class="value" id="summary-state"><span class="dot ${summary.band}"></span>${core.bandLabel(summary.band)}</div></div><div class="summary-chip"><div class="label">Nivel de alerta</div><div class="value" id="summary-alert"><span class="dot ${alertBand}"></span>${summary.patternScore}/5 · ${core.bandLabel(alertBand)}</div></div></div>`;
+  }
+
+  function patternsHtml(checkpoint, stage) {
+    return `<div class="patterns"><span class="diag-label">Principales dificultades detectadas · interno</span><div class="patterns-grid">${core.PATTERNS.map((pattern) => { const checked = checkpoint.patterns.includes(pattern.key); return `<label class="pattern-chip ${checked ? 'checked' : ''}"><input type="checkbox" data-pattern="${pattern.key}" data-stage="${stage}" ${checked ? 'checked' : ''}/>${escapeHtml(pattern.label)}</label>`; }).join('')}</div>${checkpoint.patterns.includes('otro') ? `<div class="field" style="margin-top:9px"><span>Detalle de otro</span><input data-other data-stage="${stage}" value="${escapeHtml(checkpoint.otroDetalle || '')}"/></div>` : ''}</div>`;
+  }
+
+  function stageHtml(stage) {
+    const checkpoint = current.data.checkpoints[stage];
+    const labels = { inicial: 'Antes de empezar', medio: 'Unidades 2, 3 y 4', final: 'Unidades 6 y 7' };
+    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><input data-meta="csm" data-stage="${stage}" value="${escapeHtml(checkpoint.csm || current.csmName || '')}"/></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
+  }
+
+  const ROUTE_METRICS = [
+    { key: 'margenContribucion', label: 'Margen de Contribución', area: 'resultados', highlight: true },
+    { key: 'margenMarcacion', label: 'Margen de Marcación', area: 'resultados' },
+    { key: 'facturacionPromedio', label: 'Facturación promedio', area: 'resultados' },
+    { key: 'costosFijos', label: 'Costos fijos', area: 'resultados' },
+    { key: 'margenContribucionProducto', label: 'Margen del producto más vendido', area: 'costos' }
+  ];
+
+  function routeHtml() {
+    const metricCards = ROUTE_METRICS.map((metric) => {
+      const values = core.STAGES.map((stage) => core.formatField(metric.key, current.data.checkpoints[stage].areas[metric.area].nums[metric.key]) || '—');
+      if (values.every((value) => value === '—')) return '';
+      return `<article class="route-card ${metric.highlight ? 'highlight' : ''}"><h3>${escapeHtml(metric.label)}</h3><div class="route-values">${core.STAGES.map((stage, index) => `<div class="route-value"><span>${stage}</span><strong>${escapeHtml(values[index])}</strong></div>${index < 2 ? '<b>→</b>' : ''}`).join('')}</div></article>`;
+    }).filter(Boolean).join('');
+    const scoreCards = ['costos', 'resultados', 'finanzas'].map((areaKey) => {
+      const item = core.STAGE_ITEMS.inicial.find((area) => area.key === areaKey);
+      return `<article class="route-card route-score"><h3>${escapeHtml(item.label)}</h3><div class="route-values">${core.STAGES.map((stage, index) => { const score = current.data.checkpoints[stage].areas[areaKey].score; return `<div class="route-value"><span>${stage}</span>${scoreBadge(score)}</div>${index < 2 ? '<b>→</b>' : ''}`; }).join('')}</div></article>`;
+    }).join('');
+    return `<h2>Carta de Rumbo</h2><p class="muted">Comparación automática entre los tres checkpoints.</p>${metricCards ? `<div class="route-grid">${metricCards}</div>` : '<div class="empty">Todavía no hay indicadores económicos para comparar.</div>'}<div style="margin-top:12px">${scoreCards}</div>`;
+  }
+
+  function render() {
+    if (!current) return;
+    current.data = core.normalizeData(current.data, current.csmName);
+    $('#editor').hidden = false;
+    $('#publicLink').textContent = publicLink();
+    const tabLabels = { inicial: ['Inicial', 'Antes de empezar'], medio: ['Medio', 'Unidades 2, 3 y 4'], final: ['Final', 'Unidades 6 y 7'], rumbo: ['Carta de Rumbo', 'Comparativo'] };
+    $('#tabs').innerHTML = [...core.STAGES, 'rumbo'].map((stage) => `<button class="btn tab ${activeStage === stage ? 'active' : ''}" data-tab="${stage}" type="button">${tabLabels[stage][0]}<small>${tabLabels[stage][1]}</small></button>`).join('');
+    $('#tabs').querySelectorAll('[data-tab]').forEach((button) => { button.onclick = () => { activeStage = button.dataset.tab; render(); }; });
+    $('#stageContent').innerHTML = activeStage === 'rumbo' ? routeHtml() : stageHtml(activeStage);
+    if (activeStage !== 'rumbo') bindStageEvents(activeStage);
+  }
+
+  function refreshComputed(stage) {
+    const checkpoint = current.data.checkpoints[stage];
+    core.applyAutoScores(checkpoint);
+    const summary = core.computeSummary(checkpoint, stage);
+    const average = $('#summary-average');
+    const state = $('#summary-state');
+    const alert = $('#summary-alert');
+    if (average) average.innerHTML = `<span class="dot ${summary.band}"></span>${summary.average === null ? '—' : summary.average.toFixed(1)}`;
+    if (state) state.innerHTML = `<span class="dot ${summary.band}"></span>${core.bandLabel(summary.band)}`;
+    if (alert) { const alertBand = core.band(summary.patternScore); alert.innerHTML = `<span class="dot ${alertBand}"></span>${summary.patternScore}/5 · ${core.bandLabel(alertBand)}`; }
+    core.STAGE_ITEMS[stage].forEach((item) => {
+      const score = checkpoint.areas[item.key].score;
+      const badge = $(`#score-${stage}-${item.key}`);
+      if (badge) { badge.className = `score-badge ${core.band(score)}`; badge.textContent = score == null ? 'Sin datos aún' : `${score}/5 · ${core.bandLabel(core.band(score))}`; }
+    });
+    const values = core.calculateStage(checkpoint);
+    const calcFormat = { financialCost: core.formatPercent, taxCost: core.formatPercent, netMargin: core.formatPercent, sales: core.formatMoney, variableCosts: core.formatMoney, contribution: core.formatMoney, fixedCosts: core.formatMoney, monthlyResult: core.formatMoney, netProfitPercent: core.formatPercent, breakEven: core.formatMoney };
+    Object.entries(calcFormat).forEach(([key, formatter]) => { const element = $(`[data-calc="${key}"]`); if (element) element.textContent = formatter(values[key]); });
+    ['providersResult', 'totalResult', 'projectedIncome', 'projectedExpense', 'projectedResult'].forEach((key) => { const element = $(`[data-finance="${key}"]`); if (element) element.textContent = core.formatMoney(values.finance?.[key]); });
+  }
+
+  function bindStageEvents(stage) {
+    const checkpoint = current.data.checkpoints[stage];
+    $('#stageContent').querySelectorAll('[data-numfield]').forEach((input) => {
+      input.oninput = () => {
+        const key = input.dataset.numfield;
+        const formatted = core.TEXT_FIELDS.has(key) ? input.value : core.PERCENT_FIELDS.has(key) ? core.formatPercentInput(input.value) : core.formatMoneyInput(input.value);
+        input.value = formatted;
+        checkpoint.areas[input.dataset.area].nums[key] = formatted;
+        core.autofillDerivedMargins(checkpoint);
+        const pairs = { margenMarcacion: 'margenContribucion', margenMarcacionProducto: 'margenContribucionProducto' };
+        const target = pairs[key];
+        if (target) {
+          const targetInput = $(`[data-stage="${stage}"][data-area="${input.dataset.area}"][data-numfield="${target}"]`);
+          if (targetInput) targetInput.value = checkpoint.areas[input.dataset.area].nums[target];
+        }
+        refreshComputed(stage);
+      };
+    });
+    $('#stageContent').querySelectorAll('[data-selectfield]').forEach((select) => {
+      select.onchange = () => {
+        checkpoint.areas[select.dataset.area].selects[select.dataset.selectfield] = select.value;
+        refreshComputed(stage);
+      };
+    });
+    $('#stageContent').querySelectorAll('[data-note]').forEach((textarea) => { textarea.oninput = () => { checkpoint.areas[textarea.dataset.area].note = textarea.value; }; });
+    $('#stageContent').querySelectorAll('[data-meta]').forEach((input) => { const sync = () => { checkpoint[input.dataset.meta] = input.value; }; input.oninput = sync; input.onchange = sync; });
+    $('#stageContent').querySelectorAll('[data-pattern]').forEach((checkbox) => {
+      checkbox.onchange = () => {
+        checkpoint.patterns = checkbox.checked ? [...new Set([...checkpoint.patterns, checkbox.dataset.pattern])] : checkpoint.patterns.filter((key) => key !== checkbox.dataset.pattern);
+        if (checkbox.dataset.pattern === 'otro' && !checkbox.checked) checkpoint.otroDetalle = '';
+        render();
+      };
+    });
+    const other = $('#stageContent').querySelector('[data-other]');
+    if (other) other.oninput = () => { checkpoint.otroDetalle = other.value; };
+    $('#stageContent').querySelector('[data-save-stage]').onclick = (event) => saveCurrent(`Checkpoint ${stage} guardado.`, event.currentTarget);
+  }
+
+  async function load() {
+    setStatus('Cargando...');
+    try {
+      const [diagnosticResponse, csmResponse] = await Promise.all([
+        request('/api/metricas/diagnosticos'),
+        request('/api/metricas/diagnosticos/clientes-csm')
+      ]);
+      diagnostics = diagnosticResponse.diagnosticos || [];
+      clients = csmResponse.clients || [];
+      $('#clientSearch').addEventListener('input', () => { $('#clientPicker').value = ''; renderPicker(); });
+      renderPicker();
+      renderList();
+      setStatus('');
+    } catch (error) {
+      setStatus(error.message, 'error');
+    }
+  }
+
+  async function openDiagnostic(id) {
+    current = diagnostics.find((item) => item.id === id);
+    if (!current) return;
+    current.data = core.normalizeData(current.data, current.csmName);
+    const selected = clients.find((client) => client.ghlId === current.clientGhlId);
+    $('#clientSearch').value = selected ? selected.name + (selected.businessName ? ` · ${selected.businessName}` : '') : current.clientName;
+    $('#clientPicker').value = current.clientGhlId;
+    $('#csmName').value = current.csmName || '';
+    renderPicker();
+    activeStage = 'inicial';
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function saveCurrent(successMessage = 'Cambios guardados.', button) {
+    if (!current) return;
+    const originalText = button?.textContent;
+    try {
+      if (button) { button.disabled = true; button.textContent = 'Guardando...'; }
+      setStatus('Guardando cambios...');
+      current.data = core.normalizeData(current.data, $('#csmName').value);
+      const selected = clients.find((client) => client.ghlId === current.clientGhlId);
+      const response = await request(`/api/metricas/diagnosticos/${current.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          clientGhlId: current.clientGhlId,
+          clientName: selected?.name || current.clientName,
+          businessName: selected?.businessName || current.businessName,
+          csmName: $('#csmName').value,
+          data: current.data
+        })
+      });
+      current = response.diagnostico;
+      diagnostics = diagnostics.map((item) => item.id === current.id ? current : item);
+      renderList();
+      render();
+      setStatus(successMessage, 'ok');
+    } catch (error) {
+      setStatus(error.message, 'error');
+    } finally {
+      if (button) { button.disabled = false; button.textContent = originalText; }
+    }
+  }
+
+  $('#newClient').onclick = async () => {
+    const selected = clients.find((client) => client.ghlId === $('#clientPicker').value);
+    if (!selected) return setStatus('Elegí un cliente de CSM.', 'error');
+    try {
+      const csmName = $('#csmName').value;
+      const response = await request('/api/metricas/diagnosticos', {
+        method: 'POST',
+        body: JSON.stringify({ clientGhlId: selected.ghlId, clientName: selected.name, businessName: selected.businessName, csmName, data: core.emptyData(csmName) })
+      });
+      diagnostics.unshift(response.diagnostico);
+      renderList();
+      await openDiagnostic(response.diagnostico.id);
+      setStatus('Diagnóstico creado y vinculado al cliente.', 'ok');
+    } catch (error) { setStatus(error.message, 'error'); }
+  };
+  $('#saveAll').onclick = (event) => saveCurrent('Todos los cambios guardados.', event.currentTarget);
+  $('#copyLink').onclick = async () => {
+    try { await navigator.clipboard.writeText(publicLink()); setStatus('Link copiado.', 'ok'); }
+    catch { setStatus('Copiá el link manualmente.', 'error'); }
+  };
+  $('#deleteClient').onclick = async () => {
+    if (!current || !confirm(`¿Eliminar el diagnóstico de ${current.clientName}?`)) return;
+    try {
+      await request(`/api/metricas/diagnosticos/${current.id}`, { method: 'DELETE' });
+      diagnostics = diagnostics.filter((item) => item.id !== current.id);
+      current = null;
+      $('#editor').hidden = true;
+      renderList();
+      setStatus('Diagnóstico eliminado.', 'ok');
+    } catch (error) { setStatus(error.message, 'error'); }
+  };
+
+  window.diagnosticPageInternals = { publicLink, render, refreshComputed };
+  load();
 })();
