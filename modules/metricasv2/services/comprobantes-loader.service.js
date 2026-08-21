@@ -91,6 +91,12 @@ function getComprobantesDatabaseId() {
   return env.notionComprobantesDatabaseId || env.notionDatabaseId;
 }
 
+function getProductsDatabaseId(schema = null) {
+  return env.notionProductsDatabaseId
+    || schema?.properties?.Productos?.relation?.database_id
+    || null;
+}
+
 function normalizeText(value) {
   return String(value || '')
     .normalize('NFD')
@@ -181,6 +187,8 @@ function isNotionPaymentMethodActive(properties = {}) {
     'Activo',
     'Activo / no activo',
     'Activo/no activo',
+    'Estado',
+    'Estado del producto',
     'Status'
   ].map((name) => findNotionProperty(properties, name)).find(Boolean);
   // Mantiene compatibles las bases antiguas que todavía no tienen la columna.
@@ -385,7 +393,7 @@ async function updateEditableComprobante(id, payload, user) {
   }
 
   const schema = await fetchComprobantesDatabaseSchema();
-  const productsDatabaseId = schema?.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
+  const productsDatabaseId = getProductsDatabaseId(schema);
   const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
   if (!mediosDatabaseId) {
     const error = new Error('No pude leer los medios de pago para actualizar el comprobante');
@@ -401,9 +409,10 @@ async function updateEditableComprobante(id, payload, user) {
     (option) => normalizeText(option.name) === normalizeText(medioPago)
   );
   const medioPagoId = medioPagoOption?.active ? medioPagoOption.id : null;
-  const productId = tipo === 'Venta' ? findBestOptionIdByName(productOptions, productName) : null;
+  const activeProductOptions = productOptions.filter((option) => option.active);
+  const productId = tipo === 'Venta' ? findBestOptionIdByName(activeProductOptions, productName) : null;
   if (!medioPagoId || (tipo === 'Venta' && !productId)) {
-    const error = new Error('El producto no existe o el medio de pago elegido no está activo en Notion');
+    const error = new Error('El producto o el medio de pago no existen o están inactivos en Notion');
     error.statusCode = 400;
     throw error;
   }
@@ -1077,21 +1086,19 @@ async function fetchComprobantesDatabaseSchema() {
 
 async function getBootstrap(user) {
   const schema = await fetchComprobantesDatabaseSchema();
-  const productsDatabaseId = schema?.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
+  const productsDatabaseId = getProductsDatabaseId(schema);
   const mediosDatabaseId = schema?.properties?.['Medios de pago']?.relation?.database_id || null;
   const notionProducts = await fetchRelationOptions(productsDatabaseId);
   const notionPaymentMethods = await fetchRelationOptions(mediosDatabaseId);
+  const activeProducts = notionProducts.filter((item) => item.active);
   const products = notionProducts.length
-    ? uniqueSorted([
-      ...DEFAULT_PRODUCTS,
-      ...notionProducts.map((item) => item.name).filter((name) => DEFAULT_PRODUCTS.includes(name))
-    ])
+    ? uniqueSorted(activeProducts.map((item) => item.name))
     : DEFAULT_PRODUCTS.slice();
   const activePaymentMethods = notionPaymentMethods.filter((item) => item.active);
   const paymentOptions = notionPaymentMethods.length
     ? activePaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
-  const clubPriceOptions = notionProducts.find((item) => isClubProduct(item.name))?.clubPriceOptions || [];
+  const clubPriceOptions = activeProducts.find((item) => isClubProduct(item.name))?.clubPriceOptions || [];
 
   return {
     responsibleVentaDefault: standardizeResponsibleVenta(user),
@@ -2205,7 +2212,7 @@ async function createComprobante(payload, user, options = {}) {
         throw error;
       }
 
-      const productsDatabaseId = schema.properties?.Productos?.relation?.database_id || env.notionProductsDatabaseId;
+      const productsDatabaseId = getProductsDatabaseId(schema);
       const mediosDatabaseId = schema.properties?.['Medios de pago']?.relation?.database_id || null;
       if (!mediosDatabaseId) {
         const error = new Error('La propiedad Medios de pago de Notion no está configurada como relación');
@@ -2219,12 +2226,13 @@ async function createComprobante(payload, user, options = {}) {
         fetchResponsibleVentaCandidates()
       ]);
 
+      const activeProductOptions = productOptions.filter((option) => option.active);
       const productOption = normalized.productName
-        ? productOptions.find((option) => option.id === findBestOptionIdByName(productOptions, normalized.productName))
+        ? activeProductOptions.find((option) => option.id === findBestOptionIdByName(activeProductOptions, normalized.productName))
         : null;
       const productId = productOption?.id || null;
       if (normalized.tipo === 'Venta' && !productId) {
-        const error = new Error(`No encontré el producto ${normalized.productName} en Notion`);
+        const error = new Error(`El producto ${normalized.productName} no existe o está inactivo en Notion`);
         error.statusCode = 400;
         throw error;
       }
@@ -2468,6 +2476,7 @@ module.exports = {
     getComprobantesSetterNames,
     canManageOwnComprobante,
     canEditComprobanteStatus,
-    mapNotionSalePage
+    mapNotionSalePage,
+    getProductsDatabaseId
   }
 };
