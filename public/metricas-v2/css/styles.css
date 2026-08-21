@@ -3838,6 +3838,15 @@ th {
   background-repeat: no-repeat;
 }
 
+.dashboard-home-card-administracion .dashboard-home-visual {
+  background:
+    linear-gradient(180deg, rgba(19, 15, 57, 0.04), rgba(19, 15, 57, 0.22)),
+    url('/metricas-assets/dashboard-administracion.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .dashboard-home-badge {
   position: absolute;
   top: 236px;
@@ -3884,7 +3893,8 @@ th {
 }
 
 .dashboard-home-card-comisiones .dashboard-home-badge,
-.dashboard-home-card-comprobantes .dashboard-home-badge {
+.dashboard-home-card-comprobantes .dashboard-home-badge,
+.dashboard-home-card-administracion .dashboard-home-badge {
   background: rgba(95, 70, 210, 0.28);
   color: #f4efff;
 }
@@ -3895,6 +3905,10 @@ th {
 
 .dashboard-home-card-comprobantes {
   border-color: rgba(124, 92, 229, 0.42) !important;
+}
+
+.dashboard-home-card-administracion {
+  border-color: rgba(102, 91, 255, 0.46) !important;
 }
 
 .dashboard-home-card-contacto {
@@ -3909,7 +3923,8 @@ th {
 .dashboard-home-card-contacto::after,
 .dashboard-home-card-alertas::after,
 .dashboard-home-card-comisiones::after,
-.dashboard-home-card-comprobantes::after {
+.dashboard-home-card-comprobantes::after,
+.dashboard-home-card-administracion::after {
   content: '→';
   position: absolute;
   right: 18px;
@@ -3943,6 +3958,10 @@ th {
 
 .dashboard-home-card-comprobantes::after {
   background: linear-gradient(180deg, rgba(102, 75, 224, 0.82), rgba(58, 34, 160, 0.9));
+}
+
+.dashboard-home-card-administracion::after {
+  background: linear-gradient(180deg, rgba(89, 83, 255, 0.86), rgba(48, 37, 168, 0.92));
 }
 
 .dashboard-home-page .auth-shell {
