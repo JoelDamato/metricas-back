@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '..');
 const adminHtml = fs.readFileSync(path.join(root, 'public/metricas-v2/views/diagnostico.html'), 'utf8');
 const adminScript = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/diagnostico.page.js'), 'utf8');
 const publicHtml = fs.readFileSync(path.join(root, 'public/diagnostico/index.html'), 'utf8');
+const themeScript = fs.readFileSync(path.join(root, 'public/diagnostico/diagnostico-theme.js'), 'utf8');
 
 test('calcula automáticamente puntajes, márgenes, rentabilidad y cashflow', () => {
   const data = core.emptyData('Valeria');
@@ -130,4 +131,16 @@ test('la vista pública usa los cálculos nuevos y no muestra información inter
   assert.match(publicHtml, /Carta de Rumbo/);
   assert.doesNotMatch(publicHtml, /Nota interna del CSM/);
   assert.doesNotMatch(publicHtml, /Principales dificultades detectadas/);
+});
+
+test('la carta interna y pública permiten elegir tema blanco o nocturno', () => {
+  [adminHtml, publicHtml].forEach((html) => {
+    assert.match(html, /diagnostico-theme\.js/);
+    assert.match(html, /data-diagnostic-theme-option="light"/);
+    assert.match(html, /data-diagnostic-theme-option="dark"/);
+    assert.match(html, /Blanco/);
+    assert.match(html, /Nocturno/);
+  });
+  assert.match(themeScript, /localStorage\.setItem\(STORAGE_KEY, theme\)/);
+  assert.match(themeScript, /documentElement\.dataset\.diagnosticTheme/);
 });

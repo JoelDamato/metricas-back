@@ -405,7 +405,7 @@ async function sendToSupabase(payload) {
 
   try {
     const startTime = Date.now();
-    const response = await supabasePostWithRetry(`${SUPABASE_URL}/rest/v1/csm`, row, {
+    const { response, omittedColumns } = await upsertCsmRowKeepingKnownFields(`${SUPABASE_URL}/rest/v1/csm`, row, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -419,16 +419,22 @@ async function sendToSupabase(payload) {
     // ========== ÉXITO EN SUPABASE ==========
     const successLog = {
       webhook_type: 'csm',
-      type: 'success',
-      message: 'Registro guardado exitosamente',
+      type: omittedColumns.length ? 'success_partial' : 'success',
+      message: omittedColumns.length
+        ? `Registro guardado parcialmente. Campos omitidos: ${omittedColumns.join(', ')}`
+        : 'Registro guardado exitosamente',
       notion_id: data.id,
       ghl_id: row.ghlid,
       http_status: response.status,
-      supabase_error: { duration_ms: duration }
+      supabase_error: { duration_ms: duration, omitted_columns: omittedColumns }
     };
     
     await saveLog(successLog);
-    console.log('✅ Guardado en Supabase');
+    console.log(
+      omittedColumns.length
+        ? `✅ Guardado parcialmente en Supabase; campos omitidos: ${omittedColumns.join(', ')}`
+        : '✅ Guardado en Supabase'
+    );
   } catch (err) {
     const errorLog = {
       webhook_type: 'csm',
@@ -449,6 +455,42 @@ async function sendToSupabase(payload) {
 // Helper: delay
 function delay(ms) { return new Promise(res => setTimeout(res, ms)); }
 
+function extractMissingCsmColumn(error) {
+  const data = error?.response?.data || {};
+  const message = String(data.message || error?.message || '');
+  if (data.code && data.code !== 'PGRST204') return null;
+  const match = message.match(/Could not find the '([^']+)' column of 'csm' in the schema cache/i);
+  return match?.[1] || null;
+}
+
+function isRetryableSupabaseError(error) {
+  const status = Number(error?.response?.status || 0);
+  return !status || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+async function upsertCsmRowKeepingKnownFields(url, row, config = {}, post = supabasePostWithRetry) {
+  const pendingRow = { ...row };
+  const omittedColumns = [];
+
+  while (true) {
+    try {
+      const response = await post(url, pendingRow, config);
+      return { response, omittedColumns, savedRow: pendingRow };
+    } catch (error) {
+      const missingColumn = extractMissingCsmColumn(error);
+      const canOmit = missingColumn
+        && missingColumn !== 'id'
+        && Object.prototype.hasOwnProperty.call(pendingRow, missingColumn);
+
+      if (!canOmit) throw error;
+
+      delete pendingRow[missingColumn];
+      omittedColumns.push(missingColumn);
+      console.warn(`⚠️ CSM omitió el campo desconocido "${missingColumn}" y reintentará con el resto`);
+    }
+  }
+}
+
 // Supabase POST con retries, backoff exponencial y spacing (usa supabaseWithLimit internamente)
 async function supabasePostWithRetry(url, body, config = {}) {
   const MAX_RETRIES = parseInt(process.env.SUPABASE_MAX_RETRIES || '3', 10);
@@ -463,6 +505,7 @@ async function supabasePostWithRetry(url, body, config = {}) {
       return res;
     } catch (err) {
       lastErr = err;
+      if (!isRetryableSupabaseError(err)) throw err;
       const jitter = Math.floor(Math.random() * 1000);
       const wait = Math.min(60000, BASE_BACKOFF * Math.pow(2, attempt - 1) + jitter);
       console.warn(`⚠️ Supabase POST fallo en intento ${attempt}/${MAX_RETRIES} - esperando ${wait}ms antes de reintentar`);
@@ -584,4 +627,10 @@ exports.handleWebhook = async (req, res) => {
     console.error('❌ Error en handler CSM:', err.message);
     return res.status(500).json({ error: 'Error interno en el handler CSM' });
   }
+};
+
+exports._test = {
+  extractMissingCsmColumn,
+  isRetryableSupabaseError,
+  upsertCsmRowKeepingKnownFields
 };
