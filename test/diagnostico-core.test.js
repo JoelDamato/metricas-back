@@ -147,7 +147,7 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
   });
   assert.match(adminScript, /terms\.every/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-1/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-2/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
@@ -169,4 +169,20 @@ test('la carta interna y pública permiten elegir tema blanco o nocturno', () =>
   });
   assert.match(themeScript, /localStorage\.setItem\(STORAGE_KEY, theme\)/);
   assert.match(themeScript, /documentElement\.dataset\.diagnosticTheme/);
+});
+
+test('la carta separa crear de editar y bloquea visualmente la identidad elegida', () => {
+  assert.match(adminHtml, /id="modeChooser"/);
+  assert.match(adminHtml, /data-workflow="create"/);
+  assert.match(adminHtml, /data-workflow="edit"/);
+  assert.match(adminHtml, /Crear nueva Carta de Rumbo/);
+  assert.match(adminHtml, /Editar una Carta existente/);
+  assert.match(adminHtml, /id="createConfirm"/);
+  assert.match(adminHtml, /Confirmación obligatoria/);
+  assert.match(adminHtml, /id="editingClientName"/);
+  assert.match(adminHtml, /Cliente bloqueado/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-2/);
+  assert.match(adminScript, /createConfirmTitle/);
+  assert.match(adminScript, /editingClientName/);
+  assert.match(adminScript, /showWorkflow\('edit'\)/);
 });

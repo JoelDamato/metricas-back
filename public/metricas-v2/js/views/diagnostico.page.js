@@ -62,8 +62,29 @@
         picker.value = selected.ghlId;
         search.value = selected.name + (selected.businessName ? ` · ${selected.businessName}` : '');
         suggestions.innerHTML = '';
+        showCreateSelection(selected);
       };
     });
+  }
+
+  function showCreateSelection(client) {
+    const selection = $('#createSelection');
+    selection.hidden = !client;
+    $('#newClient').disabled = !client;
+    $('#createConfirm').hidden = true;
+    if (!client) return;
+    $('#createSelectionName').textContent = client.name;
+    $('#createSelectionMeta').textContent = `${client.businessName || 'Sin modelo de negocio'} · GHL ${client.ghlId}`;
+  }
+
+  function showWorkflow(mode) {
+    $('#modeChooser').hidden = Boolean(mode);
+    $('#createMode').hidden = mode !== 'create';
+    $('#editMode').hidden = mode !== 'edit';
+    $('#editor').hidden = true;
+    if (mode !== 'editor') current = null;
+    setStatus('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function mergeClients(nextClients = []) {
@@ -77,6 +98,7 @@
 
   function searchClients() {
     $('#clientPicker').value = '';
+    showCreateSelection(null);
     const term = String($('#clientSearch').value || '').trim();
     clearTimeout(clientSearchTimer);
     renderPicker();
@@ -98,9 +120,14 @@
 
   function renderList() {
     const list = $('#clientList');
-    list.innerHTML = diagnostics.length
-      ? diagnostics.map((item) => `<div class="client-row"><button data-open="${escapeHtml(item.id)}"><strong>${escapeHtml(item.clientName)}</strong><br><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CSM')}</span></button><span class="small">${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span></div>`).join('')
-      : '<p class="muted">Todavía no hay diagnósticos creados.</p>';
+    const terms = String($('#diagnosticSearch')?.value || '').trim().toLocaleLowerCase('es').split(/\s+/).filter(Boolean);
+    const filtered = diagnostics.filter((item) => {
+      const searchable = `${item.clientName} ${item.businessName} ${item.csmName}`.toLocaleLowerCase('es');
+      return terms.every((term) => searchable.includes(term));
+    });
+    list.innerHTML = filtered.length
+      ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CSM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
+      : `<p class="muted">${diagnostics.length ? 'No encontré cartas con esa búsqueda.' : 'Todavía no hay diagnósticos creados.'}</p>`;
     list.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDiagnostic(button.dataset.open); });
   }
 
@@ -191,6 +218,8 @@
     if (!current) return;
     current.data = core.normalizeData(current.data, current.csmName);
     $('#editor').hidden = false;
+    $('#editingClientName').textContent = current.clientName || 'Cliente sin nombre';
+    $('#editingClientMeta').textContent = `${current.businessName || 'Sin modelo de negocio'} · GHL ${current.clientGhlId}`;
     $('#publicLink').textContent = publicLink();
     const tabLabels = { inicial: ['Inicial', 'Antes de empezar'], medio: ['Medio', 'Unidades 2, 3 y 4'], final: ['Final', 'Unidades 6 y 7'], rumbo: ['Carta de Rumbo', 'Comparativo'] };
     $('#tabs').innerHTML = [...core.STAGES, 'rumbo'].map((stage) => `<button class="btn tab ${activeStage === stage ? 'active' : ''}" data-tab="${stage}" type="button">${tabLabels[stage][0]}<small>${tabLabels[stage][1]}</small></button>`).join('');
@@ -268,6 +297,7 @@
       diagnostics = diagnosticResponse.diagnosticos || [];
       clients = csmResponse.clients || [];
       $('#clientSearch').addEventListener('input', searchClients);
+      $('#diagnosticSearch').addEventListener('input', renderList);
       renderPicker();
       renderList();
       setStatus('');
@@ -280,11 +310,10 @@
     current = diagnostics.find((item) => item.id === id);
     if (!current) return;
     current.data = core.normalizeData(current.data, current.csmName);
-    const selected = clients.find((client) => client.ghlId === current.clientGhlId);
-    $('#clientSearch').value = selected ? selected.name + (selected.businessName ? ` · ${selected.businessName}` : '') : current.clientName;
-    $('#clientPicker').value = current.clientGhlId;
     $('#csmName').value = current.csmName || '';
-    renderPicker();
+    $('#modeChooser').hidden = true;
+    $('#createMode').hidden = true;
+    $('#editMode').hidden = true;
     activeStage = 'inicial';
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -320,11 +349,21 @@
     }
   }
 
-  $('#newClient').onclick = async () => {
+  $('#newClient').onclick = () => {
     const selected = clients.find((client) => client.ghlId === $('#clientPicker').value);
     if (!selected) return setStatus('Elegí un cliente de CSM o Leads.', 'error');
+    $('#createConfirmTitle').textContent = `Vas a crear la Carta de ${selected.name}`;
+    $('#createConfirm').hidden = false;
+    $('#createConfirm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  $('#cancelCreate').onclick = () => { $('#createConfirm').hidden = true; };
+  $('#confirmCreate').onclick = async () => {
+    const selected = clients.find((client) => client.ghlId === $('#clientPicker').value);
+    if (!selected) return setStatus('Volvé a elegir el cliente.', 'error');
     try {
-      const csmName = $('#csmName').value;
+      $('#confirmCreate').disabled = true;
+      $('#confirmCreate').textContent = 'Creando...';
+      const csmName = $('#createCsmName').value;
       const response = await request('/api/metricas/diagnosticos', {
         method: 'POST',
         body: JSON.stringify({ clientGhlId: selected.ghlId, clientName: selected.name, businessName: selected.businessName, csmName, data: core.emptyData(csmName) })
@@ -334,6 +373,7 @@
       await openDiagnostic(response.diagnostico.id);
       setStatus('Diagnóstico creado y vinculado al cliente.', 'ok');
     } catch (error) { setStatus(error.message, 'error'); }
+    finally { $('#confirmCreate').disabled = false; $('#confirmCreate').textContent = 'Sí, crear esta Carta'; }
   };
   $('#saveAll').onclick = (event) => saveCurrent('Todos los cambios guardados.', event.currentTarget);
   $('#copyLink').onclick = async () => {
@@ -348,10 +388,15 @@
       current = null;
       $('#editor').hidden = true;
       renderList();
+      showWorkflow('edit');
       setStatus('Diagnóstico eliminado.', 'ok');
     } catch (error) { setStatus(error.message, 'error'); }
   };
 
-  window.diagnosticPageInternals = { publicLink, render, refreshComputed };
+  document.querySelectorAll('[data-workflow]').forEach((button) => { button.onclick = () => showWorkflow(button.dataset.workflow); });
+  document.querySelectorAll('[data-back-to-modes]').forEach((button) => { button.onclick = () => showWorkflow(null); });
+  $('#backToEditList').onclick = () => showWorkflow('edit');
+
+  window.diagnosticPageInternals = { publicLink, render, refreshComputed, showWorkflow };
   load();
 })();
