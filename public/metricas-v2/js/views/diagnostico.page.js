@@ -6,6 +6,8 @@
   let clients = [];
   let current = null;
   let activeStage = 'inicial';
+  let clientSearchTimer = null;
+  let clientSearchRequestId = 0;
   const $ = (selector) => document.querySelector(selector);
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
@@ -58,6 +60,36 @@
         suggestions.innerHTML = '';
       };
     });
+  }
+
+  function mergeClients(nextClients = []) {
+    const byGhlId = new Map(clients.map((client) => [client.ghlId, client]));
+    nextClients.forEach((client) => {
+      if (!client?.ghlId || !client?.name) return;
+      byGhlId.set(client.ghlId, client);
+    });
+    clients = [...byGhlId.values()];
+  }
+
+  function searchClients() {
+    $('#clientPicker').value = '';
+    const term = String($('#clientSearch').value || '').trim();
+    clearTimeout(clientSearchTimer);
+    renderPicker();
+    if (term.length < 2) return;
+
+    const requestId = ++clientSearchRequestId;
+    clientSearchTimer = setTimeout(async () => {
+      try {
+        const response = await request(`/api/metricas/diagnosticos/clientes-csm?q=${encodeURIComponent(term)}`);
+        if (requestId !== clientSearchRequestId) return;
+        mergeClients(response.clients || []);
+        renderPicker();
+      } catch (error) {
+        if (requestId !== clientSearchRequestId) return;
+        setStatus(error.message, 'error');
+      }
+    }, 250);
   }
 
   function renderList() {
@@ -231,7 +263,7 @@
       ]);
       diagnostics = diagnosticResponse.diagnosticos || [];
       clients = csmResponse.clients || [];
-      $('#clientSearch').addEventListener('input', () => { $('#clientPicker').value = ''; renderPicker(); });
+      $('#clientSearch').addEventListener('input', searchClients);
       renderPicker();
       renderList();
       setStatus('');
@@ -286,7 +318,7 @@
 
   $('#newClient').onclick = async () => {
     const selected = clients.find((client) => client.ghlId === $('#clientPicker').value);
-    if (!selected) return setStatus('Elegí un cliente de CSM.', 'error');
+    if (!selected) return setStatus('Elegí un cliente de CSM o Leads.', 'error');
     try {
       const csmName = $('#csmName').value;
       const response = await request('/api/metricas/diagnosticos', {

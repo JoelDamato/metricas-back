@@ -23,11 +23,7 @@ async function listDiagnosticos(req, res, next) {
 
 async function listDiagnosticoClients(req, res, next) {
   try {
-    const rows = await supabaseService.listRows('csm', { limit: 1000, select: 'nombre,ghlid,modelo_negocio' });
-    const clients = rows
-      .map((row) => ({ ghlId: String(row.ghlid || '').trim(), name: String(row.nombre || '').trim(), businessName: String(row.modelo_negocio || '').trim() }))
-      .filter((row) => row.ghlId && row.name)
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const clients = await diagnosticosService.listDiagnosticClients(req.query.q);
     res.json({ ok: true, clients });
   } catch (error) { next(error); }
 }

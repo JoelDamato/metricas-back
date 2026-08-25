@@ -16,6 +16,78 @@ function cleanData(value) { return value && typeof value === 'object' && !Array.
 function tableUrl() { return `${env.supabaseUrl}/rest/v1/csm_diagnosticos`; }
 function safeId(value) { return String(value || '').replace(/[^a-f0-9-]/gi, ''); }
 
+function normalizeSearchTerm(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{N}\s@._-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+}
+
+function normalizeDiagnosticClient(row = {}, source = 'csm') {
+  return {
+    ghlId: cleanText(row.ghlid, 180),
+    name: cleanText(row.nombre, 180),
+    businessName: cleanText(row.modelo_negocio, 180),
+    source
+  };
+}
+
+function mergeDiagnosticClients(csmRows = [], leadRows = []) {
+  const clientsByGhlId = new Map();
+
+  leadRows.forEach((row) => {
+    const client = normalizeDiagnosticClient(row, 'leads_raw');
+    if (!client.ghlId || !client.name || clientsByGhlId.has(client.ghlId)) return;
+    clientsByGhlId.set(client.ghlId, client);
+  });
+
+  csmRows.forEach((row) => {
+    const client = normalizeDiagnosticClient(row, 'csm');
+    if (!client.ghlId || !client.name) return;
+    const lead = clientsByGhlId.get(client.ghlId);
+    clientsByGhlId.set(client.ghlId, {
+      ...client,
+      businessName: client.businessName || lead?.businessName || ''
+    });
+  });
+
+  return [...clientsByGhlId.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+async function listDiagnosticClients(rawQuery) {
+  const query = normalizeSearchTerm(rawQuery);
+  const csmParams = {
+    select: 'nombre,ghlid,modelo_negocio',
+    limit: query ? 100 : 1000
+  };
+  const leadParams = {
+    select: 'nombre,ghlid,modelo_negocio,last_edited_time',
+    archived: 'eq.false',
+    order: 'last_edited_time.desc',
+    limit: query ? 100 : 0
+  };
+
+  if (query) {
+    const nameFilter = `(nombre.ilike.*${query}*)`;
+    csmParams.or = nameFilter;
+    leadParams.or = nameFilter;
+  }
+
+  const csmRequest = axios.get(`${env.supabaseUrl}/rest/v1/csm`, {
+    headers: headers(),
+    params: csmParams
+  });
+  const leadRequest = query
+    ? axios.get(`${env.supabaseUrl}/rest/v1/leads_raw`, { headers: headers(), params: leadParams })
+    : Promise.resolve({ data: [] });
+  const [csmResponse, leadResponse] = await Promise.all([csmRequest, leadRequest]);
+
+  return mergeDiagnosticClients(csmResponse.data || [], leadResponse.data || []);
+}
+
 function normalize(row) {
   if (!row) return null;
   return {
@@ -93,4 +165,12 @@ async function getPublicDiagnosticoByGhlId(ghlId) {
   return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
 }
 
-module.exports = { listDiagnosticos, createDiagnostico, updateDiagnostico, deleteDiagnostico, getPublicDiagnosticoByGhlId };
+module.exports = {
+  listDiagnosticos,
+  listDiagnosticClients,
+  createDiagnostico,
+  updateDiagnostico,
+  deleteDiagnostico,
+  getPublicDiagnosticoByGhlId,
+  _test: { normalizeSearchTerm, mergeDiagnosticClients }
+};

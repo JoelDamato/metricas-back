@@ -9,6 +9,7 @@ const adminHtml = fs.readFileSync(path.join(root, 'public/metricas-v2/views/diag
 const adminScript = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/diagnostico.page.js'), 'utf8');
 const publicHtml = fs.readFileSync(path.join(root, 'public/diagnostico/index.html'), 'utf8');
 const themeScript = fs.readFileSync(path.join(root, 'public/diagnostico/diagnostico-theme.js'), 'utf8');
+const diagnosticService = require('../modules/metricasv2/services/diagnosticos.service');
 
 test('calcula automáticamente puntajes, márgenes, rentabilidad y cashflow', () => {
   const data = core.emptyData('Valeria');
@@ -122,6 +123,26 @@ test('mantiene búsqueda CSM, persistencia Supabase y link público por GHL', ()
   assert.match(adminScript, /\/diagnostico\/\?ghl_id=/);
   assert.match(adminScript, /method: 'PATCH'/);
   assert.match(adminScript, /navigator\.clipboard\.writeText/);
+  assert.match(adminScript, /clientes-csm\?q=/);
+  assert.match(adminHtml, /CSM y en Leads/);
+});
+
+test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados', () => {
+  const { mergeDiagnosticClients, normalizeSearchTerm } = diagnosticService._test;
+  const clients = mergeDiagnosticClients(
+    [{ nombre: 'Cliente CSM', ghlid: 'ghl-1', modelo_negocio: '' }],
+    [
+      { nombre: 'Nombre anterior', ghlid: 'ghl-1', modelo_negocio: 'Servicios' },
+      { nombre: 'Ivan Gabino Orellano', ghlid: 'TKdbAGdg2lIDVRvat9u8', modelo_negocio: 'Reventa' },
+      { nombre: '', ghlid: 'sin-nombre', modelo_negocio: 'Otro' }
+    ]
+  );
+
+  assert.deepEqual(clients, [
+    { ghlId: 'ghl-1', name: 'Cliente CSM', businessName: 'Servicios', source: 'csm' },
+    { ghlId: 'TKdbAGdg2lIDVRvat9u8', name: 'Ivan Gabino Orellano', businessName: 'Reventa', source: 'leads_raw' }
+  ]);
+  assert.equal(normalizeSearchTerm(' Iván, Gabino (Orellano) '), 'Iván Gabino Orellano');
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
