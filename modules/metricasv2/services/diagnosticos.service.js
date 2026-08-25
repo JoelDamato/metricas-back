@@ -25,6 +25,15 @@ function normalizeSearchTerm(value) {
     .slice(0, 100);
 }
 
+function buildNameSearchParams(value) {
+  const terms = normalizeSearchTerm(value).split(' ').filter(Boolean);
+  if (!terms.length) return {};
+  const filters = terms.map((term) => `nombre.ilike.*${term}*`);
+  return filters.length === 1
+    ? { or: `(${filters[0]})` }
+    : { and: `(${filters.join(',')})` };
+}
+
 function normalizeDiagnosticClient(row = {}, source = 'csm') {
   return {
     ghlId: cleanText(row.ghlid, 180),
@@ -71,9 +80,8 @@ async function listDiagnosticClients(rawQuery) {
   };
 
   if (query) {
-    const nameFilter = `(nombre.ilike.*${query}*)`;
-    csmParams.or = nameFilter;
-    leadParams.or = nameFilter;
+    Object.assign(csmParams, buildNameSearchParams(query));
+    Object.assign(leadParams, buildNameSearchParams(query));
   }
 
   const csmRequest = axios.get(`${env.supabaseUrl}/rest/v1/csm`, {
@@ -172,5 +180,5 @@ module.exports = {
   updateDiagnostico,
   deleteDiagnostico,
   getPublicDiagnosticoByGhlId,
-  _test: { normalizeSearchTerm, mergeDiagnosticClients }
+  _test: { normalizeSearchTerm, buildNameSearchParams, mergeDiagnosticClients }
 };

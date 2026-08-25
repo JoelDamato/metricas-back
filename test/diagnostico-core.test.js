@@ -128,7 +128,7 @@ test('mantiene búsqueda CSM, persistencia Supabase y link público por GHL', ()
 });
 
 test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados', () => {
-  const { mergeDiagnosticClients, normalizeSearchTerm } = diagnosticService._test;
+  const { buildNameSearchParams, mergeDiagnosticClients, normalizeSearchTerm } = diagnosticService._test;
   const clients = mergeDiagnosticClients(
     [{ nombre: 'Cliente CSM', ghlid: 'ghl-1', modelo_negocio: '' }],
     [
@@ -143,6 +143,11 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     { ghlId: 'TKdbAGdg2lIDVRvat9u8', name: 'Ivan Gabino Orellano', businessName: 'Reventa', source: 'leads_raw' }
   ]);
   assert.equal(normalizeSearchTerm(' Iván, Gabino (Orellano) '), 'Iván Gabino Orellano');
+  assert.deepEqual(buildNameSearchParams('ivan ore'), {
+    and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
+  });
+  assert.match(adminScript, /terms\.every/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-1/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {

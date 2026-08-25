@@ -43,8 +43,12 @@
     const search = $('#clientSearch');
     const suggestions = $('#clientSuggestions');
     const term = String(search?.value || '').trim().toLocaleLowerCase('es');
+    const terms = term.split(/\s+/).filter(Boolean);
     const filtered = term
-      ? clients.filter((client) => `${client.name} ${client.businessName}`.toLocaleLowerCase('es').includes(term)).slice(0, 8)
+      ? clients.filter((client) => {
+        const searchable = `${client.name} ${client.businessName}`.toLocaleLowerCase('es');
+        return terms.every((searchTerm) => searchable.includes(searchTerm));
+      }).slice(0, 8)
       : [];
     suggestions.innerHTML = term
       ? (filtered.length
