@@ -214,7 +214,6 @@ async function reconcileRecords(records, user) {
     error.statusCode = 400;
     throw error;
   }
-  const now = new Date().toISOString();
   const email = String(user?.email || '').trim().toLowerCase() || null;
   const body = records.map((record) => {
     const kind = String(record?.kind || '');
@@ -227,18 +226,17 @@ async function reconcileRecords(records, user) {
     return {
       record_kind: kind,
       record_id: id,
-      status: 'reconciled',
-      record_snapshot: record,
-      reconciled_at: now,
-      reconciled_by_email: email,
-      updated_at: now
+      record_snapshot: record
     };
   });
-  await axios.post(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, body, {
-    headers: supabaseHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
-    params: { on_conflict: 'record_kind,record_id' }
+  const response = await axios.post(`${env.supabaseUrl}/rest/v1/rpc/reconcile_mp_records`, {
+    p_records: body,
+    p_email: email
+  }, {
+    headers: supabaseHeaders()
   });
-  return { updated: body.length };
+  const updated = Number(response.data || 0);
+  return { updated, skipped: body.length - updated };
 }
 
 async function unreconcileRecord(key) {
@@ -297,8 +295,15 @@ async function executeInvoiceRecords(keys, user) {
     if (!workflow) {
       const current = await axios.get(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, { headers: supabaseHeaders(), params: { select: '*', record_kind: `eq.${kind}`, record_id: `eq.${id}`, limit: 1 } });
       const row = current.data?.[0];
-      if (row?.status === 'invoiced') { results.push({ id, alreadyInvoiced: true, invoiceNumber: row.arca_invoice_number, cae: row.arca_cae }); continue; }
-      throw Object.assign(new Error(`La operación ${id} ya está siendo procesada o no está conciliada`), { statusCode: 409 });
+      if (row?.status === 'invoiced' || (row?.arca_cae && row?.arca_invoice_number)) {
+        results.push({ id, alreadyInvoiced: true, invoiceNumber: row.arca_invoice_number, cae: row.arca_cae });
+        continue;
+      }
+      if (row?.status === 'invoicing') {
+        throw Object.assign(new Error(`La operación ${id} está siendo procesada en ARCA desde ${row.updated_at || 'una fecha no disponible'}`), { statusCode: 409 });
+      }
+      const status = row?.status || 'sin registro';
+      throw Object.assign(new Error(`La operación ${id} no está disponible para facturar (estado: ${status})`), { statusCode: 409 });
     }
     let invoice;
     try {
