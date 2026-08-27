@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { NOTION_PERSON_NAME_BY_ID } = require('../modules/metricasv2/config/notion-people');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -6,16 +7,6 @@ const googleScriptUrl = process.env.GOOGLE_SCRIPT_WEBHOOK || "https://script.goo
 const GOOGLE_SHEETS_TIMEOUT_MS = parseInt(process.env.GOOGLE_SHEETS_TIMEOUT_MS || '120000', 10);
 
 let sheetsQueue = Promise.resolve();
-
-// Notion puede ocultar el nombre de algunos miembros/guests si la integración
-// no tiene acceso a su información. El ID de usuario sí llega en la propiedad
-// people, así que conservamos el nombre canónico para no dejar stale el closer
-// en Supabase cuando se reasigna un comprobante.
-const NOTION_PERSON_NAME_BY_ID = {
-  '32ed872b-594c-8111-8b96-0002d7decc97': 'Pablo Butera'
-};
-
-
 
 function toNumber(val) {
   if (val === null || val === undefined || val === '') return null;

@@ -1,5 +1,9 @@
 const axios = require('axios');
 const env = require('../config/env');
+const {
+  NOTION_PERSON_NAME_BY_ID,
+  NOTION_PERSON_BY_EMAIL
+} = require('../config/notion-people');
 const submissionCache = new Map();
 const SUBMISSION_TTL_MS = 15 * 60 * 1000;
 const MAX_CHEQUES = 6;
@@ -607,10 +611,13 @@ function nameSimilarityScore(leftName = '', rightName = '') {
 }
 
 function findBestNotionUserMatch(notionUsers = [], responsibleVenta = '', authUser = {}) {
-  if (!Array.isArray(notionUsers) || !notionUsers.length) return null;
-
   const targetName = standardizeResponsibleVenta(authUser, responsibleVenta);
   const targetEmail = normalizeEmail(authUser?.email);
+  const knownPerson = NOTION_PERSON_BY_EMAIL[targetEmail];
+  if (knownPerson) return knownPerson;
+
+  if (!Array.isArray(notionUsers) || !notionUsers.length) return null;
+
   if (targetEmail) {
     const emailMatch = notionUsers.find((item) => normalizeEmail(item?.email) === targetEmail);
     if (emailMatch) return emailMatch;
@@ -1028,10 +1035,11 @@ async function fetchAssignedResponsibleVentaCandidates() {
       (response.data?.results || []).forEach((page) => {
         const assigned = page?.properties?.['Responsable venta']?.people || [];
         assigned.forEach((person) => {
-          if (person?.id && person?.name) {
+          const name = person?.name || NOTION_PERSON_NAME_BY_ID[person?.id] || '';
+          if (person?.id && name) {
             people.push({
               id: person.id,
-              name: person.name,
+              name,
               email: person.person?.email || ''
             });
           }
@@ -1058,7 +1066,7 @@ async function fetchResponsibleVentaCandidates() {
 
   return Array.from(
     new Map(
-      [...notionUsers, ...assignedPeople]
+      [...notionUsers, ...assignedPeople, ...Object.values(NOTION_PERSON_BY_EMAIL)]
         .filter((person) => person?.id && person?.name)
         .map((person) => [person.id, person])
     ).values()
@@ -2477,6 +2485,7 @@ module.exports = {
     canManageOwnComprobante,
     canEditComprobanteStatus,
     mapNotionSalePage,
-    getProductsDatabaseId
+    getProductsDatabaseId,
+    findBestNotionUserMatch
   }
 };
