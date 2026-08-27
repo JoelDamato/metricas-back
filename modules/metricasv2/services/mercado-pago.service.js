@@ -5,6 +5,8 @@ const arcaInvoicingService = require('./arca-invoicing.service');
 const API_BASE_URL = 'https://api.mercadopago.com';
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGES = 30;
+const SUPABASE_PAGE_SIZE = 1000;
+const MAX_SUPABASE_PAGES = 100;
 const WORKFLOW_TABLE = 'mercado_pago_club_workflow';
 let invoiceRequestQueue = Promise.resolve();
 
@@ -67,11 +69,35 @@ function supabaseHeaders(extra = {}) {
 }
 
 async function getWorkflowRows() {
-  const response = await axios.get(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, {
-    headers: supabaseHeaders(),
-    params: { select: '*' }
-  });
-  return Array.isArray(response.data) ? response.data : [];
+  const rows = [];
+  let cursor = null;
+
+  for (let page = 0; page < MAX_SUPABASE_PAGES; page += 1) {
+    const params = {
+      select: '*',
+      order: 'record_kind.asc,record_id.asc',
+      limit: SUPABASE_PAGE_SIZE
+    };
+    if (cursor) {
+      params.or = `(record_kind.gt.${cursor.record_kind},and(record_kind.eq.${cursor.record_kind},record_id.gt.${cursor.record_id}))`;
+    }
+    const response = await axios.get(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, {
+      headers: supabaseHeaders(),
+      params
+    });
+    const pageRows = Array.isArray(response.data) ? response.data : [];
+    rows.push(...pageRows);
+    if (pageRows.length < SUPABASE_PAGE_SIZE) return rows;
+
+    const nextCursor = pageRows.at(-1);
+    if (!nextCursor?.record_kind || !nextCursor?.record_id
+      || (cursor && nextCursor.record_kind === cursor.record_kind && nextCursor.record_id === cursor.record_id)) {
+      throw new Error('No se pudo completar la paginación del workflow de Mercado Pago');
+    }
+    cursor = { record_kind: nextCursor.record_kind, record_id: nextCursor.record_id };
+  }
+
+  throw new Error('El workflow de Mercado Pago superó el máximo de páginas permitido');
 }
 
 async function getStoredWorkflowRecords(month, requestedStatus) {

@@ -494,9 +494,14 @@ reconcileButton.addEventListener('click', async () => {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'No se pudo guardar la conciliación');
-    activeWorkflow = 'reconciled';
+    const updated = Number(data.updated || 0);
+    const skipped = Number(data.skipped || 0);
+    activeWorkflow = updated > 0 ? 'reconciled' : 'pending';
     document.querySelectorAll('.workflow-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.workflow === activeWorkflow));
     await loadRecords();
+    statusNode.textContent = skipped > 0
+      ? `${updated} operación${updated === 1 ? '' : 'es'} conciliada${updated === 1 ? '' : 's'} · ${skipped} omitida${skipped === 1 ? '' : 's'} porque ya estaba${skipped === 1 ? '' : 'n'} procesada${skipped === 1 ? '' : 's'}`
+      : `${updated} operación${updated === 1 ? '' : 'es'} conciliada${updated === 1 ? '' : 's'}`;
   } catch (error) {
     statusNode.textContent = error.message;
     updateSelectionUi();

@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const service = fs.readFileSync(path.join(root, 'modules/metricasv2/services/mercado-pago.service.js'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20260826211500_protect_invoiced_mp_workflow.sql'), 'utf8');
+const page = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/mercado-pago-club.page.js'), 'utf8');
 
 test('la conciliación usa una función atómica que no degrada facturas emitidas', () => {
   assert.match(service, /rest\/v1\/rpc\/reconcile_mp_records/);
@@ -26,4 +27,10 @@ test('una factura ya emitida se reconoce aunque encuentre un estado histórico i
   assert.match(service, /alreadyInvoiced: true/);
   assert.match(service, /está siendo procesada en ARCA desde/);
   assert.match(service, /no está disponible para facturar \(estado:/);
+});
+
+test('la pantalla informa operaciones omitidas en vez de simular que fueron conciliadas', () => {
+  assert.match(page, /const skipped = Number\(data\.skipped \|\| 0\)/);
+  assert.match(page, /omitida.*porque ya estaba/s);
+  assert.match(page, /activeWorkflow = updated > 0 \? 'reconciled' : 'pending'/);
 });
