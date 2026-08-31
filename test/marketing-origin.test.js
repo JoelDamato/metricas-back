@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   buildMarketingLeadByGhlId,
@@ -35,9 +37,18 @@ test('un comprobante toma origen_actual desde el lead vinculado por GHL ID', () 
   );
 });
 
-test('mantiene origen como respaldo para registros todavía no migrados', () => {
-  assert.equal(resolveMarketingOrigin({ origen: 'APSET' }), 'APSET');
-  assert.equal(resolveMarketingOrigin({}), 'Sin origen');
+test('no usa origen histórico como respaldo', () => {
+  assert.equal(resolveMarketingOrigin({ origen: 'APSET' }), '');
+  assert.equal(resolveMarketingOrigin({}), '');
+});
+
+test('no usa el origen histórico del lead vinculado como respaldo', () => {
+  const leadByGhlId = buildMarketingLeadByGhlId([{
+    ghlid: 'contact-historico',
+    origen: 'APSET'
+  }]);
+
+  assert.equal(resolveMarketingOrigin({ ghlid: 'contact-historico' }, leadByGhlId), '');
 });
 
 test('si hay duplicados de GHL usa el lead actualizado más recientemente', () => {
@@ -58,4 +69,27 @@ test('si hay duplicados de GHL usa el lead actualizado más recientemente', () =
     resolveMarketingOrigin({ ghlid: 'contact-456' }, leadByGhlId),
     'Origen actual'
   );
+});
+
+test('el frontend de Marketing excluye registros sin origen_actual', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/js/views/marketing.page.js'),
+    'utf8'
+  );
+
+  assert.match(source, /return String\(row\?\.origen_actual \|\| ''\)\.trim\(\);/);
+  assert.doesNotMatch(source, /row\?\.origen_actual \|\| row\?\.origen/);
+  assert.match(source, /Boolean\(currentOrigin\)/);
+});
+
+test('la vista diaria usa exclusivamente origen_actual y descarta vacíos', () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, '../supabase/migrations/20260828183000_marketing_only_origen_actual.sql'),
+    'utf8'
+  );
+
+  assert.match(source, /nullif\(btrim\(l\.origen_actual\), ''\) as marketing_origin/i);
+  assert.match(source, /where c\.marketing_origin is not null/i);
+  assert.doesNotMatch(source, /c\.origen\) as marketing_origin/i);
+  assert.doesNotMatch(source, /l\.origen\) as marketing_origin/i);
 });

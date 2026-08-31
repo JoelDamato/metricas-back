@@ -2056,6 +2056,12 @@ function normalizeMarketingOriginGroup(value) {
   return segment || raw;
 }
 
+function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
+  const currentOrigin = resolveMarketingOrigin(row, leadByGhlId);
+  if (!currentOrigin) return false;
+  return !selectedOrigin || normalizeMarketingOriginGroup(currentOrigin) === selectedOrigin;
+}
+
 async function listMarketingOriginLeadsForRows(rows = []) {
   const ghlIds = [...new Set((rows || [])
     .map((row) => String(row?.ghlid || row?.ghl_id || '').trim())
@@ -2072,7 +2078,7 @@ async function listMarketingOriginLeadsForRows(rows = []) {
     {
       headers: buildHeaders(),
       params: {
-        select: 'ghlid,origen,origen_actual,last_edited_time,created_time',
+        select: 'ghlid,origen_actual,last_edited_time,created_time',
         ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
         limit: 1000
       }
@@ -2654,7 +2660,7 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     if (!(facturacion > 0)) return false;
     if (!(primerPago > facturacion * 0.3)) return false;
 
-    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
+    if (!matchesCurrentMarketingOrigin(row, leadByGhlId, origen)) {
       return false;
     }
 
@@ -2702,7 +2708,7 @@ async function getMarketingVentasTotales({ from, to, origen }) {
     if (!producto || producto.toLowerCase() === 'empty') return false;
     if (producto.toLowerCase().includes('club')) return false;
 
-    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
+    if (!matchesCurrentMarketingOrigin(row, leadByGhlId, origen)) {
       return false;
     }
 
@@ -2757,7 +2763,7 @@ async function getMarketingCashCollectedAgenda({ from, to, origen }) {
     if (tipo !== 'venta' && tipo !== 'cobranza') return sum;
     if (!isNonClubProductForCash(row)) return sum;
 
-    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) {
+    if (!matchesCurrentMarketingOrigin(row, leadByGhlId, origen)) {
       return sum;
     }
 
@@ -2803,11 +2809,12 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
     })
   ]);
 
+  const linkedLeadRows = await listMarketingOriginLeadsForRows(comprobanteRows);
   const byCampaign = new Map();
-  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
+  const leadByGhlId = buildMarketingLeadByGhlId([...leadRows, ...linkedLeadRows]);
 
   leadRows.forEach((row) => {
-    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) return;
+    if (!matchesCurrentMarketingOrigin(row, leadByGhlId, origen)) return;
 
     const current = getMarketingCampaignTotal(byCampaign, row.campaign);
     if (!current) return;
@@ -2845,7 +2852,7 @@ async function getMarketingCampaignTotals({ from, to, origen }) {
     if (!producto || producto.toLowerCase() === 'empty') return;
     if (producto.toLowerCase().includes('club')) return;
 
-    if (origen && normalizeMarketingOriginGroup(resolveMarketingOrigin(row, leadByGhlId)) !== origen) return;
+    if (!matchesCurrentMarketingOrigin(row, leadByGhlId, origen)) return;
 
     const current = getMarketingCampaignTotal(byCampaign, row.campaign);
     if (!current) return;

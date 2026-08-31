@@ -699,7 +699,7 @@ function normalizeOriginGroup(value) {
 }
 
 function getMarketingLeadOrigin(row) {
-  return String(row?.origen_actual || row?.origen || '').trim() || 'Sin origen';
+  return String(row?.origen_actual || '').trim();
 }
 
 function sumField(rows, key) {
@@ -801,7 +801,8 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
 }
 
 function isMarketingLeadInSelectedOrigin(row, filters) {
-  return !filters.origen || normalizeOriginGroup(getMarketingLeadOrigin(row)) === filters.origen;
+  const currentOrigin = getMarketingLeadOrigin(row);
+  return Boolean(currentOrigin) && (!filters.origen || normalizeOriginGroup(currentOrigin) === filters.origen);
 }
 
 function isAgendaCompletedLead(row) {
@@ -1043,7 +1044,8 @@ function aggregateAdsMetrics(rows, filters) {
     const adname = String(row.adname || '').trim();
     if (!adname) return;
 
-    if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
+    const currentOrigin = getMarketingLeadOrigin(row);
+    if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
       return;
     }
 
@@ -1136,7 +1138,8 @@ function aggregateQualityMetrics(rows, filters) {
   (rows || []).forEach((row) => {
     const calidad = String(row.calidad_lead || '').trim() || 'Sin calidad';
 
-    if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
+    const currentOrigin = getMarketingLeadOrigin(row);
+    if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
       return;
     }
 
@@ -1296,7 +1299,7 @@ function renderInvestmentHistoryTable(rows) {
             <tr data-record-key="${recordKey}">
               <td>${escapeHtml(row.fecha_desde || '-')}</td>
               <td>${escapeHtml(row.fecha_hasta || '-')}</td>
-              <td>${escapeHtml(getMarketingLeadOrigin(row))}</td>
+              <td>${escapeHtml(String(row.origen || '').trim() || 'Sin origen')}</td>
               <td>
                 <input
                   type="number"
@@ -1686,7 +1689,8 @@ async function loadDashboard() {
     const adRows = aggregateAdsMetrics(leadRows, filters);
     const qualityRows = aggregateQualityMetrics(leadRows, filters);
     const traceabilityRows = (traceabilityResponse.rows || []).filter((row) => {
-      if (filters.origen && normalizeOriginGroup(getMarketingLeadOrigin(row)) !== filters.origen) {
+      const currentOrigin = getMarketingLeadOrigin(row);
+      if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
         return false;
       }
       return true;

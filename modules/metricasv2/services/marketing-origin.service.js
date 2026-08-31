@@ -34,9 +34,7 @@ function resolveMarketingOrigin(row = {}, leadByGhlId = new Map()) {
   const linkedCurrentOrigin = cleanText(linkedLead?.origen_actual);
   if (linkedCurrentOrigin) return linkedCurrentOrigin;
 
-  return cleanText(row.origen)
-    || cleanText(linkedLead?.origen)
-    || 'Sin origen';
+  return '';
 }
 
 module.exports = {

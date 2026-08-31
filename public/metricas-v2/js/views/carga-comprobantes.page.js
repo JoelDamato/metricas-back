@@ -1484,6 +1484,12 @@
       populateSelect(refs.productName, response.bootstrap.products || [], 'Elegí un producto');
       populateClubPriceSelect(response.bootstrap.clubPriceOptions || []);
 
+      populateSelect(
+        refs.responsableVenta,
+        response.bootstrap.responsibleVentaOptions || [],
+        response.bootstrap.canSelectResponsibleVenta ? 'Elegí responsable' : 'Responsable asignado'
+      );
+      refs.responsableVenta.disabled = !response.bootstrap.canSelectResponsibleVenta;
       refs.responsableVenta.value = response.bootstrap.responsibleVentaDefault || '';
       refs.productsSourceText.textContent = response.bootstrap.productsSource === 'notion'
         ? 'Catálogo cargado desde Notion.'

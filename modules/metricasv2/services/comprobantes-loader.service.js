@@ -214,6 +214,10 @@ const COMPROBANTES_GLOBAL_VIEWER_EMAILS = new Set([
   'nadia.cavallini@gmail.com'
 ]);
 
+const COMPROBANTES_DELEGATED_UPLOADER_EMAILS = new Set([
+  'nadia.cavallini@gmail.com'
+]);
+
 const COMPROBANTES_SETTER_VIEWER_NAMES_BY_EMAIL = {
   'nahuerandazzo@gmail.com': ['Nahue Randazzo', 'Nahue', 'Nahuel'],
   'iascinahuel@gmail.com': ['Nahuel Iasci', 'Nahuel']
@@ -221,6 +225,10 @@ const COMPROBANTES_SETTER_VIEWER_NAMES_BY_EMAIL = {
 
 function canViewAllComprobantes(user = {}) {
   return COMPROBANTES_GLOBAL_VIEWER_EMAILS.has(normalizeEmail(user?.email));
+}
+
+function canSelectResponsibleVenta(user = {}) {
+  return COMPROBANTES_DELEGATED_UPLOADER_EMAILS.has(normalizeEmail(user?.email));
 }
 
 function getComprobantesSetterNames(user = {}) {
@@ -1107,9 +1115,16 @@ async function getBootstrap(user) {
     ? activePaymentMethods.map((item) => item.name)
     : DEFAULT_PAYMENT_METHODS;
   const clubPriceOptions = activeProducts.find((item) => isClubProduct(item.name))?.clubPriceOptions || [];
+  const canSelectResponsible = canSelectResponsibleVenta(user);
+  const responsibleVentaDefault = canSelectResponsible ? '' : standardizeResponsibleVenta(user);
+  const responsibleVentaOptions = canSelectResponsible
+    ? uniqueSorted((await fetchResponsibleVentaCandidates()).map((person) => person.name))
+    : [responsibleVentaDefault].filter(Boolean);
 
   return {
-    responsibleVentaDefault: standardizeResponsibleVenta(user),
+    responsibleVentaDefault,
+    responsibleVentaOptions,
+    canSelectResponsibleVenta: canSelectResponsible,
     tipoOptions: DEFAULT_TYPES,
     mediosDePagoOptions: notionPaymentMethods.length ? paymentOptions : DEFAULT_PAYMENT_METHODS,
     mediosDePago: notionPaymentMethods.length ? activePaymentMethods : DEFAULT_PAYMENT_METHODS.map((name) => ({
@@ -2481,6 +2496,7 @@ module.exports = {
     normalizePayload,
     hasSaleOwnership,
     canViewAllComprobantes,
+    canSelectResponsibleVenta,
     getComprobantesSetterNames,
     canManageOwnComprobante,
     canEditComprobanteStatus,

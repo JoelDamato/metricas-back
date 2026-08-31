@@ -34,6 +34,14 @@ test('Mati y Nadia tienen vista global de comprobantes; el resto no', () => {
   assert.equal(canViewAllComprobantes(MAURO), false);
 });
 
+test('Nadia puede elegir el responsable al cargar y los vendedores no', () => {
+  const { canSelectResponsibleVenta } = comprobantesLoaderService._test;
+
+  assert.equal(canSelectResponsibleVenta(NADIA), true);
+  assert.equal(canSelectResponsibleVenta(MATI), false);
+  assert.equal(canSelectResponsibleVenta(MAURO), false);
+});
+
 test('cada vendedor recibe sólo sus comprobantes cargados', async (t) => {
   let requestParams = null;
   installSupabaseMock(t, [
