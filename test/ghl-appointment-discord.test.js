@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const appointmentDiscordService = require('../modules/ghl/appointment-discord.service');
+const appointmentDiscordController = require('../controllers/ghlAppointmentDiscord');
 const {
   buildDiscordMessages,
   extractSurveyAnswers,
@@ -11,7 +13,45 @@ const {
   selectLatestSubmission,
   splitBlocks,
   validateAppointment
-} = require('../modules/ghl/appointment-discord.service');
+} = appointmentDiscordService;
+
+test('el webhook de citas entra sin token temporal ni header de autorización', async (t) => {
+  t.mock.method(appointmentDiscordService, 'processAppointmentWebhook', async (payload) => ({
+    skipped: false,
+    appointmentId: payload.appointment_id
+  }));
+
+  const req = {
+    body: { appointment_id: 'appointment-public-1' },
+    headers: {},
+    query: {}
+  };
+  const res = {
+    statusCode: 200,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    }
+  };
+  let forwardedError = null;
+
+  await appointmentDiscordController.handleAppointmentBooked(req, res, (error) => {
+    forwardedError = error;
+  });
+
+  assert.equal(forwardedError, null);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    ok: true,
+    skipped: false,
+    appointmentId: 'appointment-public-1'
+  });
+});
 
 test('acepta un webhook de Discord distinto en cada payload', () => {
   const url = 'https://discord.com/api/webhooks/123456789/token_de_prueba';

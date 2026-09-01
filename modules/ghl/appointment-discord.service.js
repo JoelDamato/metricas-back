@@ -81,7 +81,6 @@ function getConfig() {
     ghlLocationId: process.env.GHL_LOCATION_ID || '',
     ghlApiBase: process.env.GHL_API_BASE || DEFAULT_GHL_API_BASE,
     discordWebhookUrl: process.env.DISCORD_APPOINTMENTS_WEBHOOK_URL || '',
-    webhookSecret: process.env.GHL_APPOINTMENT_WEBHOOK_SECRET || '',
     timezone: process.env.GHL_APPOINTMENTS_TIMEZONE || DEFAULT_TIMEZONE,
     closerUserIds: new Set(
       String(process.env.GHL_CLOSER_USER_IDS || '')
@@ -109,7 +108,6 @@ function assertRuntimeConfig(config) {
   if (!config.ghlApiKey) missing.push('GHL_API_KEY');
   if (!config.ghlLocationId) missing.push('GHL_LOCATION_ID');
   if (!config.discordWebhookUrl) missing.push('DISCORD_APPOINTMENTS_WEBHOOK_URL');
-  if (!config.webhookSecret) missing.push('GHL_APPOINTMENT_WEBHOOK_SECRET');
 
   if (missing.length) {
     const error = new Error(`Faltan variables para el webhook GHL/Discord: ${missing.join(', ')}`);
