@@ -59,6 +59,86 @@ test('acepta un webhook de Discord distinto en cada payload', () => {
   assert.equal(resolveDiscordWebhookUrl({ discord_webhook_url: url }, ''), url);
 });
 
+test('con contact_id y discord_webhook_url busca toda la cita y la envía enriquecida', async () => {
+  const discordWebhookUrl = 'https://discord.com/api/webhooks/987654321/token_de_prueba';
+  const customFieldId = 'abcdefghijklmnopqr';
+  const requests = [];
+  const sent = [];
+  const ghlClient = {
+    async get(path, options) {
+      requests.push({ path, options });
+      if (path === '/contacts/contact-simple/appointments') {
+        return {
+          data: {
+            events: [{
+              id: 'appointment-simple',
+              calendarId: 'calendar-simple',
+              assignedUserId: 'closer-simple',
+              status: 'confirmed',
+              startTime: '2026-09-02T10:00:00-03:00',
+              dateAdded: '2026-09-01T14:00:00.000Z'
+            }]
+          }
+        };
+      }
+      if (path === '/contacts/contact-simple') {
+        return { data: { contact: { name: 'Cliente de prueba', email: 'test@example.com', phone: '+5491112345678' } } };
+      }
+      if (path === '/users/closer-simple') return { data: { name: 'Closer de prueba' } };
+      if (path === '/calendars/calendar-simple') return { data: { calendar: { name: 'Agenda de prueba' } } };
+      if (path === '/surveys/submissions') {
+        return {
+          data: {
+            submissions: [{
+              id: 'submission-simple',
+              contactId: 'contact-simple',
+              surveyId: 'survey-simple',
+              createdAt: '2026-09-01T13:59:00.000Z',
+              others: {
+                fieldsOriSequance: [customFieldId],
+                [customFieldId]: 'Respuesta completa de la postulación'
+              }
+            }]
+          }
+        };
+      }
+      if (path === '/surveys/') return { data: { surveys: [{ id: 'survey-simple', name: 'Encuesta de prueba' }] } };
+      if (path === `/locations/location-simple/customFields/${customFieldId}`) {
+        return { data: { customField: { id: customFieldId, name: 'Objetivo del cliente' } } };
+      }
+      throw new Error(`GET inesperado: ${path}`);
+    }
+  };
+
+  const result = await appointmentDiscordService.processAppointmentWebhook({
+    contact_id: 'contact-simple',
+    discord_webhook_url: discordWebhookUrl
+  }, {
+    config: {
+      ghlApiKey: 'ghl-test',
+      ghlLocationId: 'location-simple',
+      ghlApiBase: 'https://example.test',
+      discordWebhookUrl: '',
+      closerUserIds: new Set(),
+      appointmentLookupUserIds: new Set(),
+      surveyIds: new Set(['survey-simple'])
+    },
+    ghlClient,
+    postDiscordMessage: async (url, message) => sent.push({ url, message })
+  });
+
+  assert.equal(result.notified, true);
+  assert.equal(result.appointmentId, 'appointment-simple');
+  assert.equal(requests[0].path, '/contacts/contact-simple/appointments');
+  assert.equal(requests[0].options.headers.Version, 'v3');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].url, discordWebhookUrl);
+  assert.match(JSON.stringify(sent[0].message), /Cliente de prueba/);
+  assert.match(JSON.stringify(sent[0].message), /Closer de prueba/);
+  assert.match(JSON.stringify(sent[0].message), /Agenda de prueba/);
+  assert.match(JSON.stringify(sent[0].message), /Respuesta completa de la postulación/);
+});
+
 test('rechaza destinos que no sean webhooks oficiales de Discord', () => {
   assert.throws(
     () => resolveDiscordWebhookUrl({ discord_webhook_url: 'https://example.com/api/webhooks/123/token' }, ''),

@@ -216,14 +216,28 @@ function validateAppointment(appointment, expectedLocationId) {
   return { skipped: false };
 }
 
-function selectLatestAppointmentForContact(events = [], contactId) {
+function selectLatestAppointmentForContact(events = [], contactId, now = Date.now()) {
   return events
     .filter((event) => event && event.contactId === contactId && !event.deleted)
     .slice()
     .sort((left, right) => {
-      const leftCreated = new Date(left.dateAdded || left.dateUpdated || left.startTime).getTime();
-      const rightCreated = new Date(right.dateAdded || right.dateUpdated || right.startTime).getTime();
-      return rightCreated - leftCreated;
+      const leftCreated = new Date(left.dateAdded || left.dateUpdated || '').getTime();
+      const rightCreated = new Date(right.dateAdded || right.dateUpdated || '').getTime();
+      const leftHasCreated = Number.isFinite(leftCreated);
+      const rightHasCreated = Number.isFinite(rightCreated);
+
+      if (leftHasCreated || rightHasCreated) {
+        if (leftHasCreated !== rightHasCreated) return leftHasCreated ? -1 : 1;
+        if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+      }
+
+      const leftStart = new Date(left.startTime).getTime();
+      const rightStart = new Date(right.startTime).getTime();
+      const leftUpcoming = Number.isFinite(leftStart) && leftStart >= now;
+      const rightUpcoming = Number.isFinite(rightStart) && rightStart >= now;
+      if (leftUpcoming !== rightUpcoming) return leftUpcoming ? -1 : 1;
+      if (leftUpcoming) return leftStart - rightStart;
+      return rightStart - leftStart;
     })[0] || null;
 }
 
@@ -293,6 +307,24 @@ async function fetchCalendar(client, calendarId) {
 }
 
 async function fetchLatestAppointmentForContact(client, config, contactId) {
+  try {
+    const directData = await ghlGet(
+      client,
+      `/contacts/${encodeURIComponent(contactId)}/appointments`,
+      {},
+      'v3'
+    );
+    const directEvents = (directData.events || []).map((event) => ({
+      ...event,
+      contactId: event.contactId || contactId
+    }));
+    const directAppointment = selectLatestAppointmentForContact(directEvents, contactId);
+    if (directAppointment) return directAppointment;
+  } catch (error) {
+    // Algunos tokens antiguos no tienen el scope del endpoint por contacto.
+    // En ese caso se mantiene la búsqueda por agendas como compatibilidad.
+  }
+
   const now = Date.now();
   const startTime = now - (7 * 24 * 60 * 60 * 1000);
   const endTime = now + (548 * 24 * 60 * 60 * 1000);
