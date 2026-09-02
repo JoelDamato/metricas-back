@@ -331,9 +331,27 @@ async function executeInvoiceRecords(keys, user) {
       const status = row?.status || 'sin registro';
       throw Object.assign(new Error(`La operación ${id} no está disponible para facturar (estado: ${status})`), { statusCode: 409 });
     }
+    const saveAttempt = async (attempt) => {
+      await axios.patch(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, {
+        arca_response: attempt,
+        updated_at: new Date().toISOString()
+      }, {
+        headers: supabaseHeaders({ Prefer: 'return=minimal' }),
+        params: { record_kind: `eq.${kind}`, record_id: `eq.${id}`, status: 'eq.invoicing' }
+      });
+    };
     let invoice;
     try {
-      invoice = await arcaInvoicingService.issueInvoice(workflow.record_snapshot || {});
+      const pendingAttempt = workflow.arca_response?.pending ? workflow.arca_response : null;
+      if (pendingAttempt) {
+        invoice = await arcaInvoicingService.recoverInvoiceAttempt(pendingAttempt);
+        if (!invoice) await saveAttempt(null);
+      }
+      if (!invoice) {
+        invoice = await arcaInvoicingService.issueInvoice(workflow.record_snapshot || {}, {
+          onAttempt: saveAttempt
+        });
+      }
     } catch (error) {
       await axios.post(`${env.supabaseUrl}/rest/v1/rpc/release_mp_invoice`, { p_kind: kind, p_id: id }, { headers: supabaseHeaders() });
       throw error;

@@ -11,13 +11,58 @@ const INVOICE_B = 6;
 const CERT_FILENAME = 'matias-randazzo-wsfe-produccion.crt';
 const KEY_FILENAME = 'matias-randazzo-wsfe-produccion.key';
 const WSAA_TICKET_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+const ARCA_REQUEST_TIMEOUT_MS = 45000;
+const ARCA_RETRY_DELAY_MS = 750;
 const wsaaCredentialCache = new Map();
 const wsaaCredentialRequests = new Map();
 const ARCA_HTTPS_AGENT = new https.Agent({
-  keepAlive: true,
+  keepAlive: false,
   minVersion: 'TLSv1.2',
   ciphers: 'DEFAULT@SECLEVEL=1'
 });
+
+function isTransientArcaError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  const status = Number(error?.response?.status || 0);
+  return ['ECONNRESET', 'ECONNABORTED', 'ETIMEDOUT', 'EPIPE', 'ENETUNREACH', 'EAI_AGAIN'].includes(code)
+    || /socket hang up|timeout|timed out|network error/.test(message)
+    || [429, 502, 503, 504].includes(status);
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function postArcaXml(url, envelope, options = {}) {
+  const retryable = options.retryable !== false;
+  const attempts = retryable ? 2 : 1;
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await axios.post(url, envelope, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: options.soapAction || ''
+        },
+        httpsAgent: ARCA_HTTPS_AGENT,
+        timeout: Number(options.timeout || ARCA_REQUEST_TIMEOUT_MS)
+      });
+    } catch (error) {
+      lastError = error;
+      console.warn('[arca] SOAP interrumpido', {
+        operation: options.operation || 'sin-identificar',
+        attempt,
+        code: error?.code || null,
+        status: error?.response?.status || null,
+        message: error?.message || 'Error desconocido'
+      });
+      if (attempt >= attempts || !isTransientArcaError(error)) throw error;
+      await wait(ARCA_RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastError;
+}
 
 function credentialPathCandidates(filename, explicitPath = '') {
   const secretType = filename.endsWith('.key') ? 'key' : 'certificate';
@@ -127,10 +172,9 @@ async function requestWsaaCredentials(service) {
     ]);
     const cms = fs.readFileSync(cmsPath).toString('base64');
     const envelope = `<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>${cms}</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>`;
-    const response = await axios.post('https://wsaa.afip.gov.ar/ws/services/LoginCms', envelope, {
-      headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
-      httpsAgent: ARCA_HTTPS_AGENT,
-      timeout: 30000
+    const response = await postArcaXml('https://wsaa.afip.gov.ar/ws/services/LoginCms', envelope, {
+      operation: `WSAA.${service}`,
+      retryable: true
     });
     const loginResponse = xmlValue(response.data, 'loginCmsReturn');
     const token = xmlValue(loginResponse, 'token');
@@ -162,10 +206,10 @@ function getWsaaCredentials(service = 'wsfe') {
 
 async function getLastAuthorizedInvoice(auth, invoiceType = INVOICE_B) {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><FECompUltimoAutorizado xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><PtoVta>${POINT_OF_SALE}</PtoVta><CbteTipo>${invoiceType}</CbteTipo></FECompUltimoAutorizado></soap:Body></soap:Envelope>`;
-  const response = await axios.post('https://servicios1.afip.gov.ar/wsfev1/service.asmx', envelope, {
-    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: 'http://ar.gov.afip.dif.FEV1/FECompUltimoAutorizado' },
-    httpsAgent: ARCA_HTTPS_AGENT,
-    timeout: 30000
+  const response = await postArcaXml('https://servicios1.afip.gov.ar/wsfev1/service.asmx', envelope, {
+    soapAction: 'http://ar.gov.afip.dif.FEV1/FECompUltimoAutorizado',
+    operation: `WSFE.FECompUltimoAutorizado.${invoiceType}`,
+    retryable: true
   });
   const errorsXml = xmlValue(response.data, 'Errors');
   const errorCode = xmlValue(errorsXml, 'Code');
@@ -197,6 +241,8 @@ module.exports = {
   materializeCredentialPem,
   credentialsAreReusable,
   clearWsaaCredentialCache,
+  isTransientArcaError,
+  postArcaXml,
   getWsaaCredentials,
   getLastAuthorizedInvoice
 };

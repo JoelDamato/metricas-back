@@ -1,10 +1,10 @@
-const axios = require('axios');
 const {
   CUIT,
   POINT_OF_SALE,
-  ARCA_HTTPS_AGENT,
   xmlValue,
   xmlEscape,
+  isTransientArcaError,
+  postArcaXml,
   getWsaaCredentials,
   getLastAuthorizedInvoice
 } = require('../../../scripts/arca_wsfe_probe');
@@ -62,12 +62,12 @@ function getErrors(xml) {
   return codes.map((code, index) => ({ code, message: messages[index] || '' }));
 }
 
-async function postWsfe(action, body) {
+async function postWsfe(action, body, options = {}) {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>${body}</soap:Body></soap:Envelope>`;
-  const response = await axios.post(WSFE_URL, envelope, {
-    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: `http://ar.gov.afip.dif.FEV1/${action}` },
-    httpsAgent: ARCA_HTTPS_AGENT,
-    timeout: 30000
+  const response = await postArcaXml(WSFE_URL, envelope, {
+    soapAction: `http://ar.gov.afip.dif.FEV1/${action}`,
+    operation: `WSFE.${action}`,
+    retryable: options.retryable !== false
   });
   const errors = getErrors(response.data);
   if (errors.length) throw new Error(errors.map((error) => `ARCA ${error.code}: ${error.message}`).join(' | '));
@@ -172,10 +172,9 @@ async function resolveRecipient(record) {
     throw wrapped;
   }
   const envelope = buildPadronEnvelope(auth, raw);
-  const response = await axios.post(PADRON_URL, envelope, {
-    headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '' },
-    httpsAgent: ARCA_HTTPS_AGENT,
-    timeout: 30000
+  const response = await postArcaXml(PADRON_URL, envelope, {
+    operation: 'PADRON.getPersona_v2',
+    retryable: true
   });
   return recipientFromPadron(record, raw, response.data);
 }
@@ -205,7 +204,63 @@ async function previewInvoice(record) {
   };
 }
 
-async function issueElectronicInvoice(record) {
+function buildInvoiceConsultEnvelope(auth, invoiceTypeCode, invoiceNumber) {
+  return `<FECompConsultar xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><FeCompConsReq><CbteTipo>${invoiceTypeCode}</CbteTipo><CbteNro>${invoiceNumber}</CbteNro><PtoVta>${POINT_OF_SALE}</PtoVta></FeCompConsReq></FECompConsultar>`;
+}
+
+function parseAuthorizedInvoiceConsult(xml) {
+  const result = xmlValue(xml, 'Resultado');
+  const cae = xmlValue(xml, 'CodAutorizacion') || xmlValue(xml, 'CAE');
+  if (result !== 'A' || !cae) return null;
+  return {
+    cae,
+    caeExpiration: xmlValue(xml, 'FchVto') || xmlValue(xml, 'CAEFchVto')
+  };
+}
+
+async function recoverInvoiceAttempt(attempt = {}, runtime = {}) {
+  const invoiceTypeCode = Number(attempt.invoiceTypeCode);
+  const invoiceNumber = Number(attempt.invoiceNumber);
+  if (![FACTURA_A, FACTURA_B].includes(invoiceTypeCode) || !Number.isInteger(invoiceNumber) || invoiceNumber <= 0) {
+    return null;
+  }
+  try {
+    const auth = runtime.auth || await getWsaaCredentials();
+    const getLast = runtime.getLastAuthorizedInvoice || getLastAuthorizedInvoice;
+    const lastAuthorized = await getLast(auth, invoiceTypeCode);
+    if (Number(lastAuthorized) < invoiceNumber) return null;
+    const consult = runtime.postWsfe || postWsfe;
+    const xml = await consult(
+      'FECompConsultar',
+      buildInvoiceConsultEnvelope(auth, invoiceTypeCode, invoiceNumber),
+      { retryable: true }
+    );
+    const authorization = parseAuthorizedInvoiceConsult(xml);
+    if (!authorization) return null;
+    const { pending, ...invoice } = attempt;
+    return {
+      ...invoice,
+      ...authorization,
+      recoveredAfterConnectionInterruption: true
+    };
+  } catch (error) {
+    if (isTransientArcaError(error)) throw interruptedInvoiceError(error, true);
+    throw error;
+  }
+}
+
+function interruptedInvoiceError(cause, ambiguous = false) {
+  const error = new Error(ambiguous
+    ? 'ARCA cortó la conexión y todavía no confirmó si autorizó el comprobante. El intento quedó guardado: volvé a intentar desde el mismo registro para verificarlo sin duplicar la factura.'
+    : 'ARCA cortó la conexión antes de autorizar el comprobante. No se emitió la factura; podés volver a intentar.');
+  error.statusCode = 503;
+  error.code = ambiguous ? 'ARCA_AUTHORIZATION_UNCONFIRMED' : 'ARCA_CONNECTION_INTERRUPTED';
+  error.ambiguousArcaResult = ambiguous;
+  error.cause = cause;
+  return error;
+}
+
+async function issueElectronicInvoice(record, options = {}) {
   validateRecord(record);
   const recipient = await resolveRecipient(record);
   const policy = buildClubInvoicePolicy(record, recipient);
@@ -214,13 +269,10 @@ async function issueElectronicInvoice(record) {
   const dates = invoiceDates();
   const detail = `<FECAEDetRequest><Concepto>2</Concepto><DocTipo>${recipient.documentType}</DocTipo><DocNro>${recipient.documentNumber}</DocNro><CbteDesde>${invoiceNumber}</CbteDesde><CbteHasta>${invoiceNumber}</CbteHasta><CbteFch>${formatArcaDate(dates.issued)}</CbteFch>${arcaAmountsXml(policy.amounts)}<FchServDesde>${formatArcaDate(dates.serviceFrom)}</FchServDesde><FchServHasta>${formatArcaDate(dates.serviceTo)}</FchServHasta><FchVtoPago>${formatArcaDate(dates.paymentDueDate)}</FchVtoPago><MonId>PES</MonId><MonCotiz>1.000000</MonCotiz><CondicionIVAReceptorId>${recipient.vatConditionId}</CondicionIVAReceptorId></FECAEDetRequest>`;
   const body = `<FECAESolicitar xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><FeCAEReq><FeCabReq><CantReg>1</CantReg><PtoVta>${POINT_OF_SALE}</PtoVta><CbteTipo>${recipient.invoiceTypeCode}</CbteTipo></FeCabReq><FeDetReq>${detail}</FeDetReq></FeCAEReq></FECAESolicitar>`;
-  const xml = await postWsfe('FECAESolicitar', body);
-  const result = xmlValue(xml, 'Resultado');
-  const cae = xmlValue(xml, 'CAE');
-  if (result !== 'A' || !cae) throw new Error(`ARCA no autorizó el comprobante. Resultado: ${result || 'sin resultado'}`);
-  return {
+  const attempt = {
+    pending: true,
     invoiceType: recipient.invoiceType, invoiceTypeCode: recipient.invoiceTypeCode, pointOfSale: POINT_OF_SALE,
-    invoiceNumber, cae, caeExpiration: xmlValue(xml, 'CAEFchVto'),
+    invoiceNumber,
     issuedAt: dates.issued.toISOString(),
     serviceFrom: dates.serviceFrom.toISOString().slice(0, 10),
     serviceTo: dates.serviceTo.toISOString().slice(0, 10),
@@ -241,10 +293,34 @@ async function issueElectronicInvoice(record) {
     amount: Number(record.amount),
     currency: 'ARS'
   };
+  if (typeof options.onAttempt === 'function') await options.onAttempt(attempt);
+  let xml;
+  try {
+    xml = await postWsfe('FECAESolicitar', body, { retryable: false });
+  } catch (error) {
+    if (!isTransientArcaError(error)) throw error;
+    try {
+      const recovered = await recoverInvoiceAttempt(attempt, { auth });
+      if (recovered) return recovered;
+      throw interruptedInvoiceError(error, false);
+    } catch (recoveryError) {
+      if (recoveryError?.code === 'ARCA_CONNECTION_INTERRUPTED') throw recoveryError;
+      throw interruptedInvoiceError(error, true);
+    }
+  }
+  const result = xmlValue(xml, 'Resultado');
+  const cae = xmlValue(xml, 'CAE');
+  if (result !== 'A' || !cae) throw new Error(`ARCA no autorizó el comprobante. Resultado: ${result || 'sin resultado'}`);
+  const { pending, ...invoice } = attempt;
+  return {
+    ...invoice,
+    cae,
+    caeExpiration: xmlValue(xml, 'CAEFchVto')
+  };
 }
 
-function issueInvoice(record) {
-  const queued = invoiceQueue.then(() => issueElectronicInvoice(record));
+function issueInvoice(record, options = {}) {
+  const queued = invoiceQueue.then(() => issueElectronicInvoice(record, options));
   invoiceQueue = queued.catch(() => undefined);
   return queued;
 }
@@ -265,7 +341,7 @@ async function issueCreditNoteInternal(record, original) {
   const associated = `<CbtesAsoc><CbteAsoc><Tipo>${originalType}</Tipo><PtoVta>${original.pointOfSale}</PtoVta><Nro>${original.invoiceNumber}</Nro><Cuit>${CUIT}</Cuit></CbteAsoc></CbtesAsoc>`;
   const detail = `<FECAEDetRequest><Concepto>2</Concepto><DocTipo>${original.documentType}</DocTipo><DocNro>${original.documentNumber}</DocNro><CbteDesde>${number}</CbteDesde><CbteHasta>${number}</CbteHasta><CbteFch>${formatArcaDate(today)}</CbteFch>${arcaAmountsXml(amounts)}<FchServDesde>${formatArcaDate(start)}</FchServDesde><FchServHasta>${formatArcaDate(end)}</FchServHasta><FchVtoPago>${formatArcaDate(today)}</FchVtoPago><MonId>PES</MonId><MonCotiz>1.000000</MonCotiz>${associated}<CondicionIVAReceptorId>${original.vatConditionId}</CondicionIVAReceptorId></FECAEDetRequest>`;
   const body = `<FECAESolicitar xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>${xmlEscape(auth.token)}</Token><Sign>${xmlEscape(auth.sign)}</Sign><Cuit>${CUIT}</Cuit></Auth><FeCAEReq><FeCabReq><CantReg>1</CantReg><PtoVta>${POINT_OF_SALE}</PtoVta><CbteTipo>${noteType}</CbteTipo></FeCabReq><FeDetReq>${detail}</FeDetReq></FeCAEReq></FECAESolicitar>`;
-  const xml = await postWsfe('FECAESolicitar', body);
+  const xml = await postWsfe('FECAESolicitar', body, { retryable: false });
   const cae = xmlValue(xml, 'CAE');
   if (xmlValue(xml, 'Resultado') !== 'A' || !cae) throw new Error('ARCA no autorizó la nota de crédito');
   return { type: originalType === 1 ? 'A' : 'B', typeCode: noteType, pointOfSale: POINT_OF_SALE, number, cae, caeExpiration: xmlValue(xml, 'CAEFchVto'), issuedAt: today.toISOString(), amount: amounts.total, amounts, originalInvoice: original };
@@ -284,5 +360,9 @@ module.exports = {
   resolveRecipient,
   invoiceDates,
   buildPadronEnvelope,
-  recipientFromPadron
+  recipientFromPadron,
+  buildInvoiceConsultEnvelope,
+  parseAuthorizedInvoiceConsult,
+  recoverInvoiceAttempt,
+  interruptedInvoiceError
 };

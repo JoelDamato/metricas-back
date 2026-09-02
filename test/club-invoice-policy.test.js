@@ -15,7 +15,10 @@ const {
   resolveRecipient,
   invoiceDates,
   buildPadronEnvelope,
-  recipientFromPadron
+  recipientFromPadron,
+  buildInvoiceConsultEnvelope,
+  parseAuthorizedInvoiceConsult,
+  recoverInvoiceAttempt
 } = require('../modules/metricasv2/services/arca-invoicing.service');
 const { validateRecipientFields } = require('../modules/metricasv2/services/mercado-pago.service');
 const {
@@ -24,7 +27,8 @@ const {
   credentialPathCandidates,
   resolveCredentialPath,
   materializeCredentialPem,
-  credentialsAreReusable
+  credentialsAreReusable,
+  isTransientArcaError
 } = require('../scripts/arca_wsfe_probe');
 
 test('Consumidor Final usa Factura B, concepto fijo e importe exento', () => {
@@ -285,6 +289,72 @@ test('ticket WSAA se reutiliza hasta cinco minutos antes de vencer', () => {
   assert.equal(credentialsAreReusable({ ...base, expirationTime: '2026-07-30T13:00:00.000Z' }, now), true);
   assert.equal(credentialsAreReusable({ ...base, expirationTime: '2026-07-30T12:04:59.000Z' }, now), false);
   assert.equal(credentialsAreReusable({ token: '', sign: 'sign', expirationTime: '2026-07-30T13:00:00.000Z' }, now), false);
+});
+
+test('reconoce socket hang up y resets de ARCA como errores transitorios', () => {
+  assert.equal(isTransientArcaError(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' })), true);
+  assert.equal(isTransientArcaError({ response: { status: 503 }, message: 'Service unavailable' }), true);
+  assert.equal(isTransientArcaError(new Error('ARCA rechazó el comprobante')), false);
+});
+
+test('consulta en ARCA el comprobante exacto después de una conexión interrumpida', async () => {
+  const attempt = {
+    pending: true,
+    invoiceType: 'B',
+    invoiceTypeCode: 6,
+    pointOfSale: 5,
+    invoiceNumber: 352,
+    amount: 39500
+  };
+  let request = null;
+  const recovered = await recoverInvoiceAttempt(attempt, {
+    auth: { token: 'token-prueba', sign: 'firma-prueba' },
+    getLastAuthorizedInvoice: async () => 352,
+    postWsfe: async (action, body, options) => {
+      request = { action, body, options };
+      return '<ResultGet><Resultado>A</Resultado><CodAutorizacion>86350000000001</CodAutorizacion><FchVto>20260912</FchVto></ResultGet>';
+    }
+  });
+
+  assert.equal(request.action, 'FECompConsultar');
+  assert.equal(request.options.retryable, true);
+  assert.match(request.body, /<CbteTipo>6<\/CbteTipo><CbteNro>352<\/CbteNro><PtoVta>5<\/PtoVta>/);
+  assert.equal(recovered.pending, undefined);
+  assert.equal(recovered.cae, '86350000000001');
+  assert.equal(recovered.recoveredAfterConnectionInterruption, true);
+});
+
+test('no inventa una autorización si el último comprobante de ARCA es anterior', async () => {
+  let consulted = false;
+  const recovered = await recoverInvoiceAttempt({
+    pending: true,
+    invoiceTypeCode: 1,
+    invoiceNumber: 740
+  }, {
+    auth: { token: 'token-prueba', sign: 'firma-prueba' },
+    getLastAuthorizedInvoice: async () => 739,
+    postWsfe: async () => { consulted = true; }
+  });
+
+  assert.equal(recovered, null);
+  assert.equal(consulted, false);
+});
+
+test('la consulta de recuperación usa el método oficial FECompConsultar', () => {
+  const xml = buildInvoiceConsultEnvelope({ token: 'token', sign: 'firma' }, 1, 740);
+  assert.match(xml, /<FECompConsultar/);
+  assert.match(xml, /<CbteTipo>1<\/CbteTipo><CbteNro>740<\/CbteNro><PtoVta>5<\/PtoVta>/);
+  assert.deepEqual(parseAuthorizedInvoiceConsult('<Resultado>A</Resultado><CodAutorizacion>123</CodAutorizacion><FchVto>20260912</FchVto>'), {
+    cae: '123',
+    caeExpiration: '20260912'
+  });
+});
+
+test('el workflow guarda el intento antes de solicitar CAE y lo recupera antes de reemitir', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../modules/metricasv2/services/mercado-pago.service.js'), 'utf8');
+  assert.match(source, /workflow\.arca_response\?\.pending/);
+  assert.match(source, /recoverInvoiceAttempt\(pendingAttempt\)/);
+  assert.match(source, /onAttempt: saveAttempt/);
 });
 
 test('factura y nota de crédito conservan el botón antes de esperar la confirmación', () => {
