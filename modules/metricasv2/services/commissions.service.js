@@ -1369,6 +1369,41 @@ function summarizeDetails(details) {
   };
 }
 
+function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) {
+  const normalizedRows = normalizeComprobanteRows(comprobantesRows);
+  const uniqueRows = new Map();
+
+  normalizedRows.forEach((row) => {
+    const type = normalizeText(row.tipo);
+    if (!row.id || uniqueRows.has(row.id)) return;
+    if (!['venta', 'cobranza'].includes(type)) return;
+    if (!matchesMonth(row.f_acreditacion_only, monthKey)) return;
+    if (config.global.includeOnlyVerified && !row.verified_for_commissions) return;
+    if (row.commission_base_ars <= 0) return;
+    uniqueRows.set(row.id, row);
+  });
+
+  const rows = [...uniqueRows.values()];
+  const percentage = 0.05;
+  const facturacion = rows
+    .filter((row) => normalizeText(row.tipo) === 'venta')
+    .reduce((sum, row) => sum + safeNumber(row.facturacion_display_ars), 0);
+  const cc = rows.reduce((sum, row) => sum + safeNumber(row.commission_base_ars), 0);
+  const gain = cc * percentage;
+
+  return {
+    label: 'Marketing',
+    ventasMeg: rows.filter((row) => normalizeText(row.tipo) === 'venta' && !isClubProduct(row.producto_format)).length,
+    facturacion,
+    cc,
+    percentage,
+    gain,
+    gainFinal: gain,
+    total: gain,
+    transactionCount: rows.length
+  };
+}
+
 async function getCommissionConfig(monthKey) {
   const safeMonth = normalizeMonthKey(monthKey);
   const defaultRow = await readDefaultConfigRow();
@@ -1465,11 +1500,17 @@ async function buildCommissionDashboard(monthKey) {
   });
 
   const summary = summarizeDetails(details);
+  const marketingArea = buildMarketingAreaSummary({
+    monthKey: safeMonth,
+    config,
+    comprobantesRows
+  });
   return {
     month: safeMonth,
     locked,
     config,
     ...summary,
+    marketingArea,
     details
   };
 }
@@ -1508,6 +1549,7 @@ module.exports = {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,
     qualifiesForSettingTransaction,
-    buildTransactionDetails
+    buildTransactionDetails,
+    buildMarketingAreaSummary
   }
 };

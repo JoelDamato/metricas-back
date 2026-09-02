@@ -1184,7 +1184,7 @@
     });
   }
 
-  function buildAreaCommercialSummary(details) {
+  function buildAreaCommercialSummary(details, marketingArea) {
     const rows = details || [];
     const isMeg = (detail) => detail.category === 'MEG';
     const isSale = (detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta';
@@ -1247,6 +1247,16 @@
         gain: totalCommercialGain,
         gainFinal: totalCommercialGain,
         total: ''
+      },
+      {
+        label: 'Marketing',
+        ventasMeg: Number(marketingArea?.ventasMeg || 0),
+        facturacion: Number(marketingArea?.facturacion || 0),
+        cc: Number(marketingArea?.cc || 0),
+        percentage: Number(marketingArea?.percentage || 0.05),
+        gain: Number(marketingArea?.gain || 0),
+        gainFinal: Number(marketingArea?.gainFinal || 0),
+        total: Number(marketingArea?.total || 0)
       }
     ];
   }
@@ -1255,7 +1265,7 @@
     const node = document.getElementById('commissionsSheetOverview');
     const filteredDetails = getAllCommissionDetails();
     const rows = buildSheetRows(filteredDetails);
-    const commercialSummaryRows = buildAreaCommercialSummary(filteredDetails);
+    const commercialSummaryRows = buildAreaCommercialSummary(filteredDetails, dashboard?.marketingArea);
     const uniqueTransactions = new Map();
     filteredDetails.forEach((detail) => {
       const transactionId = String(detail.transactionId || '').trim();

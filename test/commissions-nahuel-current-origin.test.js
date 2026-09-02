@@ -7,7 +7,8 @@ const {
   hasCommissionAgendaSignals,
   buildLiveAgendaCountMap,
   qualifiesForSettingTransaction,
-  buildTransactionDetails
+  buildTransactionDetails,
+  buildMarketingAreaSummary
 } = commissionsService._test;
 
 function agenda(overrides = {}) {
@@ -108,4 +109,78 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
 
   assert.equal(details.some((detail) => detail.role === 'Setter' && detail.category === 'Club'), false);
   assert.equal(details.some((detail) => detail.role === 'Closer' && detail.category === 'Club'), true);
+});
+
+test('Marketing toma el 5% del cash neto de todas las operaciones verificadas sin duplicar IDs', () => {
+  const config = commissionsService.normalizeConfig({
+    global: { includeOnlyVerified: true }
+  });
+  const summary = buildMarketingAreaSummary({
+    monthKey: '2026-09',
+    config,
+    comprobantesRows: [
+      {
+        id: 'meg-venta-1',
+        tipo: 'Venta',
+        producto_format: 'MEG 2.1',
+        f_acreditacion: '2026-09-01',
+        cash_ar: 100000,
+        facturacion_ars: 120000,
+        verificacion_comisiones: 'OK'
+      },
+      {
+        id: 'meg-venta-1',
+        tipo: 'Venta',
+        producto_format: 'MEG 2.1',
+        f_acreditacion: '2026-09-01',
+        cash_ar: 100000,
+        facturacion_ars: 120000,
+        verificacion_comisiones: 'OK'
+      },
+      {
+        id: 'club-cobranza-1',
+        tipo: 'Cobranza',
+        producto_format: 'Club del Costo',
+        f_acreditacion: '2026-09-02',
+        cash_ar: 121000,
+        verificacion_comisiones: 'OK'
+      },
+      {
+        id: 'con-error',
+        tipo: 'Venta',
+        producto_format: 'MEG 2.1',
+        f_acreditacion: '2026-09-02',
+        cash_ar: 999999,
+        verificacion_comisiones: 'Error de control'
+      },
+      {
+        id: 'otro-mes',
+        tipo: 'Venta',
+        producto_format: 'MEG 2.1',
+        f_acreditacion: '2026-08-31',
+        cash_ar: 999999,
+        verificacion_comisiones: 'OK'
+      }
+    ]
+  });
+
+  assert.equal(summary.label, 'Marketing');
+  assert.equal(summary.transactionCount, 2);
+  assert.equal(summary.ventasMeg, 1);
+  assert.equal(summary.facturacion, 120000);
+  assert.equal(summary.cc, 190210);
+  assert.equal(summary.percentage, 0.05);
+  assert.equal(summary.gain, 9510.5);
+  assert.equal(summary.total, 9510.5);
+});
+
+test('la tabla inferior muestra el área Marketing recibida desde el backend', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '../public/metricas-v2/js/views/comisiones.page.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../public/metricas-v2/views/comisiones.html'), 'utf8');
+
+  assert.match(source, /label: 'Marketing'/);
+  assert.match(source, /dashboard\?\.marketingArea/);
+  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-1/);
 });
