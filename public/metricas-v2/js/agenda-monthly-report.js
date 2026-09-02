@@ -176,9 +176,16 @@
     return rules;
   }
 
-  function normalizeKpiRows(rows = []) {
+  function normalizeKpiRows(rows = [], period = {}) {
+    const expectedYear = Number(period.year);
+    const expectedMonth = Number(period.month);
+    const filterByPeriod = Number.isInteger(expectedYear)
+      && Number.isInteger(expectedMonth)
+      && expectedMonth >= 1
+      && expectedMonth <= 12;
     const grouped = new Map();
     rows.forEach((row) => {
+      if (filterByPeriod && (Number(row.anio) !== expectedYear || Number(row.mes) !== expectedMonth)) return;
       const closer = canonicalCloserName(row.closer);
       const key = normalizeText(closer);
       if (!TEAM.some((name) => normalizeText(name) === key)) return;
@@ -211,6 +218,7 @@
   }
 
   function computeKpiResult(row = {}, rules = DEFAULT_KPI_RULES) {
+    const hasAgendaVolume = Number(row.aplicaAgenda || 0) > 0;
     const metrics = {
       cierreLlamadaPct: safeDiv(row.ventasLlamada, row.efectuadas) * 100,
       asistenciaLlamadaPct: safeDiv(row.efectuadas, row.aplica) * 100,
@@ -223,10 +231,17 @@
     };
     metrics.cashCollectedPct = safeDiv(metrics.cashCollected, metrics.facturacion) * 100;
     metrics.cashCollected3mPct = safeDiv(metrics.cashCollected3m, metrics.facturacion3m) * 100;
-    metrics.cierreLlamadaOk = metrics.cierreLlamadaPct >= rules.cierreLlamadaPct;
-    metrics.asistenciaLlamadaOk = metrics.asistenciaLlamadaPct >= rules.asistenciaLlamadaPct;
-    metrics.tasaAsistenciaOk = metrics.tasaAsistenciaPct >= rules.tasaAsistenciaPct;
-    metrics.tasaCierreOk = metrics.tasaCierrePct >= rules.tasaCierrePct;
+    metrics.cierreLlamadaOk = hasAgendaVolume
+      && Number(row.efectuadas || 0) > 0
+      && metrics.cierreLlamadaPct >= rules.cierreLlamadaPct;
+    metrics.asistenciaLlamadaOk = hasAgendaVolume
+      && Number(row.aplica || 0) > 0
+      && metrics.asistenciaLlamadaPct >= rules.asistenciaLlamadaPct;
+    metrics.tasaAsistenciaOk = hasAgendaVolume
+      && metrics.tasaAsistenciaPct >= rules.tasaAsistenciaPct;
+    metrics.tasaCierreOk = hasAgendaVolume
+      && Number(row.efectuadasAgenda || 0) > 0
+      && metrics.tasaCierrePct >= rules.tasaCierrePct;
     metrics.cashCollectedOk = metrics.cashCollectedPct >= rules.cashCollectedMin;
     metrics.cashCollected3mOk = metrics.cashCollected3mPct >= rules.cashCollected3mMin;
     metrics.ponderacionPct =
@@ -240,8 +255,8 @@
     return metrics;
   }
 
-  function buildKpiRows(rows = [], rawRules = {}) {
-    const grouped = normalizeKpiRows(rows);
+  function buildKpiRows(rows = [], rawRules = {}, period = {}) {
+    const grouped = normalizeKpiRows(rows, period);
     const rules = parseKpiRules(rawRules);
     return TEAM.map((name) => {
       const row = grouped.get(normalizeText(name)) || { closer: name };
@@ -251,14 +266,15 @@
 
   function pendingAwards(summaryRows = []) {
     const result = new Map(summaryRows.map((row) => [normalizeText(row.name), { checks: [], strikes: [] }]));
-    const distinct = [...new Set(summaryRows.map((row) => Number(row.pending || 0)))].sort((a, b) => a - b);
+    const participants = summaryRows.filter((row) => Array.isArray(row.pendingMovements) && row.pendingMovements.length > 0);
+    const distinct = [...new Set(participants.map((row) => Number(row.pending || 0)))].sort((a, b) => a - b);
     if (distinct.length < 2) return result;
     const minimum = distinct[0];
     const secondMinimum = distinct[1];
     const maximum = distinct[distinct.length - 1];
     const secondMaximum = distinct[distinct.length - 2];
 
-    summaryRows.forEach((row) => {
+    participants.forEach((row) => {
       const award = result.get(normalizeText(row.name));
       if (row.pending === minimum) award.checks.push({ quantity: 1, detail: `Menor cantidad de pendientes (${row.pending}).`, automatic: true });
       else if (row.pending === secondMinimum) award.checks.push({ quantity: 1, detail: `Segundo lugar con menos pendientes (${row.pending}).`, automatic: true });
@@ -473,7 +489,7 @@
     const year = Number(input.year);
     const month = Number(input.month);
     const scores = buildScoreRows(input.checkpointEntries || []);
-    const kpis = buildKpiRows(input.kpiRows || [], input.kpiRules || {});
+    const kpis = buildKpiRows(input.kpiRows || [], input.kpiRules || {}, { year, month });
     const cash = buildCashAndBonus(input.cashRows || [], input.bonusRules || {}, year, month, input.now || new Date());
     const bonusTotal = cash.weeklyBonusTotal + cash.monthlyBonusTotal;
     const isCurrent = monthKey(year, month) === monthKey((input.now || new Date()).getFullYear(), (input.now || new Date()).getMonth() + 1);

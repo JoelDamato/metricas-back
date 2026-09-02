@@ -57,6 +57,18 @@ test('combina movimientos manuales con los puntos automáticos sin contar pendie
   assert.equal(carlos.score, 3);
 });
 
+test('no inventa premios ni strikes para closers sin movimientos de pendientes', () => {
+  const rows = report.buildScoreRows([
+    checkpoint('Carlos Tu', 'pendiente', 2)
+  ]);
+
+  rows.forEach((row) => {
+    assert.equal(row.checkCount, 0);
+    assert.equal(row.strikeCount, 0);
+  });
+  assert.equal(rows.find((row) => row.name === 'Carlos Tu').pending, 2);
+});
+
 test('cuenta únicamente los KPI cumplidos y conserva cash, facturación y ponderación', () => {
   const rows = report.buildKpiRows([{
     closer: 'Carlos Tu',
@@ -84,6 +96,53 @@ test('cuenta únicamente los KPI cumplidos y conserva cash, facturación y ponde
   assert.equal(carlos.cashCollected, 1000);
   assert.equal(carlos.facturacion, 1000);
   assert.equal(carlos.ponderacionPct, 50);
+});
+
+test('no aprueba KPIs operativos cuando el closer no tuvo agendas en el mes', () => {
+  const mauro = report.buildKpiRows([{
+    closer: 'Mauro Gaitan',
+    efectuadas: 1,
+    aplica: 1,
+    ventas_llamada: 0,
+    efectuadas_agenda: 0,
+    aplica_agenda: 0,
+    tasa_cierre: 0
+  }]).find((row) => row.name === 'Mauro Gaitan');
+
+  assert.equal(mauro.asistenciaLlamadaPct, 100);
+  assert.equal(mauro.asistenciaLlamadaOk, false);
+  assert.deepEqual(mauro.achieved, []);
+});
+
+test('el reporte usa únicamente las filas KPI del mes solicitado', () => {
+  const model = report.buildReportModel({
+    year: 2026,
+    month: 8,
+    kpiRows: [
+      {
+        anio: 2026,
+        mes: 8,
+        closer: 'Carlos Tu',
+        efectuadas: 1,
+        aplica: 2,
+        efectuadas_agenda: 1,
+        aplica_agenda: 2
+      },
+      {
+        anio: 2026,
+        mes: 9,
+        closer: 'Carlos Tu',
+        efectuadas: 100,
+        aplica: 100,
+        efectuadas_agenda: 100,
+        aplica_agenda: 100
+      }
+    ]
+  });
+  const carlos = model.kpis.find((row) => row.name === 'Carlos Tu');
+
+  assert.equal(carlos.asistenciaLlamadaPct, 50);
+  assert.equal(carlos.tasaAsistenciaPct, 50);
 });
 
 test('usa cash neto conciliado, excluye Club y descarta comprobantes no conciliados', () => {

@@ -399,6 +399,7 @@ function normalizeKpiRows(rows) {
 }
 
 function computeFlags(row, rules) {
+  const hasAgendaVolume = Number(row.aplica_agenda || 0) > 0;
   const cierreLlamadaPct = Number(row.cierre_segun_llamada || 0) * 100;
   const asistenciaLlamadaPct = Number(row.asistencia_segun_llamada || 0) * 100;
   const tasaAsistenciaPct = Number(row.tasa_asistencia || 0) * 100;
@@ -409,10 +410,10 @@ function computeFlags(row, rules) {
   const facturacion3m = Number(row.facturacion_3m || 0);
   const cashCollectedPct = facturacion > 0 ? (cashCollected / facturacion) * 100 : 0;
   const cashCollected3mPct = facturacion3m > 0 ? (cashCollected3m / facturacion3m) * 100 : 0;
-  const cierreLlamadaOk = cierreLlamadaPct >= rules.cierreLlamadaPct ? 1 : 0;
-  const asistenciaLlamadaOk = asistenciaLlamadaPct >= rules.asistenciaLlamadaPct ? 1 : 0;
-  const tasaAsistenciaOk = tasaAsistenciaPct >= rules.tasaAsistenciaPct ? 1 : 0;
-  const tasaCierreOk = tasaCierrePct >= rules.tasaCierrePct ? 1 : 0;
+  const cierreLlamadaOk = hasAgendaVolume && Number(row.efectuadas || 0) > 0 && cierreLlamadaPct >= rules.cierreLlamadaPct ? 1 : 0;
+  const asistenciaLlamadaOk = hasAgendaVolume && Number(row.aplica || 0) > 0 && asistenciaLlamadaPct >= rules.asistenciaLlamadaPct ? 1 : 0;
+  const tasaAsistenciaOk = hasAgendaVolume && tasaAsistenciaPct >= rules.tasaAsistenciaPct ? 1 : 0;
+  const tasaCierreOk = hasAgendaVolume && Number(row.efectuadas_agenda || 0) > 0 && tasaCierrePct >= rules.tasaCierrePct ? 1 : 0;
   const cashCollectedOk = cashCollectedPct >= rules.cashCollectedMin ? 1 : 0;
   const cashCollected3mOk = cashCollected3mPct >= rules.cashCollected3mMin ? 1 : 0;
   const facturacionOk = facturacion >= rules.facturacionMin ? 1 : 0;
