@@ -1188,36 +1188,22 @@
     const rows = details || [];
     const isMeg = (detail) => detail.category === 'MEG';
     const isSale = (detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta';
-    const hasVsl = (detail) => String(detail.origin || '').toUpperCase().includes('VSL');
     const hasRt = (detail) => String(detail.calendar || '').toUpperCase().includes('RT');
     const sumBy = (arr, getter) => arr.reduce((sum, item) => sum + Number(getter(item) || 0), 0);
 
     const closerMegSales = rows.filter((detail) => detail.role === 'Closer' && isMeg(detail) && isSale(detail));
     const setterMegRows = rows.filter((detail) => detail.role === 'Setter' && isMeg(detail));
 
-    const vslCloserSales = closerMegSales.filter(hasVsl);
     const rtSetterRows = setterMegRows.filter(hasRt);
 
     const totalCloserFacturacion = sumBy(closerMegSales, (detail) => detail.baseAmount);
     const totalSetterCc = sumBy(setterMegRows, (detail) => detail.baseAmount);
     const totalCommercialGain = totalSetterCc * 0.04;
 
-    const vslCc = sumBy(setterMegRows.filter(hasVsl), (detail) => detail.baseAmount);
     const rtCc = sumBy(rtSetterRows, (detail) => detail.baseAmount);
-    const vslGain = vslCc * 0.1;
     const rtGain = rtCc * 0.05;
 
     return [
-      {
-        label: 'VSL',
-        ventasMeg: vslCloserSales.length,
-        facturacion: sumBy(vslCloserSales, (detail) => detail.baseAmount),
-        cc: vslCc,
-        percentage: 0.1,
-        gain: vslGain,
-        gainFinal: vslGain,
-        total: vslGain + rtGain
-      },
       {
         label: 'VSL + RT',
         ventasMeg: '',

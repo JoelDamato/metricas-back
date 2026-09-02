@@ -182,5 +182,7 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
 
   assert.match(source, /label: 'Marketing'/);
   assert.match(source, /dashboard\?\.marketingArea/);
-  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-1/);
+  assert.doesNotMatch(source, /label: 'VSL',/);
+  assert.match(source, /label: 'VSL \+ RT'/);
+  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-2/);
 });
