@@ -138,10 +138,19 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
         verificacion_comisiones: 'OK'
       },
       {
+        id: 'club-venta-1',
+        tipo: 'Venta',
+        producto_format: 'Club del Costo',
+        f_acreditacion: '2026-09-02',
+        cash_ar: 121000,
+        facturacion_ars: 121000,
+        verificacion_comisiones: 'OK'
+      },
+      {
         id: 'club-cobranza-1',
         tipo: 'Cobranza',
         producto_format: 'Club del Costo',
-        f_acreditacion: '2026-09-02',
+        f_acreditacion: '2026-09-03',
         cash_ar: 121000,
         verificacion_comisiones: 'OK'
       },
@@ -165,13 +174,14 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
   });
 
   assert.equal(summary.label, 'Marketing');
-  assert.equal(summary.transactionCount, 2);
+  assert.equal(summary.transactionCount, 3);
   assert.equal(summary.ventasMeg, 1);
-  assert.equal(summary.facturacion, 120000);
-  assert.equal(summary.cc, 190210);
+  assert.equal(summary.ventasClub, 1);
+  assert.equal(summary.facturacion, 241000);
+  assert.equal(summary.cc, 280420);
   assert.equal(summary.percentage, 0.05);
-  assert.equal(summary.gain, 9510.5);
-  assert.equal(summary.total, 9510.5);
+  assert.equal(summary.gain, 14021);
+  assert.equal(summary.total, 14021);
 });
 
 test('la tabla inferior muestra el área Marketing recibida desde el backend', () => {
@@ -182,7 +192,9 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
 
   assert.match(source, /label: 'Marketing'/);
   assert.match(source, /dashboard\?\.marketingArea/);
+  assert.match(source, /<th>Ventas Club<\/th>/);
+  assert.match(source, /marketingArea\?\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-2/);
+  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-3/);
 });

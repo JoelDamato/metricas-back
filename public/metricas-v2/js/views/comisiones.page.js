@@ -1207,6 +1207,7 @@
       {
         label: 'VSL + RT',
         ventasMeg: '',
+        ventasClub: '',
         facturacion: '',
         cc: rtCc,
         percentage: 0.05,
@@ -1217,6 +1218,7 @@
       {
         label: 'Comercial',
         ventasMeg: closerMegSales.length,
+        ventasClub: '',
         facturacion: totalCloserFacturacion,
         cc: totalSetterCc,
         percentage: 0.04,
@@ -1227,6 +1229,7 @@
       {
         label: 'CSM',
         ventasMeg: closerMegSales.length,
+        ventasClub: '',
         facturacion: totalCloserFacturacion,
         cc: totalSetterCc,
         percentage: 0.04,
@@ -1237,6 +1240,7 @@
       {
         label: 'Marketing',
         ventasMeg: Number(marketingArea?.ventasMeg || 0),
+        ventasClub: Number(marketingArea?.ventasClub || 0),
         facturacion: Number(marketingArea?.facturacion || 0),
         cc: Number(marketingArea?.cc || 0),
         percentage: Number(marketingArea?.percentage || 0.05),
@@ -1407,6 +1411,7 @@
                   <tr>
                     <th>Area</th>
                     <th>Ventas MEG</th>
+                    <th>Ventas Club</th>
                     <th>Facturacion</th>
                     <th>CC</th>
                     <th>Porcentaje</th>
@@ -1420,6 +1425,7 @@
                     <tr>
                       <td>${escapeHtml(row.label)}</td>
                       <td>${row.ventasMeg === '' ? '' : formatSheetInteger(row.ventasMeg)}</td>
+                      <td>${row.ventasClub === '' ? '' : formatSheetInteger(row.ventasClub)}</td>
                       <td>${row.facturacion === '' ? '' : formatSheetCurrency(row.facturacion)}</td>
                       <td>${row.cc === '' ? '' : formatSheetCurrency(row.cc)}</td>
                       <td>${row.percentage ? formatSheetPercent(row.percentage) : ''}</td>

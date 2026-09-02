@@ -1394,6 +1394,7 @@ function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) 
   return {
     label: 'Marketing',
     ventasMeg: rows.filter((row) => normalizeText(row.tipo) === 'venta' && !isClubProduct(row.producto_format)).length,
+    ventasClub: rows.filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format)).length,
     facturacion,
     cc,
     percentage,
