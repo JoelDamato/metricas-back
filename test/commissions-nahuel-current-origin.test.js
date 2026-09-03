@@ -101,7 +101,8 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
       cash_ar: 39500,
       cash_collected_ar: 39500,
       cash_collected_ars: 39500,
-      medios_de_pago: 'Mercado Pago'
+      medios_de_pago: '29f48251-7a95-8085-95e4-d2f57e29f340',
+      medios_de_pago_format: 'Mercado Pago'
     }],
     settersRows: [],
     agendaRows: []
@@ -109,6 +110,7 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
 
   assert.equal(details.some((detail) => detail.role === 'Setter' && detail.category === 'Club'), false);
   assert.equal(details.some((detail) => detail.role === 'Closer' && detail.category === 'Club'), true);
+  assert.equal(details.find((detail) => detail.role === 'Closer')?.paymentMethod, 'Mercado Pago');
 });
 
 test('Marketing toma el 5% del cash neto de todas las operaciones verificadas sin duplicar IDs', () => {

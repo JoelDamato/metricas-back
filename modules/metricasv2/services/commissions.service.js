@@ -754,7 +754,9 @@ function normalizeComprobanteRows(rows = []) {
       setter: titleCaseName(row.setter),
       origen: String(row.origen || '').trim(),
       calendario_agendado: String(row.calendario_agendado || '').trim(),
-      medios_de_pago: String(row.medios_de_pago || row.medios_de_pago_format || '').trim(),
+      // `medios_de_pago` is the raw Notion relation and can contain a page UUID.
+      // Prefer the formula/rollup with the human-readable payment method.
+      medios_de_pago: String(row.medios_de_pago_format || row.medios_de_pago || '').trim(),
       ghlid: String(row.ghlid || '').trim(),
       cobranza_relacionada: String(row.cobranza_relacionada || row.venta_relacionada || '').trim(),
       porcentaje_venta_vieja: safeNumber(row.porcentaje_venta_vieja),
