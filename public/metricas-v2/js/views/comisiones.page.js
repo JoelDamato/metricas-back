@@ -87,6 +87,11 @@
     return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
   }
 
+  function matchesCommissionOrigins(currentOrigin, firstOrigin, setterName) {
+    return matchesAgendaCommissionChannel(currentOrigin, setterName)
+      || matchesAgendaCommissionChannel(firstOrigin, setterName);
+  }
+
   function formatInteger(value) {
     return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(value || 0));
   }
@@ -277,6 +282,7 @@
           <td></td>
           <td></td>
           <td></td>
+          <td></td>
           <td>${formatCurrency(sumDetailRows(visibleRows, 'ivaArs'))}</td>
           <td>${formatCurrency(sumDetailRows(visibleRows, 'externalCommissionsArs'))}</td>
           <td>${formatCurrency(sumDetailRows(visibleRows, 'netTotalArs'))}</td>
@@ -307,7 +313,7 @@
       case 'commissionPct': return Number(detail?.commissionPct || 0);
       case 'tc': return Number(detail?.tc || 0);
       case 'origin': return normalizeText(detail?.origin);
-      case 'calendar': return normalizeText(detail?.calendar);
+      case 'firstOrigin': return normalizeText(detail?.firstOrigin);
       case 'ivaArs': return Number(detail?.ivaArs || 0);
       case 'externalCommissionsArs': return Number(detail?.externalCommissionsArs || 0);
       case 'netTotalArs': return Number(detail?.netTotalArs || 0);
@@ -525,7 +531,7 @@
     if (normalizeText(row.agendo) !== 'agendo') return false;
     if (normalizeText(row.aplica) !== 'aplica') return false;
 
-    return matchesAgendaCommissionChannel(row.currentOrigin, row.setter);
+    return matchesCommissionOrigins(row.currentOrigin, row.firstOrigin, row.setter);
   }
 
   function fillSimpleSelect(selectNode, values, selectedValue = '') {
@@ -556,9 +562,9 @@
   function renderAgendaCurrentOriginChecks() {
     renderAgendaCheckgroup({
       containerId: 'commissionAgendaCurrentOriginChecks',
-      values: uniqueSortedValues(state.agendaRows, 'currentOrigin'),
+      values: uniqueSortedAgendaOrigins(state.agendaRows),
       selectedValues: state.agendaFilters.currentOrigin,
-      emptyLabel: 'Sin orígenes actuales',
+      emptyLabel: 'Sin primeros orígenes ni orígenes actuales',
       onChange: (values) => {
         state.agendaFilters.currentOrigin = values;
         renderAgendaPanel();
@@ -771,6 +777,15 @@
     )].sort((a, b) => a.localeCompare(b, 'es'));
   }
 
+  function uniqueSortedAgendaOrigins(rows) {
+    return [...new Set(
+      (rows || [])
+        .flatMap((row) => [row?.firstOrigin, row?.currentOrigin])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
   function resolveAgendaDateForMonth(rawDate, bounds, row) {
     const raw = String(rawDate || '').trim();
     const datePart = raw.slice(0, 10);
@@ -798,7 +813,7 @@
           agendaDate: '',
           callDate: String(row.fecha_llamada || '').trim().slice(0, 10),
           currentOrigin: String(row.origen_actual || '').trim(),
-          originFilter: String(row.origen_actual || '').trim(),
+          firstOrigin: String(row.primer_origen || '').trim(),
           quality: String(row.calidad_lead || '').trim(),
           strategy: String(row.estrategia_a || '').trim(),
           agendo: String(row.agendo || '').trim(),
@@ -835,16 +850,19 @@
       }
       if (filters.aplica && normalizeText(row.aplica) !== normalizeText(filters.aplica)) return false;
       const allowedCurrentOrigins = Array.isArray(filters.currentOrigin) ? filters.currentOrigin.map((value) => normalizeText(value)) : [];
-      if (allowedCurrentOrigins.length && !allowedCurrentOrigins.includes(normalizeText(row.currentOrigin))) return false;
+      if (allowedCurrentOrigins.length
+        && !allowedCurrentOrigins.includes(normalizeText(row.currentOrigin))
+        && !allowedCurrentOrigins.includes(normalizeText(row.firstOrigin))) return false;
       return true;
     });
   }
 
   function getCommissionCurrentOriginFilterValuesForPerson(person) {
-    return uniqueSortedValues(
-      state.agendaRows.filter((row) => matchesAgendaCommissionChannel(row.currentOrigin, person)),
-      'currentOrigin'
-    );
+    const values = state.agendaRows.flatMap((row) => [row.currentOrigin, row.firstOrigin]);
+    return [...new Set(values
+      .filter((value) => matchesAgendaCommissionChannel(value, person))
+      .map((value) => String(value || '').trim())
+      .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   }
 
   function groupPeopleByRole(people) {
@@ -858,8 +876,8 @@
     return [...groups.entries()].map(([role, rows]) => ({ role, rows }));
   }
 
-  function qualifiesForSettingCount(detail) {
-    return matchesApsetOrRt(detail?.origin);
+  function qualifiesForSettingCount(detail, setterName = detail?.person) {
+    return matchesCommissionOrigins(detail?.origin, detail?.firstOrigin, setterName);
   }
 
   function getSettingComprobantesForPerson(person) {
@@ -869,7 +887,7 @@
       && detail.role === 'Setter'
       && detail.category === 'MEG'
       && String(detail.tipo || '').trim().toLowerCase() === 'venta'
-      && qualifiesForSettingCount(detail)
+      && qualifiesForSettingCount(detail, person)
     ));
 
     const uniqueRows = new Map();
@@ -932,7 +950,7 @@
           ${dateLabel} · ${escapeHtml(detail.product || (isCollection ? 'Cobranza' : '-'))} · Closer: ${escapeHtml(detail.closer || '-')}
         </span>
         <span class="sales-analysis-detail-meta">
-          Origen actual: ${escapeHtml(detail.origin || '-')}
+          Primer origen: ${escapeHtml(detail.firstOrigin || '-')} · Origen actual: ${escapeHtml(detail.origin || '-')}
         </span>
         <span class="sales-analysis-detail-meta">
           Cash neto: ${escapeHtml(formatDetailCurrency(detail.baseAmount) || '$ 0,00')} · Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · <strong>${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}</strong>
@@ -961,7 +979,7 @@
     const commissionDetails = getSettingCommissionDetailsForPerson(person);
     const sales = qualifiedSales;
     const collections = commissionDetails.filter((detail) => (
-      normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail)
+      normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail, person)
     ));
     const visibleDetails = [...sales, ...collections];
     const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
@@ -996,7 +1014,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por origen o calendario APSET / RT.</p>
+        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por Primer origen u Origen actual APSET / RT.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>
@@ -1127,7 +1145,8 @@
     const rows = details || [];
     const isMeg = (detail) => detail.category === 'MEG';
     const isSale = (detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta';
-    const hasRt = (detail) => /(^|[^A-Z])RT([^A-Z]|$)/.test(String(detail.origin || '').toUpperCase());
+    const hasRt = (detail) => [detail.origin, detail.firstOrigin]
+      .some((value) => /(^|[^A-Z])RT([^A-Z]|$)/.test(String(value || '').toUpperCase()));
     const sumBy = (arr, getter) => arr.reduce((sum, item) => sum + Number(getter(item) || 0), 0);
 
     const closerMegSales = rows.filter((detail) => detail.role === 'Closer' && isMeg(detail) && isSale(detail));
@@ -1268,7 +1287,7 @@
                 <article class="comisiones-overview-kpi is-agendas">
                   <span>Agendas Nahuel</span>
                   <strong>${nahuelAgendaCount > 0 ? `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="Nahuel Iasci" data-agenda-preset="nahuel">${formatInteger(nahuelAgendaCount)}</button>` : formatInteger(nahuelAgendaCount)}</strong>
-                  <p>Agendo + Aplica con Origen Actual APSET</p>
+                  <p>Agendo + Aplica con Primer origen u Origen actual APSET</p>
                 </article>
               </div>
             </section>
@@ -1482,6 +1501,7 @@
               <th>${renderComprobanteSortHeader('Facturación USD', 'facturacionUsd')}</th>
               <th>${renderComprobanteSortHeader('Porcentaje', 'commissionPct')}</th>
               <th>${renderComprobanteSortHeader('TC', 'tc')}</th>
+              <th>${renderComprobanteSortHeader('Primer origen', 'firstOrigin')}</th>
               <th>${renderComprobanteSortHeader('Origen actual', 'origin')}</th>
               <th>${renderComprobanteSortHeader('IVA', 'ivaArs')}</th>
               <th>${renderComprobanteSortHeader('Comisiones', 'externalCommissionsArs')}</th>
@@ -1514,6 +1534,7 @@
                   <td>${formatDetailUsd(detail.facturacionUsd)}</td>
                   <td>${formatDetailPercent(detail.commissionPct)}</td>
                   <td>${formatDetailCurrency(detail.tc)}</td>
+                  <td>${escapeHtml(formatDetailText(detail.firstOrigin))}</td>
                   <td>${escapeHtml(formatDetailText(detail.origin))}</td>
                   <td>${formatDetailCurrency(detail.ivaArs)}</td>
                   <td>${formatDetailCurrency(detail.externalCommissionsArs)}</td>
@@ -1525,7 +1546,7 @@
                   <td>${notionUrl ? `<a class="comisiones-external-link" href="${escapeHtml(notionUrl)}" target="_blank" rel="noreferrer">${escapeHtml(detail.transactionId || '')}</a>` : ''}</td>
                 </tr>
               `;
-            }).join('') : `<tr><td colspan="23">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
+            }).join('') : `<tr><td colspan="24">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
           </tbody>
           ${buildComprobantesFooterRow(sortedDisplayDetails)}
         </table>
@@ -1563,13 +1584,15 @@
     const detailNode = document.getElementById('commissionAgendaDetails');
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
-    const commissionChannelsLabel = isNahuelSetter(state.agendaFilters.setter) ? 'Origen Actual APSET' : 'Origen Actual APSET / RT';
-    const originSummaryKey = 'currentOrigin';
-    const uniqueOrigins = new Set(filteredRows.map((row) => row[originSummaryKey]).filter(Boolean));
+    const commissionChannelsLabel = isNahuelSetter(state.agendaFilters.setter)
+      ? 'Primer origen u Origen actual APSET'
+      : 'Primer origen u Origen actual APSET / RT';
+    const originValues = filteredRows.flatMap((row) => [row.firstOrigin, row.currentOrigin]).filter(Boolean);
+    const uniqueOrigins = new Set(originValues);
     const uniqueQualities = new Set(filteredRows.map((row) => row.quality).filter(Boolean));
     const qualifiedRows = filteredRows.filter((row) => row.commissionQualified);
-    const topOriginEntry = [...filteredRows.reduce((map, row) => {
-      const key = row[originSummaryKey] || 'Sin origen';
+    const topOriginEntry = [...originValues.reduce((map, origin) => {
+      const key = origin || 'Sin origen';
       map.set(key, Number(map.get(key) || 0) + 1);
       return map;
     }, new Map()).entries()].sort((a, b) => b[1] - a[1])[0] || null;
@@ -1620,6 +1643,7 @@
               <th>Cliente</th>
               <th>Setter</th>
               <th>Closer</th>
+              <th>Primer origen</th>
               <th>Origen actual</th>
               <th>Calidad</th>
               <th>Aplica</th>
@@ -1639,6 +1663,7 @@
                 <td>${escapeHtml(row.clientName)}</td>
                 <td>${escapeHtml(row.setter || '-')}</td>
                 <td>${escapeHtml(row.closer || '-')}</td>
+                <td>${escapeHtml(row.firstOrigin || '-')}</td>
                 <td>${escapeHtml(row.currentOrigin || '-')}</td>
                 <td>${escapeHtml(row.quality || '-')}</td>
                 <td>${escapeHtml(row.aplica || '-')}</td>
@@ -1650,7 +1675,7 @@
                 <td>${row.commissionQualified ? 'Si' : 'No'}</td>
                 <td>${renderGhlIdCell(row.ghlid)}</td>
               </tr>
-            `).join('') : '<tr><td colspan="14">No hay agendas para los filtros seleccionados.</td></tr>'}
+            `).join('') : '<tr><td colspan="15">No hay agendas para los filtros seleccionados.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1846,7 +1871,7 @@
     document.getElementById('commissionClubMercadoPagoPct').value = config.global.clubMercadoPagoPct ?? '';
     document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
     document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
-    document.getElementById('commissionVslCalendarSetterPct').value = config.global.vslCalendarSetterPct ?? '';
+    document.getElementById('commissionVslFirstOriginSetterPct').value = config.global.vslFirstOriginSetterPct ?? '';
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
     ensureRoleRows(config);
 
@@ -1909,7 +1934,7 @@
         clubMercadoPagoPct: Number(document.getElementById('commissionClubMercadoPagoPct').value || 0),
         defaultCloserPct: Number(document.getElementById('commissionDefaultCloserPct').value || 0),
         personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value || 0),
-        vslCalendarSetterPct: Number(document.getElementById('commissionVslCalendarSetterPct').value || 0),
+        vslFirstOriginSetterPct: Number(document.getElementById('commissionVslFirstOriginSetterPct').value || 0),
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
       },
       agendaScale: readScaleRows('commissionAgendaScaleRows'),
@@ -1934,7 +1959,7 @@
     const { from, to } = getMonthRange(state.month);
     const fetchTo = addDays(to, 1) || to;
     const response = await window.metricasApi.fetchAllRows('leads_raw', {
-      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,origen_actual,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
+      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,primer_origen,origen_actual,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
       from,
       to: fetchTo,
       dateField: 'fecha_agenda',

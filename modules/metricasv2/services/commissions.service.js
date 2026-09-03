@@ -1,6 +1,7 @@
 const axios = require('axios');
 const env = require('../config/env');
 const supabaseService = require('./supabase.service');
+const { buildMarketingLeadByGhlId } = require('./marketing-origin.service');
 
 const DEFAULT_CONFIG = {
   version: 1,
@@ -11,7 +12,7 @@ const DEFAULT_CONFIG = {
     includeOnlyVerified: true,
     defaultCloserPct: 0.08,
     personalizedCloserPct: 0.1,
-    vslCalendarSetterPct: 0.045
+    vslFirstOriginSetterPct: 0.045
   },
   agendaScale: [
     { min: 0, pct: 0.045 },
@@ -44,7 +45,7 @@ const DEFAULT_CONFIG = {
       person: 'Carlos Tu',
       product: 'Meg 2.1',
       type: 'Venta',
-      calendarIncludes: 'A - B',
+      firstOriginIncludes: 'A - B',
       pct: 0.09,
       enabled: true,
       note: 'CSV abril 2026: los cierres A-B de Carlos quedaron al 9%.'
@@ -52,14 +53,14 @@ const DEFAULT_CONFIG = {
     {
       person: 'Carlos Tu',
       originIncludes: 'ORG',
-      calendarIncludes: '| C',
+      firstOriginIncludes: '| C',
       pct: 0.1,
       enabled: true,
       note: 'CSV abril 2026: ORG C de Carlos quedó al 10%.'
     },
     {
       person: 'Mauro Gaitan',
-      calendarIncludes: 'RT',
+      firstOriginIncludes: 'RT',
       pct: 0.09,
       enabled: true,
       note: 'CSV abril 2026: los casos RT de Mauro quedaron al 9%.'
@@ -252,7 +253,11 @@ function normalizeConfig(rawConfig = {}) {
       includeOnlyVerified: config.global?.includeOnlyVerified !== false,
       defaultCloserPct: Number(config.global?.defaultCloserPct ?? DEFAULT_CONFIG.global.defaultCloserPct),
       personalizedCloserPct: Number(config.global?.personalizedCloserPct ?? DEFAULT_CONFIG.global.personalizedCloserPct),
-      vslCalendarSetterPct: Number(config.global?.vslCalendarSetterPct ?? DEFAULT_CONFIG.global.vslCalendarSetterPct)
+      vslFirstOriginSetterPct: Number(
+        config.global?.vslFirstOriginSetterPct
+        ?? config.global?.vslCalendarSetterPct
+        ?? DEFAULT_CONFIG.global.vslFirstOriginSetterPct
+      )
     },
     agendaScale: normalizeScale(config.agendaScale, DEFAULT_CONFIG.agendaScale, { inferAgendaBonus: true }),
     setterSalesScale: normalizeScale(config.setterSalesScale, config.agendaScale || DEFAULT_CONFIG.setterSalesScale),
@@ -277,7 +282,7 @@ function normalizeCloserRules(items = [], fallback = []) {
       product: String(row?.product || '').trim(),
       type: titleCaseName(row?.type),
       originIncludes: String(row?.originIncludes || '').trim(),
-      calendarIncludes: String(row?.calendarIncludes || '').trim(),
+      firstOriginIncludes: String(row?.firstOriginIncludes ?? row?.calendarIncludes ?? '').trim(),
       pct: Number(row?.pct || 0),
       enabled: row?.enabled !== false,
       note: String(row?.note || '').trim()
@@ -318,7 +323,7 @@ function isMissingColumnError(error) {
 }
 
 async function fetchComprobantesRowsForCommissions() {
-  const baseSelect = 'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen_actual,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar';
+  const baseSelect = 'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen_actual,primer_origen,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar';
   const selectAttempts = [
     baseSelect.replace(
       'f_venta,cash_collected',
@@ -344,12 +349,50 @@ async function fetchComprobantesRowsForCommissions() {
 async function fetchAgendaRowsForCommissions(monthKey) {
   const bounds = getMonthBounds(monthKey);
   return fetchAllRows('leads_raw', {
-    select: 'id,nombre,setter,fecha_agenda,origen_actual,agendo,aplica',
+    select: 'id,nombre,setter,fecha_agenda,origen_actual,primer_origen,agendo,aplica',
     from: bounds.from,
     to: bounds.to,
     dateField: 'fecha_agenda',
     orderBy: 'fecha_agenda',
     orderDir: 'asc'
+  });
+}
+
+async function fetchOriginLeadRowsForComprobantes(rows = []) {
+  const ghlIds = [...new Set(rows
+    .map((row) => String(row?.ghlid || '').trim())
+    .filter((value) => /^[a-zA-Z0-9_-]+$/.test(value)))];
+  if (!ghlIds.length) return [];
+
+  const chunks = [];
+  for (let index = 0; index < ghlIds.length; index += 200) {
+    chunks.push(ghlIds.slice(index, index + 200));
+  }
+
+  const responses = await Promise.all(chunks.map((chunk) => axios.get(
+    `${env.supabaseUrl}/rest/v1/leads_raw`,
+    {
+      headers: buildHeaders(),
+      params: {
+        select: 'ghlid,primer_origen,origen_actual,last_edited_time,created_time',
+        ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
+        limit: 1000
+      }
+    }
+  )));
+
+  return responses.flatMap((response) => response.data || []);
+}
+
+function enrichComprobanteOrigins(rows = [], leadRows = []) {
+  const leadByGhlId = buildMarketingLeadByGhlId(leadRows);
+  return rows.map((row) => {
+    const linkedLead = leadByGhlId.get(String(row?.ghlid || '').trim().toLowerCase());
+    return {
+      ...row,
+      origen_actual: String(row?.origen_actual || linkedLead?.origen_actual || '').trim(),
+      primer_origen: String(row?.primer_origen || linkedLead?.primer_origen || '').trim()
+    };
   });
 }
 
@@ -503,8 +546,13 @@ function matchesAgendaCommissionChannel(value, setterName) {
   return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
 }
 
-function qualifiesForSettingTransaction(row) {
-  return matchesApsetOrRt(row?.origen_actual);
+function matchesCommissionOrigin(row, setterName = row?.setter) {
+  const matcher = isNahuelSetter(setterName) ? matchesApset : matchesApsetOrRt;
+  return matcher(row?.origen_actual) || matcher(row?.primer_origen);
+}
+
+function qualifiesForSettingTransaction(row, setterName = row?.setter) {
+  return matchesCommissionOrigin(row, setterName);
 }
 
 function isClubProduct(value) {
@@ -557,12 +605,13 @@ function isVerifiedForCommissions(value) {
 
 function isBclRtCase(row) {
   const currentOrigin = normalizeText(row.origen_actual);
-  return currentOrigin.includes('bcl') && matchesApsetOrRt(currentOrigin);
+  const firstOrigin = normalizeText(row.primer_origen);
+  return currentOrigin.includes('bcl') && matchesApsetOrRt(firstOrigin);
 }
 
 function isVslCalendarSettingCase(row) {
   const currentOrigin = normalizeText(row.origen_actual);
-  return currentOrigin.includes('vsl') && matchesApsetOrRt(currentOrigin);
+  return currentOrigin.includes('vsl') && matchesApsetOrRt(row.primer_origen);
 }
 
 function resolveMonthBonusTc(rows = []) {
@@ -660,15 +709,12 @@ function getSetterClubSalesCount(settersMap, setterName) {
   return Number(settersMap.get(normalizeText(setterName))?.venta_club || 0);
 }
 
-function getAgendaOriginFilter(row) {
-  return String(row?.origen_actual || '').trim();
-}
-
 function hasCommissionAgendaSignals(row) {
   if (normalizeText(row?.agendo) !== 'agendo') return false;
   if (normalizeText(row?.aplica) !== 'aplica') return false;
 
-  return matchesAgendaCommissionChannel(getAgendaOriginFilter(row), row?.setter);
+  return matchesAgendaCommissionChannel(row?.origen_actual, row?.setter)
+    || matchesAgendaCommissionChannel(row?.primer_origen, row?.setter);
 }
 
 function resolveAgendaDateForMonth(rawDate, monthKey, row) {
@@ -748,6 +794,7 @@ function normalizeComprobanteRows(rows = []) {
       ),
       setter: titleCaseName(row.setter),
       origen_actual: String(row.origen_actual || '').trim(),
+      primer_origen: String(row.primer_origen || '').trim(),
       // `medios_de_pago` is the raw Notion relation and can contain a page UUID.
       // Prefer the formula/rollup with the human-readable payment method.
       medios_de_pago: String(row.medios_de_pago_format || row.medios_de_pago || '').trim(),
@@ -903,7 +950,7 @@ function findCloserRule(config, closerName, row) {
     if (rule.product && normalizeText(rule.product) !== normalizeText(row.producto_format || '')) return false;
     if (rule.type && normalizeText(rule.type) !== normalizeText(row.tipo || '')) return false;
     if (!matchContains(row.origen_actual, rule.originIncludes)) return false;
-    if (!matchContains(row.origen_actual, rule.calendarIncludes)) return false;
+    if (!matchContains(row.primer_origen, rule.firstOriginIncludes)) return false;
     return true;
   }) || null;
 }
@@ -1073,7 +1120,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             setter: setterName,
             closer: closerName,
             origin: row.origen_actual || '',
-            calendar: '',
+            firstOrigin: row.primer_origen || '',
             paymentMethod: row.medios_de_pago || '',
             tc: row.tc,
             cheque: row.cheque,
@@ -1127,7 +1174,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             setter: setterName,
             closer: closerName,
             origin: row.origen_actual || '',
-            calendar: '',
+            firstOrigin: row.primer_origen || '',
             paymentMethod: row.medios_de_pago || '',
             tc: row.tc,
             cheque: row.cheque,
@@ -1162,7 +1209,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
 
-    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row)) {
+    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row, setterName)) {
       return;
     }
 
@@ -1180,17 +1227,17 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       sourceRule = 'Cobranzas heredan porcentaje';
       sourceRuleNote = 'La cobranza toma el porcentaje de la venta madre y no recalcula la escala.';
     } else if (isVslCalendarSettingCase(row)) {
-      appliedPct = config.global.vslCalendarSetterPct;
-      sourceRule = 'Origen Actual VSL APSET / RT';
-      sourceRuleNote = 'Origen Actual contiene VSL y APSET / RT: cobra fijo 4,5% y sigue contando para la escalera del mes.';
+      appliedPct = config.global.vslFirstOriginSetterPct;
+      sourceRule = 'Origen actual VSL + Primer origen APSET / RT';
+      sourceRuleNote = 'Origen actual contiene VSL y Primer origen contiene APSET / RT: cobra fijo 4,5% y sigue contando para la escalera del mes.';
     } else if (fixedPct !== null) {
       appliedPct = fixedPct;
       sourceRule = 'Porcentaje fijo individual';
       sourceRuleNote = `${setterName} tiene una regla fija individual activa.`;
     } else if (isBclRtCase(row)) {
       appliedPct = config.global.minimumSetterPct;
-      sourceRule = 'Origen Actual BCL RT fijo';
-      sourceRuleNote = 'Si Origen Actual contiene BCL y RT, cobra fijo el mínimo global.';
+      sourceRule = 'Origen actual BCL + Primer origen RT fijo';
+      sourceRuleNote = 'Si Origen actual contiene BCL y Primer origen contiene RT, cobra fijo el mínimo global.';
     } else {
       appliedPct = pickScalePct(config.agendaScale, setterAgendas, config.global.minimumSetterPct);
       sourceRule = 'Escala por agendas';
@@ -1219,7 +1266,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       setter: setterName,
       closer: row.responsable_venta || row.creado_por || '',
       origin: row.origen_actual || '',
-      calendar: '',
+      firstOrigin: row.primer_origen || '',
       paymentMethod: row.medios_de_pago || '',
       tc: row.tc,
       cheque: row.cheque,
@@ -1273,7 +1320,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       setter: setterName,
       closer: setterName,
       origin: '',
-      calendar: '',
+      firstOrigin: '',
       paymentMethod: '',
       tc: bonusTc,
       cheque: false,
@@ -1479,7 +1526,7 @@ async function lockCommissionMonth(monthKey, user) {
 
 async function buildCommissionDashboard(monthKey) {
   const safeMonth = normalizeMonthKey(monthKey);
-  const [{ config, locked }, comprobantesRows, settersRows, agendaRows] = await Promise.all([
+  const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchComprobantesRowsForCommissions(),
     fetchAllRows('setters', {
@@ -1487,6 +1534,8 @@ async function buildCommissionDashboard(monthKey) {
     }),
     fetchAgendaRowsForCommissions(safeMonth)
   ]);
+  const originLeadRows = await fetchOriginLeadRowsForComprobantes(rawComprobantesRows);
+  const comprobantesRows = enrichComprobanteOrigins(rawComprobantesRows, originLeadRows);
   const details = buildTransactionDetails({
     monthKey: safeMonth,
     config,
@@ -1545,6 +1594,7 @@ module.exports = {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,
     qualifiesForSettingTransaction,
+    enrichComprobanteOrigins,
     buildTransactionDetails,
     buildMarketingAreaSummary
   }

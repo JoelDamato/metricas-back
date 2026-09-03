@@ -7,6 +7,7 @@ const {
   hasCommissionAgendaSignals,
   buildLiveAgendaCountMap,
   qualifiesForSettingTransaction,
+  enrichComprobanteOrigins,
   buildTransactionDetails,
   buildMarketingAreaSummary
 } = commissionsService._test;
@@ -36,9 +37,19 @@ test('Nahuel cuenta Agendo + Aplica cuando Origen Actual es APSET', () => {
   assert.equal(hasCommissionAgendaSignals(row), true);
 });
 
-test('Nahuel ignora origen y calendario históricos si Origen Actual no es APSET', () => {
+test('Nahuel cuenta Agendo + Aplica cuando Primer origen es APSET', () => {
   const row = agenda({
     origen_actual: 'Instagram orgánico',
+    primer_origen: 'Postulación MEG - APSET'
+  });
+
+  assert.equal(hasCommissionAgendaSignals(row), true);
+});
+
+test('Nahuel ignora origen y calendario históricos si Primer origen y Origen actual no son APSET', () => {
+  const row = agenda({
+    origen_actual: 'Instagram orgánico',
+    primer_origen: 'Referido',
     origen: 'APSET histórico',
     ultimo_origen: 'APSET histórico',
     calendario_agendado: 'APSET'
@@ -47,19 +58,20 @@ test('Nahuel ignora origen y calendario históricos si Origen Actual no es APSET
   assert.equal(hasCommissionAgendaSignals(row), false);
 });
 
-test('el conteo mensual de Nahuel usa únicamente Origen Actual APSET', () => {
+test('el conteo mensual de Nahuel usa Primer origen u Origen actual APSET', () => {
   const rows = [
     agenda({ origen_actual: 'APSET', origen: 'VSL' }),
-    agenda({ origen_actual: 'VSL', origen: 'APSET', calendario_agendado: 'APSET' }),
+    agenda({ origen_actual: 'VSL', primer_origen: 'APSET' }),
+    agenda({ origen_actual: 'VSL', primer_origen: 'Referido', calendario_agendado: 'APSET' }),
     agenda({ origen_actual: 'APSET', aplica: 'No aplica' })
   ];
 
   const result = buildLiveAgendaCountMap(rows, '2026-07');
 
-  assert.equal(result.get('nahuel iasci')?.agendo, 1);
+  assert.equal(result.get('nahuel iasci')?.agendo, 2);
 });
 
-test('otros setters usan únicamente Origen Actual APSET / RT', () => {
+test('otros setters usan Primer origen u Origen actual APSET / RT', () => {
   const row = agenda({
     setter: 'Otro Setter',
     origen_actual: 'Postulación MEG - RT',
@@ -68,13 +80,62 @@ test('otros setters usan únicamente Origen Actual APSET / RT', () => {
   });
 
   assert.equal(hasCommissionAgendaSignals(row), true);
-  assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', origen: 'APSET', calendario_agendado: 'RT' }), false);
+  assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', primer_origen: 'RT' }), true);
+  assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', primer_origen: 'Referido', calendario_agendado: 'RT' }), false);
 });
 
-test('una venta o cobranza Setting califica únicamente por Origen Actual APSET / RT', () => {
-  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Postulación MEG - APSET' }), true);
-  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Postulacion Meg | RT - NI' }), true);
-  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Instagram', origen: 'APSET', calendario_agendado: 'RT' }), false);
+test('una venta o cobranza Setting califica por Primer origen u Origen actual', () => {
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - APSET' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'APSET' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'RT', primer_origen: 'Referido' }), false);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Otro Setter', primer_origen: 'Postulacion Meg | RT - NI' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'Referido', origen: 'APSET', calendario_agendado: 'RT' }), false);
+});
+
+test('el comprobante hereda Primer origen del lead vinculado por GHL ID', () => {
+  const rows = enrichComprobanteOrigins(
+    [{ id: 'comprobante-1', ghlid: 'GHL-1', origen_actual: '', primer_origen: '' }],
+    [{ ghlid: 'GHL-1', origen_actual: 'Instagram', primer_origen: 'APSET', last_edited_time: '2026-09-03T12:00:00Z' }]
+  );
+
+  assert.equal(rows[0].origen_actual, 'Instagram');
+  assert.equal(rows[0].primer_origen, 'APSET');
+});
+
+test('Nahuel cobra 4,5% cuando APSET está en Primer origen aunque Origen actual sea otro', () => {
+  const config = commissionsService.normalizeConfig({
+    global: { includeOnlyVerified: false },
+    personRoles: [
+      { person: 'Patricia Conti', role: 'Closer' },
+      { person: 'Nahuel Iasci', role: 'Setter' }
+    ]
+  });
+  const details = buildTransactionDetails({
+    monthKey: '2026-07',
+    config,
+    comprobantesRows: [{
+      id: 'meg-apset-primer-origen',
+      tipo: 'Venta',
+      producto_format: 'MEG 2.1',
+      cliente_format: 'Cliente APSET',
+      responsable_venta: 'Patricia Conti',
+      setter: 'Nahuel Iasci',
+      origen_actual: 'Instagram orgánico',
+      primer_origen: 'Postulación MEG - APSET',
+      f_venta: '2026-07-15',
+      f_acreditacion: '2026-07-15',
+      cash_ar: 100000,
+      cash_collected_ar: 100000,
+      cash_collected_ars: 100000
+    }],
+    settersRows: [],
+    agendaRows: [agenda({ primer_origen: 'APSET' })]
+  });
+
+  const setterDetail = details.find((detail) => detail.role === 'Setter');
+  assert.equal(setterDetail?.commissionPct, 0.045);
+  assert.equal(setterDetail?.commissionAmount, 4500);
+  assert.equal(setterDetail?.firstOrigin, 'Postulación MEG - APSET');
 });
 
 test('Club paga únicamente al responsable de venta y nunca genera comisión de setter', () => {
@@ -199,5 +260,5 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   assert.match(source, /marketingArea\?\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260902-marketing-area-3/);
+  assert.match(html, /comisiones\.page\.js\?v=20260903-primer-origen-1/);
 });

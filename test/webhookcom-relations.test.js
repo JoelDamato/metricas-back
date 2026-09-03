@@ -63,11 +63,13 @@ test('mapea Origen Actual de comprobantes sin usar el origen histórico como res
     id: 'comprobante-origen-actual',
     properties: {
       Origen: { type: 'formula', formula: { type: 'string', string: 'Origen histórico' } },
-      'Origen Actual': { type: 'formula', formula: { type: 'string', string: 'Postulación MEG - APSET' } }
+      'Origen Actual': { type: 'formula', formula: { type: 'string', string: 'Postulación MEG - APSET' } },
+      'Primer origen': { type: 'formula', formula: { type: 'string', string: 'Instagram' } }
     }
   });
 
   assert.equal(row.origen_actual, 'Postulación MEG - APSET');
+  assert.equal(row.primer_origen, 'Instagram');
 
   const withoutCurrentOrigin = mapToSupabase({
     id: 'comprobante-sin-origen-actual',
