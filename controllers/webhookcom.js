@@ -245,6 +245,7 @@ function mapToSupabase(payload) {
     monto_pesos: getValue(p['Monto Pesos']),
     monto_incobrable: toNumber(getValue(p['Monto incobrable'])),
     origen: getValue(p['Origen']),
+    origen_actual: getValue(p['Origen Actual']) ?? getValue(p['Origen actual']),
     ultimo_origen: getValue(p['Ultimo origen']) ?? getValue(p['Último origen']) ?? getValue(p['Ultimo Origen']) ?? getValue(p['Último Origen']),
     producto_format: getValue(p['Producto Format']),
     productos: getValue(p['Productos']),
@@ -293,7 +294,7 @@ function mapToSupabase(payload) {
   };
 
   Object.keys(row).forEach(key => {
-    if (key !== 'id' && row[key] === null) {
+    if (key !== 'id' && key !== 'origen_actual' && row[key] === null) {
       delete row[key];
     }
   });

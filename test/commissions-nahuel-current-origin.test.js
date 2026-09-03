@@ -59,21 +59,22 @@ test('el conteo mensual de Nahuel usa únicamente Origen Actual APSET', () => {
   assert.equal(result.get('nahuel iasci')?.agendo, 1);
 });
 
-test('otros setters conservan la regla de origen o calendario APSET / RT', () => {
+test('otros setters usan únicamente Origen Actual APSET / RT', () => {
   const row = agenda({
     setter: 'Otro Setter',
-    origen_actual: 'Instagram orgánico',
+    origen_actual: 'Postulación MEG - RT',
     origen: 'VSL',
-    calendario_agendado: 'RT'
+    calendario_agendado: 'Calendario general'
   });
 
   assert.equal(hasCommissionAgendaSignals(row), true);
+  assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', origen: 'APSET', calendario_agendado: 'RT' }), false);
 });
 
-test('una venta o cobranza Setting califica únicamente por origen o calendario APSET / RT', () => {
-  assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - APSET' }), true);
-  assert.equal(qualifiesForSettingTransaction({ calendario_agendado: 'Postulacion Meg | RT - NI' }), true);
-  assert.equal(qualifiesForSettingTransaction({ origen: 'Postulación MEG - VSL', calendario_agendado: 'Postulación MEG - VSL - 3' }), false);
+test('una venta o cobranza Setting califica únicamente por Origen Actual APSET / RT', () => {
+  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Postulación MEG - APSET' }), true);
+  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Postulacion Meg | RT - NI' }), true);
+  assert.equal(qualifiesForSettingTransaction({ origen_actual: 'Instagram', origen: 'APSET', calendario_agendado: 'RT' }), false);
 });
 
 test('Club paga únicamente al responsable de venta y nunca genera comisión de setter', () => {

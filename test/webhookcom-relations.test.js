@@ -58,6 +58,27 @@ test('mapea Venta relacionada y Cobranza relacionada a sus IDs de Supabase', () 
   assert.equal(row.tipo, 'Cobranza');
 });
 
+test('mapea Origen Actual de comprobantes sin usar el origen histórico como respaldo', () => {
+  const row = mapToSupabase({
+    id: 'comprobante-origen-actual',
+    properties: {
+      Origen: { type: 'formula', formula: { type: 'string', string: 'Origen histórico' } },
+      'Origen Actual': { type: 'formula', formula: { type: 'string', string: 'Postulación MEG - APSET' } }
+    }
+  });
+
+  assert.equal(row.origen_actual, 'Postulación MEG - APSET');
+
+  const withoutCurrentOrigin = mapToSupabase({
+    id: 'comprobante-sin-origen-actual',
+    properties: {
+      Origen: { type: 'formula', formula: { type: 'string', string: 'Postulación MEG - RT' } }
+    }
+  });
+
+  assert.equal(withoutCurrentOrigin.origen_actual, null);
+});
+
 test('extrae el ID seguro de un evento page.deleted', () => {
   assert.equal(extractDeletedPageId({
     type: 'page.deleted',
