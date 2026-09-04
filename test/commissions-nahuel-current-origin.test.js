@@ -37,16 +37,16 @@ test('Nahuel cuenta Agendo + Aplica cuando Origen Actual es APSET', () => {
   assert.equal(hasCommissionAgendaSignals(row), true);
 });
 
-test('Nahuel cuenta Agendo + Aplica cuando Primer origen es APSET', () => {
+test('Nahuel no cuenta Primer origen APSET si Origen actual no es APSET', () => {
   const row = agenda({
     origen_actual: 'Instagram orgánico',
     primer_origen: 'Postulación MEG - APSET'
   });
 
-  assert.equal(hasCommissionAgendaSignals(row), true);
+  assert.equal(hasCommissionAgendaSignals(row), false);
 });
 
-test('Nahuel ignora origen y calendario históricos si Primer origen y Origen actual no son APSET', () => {
+test('Nahuel ignora Primer origen, origen y calendario históricos si Origen actual no es APSET', () => {
   const row = agenda({
     origen_actual: 'Instagram orgánico',
     primer_origen: 'Referido',
@@ -58,7 +58,7 @@ test('Nahuel ignora origen y calendario históricos si Primer origen y Origen ac
   assert.equal(hasCommissionAgendaSignals(row), false);
 });
 
-test('el conteo mensual de Nahuel usa Primer origen u Origen actual APSET', () => {
+test('el conteo mensual de Nahuel usa solo Origen actual APSET', () => {
   const rows = [
     agenda({ origen_actual: 'APSET', origen: 'VSL' }),
     agenda({ origen_actual: 'VSL', primer_origen: 'APSET' }),
@@ -68,7 +68,7 @@ test('el conteo mensual de Nahuel usa Primer origen u Origen actual APSET', () =
 
   const result = buildLiveAgendaCountMap(rows, '2026-07');
 
-  assert.equal(result.get('nahuel iasci')?.agendo, 2);
+  assert.equal(result.get('nahuel iasci')?.agendo, 1);
 });
 
 test('otros setters usan Primer origen u Origen actual APSET / RT', () => {
@@ -260,5 +260,5 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   assert.match(source, /marketingArea\?\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260903-primer-origen-1/);
+  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-origen-actual-1/);
 });

@@ -531,6 +531,10 @@
     if (normalizeText(row.agendo) !== 'agendo') return false;
     if (normalizeText(row.aplica) !== 'aplica') return false;
 
+    if (isNahuelSetter(row.setter)) {
+      return matchesApset(row.currentOrigin);
+    }
+
     return matchesCommissionOrigins(row.currentOrigin, row.firstOrigin, row.setter);
   }
 
@@ -1287,7 +1291,7 @@
                 <article class="comisiones-overview-kpi is-agendas">
                   <span>Agendas Nahuel</span>
                   <strong>${nahuelAgendaCount > 0 ? `<button class="comisiones-inline-link comisiones-agenda-link" type="button" data-agenda-person="Nahuel Iasci" data-agenda-preset="nahuel">${formatInteger(nahuelAgendaCount)}</button>` : formatInteger(nahuelAgendaCount)}</strong>
-                  <p>Agendo + Aplica con Primer origen u Origen actual APSET</p>
+                  <p>Agendo + Aplica con Origen actual APSET</p>
                 </article>
               </div>
             </section>
@@ -1585,7 +1589,7 @@
     const filteredRows = filterAgendaRows(state.agendaRows, state.agendaFilters);
     const setterLabel = state.agendaFilters.setter || 'Todos los setters';
     const commissionChannelsLabel = isNahuelSetter(state.agendaFilters.setter)
-      ? 'Primer origen u Origen actual APSET'
+      ? 'Origen actual APSET'
       : 'Primer origen u Origen actual APSET / RT';
     const originValues = filteredRows.flatMap((row) => [row.firstOrigin, row.currentOrigin]).filter(Boolean);
     const uniqueOrigins = new Set(originValues);

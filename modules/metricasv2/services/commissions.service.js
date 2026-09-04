@@ -713,6 +713,10 @@ function hasCommissionAgendaSignals(row) {
   if (normalizeText(row?.agendo) !== 'agendo') return false;
   if (normalizeText(row?.aplica) !== 'aplica') return false;
 
+  if (isNahuelSetter(row?.setter)) {
+    return matchesApset(row?.origen_actual);
+  }
+
   return matchesAgendaCommissionChannel(row?.origen_actual, row?.setter)
     || matchesAgendaCommissionChannel(row?.primer_origen, row?.setter);
 }
