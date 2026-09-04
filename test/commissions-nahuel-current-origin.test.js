@@ -84,12 +84,58 @@ test('otros setters usan Primer origen u Origen actual APSET / RT', () => {
   assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', primer_origen: 'Referido', calendario_agendado: 'RT' }), false);
 });
 
-test('una venta o cobranza Setting califica por Primer origen u Origen actual', () => {
+test('las ventas de Nahuel califican por APSET, RT NI o VSL en cualquiera de los dos orígenes', () => {
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - APSET' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'APSET' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - RT - NI' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'Postulación MEG | RT NI' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'VSL', primer_origen: 'Instagram' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'VSL' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - RT' }), false);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'RT', primer_origen: 'Referido' }), false);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Otro Setter', primer_origen: 'Postulacion Meg | RT - NI' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'Referido', origen: 'APSET', calendario_agendado: 'RT' }), false);
+});
+
+test('Nahuel cobra 4,5% fijo si VSL está en Primer origen u Origen actual', () => {
+  const config = commissionsService.normalizeConfig({
+    global: { includeOnlyVerified: false },
+    personRoles: [
+      { person: 'Patricia Conti', role: 'Closer' },
+      { person: 'Nahuel Iasci', role: 'Setter' }
+    ]
+  });
+  const baseSale = {
+    tipo: 'Venta',
+    producto_format: 'MEG 2.1',
+    responsable_venta: 'Patricia Conti',
+    setter: 'Nahuel Iasci',
+    f_venta: '2026-07-15',
+    f_acreditacion: '2026-07-15',
+    cash_ar: 100000,
+    cash_collected_ar: 100000,
+    cash_collected_ars: 100000
+  };
+  const agendaRows = Array.from({ length: 20 }, (_, index) => agenda({
+    ghlid: `agenda-${index}`,
+    origen_actual: 'APSET'
+  }));
+
+  const details = buildTransactionDetails({
+    monthKey: '2026-07',
+    config,
+    comprobantesRows: [
+      { ...baseSale, id: 'vsl-actual', cliente_format: 'VSL actual', origen_actual: 'VSL', primer_origen: 'Instagram' },
+      { ...baseSale, id: 'vsl-primero', cliente_format: 'VSL primero', origen_actual: 'Instagram', primer_origen: 'VSL' }
+    ],
+    settersRows: [],
+    agendaRows
+  });
+
+  const setterDetails = details.filter((detail) => detail.role === 'Setter');
+  assert.equal(setterDetails.length, 2);
+  assert.deepEqual(setterDetails.map((detail) => detail.commissionPct), [0.045, 0.045]);
+  assert.ok(setterDetails.every((detail) => detail.sourceRule === 'VSL en Primer origen u Origen actual'));
 });
 
 test('el comprobante hereda Primer origen del lead vinculado por GHL ID', () => {
@@ -260,5 +306,5 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   assert.match(source, /marketingArea\?\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-origen-actual-1/);
+  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-ventas-1/);
 });

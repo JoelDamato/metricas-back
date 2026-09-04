@@ -537,6 +537,17 @@ function matchesApset(value) {
   return normalizeText(value).includes('apset');
 }
 
+function matchesVsl(value) {
+  return normalizeText(value).includes('vsl');
+}
+
+function matchesRtNi(value) {
+  const normalized = normalizeText(value);
+  const hasRt = /(^|[^a-z0-9])rt([^a-z0-9]|$)/.test(normalized);
+  const hasNi = /(^|[^a-z0-9])ni([^a-z0-9]|$)/.test(normalized);
+  return hasRt && hasNi;
+}
+
 function isNahuelSetter(value) {
   const normalized = normalizeText(value);
   return normalized === 'nahuel iasci' || normalized === 'nahue' || normalized === 'nahuel';
@@ -547,8 +558,11 @@ function matchesAgendaCommissionChannel(value, setterName) {
 }
 
 function matchesCommissionOrigin(row, setterName = row?.setter) {
-  const matcher = isNahuelSetter(setterName) ? matchesApset : matchesApsetOrRt;
-  return matcher(row?.origen_actual) || matcher(row?.primer_origen);
+  const origins = [row?.origen_actual, row?.primer_origen];
+  if (isNahuelSetter(setterName)) {
+    return origins.some((value) => matchesApset(value) || matchesRtNi(value) || matchesVsl(value));
+  }
+  return origins.some(matchesApsetOrRt);
 }
 
 function qualifiesForSettingTransaction(row, setterName = row?.setter) {
@@ -609,9 +623,8 @@ function isBclRtCase(row) {
   return currentOrigin.includes('bcl') && matchesApsetOrRt(firstOrigin);
 }
 
-function isVslCalendarSettingCase(row) {
-  const currentOrigin = normalizeText(row.origen_actual);
-  return currentOrigin.includes('vsl') && matchesApsetOrRt(row.primer_origen);
+function isVslSettingCase(row) {
+  return matchesVsl(row?.origen_actual) || matchesVsl(row?.primer_origen);
 }
 
 function resolveMonthBonusTc(rows = []) {
@@ -1230,10 +1243,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       appliedPct = inheritedPct;
       sourceRule = 'Cobranzas heredan porcentaje';
       sourceRuleNote = 'La cobranza toma el porcentaje de la venta madre y no recalcula la escala.';
-    } else if (isVslCalendarSettingCase(row)) {
+    } else if (isVslSettingCase(row)) {
       appliedPct = config.global.vslFirstOriginSetterPct;
-      sourceRule = 'Origen actual VSL + Primer origen APSET / RT';
-      sourceRuleNote = 'Origen actual contiene VSL y Primer origen contiene APSET / RT: cobra fijo 4,5% y sigue contando para la escalera del mes.';
+      sourceRule = 'VSL en Primer origen u Origen actual';
+      sourceRuleNote = 'Primer origen u Origen actual contiene VSL: cobra fijo 4,5%.';
     } else if (fixedPct !== null) {
       appliedPct = fixedPct;
       sourceRule = 'Porcentaje fijo individual';

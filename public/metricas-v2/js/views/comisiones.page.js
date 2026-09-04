@@ -83,13 +83,27 @@
     return normalizeText(value).includes('apset');
   }
 
+  function matchesVsl(value) {
+    return normalizeText(value).includes('vsl');
+  }
+
+  function matchesRtNi(value) {
+    const normalized = normalizeText(value);
+    const hasRt = /(^|[^a-z0-9])rt([^a-z0-9]|$)/.test(normalized);
+    const hasNi = /(^|[^a-z0-9])ni([^a-z0-9]|$)/.test(normalized);
+    return hasRt && hasNi;
+  }
+
   function matchesAgendaCommissionChannel(value, setterName) {
     return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
   }
 
   function matchesCommissionOrigins(currentOrigin, firstOrigin, setterName) {
-    return matchesAgendaCommissionChannel(currentOrigin, setterName)
-      || matchesAgendaCommissionChannel(firstOrigin, setterName);
+    const origins = [currentOrigin, firstOrigin];
+    if (isNahuelSetter(setterName)) {
+      return origins.some((value) => matchesApset(value) || matchesRtNi(value) || matchesVsl(value));
+    }
+    return origins.some(matchesApsetOrRt);
   }
 
   function formatInteger(value) {
@@ -986,12 +1000,13 @@
       normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail, person)
     ));
     const visibleDetails = [...sales, ...collections];
+    const settingChannelsLabel = isNahuelSetter(person) ? 'APSET / RT NI / VSL' : 'APSET / RT';
     const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
     const itemsHtml = visibleDetails.length
       ? `
         <div class="comisiones-setting-summary">
-          <span><strong>${formatInteger(sales.length)}</strong> ventas APSET / RT</span>
-          <span><strong>${formatInteger(collections.length)}</strong> cobranzas APSET / RT</span>
+          <span><strong>${formatInteger(sales.length)}</strong> ventas ${settingChannelsLabel}</span>
+          <span><strong>${formatInteger(collections.length)}</strong> cobranzas ${settingChannelsLabel}</span>
           <span><strong>${formatInteger(visibleDetails.length)}</strong> comprobantes mostrados</span>
           <span><strong>${escapeHtml(formatCurrency(totalCommission))}</strong> comisión detallada</span>
         </div>
@@ -1000,13 +1015,13 @@
             <h4>Ventas MEG del mes (${formatInteger(sales.length)})</h4>
             ${sales.length
               ? `<ol class="sales-analysis-detail-list">${sales.map((detail) => renderSettingCommissionItem(detail, person)).join('')}</ol>`
-              : '<p>No hay ventas APSET / RT que sumen en la columna Setting este mes.</p>'}
+              : `<p>No hay ventas ${settingChannelsLabel} que sumen en la columna Setting este mes.</p>`}
           </section>
           <section class="comisiones-setting-detail-section">
-            <h4>Cobranzas APSET / RT acreditadas en el mes (${formatInteger(collections.length)})</h4>
+            <h4>Cobranzas ${settingChannelsLabel} acreditadas en el mes (${formatInteger(collections.length)})</h4>
             ${collections.length
               ? `<ol class="sales-analysis-detail-list">${collections.map((detail) => renderSettingCommissionItem(detail, person)).join('')}</ol>`
-              : '<p>No hay cobranzas APSET / RT acreditadas en este mes.</p>'}
+              : `<p>No hay cobranzas ${settingChannelsLabel} acreditadas en este mes.</p>`}
           </section>
         </div>
       `
@@ -1018,7 +1033,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por Primer origen u Origen actual APSET / RT.</p>
+        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por Primer origen u Origen actual: ${settingChannelsLabel}.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>
