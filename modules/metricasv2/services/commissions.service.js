@@ -541,13 +541,6 @@ function matchesVsl(value) {
   return normalizeText(value).includes('vsl');
 }
 
-function matchesRtNi(value) {
-  const normalized = normalizeText(value);
-  const hasRt = /(^|[^a-z0-9])rt([^a-z0-9]|$)/.test(normalized);
-  const hasNi = /(^|[^a-z0-9])ni([^a-z0-9]|$)/.test(normalized);
-  return hasRt && hasNi;
-}
-
 function isNahuelSetter(value) {
   const normalized = normalizeText(value);
   return normalized === 'nahuel iasci' || normalized === 'nahue' || normalized === 'nahuel';
@@ -560,7 +553,7 @@ function matchesAgendaCommissionChannel(value, setterName) {
 function matchesCommissionOrigin(row, setterName = row?.setter) {
   const origins = [row?.origen_actual, row?.primer_origen];
   if (isNahuelSetter(setterName)) {
-    return origins.some((value) => matchesApset(value) || matchesRtNi(value) || matchesVsl(value));
+    return origins.some((value) => matchesApsetOrRt(value) || matchesVsl(value));
   }
   return origins.some(matchesApsetOrRt);
 }

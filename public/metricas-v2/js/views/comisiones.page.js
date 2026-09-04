@@ -87,13 +87,6 @@
     return normalizeText(value).includes('vsl');
   }
 
-  function matchesRtNi(value) {
-    const normalized = normalizeText(value);
-    const hasRt = /(^|[^a-z0-9])rt([^a-z0-9]|$)/.test(normalized);
-    const hasNi = /(^|[^a-z0-9])ni([^a-z0-9]|$)/.test(normalized);
-    return hasRt && hasNi;
-  }
-
   function matchesAgendaCommissionChannel(value, setterName) {
     return isNahuelSetter(setterName) ? matchesApset(value) : matchesApsetOrRt(value);
   }
@@ -101,7 +94,7 @@
   function matchesCommissionOrigins(currentOrigin, firstOrigin, setterName) {
     const origins = [currentOrigin, firstOrigin];
     if (isNahuelSetter(setterName)) {
-      return origins.some((value) => matchesApset(value) || matchesRtNi(value) || matchesVsl(value));
+      return origins.some((value) => matchesApsetOrRt(value) || matchesVsl(value));
     }
     return origins.some(matchesApsetOrRt);
   }
@@ -1000,7 +993,7 @@
       normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail, person)
     ));
     const visibleDetails = [...sales, ...collections];
-    const settingChannelsLabel = isNahuelSetter(person) ? 'APSET / RT NI / VSL' : 'APSET / RT';
+    const settingChannelsLabel = isNahuelSetter(person) ? 'APSET / RT / VSL' : 'APSET / RT';
     const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
     const itemsHtml = visibleDetails.length
       ? `

@@ -84,15 +84,15 @@ test('otros setters usan Primer origen u Origen actual APSET / RT', () => {
   assert.equal(hasCommissionAgendaSignals({ ...row, origen_actual: 'Instagram orgánico', primer_origen: 'Referido', calendario_agendado: 'RT' }), false);
 });
 
-test('las ventas de Nahuel califican por APSET, RT NI o VSL en cualquiera de los dos orígenes', () => {
+test('las ventas de Nahuel califican por APSET, RT o VSL en cualquiera de los dos orígenes', () => {
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - APSET' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'APSET' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - RT - NI' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'Postulación MEG | RT NI' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'VSL', primer_origen: 'Instagram' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'VSL' }), true);
-  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - RT' }), false);
-  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'RT', primer_origen: 'Referido' }), false);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Postulación MEG - RT' }), true);
+  assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'RT', primer_origen: 'Referido' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Otro Setter', primer_origen: 'Postulacion Meg | RT - NI' }), true);
   assert.equal(qualifiesForSettingTransaction({ setter: 'Nahuel Iasci', origen_actual: 'Instagram', primer_origen: 'Referido', origen: 'APSET', calendario_agendado: 'RT' }), false);
 });
@@ -306,5 +306,5 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   assert.match(source, /marketingArea\?\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-ventas-1/);
+  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-ventas-2/);
 });
