@@ -339,12 +339,13 @@ function getLegacyAgendaBonusDefaults(year, month) {
   const safeMonth = Number(month);
   const legacyWeeklyBase = safeYear === 2026 && safeMonth === 5 ? 12500 : 16500;
   const legacyWeeklyTarget = safeYear === 2026 && safeMonth === 5 ? 16500 : 20000;
+  const fortnightlyMultiplier = `${safeYear}-${String(safeMonth).padStart(2, '0')}` >= '2026-09' ? 2 : 1;
 
   return {
     anio: safeYear,
     mes: safeMonth,
-    monto_base_mensual: Number(legacyWeeklyBase.toFixed(2)),
-    objetivo_mensual: Number(legacyWeeklyTarget.toFixed(2)),
+    monto_base_mensual: Number((legacyWeeklyBase * fortnightlyMultiplier).toFixed(2)),
+    objetivo_mensual: Number((legacyWeeklyTarget * fortnightlyMultiplier).toFixed(2)),
     updated_at: null,
     updated_by_email: null,
     is_default: true
@@ -495,19 +496,19 @@ async function upsertAgendaBonusRules(payload, user) {
   }
 
   if (!Number.isFinite(montoBaseMensual) || montoBaseMensual < 0) {
-    const error = new Error('El monto base semanal debe ser un número mayor o igual a 0');
+    const error = new Error('El monto base del período debe ser un número mayor o igual a 0');
     error.statusCode = 400;
     throw error;
   }
 
   if (!Number.isFinite(objetivoMensual) || objetivoMensual < 0) {
-    const error = new Error('El objetivo semanal debe ser un número mayor o igual a 0');
+    const error = new Error('El objetivo del período debe ser un número mayor o igual a 0');
     error.statusCode = 400;
     throw error;
   }
 
   if (objetivoMensual < montoBaseMensual) {
-    const error = new Error('El objetivo semanal no puede ser menor al monto base semanal');
+    const error = new Error('El objetivo del período no puede ser menor al monto base del período');
     error.statusCode = 400;
     throw error;
   }

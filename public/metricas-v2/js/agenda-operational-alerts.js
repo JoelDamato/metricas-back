@@ -112,27 +112,12 @@
     };
   }
 
-  function targetToDate(period, weeklyTarget) {
-    const target = safeNumber(weeklyTarget);
+  function targetToDate(period, configuredTarget) {
+    const target = safeNumber(configuredTarget);
     if (target <= 0) return 0;
-    const start = new Date(period.monthStart);
-    let total = 0;
-
-    while (start <= period.evaluationDate) {
-      const day = start.getDay();
-      const monday = new Date(start);
-      monday.setDate(monday.getDate() + (day === 0 ? -6 : 1 - day));
-      const sunday = new Date(monday);
-      sunday.setDate(sunday.getDate() + 6);
-      const segmentStart = monday < period.monthStart ? period.monthStart : monday;
-      const segmentEnd = sunday > period.evaluationDate ? period.evaluationDate : sunday;
-      const activeDays = Math.floor((segmentEnd - segmentStart) / 86400000) + 1;
-      total += target * (activeDays / 7);
-      start.setTime(sunday.getTime());
-      start.setDate(start.getDate() + 1);
-    }
-
-    return total;
+    const elapsedDays = Math.floor((period.evaluationDate - period.monthStart) / 86400000) + 1;
+    const standardDays = dateKey(period.monthStart).slice(0, 7) >= '2026-09' ? 14 : 7;
+    return target * (Math.max(0, elapsedDays) / standardDays);
   }
 
   function emptyCloser(name) {

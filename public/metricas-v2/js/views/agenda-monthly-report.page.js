@@ -144,8 +144,11 @@
   }
 
   function buildWeeksTable(model) {
-    return `<div class="table-wrap"><table><thead><tr><th>Semana</th><th>Fechas</th><th class="right">Cash equipo</th><th>Estado</th><th class="right">Bonus pagable</th></tr></thead><tbody>
-      ${model.cash.weeks.map((week) => `<tr><td><strong>S${week.index + 1}</strong></td><td>${escapeHtml(week.label)}</td><td class="right">${formatCurrency(week.total)}</td><td><span class="chip ${escapeHtml(week.tone)}">${escapeHtml(week.status)}</span></td><td class="right bonus-text">${formatCurrency(week.payablePool)}</td></tr>`).join('')}
+    const fortnightly = model.cash.cadence === 'fortnightly';
+    const periodName = fortnightly ? 'Quincena' : 'Semana';
+    const periodPrefix = fortnightly ? 'Q' : 'S';
+    return `<div class="table-wrap"><table><thead><tr><th>${periodName}</th><th>Fechas</th><th class="right">Cash equipo</th><th>Estado</th><th class="right">Bonus pagable</th></tr></thead><tbody>
+      ${model.cash.weeks.map((week) => `<tr><td><strong>${periodPrefix}${week.index + 1}</strong></td><td>${escapeHtml(week.label)}</td><td class="right">${formatCurrency(week.total)}</td><td><span class="chip ${escapeHtml(week.tone)}">${escapeHtml(week.status)}</span></td><td class="right bonus-text">${formatCurrency(week.payablePool)}</td></tr>`).join('')}
     </tbody></table></div>`;
   }
 
@@ -157,18 +160,19 @@
   }
 
   function buildBonusTable(model) {
+    const periodLabel = model.cash.cadence === 'fortnightly' ? 'quincenal' : 'semanal';
     const roundedSum = model.cash.distributions.reduce((sum, row) => sum + Number(row.bonus.toFixed(2)), 0);
     const roundingDiff = Math.abs(Number(model.bonusTotal.toFixed(2)) - Number(roundedSum.toFixed(2)));
     return `
       <div class="bonus-callouts">
-        <div class="callout"><span>Bonus semanal</span><strong>${formatCurrency(model.cash.weeklyBonusTotal)}</strong></div>
+        <div class="callout"><span>Bonus ${periodLabel}</span><strong>${formatCurrency(model.cash.weeklyBonusTotal)}</strong></div>
         <div class="callout"><span>Bonus mensual 40%</span><strong>${formatCurrency(model.cash.monthlyBonusTotal)}</strong></div>
         <div class="callout gold"><span>Total oficial</span><strong>${formatCurrency(model.bonusTotal)}</strong></div>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Closer</th><th class="right">Cash oficial</th><th class="right">Participación</th><th class="right">Bonus semanal</th><th class="right">Bonus mensual</th><th class="right">Total</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Closer</th><th class="right">Cash oficial</th><th class="right">Participación</th><th class="right">Bonus ${periodLabel}</th><th class="right">Bonus mensual</th><th class="right">Total</th></tr></thead><tbody>
         ${model.cash.distributions.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td class="right">${formatCurrency(row.cash)}</td><td class="right">${formatPercent(row.sharePct)}</td><td class="right">${formatCurrency(row.weeklyBonus)}</td><td class="right">${formatCurrency(row.monthlyBonus)}</td><td class="right bonus-text"><strong>${formatCurrency(row.bonus)}</strong></td></tr>`).join('')}
       </tbody></table></div>
-      <p class="footnote">La distribución semanal se hace por aporte real al cash de cada semana. El mínimo individual del 10% no excluye a una persona del bonus.${roundingDiff >= 0.009 ? ` La diferencia de ${formatCurrency(roundingDiff)} surge del redondeo individual; se respeta el total oficial del sistema.` : ''}</p>
+      <p class="footnote">La distribución ${periodLabel} se hace por aporte real al cash de cada período. El mínimo individual del 10% no excluye a una persona del bonus.${roundingDiff >= 0.009 ? ` La diferencia de ${formatCurrency(roundingDiff)} surge del redondeo individual; se respeta el total oficial del sistema.` : ''}</p>
     `;
   }
 
@@ -191,6 +195,10 @@
   function renderReport(model) {
     const executive = model.executive;
     const bonusWeekCount = executive.bonusWeeks.length;
+    const fortnightly = model.cash.cadence === 'fortnightly';
+    const periodName = fortnightly ? 'quincena' : 'semana';
+    const periodNamePlural = fortnightly ? 'Quincenas' : 'Semanas';
+    const periodPrefix = fortnightly ? 'Q' : 'S';
     root.innerHTML = `
       <section class="hero">
         <div class="hero-top">
@@ -203,9 +211,9 @@
         <div class="summary-grid">
           <article class="stat"><span>Cash oficial del mes</span><strong>${formatCurrency(model.cash.teamTotal)}</strong></article>
           <article class="stat"><span>Bonus total pagable</span><strong>${formatCurrency(model.bonusTotal)}</strong></article>
-          <article class="stat"><span>Mejor semana</span><strong>${executive.bestWeek ? `S${executive.bestWeek.index + 1}` : '—'}</strong></article>
-          <article class="stat"><span>Semana menor</span><strong>${executive.worstWeek ? `S${executive.worstWeek.index + 1}` : '—'}</strong></article>
-          <article class="stat"><span>Semanas con bonus</span><strong>${bonusWeekCount}</strong></article>
+          <article class="stat"><span>Mejor ${periodName}</span><strong>${executive.bestWeek ? `${periodPrefix}${executive.bestWeek.index + 1}` : '—'}</strong></article>
+          <article class="stat"><span>${periodName.charAt(0).toUpperCase()+periodName.slice(1)} menor</span><strong>${executive.worstWeek ? `${periodPrefix}${executive.worstWeek.index + 1}` : '—'}</strong></article>
+          <article class="stat"><span>${periodNamePlural} con bonus</span><strong>${bonusWeekCount}</strong></article>
         </div>
       </section>
 
@@ -215,8 +223,8 @@
         <section class="section"><div class="section-head"><div><h2>Checkpoints, strikes y motivos</h2><p>Detalle individual, incluyendo los movimientos automáticos derivados del ranking de pendientes.</p></div></div><div class="closers-grid">${buildScoreCards(model)}</div></section>
         <section class="section"><div class="section-head"><div><h2>Ranking final de puntos</h2><p>Checks, strikes, pendientes acumulados y consecuencia correspondiente.</p></div></div>${buildRankingTable(model)}</section>
         <section class="section"><div class="section-head"><div><h2>KPIs logrados por closer</h2><p>Solo se cuentan los indicadores que están cumplidos según los objetivos del mes.</p></div></div>${buildKpiTable(model)}</section>
-        <section class="section"><div class="section-head"><div><h2>Resultados semanales</h2><p>Cash neto conciliado, estado y bonus oficial por semana.</p></div></div>${buildWeeksTable(model)}</section>
-        <section class="section two-col"><article class="panel"><div class="section-head"><div><h2>Total mensual por closer</h2><p>Cash oficial usado por el Sistema de Agendas.</p></div></div>${buildCashRanking(model)}</article><article class="panel"><div class="section-head"><div><h2>Bonus generado y distribución</h2><p>Semanal más premio mensual por concentración de cash.</p></div></div>${buildBonusTable(model)}</article></section>
+        <section class="section"><div class="section-head"><div><h2>Resultados ${fortnightly?'quincenales':'semanales'}</h2><p>Cash neto conciliado, estado y bonus oficial por ${periodName}.</p></div></div>${buildWeeksTable(model)}</section>
+        <section class="section two-col"><article class="panel"><div class="section-head"><div><h2>Total mensual por closer</h2><p>Cash oficial usado por el Sistema de Agendas.</p></div></div>${buildCashRanking(model)}</article><article class="panel"><div class="section-head"><div><h2>Bonus generado y distribución</h2><p>${fortnightly?'Quincenal':'Semanal'} más premio mensual por concentración de cash.</p></div></div>${buildBonusTable(model)}</article></section>
         <section class="section"><div class="section-head"><div><h2>Cash collected y facturación de KPIs</h2><p>Dato complementario; no reemplaza el cash oficial del ranking mensual.</p></div></div>${buildKpiComplement(model)}</section>
         <section class="section"><div class="section-head"><div><h2>Tabla de premios y consecuencias</h2><p>Referencia completa aplicada al puntaje final.</p></div></div>${buildRewardsTable(model)}</section>
         <section class="section two-col"><article class="panel"><div class="section-head"><div><h2>Conclusiones</h2><p>Principales resultados observados.</p></div></div><ul class="exec-list">${executive.bullets.map((item) => `<li><span class="dot gold"></span><span>${escapeHtml(item)}</span></li>`).join('')}</ul></article><article class="panel"><div class="section-head"><div><h2>Recomendaciones</h2><p>Próximas acciones derivadas de los datos.</p></div></div><ul class="exec-list">${model.recommendations.map((item) => `<li><span class="dot"></span><span>${escapeHtml(item)}</span></li>`).join('')}</ul></article></section>

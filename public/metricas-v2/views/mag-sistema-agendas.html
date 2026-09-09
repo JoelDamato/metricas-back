@@ -487,11 +487,11 @@
 
   <div class="bonus-config">
     <div class="bonus-config-field">
-      <label for="bonus-base-input">Monto base semanal</label>
+      <label for="bonus-base-input">Monto base del período</label>
       <input id="bonus-base-input" type="number" min="0" step="0.01" inputmode="decimal">
     </div>
     <div class="bonus-config-field">
-      <label for="bonus-target-input">Objetivo semanal</label>
+      <label for="bonus-target-input">Objetivo del período</label>
       <input id="bonus-target-input" type="number" min="0" step="0.01" inputmode="decimal">
     </div>
     <div class="bonus-config-actions">
@@ -506,7 +506,7 @@
   <div class="mbar">
     <div class="mbar-head">
       <div class="mbar-left">
-        <div class="mbar-lbl">Cash Total Acumulado de la Semana</div>
+        <div class="mbar-lbl" id="mbar-title">Cash total acumulado del período</div>
         <div class="mbar-val mono" id="mbar-val">US$ 0,00</div>
       </div>
       <div class="mbar-right">
@@ -605,13 +605,13 @@
       </ul>
     </div>
     <div class="rc">
-      <h3>Escala de Bonus Semanal</h3>
-      <div class="bsr"><span class="bsr-l">Bajo el monto base semanal</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">Base semanal – Objetivo semanal</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">Objetivo semanal alcanzado</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
+      <h3>Escala de Bonus Quincenal</h3>
+      <div class="bsr"><span class="bsr-l">Bajo el monto base quincenal</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Base quincenal – Objetivo quincenal</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Objetivo quincenal alcanzado</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
       <div class="bsr"><span class="bsr-l">Escalón +1</span><span class="bsr-r" style="color:var(--green)">1,5%</span></div>
       <div class="bsr"><span class="bsr-l">Escalón +2</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
-      <div class="bsr"><span class="bsr-l">Semana parcial (N días dentro del mes)</span><span class="bsr-r" style="color:var(--amber)">Prorrateo automático</span></div>
+      <div class="bsr"><span class="bsr-l">Quincena de N días</span><span class="bsr-r" style="color:var(--amber)">Prorrateo automático</span></div>
       <div class="bsr"><span class="bsr-l">Distribución</span><span class="bsr-r" style="color:var(--blue)">Por % de aporte</span></div>
     </div>
     <div class="rc">
@@ -625,12 +625,13 @@
       </ul>
     </div>
     <div class="rc">
-      <h3>Semanas Automáticas</h3>
+      <h3>Períodos automáticos</h3>
       <ul class="il">
         <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
         <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
         <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
-        <li><span class="dot">→</span> El monto base, el objetivo y los escalones del bonus se prorratean automáticamente según los días activos de cada semana</li>
+        <li><span class="dot">→</span> Desde septiembre de 2026, el monto base, el objetivo y los escalones del bonus se evalúan por quincena calendario (1–15 y 16–fin de mes)</li>
+        <li><span class="dot">→</span> Los importes se prorratean automáticamente según los días de cada quincena, conservando la misma proporción diaria</li>
         <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
         <li><span class="dot">→</span> Bono mensual de US$ 40 para cada closer que alcance al menos el 40% del cash collected total del equipo</li>
       </ul>
@@ -757,6 +758,7 @@
 <script src="/js/auth-shell.js"></script>
 <script src="/js/mag-theme.js"></script>
 <script src="/js/agenda-operational-alerts.js"></script>
+<script src="/js/agenda-objective-periods.js?v=20260909-1"></script>
 <script src="/js/agenda-bonus-policy.js"></script>
 <script>
 /* ═══ CONSTANTS ═══ */
@@ -781,7 +783,7 @@ const STRIKE_REWARD_RULES=[
   {score:1,text:'-',tone:'neutral'},
   {score:0,text:'-',tone:'neutral'},
   {score:-1,text:'No cobra premios por cumplimientos de KPIs',tone:'consequence'},
-  {score:-2,text:'No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos semanales y mensuales',tone:'consequence'},
+  {score:-2,text:'No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos quincenales y mensuales',tone:'consequence'},
   {score:-3,text:'-1, -2 y 1% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 7%',tone:'severe'},
   {score:-4,text:'-1, -2 y 2% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 6%',tone:'severe'},
   {score:-5,text:'-1, -2, 2% menos del porcentaje comisionable y tomar solo agendas calidad D',tone:'severe'}
@@ -798,6 +800,7 @@ const CLOSER_ALIAS_MAP={
 
 /* ═══ STATE ═══ */
 let weeks=[];
+let bonusPeriods=[];
 let selectedProgressWeekIndex=null;
 let selectedProgressMonthKey='';
 let agendaBonusConfig=null;
@@ -842,6 +845,15 @@ function calcWeeks(yr,mo){
   }
   return res;
 }
+function usesFortnightlyObjectives(yr,mo){
+  return window.agendaObjectivePeriods?.isFortnightly(yr,mo) === true;
+}
+function calcObjectivePeriods(yr,mo){
+  if(window.agendaObjectivePeriods?.calcPeriods){
+    return window.agendaObjectivePeriods.calcPeriods(yr,mo,MS);
+  }
+  return calcWeeks(yr,mo);
+}
 function fmtRange(s,e){
   if(s.getMonth()===e.getMonth()) return `${s.getDate()}–${e.getDate()} ${MS[s.getMonth()+1]}`;
   return `${s.getDate()} ${MS[s.getMonth()+1]}–${e.getDate()} ${MS[e.getMonth()+1]}`;
@@ -852,23 +864,34 @@ function curWeekIdx(){
   return todayKey<(weeks[0]?.startKey||todayKey)?-1:weeks.length;
 }
 
+function curBonusPeriodIdx(){
+  const todayKey=toDateKey(new Date());
+  for(let i=0;i<bonusPeriods.length;i++){
+    if(todayKey>=bonusPeriods[i].startKey && todayKey<=bonusPeriods[i].endKey) return i;
+  }
+  return todayKey<(bonusPeriods[0]?.startKey||todayKey)?-1:bonusPeriods.length;
+}
+
 function getProgressWeekIndex(){
   const select=document.getElementById('sel-week-progress');
   if(select && select.value!=='') return Number(select.value);
   if(selectedProgressWeekIndex!==null && selectedProgressWeekIndex>=0) return selectedProgressWeekIndex;
-  const currentIndex=curWeekIdx();
-  if(currentIndex>=0 && currentIndex<weeks.length) return currentIndex;
-  return weeks.length ? Math.max(0, weeks.length-1) : -1;
+  const currentIndex=curBonusPeriodIdx();
+  if(currentIndex>=0 && currentIndex<bonusPeriods.length) return currentIndex;
+  return bonusPeriods.length ? Math.max(0, bonusPeriods.length-1) : -1;
 }
 
 function syncWeekProgressSelect(){
   const select=document.getElementById('sel-week-progress');
   if(!select) return;
   const preferred=getProgressWeekIndex();
-  select.innerHTML=weeks.map((week,index)=>(
-    `<option value="${index}">Semana ${index+1} · ${week.label}</option>`
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const periodName=fortnightly?'Quincena':'Semana';
+  select.innerHTML=bonusPeriods.map((period,index)=>(
+    `<option value="${index}">${periodName} ${index+1} · ${period.label}</option>`
   )).join('');
-  if(preferred>=0 && preferred<weeks.length){
+  if(preferred>=0 && preferred<bonusPeriods.length){
     select.value=String(preferred);
     selectedProgressWeekIndex=preferred;
   }
@@ -1351,7 +1374,10 @@ function effectiveMonthRange(year,month){
 }
 
 function resetCloserWeeks(){
-  closers.forEach((closer)=>{ closer.weeks=weeks.map(()=>0); });
+  closers.forEach((closer)=>{
+    closer.weeks=weeks.map(()=>0);
+    closer.bonusPeriods=bonusPeriods.map(()=>0);
+  });
 }
 
 function parseRowDate(value){
@@ -1364,6 +1390,12 @@ function getWeekIndexForValue(value){
   const dateKey=toDateKey(value);
   if(!dateKey) return -1;
   return weeks.findIndex((week)=>dateKey>=week.startKey && dateKey<=week.endKey);
+}
+
+function getBonusPeriodIndexForValue(value){
+  const dateKey=toDateKey(value);
+  if(!dateKey) return -1;
+  return bonusPeriods.findIndex((period)=>dateKey>=period.startKey && dateKey<=period.endKey);
 }
 
 function getConciliadoAmount(row){
@@ -1418,6 +1450,10 @@ async function loadRealCashByAcreditacion(year,month){
     const weekIndex=getWeekIndexForValue(cashRow.fecha_acreditacion);
     if(weekIndex<0) return;
     closer.weeks[weekIndex]=(closer.weeks[weekIndex]||0)+getConciliadoAmount(cashRow);
+    const bonusPeriodIndex=getBonusPeriodIndexForValue(cashRow.fecha_acreditacion);
+    if(bonusPeriodIndex>=0){
+      closer.bonusPeriods[bonusPeriodIndex]=(closer.bonusPeriods[bonusPeriodIndex]||0)+getConciliadoAmount(cashRow);
+    }
   });
 }
 
@@ -1466,12 +1502,14 @@ async function loadMonthlyBaseCategories(year,month){
   });
 }
 
-function getLegacyWeeklyAgendaBonus(year,month){
-  const weeklyBase=year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR;
-  const weeklyTarget=year===2026 && month===5 ? MAY_2026_TARGET : TARGET;
+function getDefaultAgendaBonus(year,month){
+  const sharedDefaults=window.agendaObjectivePeriods?.defaultRules?.(year,month);
+  const multiplier=usesFortnightlyObjectives(year,month)?2:1;
+  const periodBase=sharedDefaults?.floor ?? ((year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR)*multiplier);
+  const periodTarget=sharedDefaults?.target ?? ((year===2026 && month===5 ? MAY_2026_TARGET : TARGET)*multiplier);
   return {
-    monto_base_mensual: Number(weeklyBase.toFixed(2)),
-    objetivo_mensual: Number(weeklyTarget.toFixed(2))
+    monto_base_mensual: Number(periodBase.toFixed(2)),
+    objetivo_mensual: Number(periodTarget.toFixed(2))
   };
 }
 
@@ -1484,7 +1522,7 @@ function getSelectedPeriod(){
 
 function getAgendaBonusConfig(){
   const { year, month } = getSelectedPeriod();
-  const fallback=getLegacyWeeklyAgendaBonus(year,month);
+  const fallback=getDefaultAgendaBonus(year,month);
   return {
     anio: year,
     mes: month,
@@ -1505,6 +1543,8 @@ function setBonusConfigMeta(message, tone=''){
 
 function renderAgendaBonusConfig(){
   const config=getAgendaBonusConfig();
+  const {year,month}=getSelectedPeriod();
+  const cadenceLabel=usesFortnightlyObjectives(year,month)?'quincenal':'semanal';
   const baseInput=document.getElementById('bonus-base-input');
   const targetInput=document.getElementById('bonus-target-input');
   const saveButton=document.getElementById('bonus-config-save');
@@ -1512,6 +1552,10 @@ function renderAgendaBonusConfig(){
 
   if(baseInput) baseInput.value=String(Number(config.monto_base_mensual || 0).toFixed(2));
   if(targetInput) targetInput.value=String(Number(config.objetivo_mensual || 0).toFixed(2));
+  const baseLabel=document.querySelector('label[for="bonus-base-input"]');
+  const targetLabel=document.querySelector('label[for="bonus-target-input"]');
+  if(baseLabel) baseLabel.textContent=`Monto base ${cadenceLabel}`;
+  if(targetLabel) targetLabel.textContent=`Objetivo ${cadenceLabel}`;
   if(baseInput) baseInput.disabled=!canEdit;
   if(targetInput) targetInput.disabled=!canEdit;
   if(saveButton) saveButton.disabled=!canEdit;
@@ -1521,7 +1565,7 @@ function renderAgendaBonusConfig(){
     return;
   }
 
-  const sourceLabel=config.is_default?'Usando valores semanales heredados del sistema.':'Configuración semanal guardada.';
+  const sourceLabel=config.is_default?`Usando valores ${cadenceLabel}es heredados del sistema.`:`Configuración ${cadenceLabel} guardada.`;
   const updatedLabel=config.updated_at
     ? ` Última actualización: ${new Date(config.updated_at).toLocaleString('es-AR')}${config.updated_by_email?` · ${config.updated_by_email}`:''}`
     : '';
@@ -1533,7 +1577,7 @@ async function loadAgendaBonusConfig(year,month){
     agendaBonusConfig={
       anio: year,
       mes: month,
-      ...getLegacyWeeklyAgendaBonus(year,month),
+      ...getDefaultAgendaBonus(year,month),
       updated_at: null,
       updated_by_email: null,
       is_default: true
@@ -1546,7 +1590,7 @@ async function loadAgendaBonusConfig(year,month){
   agendaBonusConfig=response?.rules || {
     anio: year,
     mes: month,
-    ...getLegacyWeeklyAgendaBonus(year,month),
+    ...getDefaultAgendaBonus(year,month),
     updated_at: null,
     updated_by_email: null,
     is_default: true
@@ -1624,23 +1668,24 @@ async function saveAgendaBonusConfig(){
   const targetInput=document.getElementById('bonus-target-input');
   const base=Number(baseInput?.value || 0);
   const target=Number(targetInput?.value || 0);
+  const cadenceLabel=usesFortnightlyObjectives(year,month)?'quincenal':'semanal';
 
   if(!Number.isFinite(base) || base<0){
-    setBonusConfigMeta('El monto base semanal debe ser mayor o igual a 0.', 'error');
+    setBonusConfigMeta(`El monto base ${cadenceLabel} debe ser mayor o igual a 0.`, 'error');
     return;
   }
   if(!Number.isFinite(target) || target<0){
-    setBonusConfigMeta('El objetivo semanal debe ser mayor o igual a 0.', 'error');
+    setBonusConfigMeta(`El objetivo ${cadenceLabel} debe ser mayor o igual a 0.`, 'error');
     return;
   }
   if(target<base){
-    setBonusConfigMeta('El objetivo semanal no puede ser menor al monto base semanal.', 'error');
+    setBonusConfigMeta(`El objetivo ${cadenceLabel} no puede ser menor al monto base ${cadenceLabel}.`, 'error');
     return;
   }
 
   const saveButton=document.getElementById('bonus-config-save');
   if(saveButton) saveButton.disabled=true;
-  setBonusConfigMeta('Guardando configuración semanal...');
+  setBonusConfigMeta(`Guardando configuración ${cadenceLabel}...`);
 
   try{
     const response=await window.metricasApi.saveAgendaBonusRules({
@@ -1668,24 +1713,27 @@ async function saveAgendaBonusConfig(){
 }
 
 /* ═══ BONUS MATH ═══ */
-function getWeeklyThresholds(){
+function getObjectiveThresholds(){
   const config=getAgendaBonusConfig();
+  const {year,month}=getSelectedPeriod();
+  const defaults=window.agendaObjectivePeriods?.defaultRules?.(year,month);
   return {
-    floorWeekly: Number(config.monto_base_mensual || 0),
-    targetWeekly: Number(config.objetivo_mensual || 0),
-    stepWeekly: Number(STEP || 0)
+    floor: Number(config.monto_base_mensual || 0),
+    target: Number(config.objetivo_mensual || 0),
+    step: Number(defaults?.step ?? (STEP*(usesFortnightlyObjectives(year,month)?2:1))),
+    standardDays: Number(defaults?.standardDays ?? (usesFortnightlyObjectives(year,month)?14:7))
   };
 }
 function roundMoney(value){
   return Math.round(Number(value || 0) * 100) / 100;
 }
 function adj(days){
-  const thresholds=getWeeklyThresholds();
-  const ratio=Math.max(0, Number(days || 0)) / 7;
+  const thresholds=getObjectiveThresholds();
+  const ratio=Math.max(0, Number(days || 0)) / thresholds.standardDays;
   return {
-    floor: roundMoney(thresholds.floorWeekly * ratio),
-    target: roundMoney(thresholds.targetWeekly * ratio),
-    step: roundMoney(thresholds.stepWeekly * ratio)
+    floor: roundMoney(thresholds.floor * ratio),
+    target: roundMoney(thresholds.target * ratio),
+    step: roundMoney(thresholds.step * ratio)
   };
 }
 function bonusPct(cash,days){
@@ -1702,17 +1750,17 @@ function isMonthBeforeCurrent(year,month){
 
 function isWeekClosedForBonus(index){
   const { year, month } = getSelectedPeriod();
-  const week=weeks[index];
-  if(!week) return false;
+  const period=bonusPeriods[index];
+  if(!period) return false;
   if(isMonthBeforeCurrent(year,month)) return true;
   const now=new Date();
   if(year>now.getFullYear() || (year===now.getFullYear() && month>(now.getMonth()+1))) return false;
-  return toDateKey(now)>week.endKey;
+  return toDateKey(now)>period.endKey;
 }
 
 function getBonusWeekRows(){
-  const totals=wkTotals();
-  const baseRows=weeks.map((wk,index)=>{
+  const totals=bonusTotals();
+  const baseRows=bonusPeriods.map((wk,index)=>{
     const total=totals[index] || 0;
     const thresholds=adj(wk.days);
     const pct=bonusPct(total,wk.days);
@@ -1826,6 +1874,7 @@ function projectFromWeek(c, wkTotals, weekIdx){
 function fmt(n){return'US$ '+n.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtK(n){if(n>=1000)return'$'+(n/1000).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:1})+'k';return'$'+Math.round(n);}
 function wkTotals(){return weeks.map((_,w)=>closers.reduce((s,c)=>s+(c.weeks[w]||0),0));}
+function bonusTotals(){return bonusPeriods.map((_,index)=>closers.reduce((sum,closer)=>sum+(closer.bonusPeriods?.[index]||0),0));}
 function monthTotal(c){return c.weeks.slice(0,weeks.length).reduce((s,v)=>s+(v||0),0);}
 function getMonthlyCashShareBonusRows(){
   const teamTotal=closers.reduce((sum,closer)=>sum+monthTotal(closer),0);
@@ -1864,50 +1913,54 @@ function renderAll(){
 
 /* ═══ MILESTONE BAR ═══ */
 function renderMilestoneBar(){
-  const SCALE_MAX=40000;
-  const tots=wkTotals();
-  const currentIndex=curWeekIdx();
+  const tots=bonusTotals();
   const activeIndex=getProgressWeekIndex();
-  const activeWeek=activeIndex>=0?weeks[activeIndex]:null;
-  const weeklyTotal=activeIndex>=0?(tots[activeIndex]||0):0;
-  const activeDays=activeWeek?.days || 7;
+  const activeWeek=activeIndex>=0?bonusPeriods[activeIndex]:null;
+  const periodTotal=activeIndex>=0?(tots[activeIndex]||0):0;
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const periodName=fortnightly?'Quincena':'Semana';
+  const activeDays=activeWeek?.days || (fortnightly?14:7);
   const { floor, target, step } = adj(activeDays);
+  const SCALE_MAX=Math.max(target+step*3,periodTotal,1)*1.05;
 
-  document.getElementById('mbar-val').textContent=fmt(weeklyTotal);
+  document.getElementById('mbar-val').textContent=fmt(periodTotal);
+  const title=document.getElementById('mbar-title');
+  if(title) title.textContent=`Cash total acumulado de la ${periodName.toLowerCase()}`;
 
   const pill=document.getElementById('mbar-pill');
   const hint=document.getElementById('mbar-hint');
 
   if(activeWeek){
-    hint.textContent=`Semana ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
+    hint.textContent=`${periodName} ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
   }else{
     hint.textContent='';
   }
 
-  if(!weeklyTotal){
+  if(!periodTotal){
     pill.className='mpill none';pill.textContent='Sin datos';hint.textContent='';
     if(activeWeek){
-      hint.textContent=`Semana ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
+      hint.textContent=`${periodName} ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
     }
-  }else if(weeklyTotal<floor){
+  }else if(periodTotal<floor){
     pill.className='mpill none';pill.textContent='Bajo el piso';
-    hint.textContent=`${hint.textContent} · Faltan ${fmt(floor-weeklyTotal)} para el piso`;
-  }else if(weeklyTotal<target){
+    hint.textContent=`${hint.textContent} · Faltan ${fmt(floor-periodTotal)} para el piso`;
+  }else if(periodTotal<target){
     pill.className='mpill floor';pill.textContent='Sobre el piso';
-    hint.textContent=`${hint.textContent} · Faltan ${fmt(target-weeklyTotal)} para bonus 1%`;
+    hint.textContent=`${hint.textContent} · Faltan ${fmt(target-periodTotal)} para bonus 1%`;
   }else{
-    const pct=bonusPct(weeklyTotal,activeDays);
-    const steps=step>0?Math.floor((weeklyTotal-target)/step):0;
+    const pct=bonusPct(periodTotal,activeDays);
+    const steps=step>0?Math.floor((periodTotal-target)/step):0;
     const nextVal=target+((steps+1)*step);
     pill.className='mpill bonus';pill.textContent=`Bonus acumulado ${(pct*100).toFixed(1)}%`;
-    hint.textContent=`${hint.textContent} · ${fmt(nextVal-weeklyTotal)} más → ${((pct+0.005)*100).toFixed(1)}%`;
+    hint.textContent=`${hint.textContent} · ${fmt(nextVal-periodTotal)} más → ${((pct+0.005)*100).toFixed(1)}%`;
   }
 
-  const capVal=Math.min(weeklyTotal,SCALE_MAX);
+  const capVal=Math.min(periodTotal,SCALE_MAX);
   const fillPct=(capVal/SCALE_MAX)*100;
   const floorPct=(floor/SCALE_MAX)*100;
   const targetPct=(target/SCALE_MAX)*100;
-  let fillColor=!weeklyTotal?'transparent':weeklyTotal<floor?'linear-gradient(90deg,#4D1212,#7A2020)':weeklyTotal<target?'linear-gradient(90deg,#4D3200,#7A5000)':'linear-gradient(90deg,#0A4A30,#2DD4A0)';
+  let fillColor=!periodTotal?'transparent':periodTotal<floor?'linear-gradient(90deg,#4D1212,#7A2020)':periodTotal<target?'linear-gradient(90deg,#4D3200,#7A5000)':'linear-gradient(90deg,#0A4A30,#2DD4A0)';
 
   const milestones=[
     {val:floor,       label:`${fmtK(floor)} · Piso`, color:'#F59E0B',pct:null},
@@ -1926,7 +1979,7 @@ function renderMilestoneBar(){
       <div class="smk-line"></div>
     </div>`;
   }).join('');
-  const cursorHTML=weeklyTotal>0?`<div class="scale-cursor" style="left:${Math.min(fillPct,97)}%"><div class="scale-cursor-lbl">${fmtK(weeklyTotal)}</div></div>`:'';
+  const cursorHTML=periodTotal>0?`<div class="scale-cursor" style="left:${Math.min(fillPct,97)}%"><div class="scale-cursor-lbl">${fmtK(periodTotal)}</div></div>`:'';
 
   document.getElementById('mbar-scale').innerHTML=`
     <div class="scale-outer">
@@ -1943,12 +1996,16 @@ function renderMilestoneBar(){
 /* ═══ PILLS ═══ */
 function renderPills(ci){
   const el=document.getElementById('wk-pills'); el.innerHTML='';
-  const totals=wkTotals();
+  const totals=bonusTotals();
   const bonusRows=getBonusWeekRows();
   const selectedIndex=getProgressWeekIndex();
-  weeks.forEach((wk,i)=>{
-    const{target,floor}=adj(wk.days);const full=wk.days===7;
-    const state=i<ci?'past':i===ci?'cur':'future';
+  const currentPeriodIndex=curBonusPeriodIdx();
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const periodName=fortnightly?'Quincena':'Semana';
+  bonusPeriods.forEach((wk,i)=>{
+    const{target,floor}=adj(wk.days);const full=fortnightly||wk.days===7;
+    const state=i<currentPeriodIndex?'past':i===currentPeriodIndex?'cur':'future';
     const ph=i<2?'libre':'rank';
     const weekTotal=totals[i]||0;
     const bonusRow=bonusRows[i] || {};
@@ -1964,14 +2021,14 @@ function renderPills(ci){
       }
       renderAll();
     };
-    d.innerHTML=`<div class="wkp-num">Semana ${i+1}${i===ci?'<span class="cur-dot"></span>':''}</div>
+    d.innerHTML=`<div class="wkp-num">${periodName} ${i+1}${i===currentPeriodIndex?'<span class="cur-dot"></span>':''}</div>
       <div class="wkp-dates">${wk.label}</div>
       <div class="wkp-days">${wk.days} día${wk.days>1?'s':''}</div>
       <div class="wkp-meta ${full?'full':'part'}">Meta: ${fmtK(target)}</div>
       <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">Piso: ${fmtK(floor)}</div>
       ${poolPct>0?`<div class="wkp-meta full" style="color:${bonusRow.revoked?'var(--red)':'var(--green)'}">${bonusRow.revoked?'Revocado':'Pool'}: ${fmt(poolValue)}</div>`:''}
       ${bonusRow.baseMiss?`<div class="wkp-meta full" style="color:var(--red)">Bajo base cerrada</div>`:''}
-      <div class="wkp-ph ${ph}">${ph==='libre'?'Libre':'Rankeada'}</div>`;
+      <div class="wkp-ph ${fortnightly?'libre':ph}">${fortnightly?'Objetivo quincenal':ph==='libre'?'Libre':'Rankeada'}</div>`;
     el.appendChild(d);
   });
 }
@@ -2013,24 +2070,28 @@ function renderNextWeek(ci){
 /* ═══ MAIN TABLE ═══ */
 function renderMainTable(ci){
   const tots=wkTotals();
-  const bonusRows=getBonusWeekRows();
+  const objectiveRows=getBonusWeekRows();
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const bonusRows=fortnightly?[]:objectiveRows;
   const tbl=document.getElementById('main-tbl');
 
   // THEAD
   let th=`<thead><tr><th class="lft">Closer</th>`;
   weeks.forEach((wk,i)=>{
-    const t=tots[i];const st=wkStatus(t,wk.days);const full=wk.days===7;
+    const t=tots[i];const st=fortnightly?'idle':wkStatus(t,wk.days);const full=wk.days===7;
     const{target}=adj(wk.days);const isCur=i===ci;
     const pct=bonusPct(t,wk.days);
     let cc,ct;
-    if(st==='idle'){cc='idle';ct='Sin datos';}
+    if(fortnightly){cc='idle';ct='Cash semanal';}
+    else if(st==='idle'){cc='idle';ct='Sin datos';}
     else if(st==='miss'){cc='miss';ct='Bajo piso';}
     else if(st==='mid'){cc='mid';ct='Sin bonus';}
     else{cc='hit';ct=`✓ ${(pct*100).toFixed(1)}%`;}
     th+=`<th class="wth" ${isCur?'style="background:rgba(75,142,245,.05)"':''}><div class="wth-in">
       <span class="wth-n">S${i+1}${isCur?'<span class="cur-dot" style="margin-left:3px"></span>':''}</span>
       <span class="wth-d">${wk.label} · ${wk.days}d</span>
-      <span class="wth-t ${full?'f':'p'}">Meta ${fmtK(target)}</span>
+      <span class="wth-t ${full?'f':'p'}">${fortnightly?'Objetivo en barra quincenal':`Meta ${fmtK(target)}`}</span>
       <span class="wth-chip ${cc}">${ct}</span>
     </div></th>`;
   });
@@ -2090,12 +2151,14 @@ function renderMainTable(ci){
   });
   tf+=`<td></td></tr>`;
 
-  tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">Pool bonus</td>`;
-  let totalPool=0;
+  tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">${fortnightly?'Pool bonus quincenal':'Pool bonus'}</td>`;
+  let totalPool=fortnightly?objectiveRows.reduce((sum,row)=>sum+(row.payablePool||0),0):0;
   weeks.forEach((wk,i)=>{
     const row=bonusRows[i] || {};
-    totalPool+=row.payablePool || 0;
-    if(row.pct>0 && row.revoked){
+    if(!fortnightly) totalPool+=row.payablePool || 0;
+    if(fortnightly){
+      tf+='<td style="color:var(--muted)">Ver barra</td>';
+    }else if(row.pct>0 && row.revoked){
       tf+=`<td style="color:var(--red)">${fmt(row.generatedPool)} revocado</td>`;
     }else{
       tf+=`<td style="color:${row.pct>0?'var(--green)':'var(--muted)'}">${row.pct>0?fmt(row.payablePool)+` (${(row.pct*100).toFixed(1)}%)`:'—'}</td>`;
@@ -2209,6 +2272,9 @@ function rrHTML(c,num,numCls,barColor,maxCash,cats,options={}){
 function renderBonus(){
   const rows=getBonusWeekRows();
   const tots=wkTotals();
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const periodName=fortnightly?'Quincena':'Semana';
   const monthlyRows=getMonthlyCashShareBonusRows();
   const monthlyBonusTotal=monthlyRows.reduce((sum,row)=>sum+row.bonus,0);
   const body=document.getElementById('bonus-body');
@@ -2232,7 +2298,7 @@ function renderBonus(){
   }
 
   if(rows.some((row)=>row.revoked)){
-    html+='<div class="bonus-alert">Un bonus generado fue revocado porque una semana posterior cerró debajo de la base. Las semanas malas anteriores no anulan un objetivo alcanzado después.</div>';
+    html+=`<div class="bonus-alert">Un bonus generado fue revocado porque una ${periodName.toLowerCase()} posterior cerró debajo de la base. Los períodos malos anteriores no anulan un objetivo alcanzado después.</div>`;
   }
 
   rows.forEach((row)=>{
@@ -2242,12 +2308,12 @@ function renderBonus(){
     totalGeneratedPool+=row.generatedPool || 0;
     if(row.pct>0){
       const distPool=row.revoked ? row.generatedPool : row.payablePool;
-      const dist=closers.filter(c=>(c.weeks[i]||0)>0).map(c=>({name:c.name,cash:c.weeks[i]||0,bonus:((c.weeks[i]||0)/row.total)*distPool}));
+      const dist=closers.filter(c=>(c.bonusPeriods?.[i]||0)>0).map(c=>({name:c.name,cash:c.bonusPeriods?.[i]||0,bonus:((c.bonusPeriods?.[i]||0)/row.total)*distPool}));
       const stateClass=row.revoked?'revoked':'counted';
       const stateLabel=row.revoked?'Revocado':'Contabiliza';
       html+=`<div class="bonus-wk ${row.revoked?'revoked':''}">
         <div class="bwh">
-          <span class="bwt">Semana ${i+1} — ${wk.label} (${wk.days}d)</span>
+          <span class="bwt">${periodName} ${i+1} — ${wk.label} (${wk.days}d)</span>
           <span class="bonus-state ${stateClass}">${stateLabel}</span>
         </div>
         <div class="bwpool">Generó ${(row.pct*100).toFixed(1)}% · Pool: ${fmt(row.generatedPool)} · Equipo: ${fmt(row.total)}</div>
@@ -2273,7 +2339,7 @@ function renderBonus(){
         stateLabel=row.closed?'Bajo base':'En curso';
         msg=`${fmt(row.total)} — faltan ${fmtK(row.floor-row.total)} para base`;
       }
-      html+=`<div class="no-bonus-wk"><span class="bonus-state ${stateClass}">${stateLabel}</span> S${i+1} ${wk.label} · ${msg}</div>`;
+      html+=`<div class="no-bonus-wk"><span class="bonus-state ${stateClass}">${stateLabel}</span> ${periodName.charAt(0)}${i+1} ${wk.label} · ${msg}</div>`;
     }
   });
 
@@ -2713,15 +2779,16 @@ async function boot(){
   const yr=parseInt(document.getElementById('sel-yr').value);
   const monthKey=`${yr}-${String(mo).padStart(2,'0')}`;
   weeks=calcWeeks(yr,mo);
-  const currentIndex=curWeekIdx();
+  bonusPeriods=calcObjectivePeriods(yr,mo);
+  const currentIndex=curBonusPeriodIdx();
   const monthChanged=selectedProgressMonthKey!==monthKey;
   if(selectedProgressWeekIndex===null || monthChanged){
-    selectedProgressWeekIndex=currentIndex>=0&&currentIndex<weeks.length?currentIndex:(weeks.length?Math.max(0,weeks.length-1):null);
-  }else if(selectedProgressWeekIndex>=weeks.length){
-    selectedProgressWeekIndex=weeks.length?weeks.length-1:null;
+    selectedProgressWeekIndex=currentIndex>=0&&currentIndex<bonusPeriods.length?currentIndex:(bonusPeriods.length?Math.max(0,bonusPeriods.length-1):null);
+  }else if(selectedProgressWeekIndex>=bonusPeriods.length){
+    selectedProgressWeekIndex=bonusPeriods.length?bonusPeriods.length-1:null;
   }
-  if(monthChanged && !(currentIndex>=0&&currentIndex<weeks.length)){
-    selectedProgressWeekIndex=weeks.length?0:null;
+  if(monthChanged && !(currentIndex>=0&&currentIndex<bonusPeriods.length)){
+    selectedProgressWeekIndex=bonusPeriods.length?0:null;
   }
   selectedProgressMonthKey=monthKey;
   syncWeekProgressSelect();

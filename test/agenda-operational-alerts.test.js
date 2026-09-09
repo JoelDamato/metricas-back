@@ -112,6 +112,15 @@ test('prorratea el objetivo semanal por los días transcurridos del mes', () => 
   assert.equal(total, 7000);
 });
 
+test('desde septiembre prorratea el objetivo quincenal conservando la proporción diaria', () => {
+  const total = targetToDate({
+    monthStart: new Date(2026, 8, 1),
+    evaluationDate: new Date(2026, 8, 15)
+  }, 40000);
+
+  assert.equal(Number(total.toFixed(2)), 42857.14);
+});
+
 test('adjunta los leads y comprobantes reales que explican cada alerta', () => {
   const result = build({
     year: 2026,

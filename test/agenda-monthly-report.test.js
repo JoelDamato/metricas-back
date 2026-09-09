@@ -181,6 +181,22 @@ test('una semana mala posterior revoca el bonus generado antes', () => {
   assert.equal(result.weeks[0].payablePool, 0);
 });
 
+test('desde septiembre el reporte calcula objetivos y bonus en dos quincenas', () => {
+  const result = report.buildCashAndBonus([
+    cash({ f_acreditacion: '2026-09-05', cash_collected_neto: 50000 }),
+    cash({ f_acreditacion: '2026-09-20', cash_collected_neto: 40000 })
+  ], { monto_base_mensual: 33000, objetivo_mensual: 40000 }, 2026, 9, new Date(2026, 9, 1));
+
+  assert.equal(result.cadence, 'fortnightly');
+  assert.deepEqual(result.weeks.map((period) => [period.startKey, period.endKey, period.total]), [
+    ['2026-09-01', '2026-09-15', 50000],
+    ['2026-09-16', '2026-09-30', 40000]
+  ]);
+  assert.equal(result.weeks[0].target, 42857.14);
+  assert.equal(result.weeks[0].pct, 0.01);
+  assert.equal(result.weeks[1].pct, 0);
+});
+
 test('el reporte mensual hereda el acceso comercial del Sistema de Agendas', () => {
   assert.equal(access.canAccessPageForUser({ email: 'closer@example.com', role: 'comercial' }, 'mag-reporte-mensual-final.html'), true);
   assert.equal(access.canAccessPageForUser({ email: 'iascinahuel@gmail.com', role: 'comercial' }, 'mag-reporte-mensual-final.html'), true);
@@ -195,6 +211,7 @@ test('Sistema de Agendas integra la pestaña mensual y permite descargar un HTML
   assert.match(agendaView, /data-tab="reporte-mensual-final"/);
   assert.match(agendaView, /id="monthlyReportFrame"/);
   assert.match(reportView, /id="monthlyReportStyles"/);
+  assert.match(reportView, /agenda-objective-periods\.js/);
   assert.match(pageScript, /new Blob\(\[html\]/);
   assert.match(pageScript, /reporte_\$\{report\.MONTHS\[currentModel\.month\]\.toLowerCase\(\)\}_\$\{currentModel\.year\}_final\.html/);
 });

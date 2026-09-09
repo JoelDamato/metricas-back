@@ -3,6 +3,9 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = report;
   if (root) root.agendaMonthlyReport = report;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function buildAgendaMonthlyReport() {
+  const OBJECTIVE_PERIODS = typeof module === 'object' && module.exports
+    ? require('./agenda-objective-periods')
+    : globalThis.agendaObjectivePeriods;
   const TEAM = [
     'Carlos Tu',
     'Patricia Conti',
@@ -46,7 +49,7 @@
     { score: 1, text: '-', tone: 'neutral' },
     { score: 0, text: '-', tone: 'neutral' },
     { score: -1, text: 'No cobra premios por cumplimientos de KPIs', tone: 'consequence' },
-    { score: -2, text: 'No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos semanales y mensuales', tone: 'consequence' },
+    { score: -2, text: 'No cobra premios por cumplimientos de KPIs ni premios por alcance de objetivos quincenales y mensuales', tone: 'consequence' },
     { score: -3, text: '-1, -2 y 1% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 7%', tone: 'severe' },
     { score: -4, text: '-1, -2 y 2% menos del porcentaje comisionable. Si comisionaba 8%, comisiona 6%', tone: 'severe' },
     { score: -5, text: '-1, -2, 2% menos del porcentaje comisionable y tomar solo agendas calidad D', tone: 'severe' }
@@ -356,16 +359,17 @@
 
   function normalizeBonusRules(raw = {}, year, month) {
     const source = raw.rules || raw;
-    const may2026 = Number(year) === 2026 && Number(month) === 5;
+    const defaults = OBJECTIVE_PERIODS.defaultRules(year, month);
     return {
-      floorWeekly: Number(source.monto_base_mensual ?? (may2026 ? 12500 : 16500)),
-      targetWeekly: Number(source.objetivo_mensual ?? (may2026 ? 16500 : 20000)),
-      stepWeekly: 5000
+      floorWeekly: Number(source.monto_base_mensual ?? defaults.floor),
+      targetWeekly: Number(source.objetivo_mensual ?? defaults.target),
+      stepWeekly: defaults.step,
+      standardDays: defaults.standardDays
     };
   }
 
   function buildCashAndBonus(rows = [], rawBonusRules = {}, year, month, now = new Date()) {
-    const weeks = calcWeeks(year, month);
+    const weeks = OBJECTIVE_PERIODS.calcPeriods(year, month, MONTHS.map((name) => name.slice(0, 3)));
     const validRows = eligibleCashRows(rows, year, month);
     const byCloser = new Map(TEAM.map((name) => [normalizeText(name), { name, total: 0, weeks: weeks.map(() => 0) }]));
     validRows.forEach((row) => {
@@ -381,7 +385,7 @@
     const rules = normalizeBonusRules(rawBonusRules, year, month);
     const baseWeeks = weeks.map((week, index) => {
       const total = [...byCloser.values()].reduce((sum, closer) => sum + closer.weeks[index], 0);
-      const ratio = week.days / 7;
+      const ratio = week.days / rules.standardDays;
       const floor = roundMoney(rules.floorWeekly * ratio);
       const target = roundMoney(rules.targetWeekly * ratio);
       const step = roundMoney(rules.stepWeekly * ratio);
@@ -440,6 +444,7 @@
 
     return {
       weeks: weekRows,
+      cadence: OBJECTIVE_PERIODS.isFortnightly(year, month) ? 'fortnightly' : 'weekly',
       closers: [...byCloser.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'es')),
       distributions: [...distributions.values()].sort((a, b) => b.bonus - a.bonus || a.name.localeCompare(b.name, 'es')),
       teamTotal,
@@ -457,12 +462,14 @@
     const topKpi = [...model.kpis].sort((a, b) => b.achieved.length - a.achieved.length || a.name.localeCompare(b.name, 'es'))[0] || null;
     const topScore = model.scores[0] || null;
     const bonusWeeks = model.cash.weeks.filter((week) => week.payablePool > 0);
+    const periodName = model.cash.cadence === 'fortnightly' ? 'quincena' : 'semana';
+    const periodPrefix = model.cash.cadence === 'fortnightly' ? 'Q' : 'S';
     const currency = (value) => `US$ ${Number(value || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const bullets = [];
     if (topCloser && model.cash.teamTotal > 0) bullets.push(`${topCloser.name} lideró el cash oficial del mes con ${currency(topCloser.total)}.`);
-    if (bestWeek) bullets.push(`La mejor semana fue la S${bestWeek.index + 1} (${bestWeek.label}) con ${currency(bestWeek.total)}.`);
-    if (worstWeek) bullets.push(`La semana con menor cash fue la S${worstWeek.index + 1} (${worstWeek.label}) con ${currency(worstWeek.total)}.`);
-    bullets.push(bonusWeeks.length ? `${bonusWeeks.length} semana${bonusWeeks.length === 1 ? '' : 's'} generaron bonus pagable por ${currency(model.bonusTotal)} en total.` : 'El mes no registra bonus pagable con las reglas actuales.');
+    if (bestWeek) bullets.push(`La mejor ${periodName} fue la ${periodPrefix}${bestWeek.index + 1} (${bestWeek.label}) con ${currency(bestWeek.total)}.`);
+    if (worstWeek) bullets.push(`La ${periodName} con menor cash fue la ${periodPrefix}${worstWeek.index + 1} (${worstWeek.label}) con ${currency(worstWeek.total)}.`);
+    bullets.push(bonusWeeks.length ? `${bonusWeeks.length} ${periodName}${bonusWeeks.length === 1 ? '' : 's'} generaron bonus pagable por ${currency(model.bonusTotal)} en total.` : 'El mes no registra bonus pagable con las reglas actuales.');
     if (topKpi) bullets.push(`${topKpi.name} encabezó los KPIs con ${topKpi.achieved.length} objetivo${topKpi.achieved.length === 1 ? '' : 's'} logrado${topKpi.achieved.length === 1 ? '' : 's'}.`);
     if (topScore) bullets.push(`${topScore.name} quedó primero en el ranking de puntos con ${topScore.score > 0 ? '+' : ''}${topScore.score}.`);
     return { bullets, bestWeek, worstWeek, topCloser, topKpi, topScore, bonusWeeks };
@@ -470,9 +477,10 @@
 
   function buildRecommendations(model) {
     const recommendations = [];
+    const periodName = model.cash.cadence === 'fortnightly' ? 'quincena' : 'semana';
     const baseMisses = model.cash.weeks.filter((week) => week.baseMiss);
-    if (baseMisses.length) recommendations.push(`Trabajar la consistencia semanal: ${baseMisses.length} semana${baseMisses.length === 1 ? '' : 's'} cerraron debajo de la base.`);
-    if (!model.cash.weeks.some((week) => week.payablePool > 0)) recommendations.push('Definir un plan semanal de avance para alcanzar el primer escalón de bonus antes del cierre del mes.');
+    if (baseMisses.length) recommendations.push(`Trabajar la consistencia por ${periodName}: ${baseMisses.length} ${periodName}${baseMisses.length === 1 ? '' : 's'} cerraron debajo de la base.`);
+    if (!model.cash.weeks.some((week) => week.payablePool > 0)) recommendations.push(`Definir un plan de avance por ${periodName} para alcanzar el primer escalón de bonus antes del cierre del mes.`);
     const maxPending = Math.max(...model.scores.map((row) => row.pending), 0);
     if (maxPending > 0) {
       const names = model.scores.filter((row) => row.pending === maxPending).map((row) => row.name).join(' y ');
