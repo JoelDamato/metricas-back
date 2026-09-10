@@ -91,6 +91,7 @@
     .wkp-dates{font-size:13px;font-weight:800;color:#f8fbff;letter-spacing:.01em;}
     .wkp-days{font-size:10px;color:#c4d0ea;margin-top:3px;}
     .wkp-meta{font-size:10px;font-family:'DM Mono',monospace;margin-top:6px;font-weight:700;}
+    .wkp-cash{font-size:13px;font-family:'DM Mono',monospace;margin-top:8px;font-weight:800;color:#f8fbff;}
     .wkp-meta.full{color:#79f1cb;}
     .wkp-meta.part{color:#ffd06f;}
     .wkp-ph{font-size:8px;font-weight:800;margin-top:6px;padding:3px 7px;border-radius:999px;display:inline-block;letter-spacing:.06em;text-transform:uppercase;}
@@ -2024,6 +2025,7 @@ function renderPills(ci){
     d.innerHTML=`<div class="wkp-num">${periodName} ${i+1}${i===currentPeriodIndex?'<span class="cur-dot"></span>':''}</div>
       <div class="wkp-dates">${wk.label}</div>
       <div class="wkp-days">${wk.days} día${wk.days>1?'s':''}</div>
+      <div class="wkp-cash">Cash: ${fmt(weekTotal)}</div>
       <div class="wkp-meta ${full?'full':'part'}">Meta: ${fmtK(target)}</div>
       <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">Piso: ${fmtK(floor)}</div>
       ${poolPct>0?`<div class="wkp-meta full" style="color:${bonusRow.revoked?'var(--red)':'var(--green)'}">${bonusRow.revoked?'Revocado':'Pool'}: ${fmt(poolValue)}</div>`:''}

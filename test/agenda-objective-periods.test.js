@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const periods = require('../public/metricas-v2/js/agenda-objective-periods');
 
@@ -29,4 +31,14 @@ test('la meta quincenal mantiene la misma proporción diaria de la regla semanal
   assert.equal(adjusted.floor, 35357.14);
   assert.equal(adjusted.target, 42857.14);
   assert.equal(adjusted.step, 10714.29);
+});
+
+test('el resumen de cada período muestra su cash acumulado', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-sistema-agendas.html'),
+    'utf8'
+  );
+
+  assert.match(view, /class="wkp-cash">Cash: \$\{fmt\(weekTotal\)\}/);
+  assert.match(view, /const totals=bonusTotals\(\)/);
 });
