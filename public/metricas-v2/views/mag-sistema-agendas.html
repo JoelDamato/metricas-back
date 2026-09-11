@@ -2071,29 +2071,30 @@ function renderNextWeek(ci){
 
 /* ═══ MAIN TABLE ═══ */
 function renderMainTable(ci){
-  const tots=wkTotals();
-  const objectiveRows=getBonusWeekRows();
   const {year,month}=getSelectedPeriod();
   const fortnightly=usesFortnightlyObjectives(year,month);
-  const bonusRows=fortnightly?[]:objectiveRows;
+  const displayPeriods=fortnightly?bonusPeriods:weeks;
+  const tots=fortnightly?bonusTotals():wkTotals();
+  const bonusRows=getBonusWeekRows();
+  const currentPeriodIndex=fortnightly?curBonusPeriodIdx():ci;
+  const periodPrefix=fortnightly?'Q':'S';
   const tbl=document.getElementById('main-tbl');
 
   // THEAD
   let th=`<thead><tr><th class="lft">Closer</th>`;
-  weeks.forEach((wk,i)=>{
-    const t=tots[i];const st=fortnightly?'idle':wkStatus(t,wk.days);const full=wk.days===7;
-    const{target}=adj(wk.days);const isCur=i===ci;
-    const pct=bonusPct(t,wk.days);
+  displayPeriods.forEach((period,i)=>{
+    const t=tots[i];const st=wkStatus(t,period.days);const full=fortnightly||period.days===7;
+    const{target}=adj(period.days);const isCur=i===currentPeriodIndex;
+    const pct=bonusPct(t,period.days);
     let cc,ct;
-    if(fortnightly){cc='idle';ct='Cash semanal';}
-    else if(st==='idle'){cc='idle';ct='Sin datos';}
+    if(st==='idle'){cc='idle';ct='Sin datos';}
     else if(st==='miss'){cc='miss';ct='Bajo piso';}
     else if(st==='mid'){cc='mid';ct='Sin bonus';}
     else{cc='hit';ct=`✓ ${(pct*100).toFixed(1)}%`;}
     th+=`<th class="wth" ${isCur?'style="background:rgba(75,142,245,.05)"':''}><div class="wth-in">
-      <span class="wth-n">S${i+1}${isCur?'<span class="cur-dot" style="margin-left:3px"></span>':''}</span>
-      <span class="wth-d">${wk.label} · ${wk.days}d</span>
-      <span class="wth-t ${full?'f':'p'}">${fortnightly?'Objetivo en barra quincenal':`Meta ${fmtK(target)}`}</span>
+      <span class="wth-n">${periodPrefix}${i+1}${isCur?'<span class="cur-dot" style="margin-left:3px"></span>':''}</span>
+      <span class="wth-d">${period.label} · ${period.days}d</span>
+      <span class="wth-t ${full?'f':'p'}">Meta ${fmtK(target)}</span>
       <span class="wth-chip ${cc}">${ct}</span>
     </div></th>`;
   });
@@ -2102,7 +2103,8 @@ function renderMainTable(ci){
   // TBODY
   let tb='<tbody>';
   closers.forEach((c,idx)=>{
-    const mt=monthTotal(c);
+    const periodCash=fortnightly?(c.bonusPeriods||[]):c.weeks;
+    const mt=displayPeriods.reduce((sum,_,index)=>sum+(periodCash[index]||0),0);
     const badge=c.status==='walter'?'<span class="cbadge w">ESP</span>':c.status==='nuevo'?'<span class="cbadge nv">NUEVO</span>':'';
     const stBtns=['normal','nuevo','walter'].map(s=>{
       const L={normal:'N',nuevo:'NV',walter:'W'}[s];
@@ -2120,15 +2122,15 @@ function renderMainTable(ci){
       <div class="st-row">${stBtns}</div>
     </div></td>`;
 
-    weeks.forEach((_,w)=>{
-      const teamT=tots[w]||0;const myT=c.weeks[w]||0;
+    displayPeriods.forEach((_,w)=>{
+      const teamT=tots[w]||0;const myT=periodCash[w]||0;
       const pct=teamT>0?myT/teamT*100:null;
       const met=pct===null?null:pct>=MIN_PCT;
-      const isCur=w===ci;
+      const isCur=w===currentPeriodIndex;
       let pctTxt='',pctCls='na',wiCls='';
       if(pct!==null){pctTxt=`${pct.toFixed(1)}%`;pctCls=met?'ok':'no';wiCls=met?'met':'fail';}
       tb+=`<td ${isCur?'style="background:rgba(75,142,245,.03)"':''}><div class="cell-wrap">
-        <span class="wi ${wiCls} ${c.weeks[w] ? '' : 'empty'}">${c.weeks[w] ? fmt(c.weeks[w]) : '—'}</span>
+        <span class="wi ${wiCls} ${myT ? '' : 'empty'}">${myT ? fmt(myT) : '—'}</span>
         <span class="cell-pct ${pctCls}">${pct!==null?pctTxt+'  '+(met?'✅':'❌'):'—'}</span>
       </div></td>`;
     });
@@ -2139,28 +2141,26 @@ function renderMainTable(ci){
   // TFOOT
   let tf='<tfoot>';
   tf+=`<tr class="tr-team"><td class="lft" style="text-align:left">Total Equipo</td>`;
-  weeks.forEach((wk,i)=>{
-    const t=tots[i];const st=wkStatus(t,wk.days);
+  displayPeriods.forEach((period,i)=>{
+    const t=tots[i];const st=wkStatus(t,period.days);
     const cls=st==='hit'?'col-hit':st==='mid'?'col-mid':'col-low';
     tf+=`<td class="${cls}">${fmt(t)}</td>`;
   });
   tf+=`<td>${fmt(tots.reduce((s,t)=>s+t,0))}</td></tr>`;
 
   tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">Mín. individual (10%)</td>`;
-  weeks.forEach((wk,i)=>{
+  displayPeriods.forEach((_,i)=>{
     const t=tots[i];const min=t*0.1;
     tf+=`<td style="color:var(--muted)">${t>0?fmtK(min):'—'}</td>`;
   });
   tf+=`<td></td></tr>`;
 
   tf+=`<tr class="tr-bonus"><td class="lft" style="text-align:left;color:var(--muted)">${fortnightly?'Pool bonus quincenal':'Pool bonus'}</td>`;
-  let totalPool=fortnightly?objectiveRows.reduce((sum,row)=>sum+(row.payablePool||0),0):0;
-  weeks.forEach((wk,i)=>{
+  let totalPool=0;
+  displayPeriods.forEach((_,i)=>{
     const row=bonusRows[i] || {};
-    if(!fortnightly) totalPool+=row.payablePool || 0;
-    if(fortnightly){
-      tf+='<td style="color:var(--muted)">Ver barra</td>';
-    }else if(row.pct>0 && row.revoked){
+    totalPool+=row.payablePool || 0;
+    if(row.pct>0 && row.revoked){
       tf+=`<td style="color:var(--red)">${fmt(row.generatedPool)} revocado</td>`;
     }else{
       tf+=`<td style="color:${row.pct>0?'var(--green)':'var(--muted)'}">${row.pct>0?fmt(row.payablePool)+` (${(row.pct*100).toFixed(1)}%)`:'—'}</td>`;

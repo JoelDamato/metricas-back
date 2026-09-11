@@ -42,3 +42,15 @@ test('el resumen de cada período muestra su cash acumulado', () => {
   assert.match(view, /class="wkp-cash">Cash: \$\{fmt\(weekTotal\)\}/);
   assert.match(view, /const totals=bonusTotals\(\)/);
 });
+
+test('la tabla principal cambia de semanas a quincenas desde el corte', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-sistema-agendas.html'),
+    'utf8'
+  );
+
+  assert.match(view, /const displayPeriods=fortnightly\?bonusPeriods:weeks/);
+  assert.match(view, /const tots=fortnightly\?bonusTotals\(\):wkTotals\(\)/);
+  assert.match(view, /const periodPrefix=fortnightly\?'Q':'S'/);
+  assert.match(view, /const periodCash=fortnightly\?\(c\.bonusPeriods\|\|\[\]\):c\.weeks/);
+});
