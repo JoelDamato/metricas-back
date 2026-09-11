@@ -8,8 +8,22 @@
   let activeStage = 'inicial';
   let clientSearchTimer = null;
   let clientSearchRequestId = 0;
+  let diagnosticsLoaded = false;
   const $ = (selector) => document.querySelector(selector);
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
+  function ccmOptions(selectedValue = '') {
+    const currentValue = String(selectedValue || '').trim();
+    const values = [...core.CCM_OPTIONS];
+    if (currentValue && !values.includes(currentValue)) values.push(currentValue);
+    return ['<option value="">— Elegir CCM —</option>', ...values.map((name) => `<option value="${escapeHtml(name)}" ${currentValue === name ? 'selected' : ''}>${escapeHtml(name)}</option>`)].join('');
+  }
+
+  function populateCcmSelect(selector, selectedValue = '') {
+    const select = $(selector);
+    if (!select) return;
+    select.innerHTML = ccmOptions(selectedValue);
+  }
 
   async function request(url, options = {}) {
     const response = await fetch(url, {
@@ -83,6 +97,15 @@
     $('#editMode').hidden = mode !== 'edit';
     $('#editor').hidden = true;
     if (mode !== 'editor') current = null;
+    if (mode === 'create') {
+      $('#clientSearch').value = '';
+      $('#clientPicker').value = '';
+      $('#clientSuggestions').innerHTML = '';
+      $('#clientList').innerHTML = '';
+      populateCcmSelect('#createCsmName');
+      showCreateSelection(null);
+    }
+    if (mode === 'edit') loadDiagnostics();
     setStatus('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -120,13 +143,17 @@
 
   function renderList() {
     const list = $('#clientList');
+    if (!diagnosticsLoaded) {
+      list.innerHTML = '<p class="muted">Cargando cartas existentes...</p>';
+      return;
+    }
     const terms = String($('#diagnosticSearch')?.value || '').trim().toLocaleLowerCase('es').split(/\s+/).filter(Boolean);
     const filtered = diagnostics.filter((item) => {
       const searchable = `${item.clientName} ${item.businessName} ${item.csmName}`.toLocaleLowerCase('es');
       return terms.every((term) => searchable.includes(term));
     });
     list.innerHTML = filtered.length
-      ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CSM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
+      ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CCM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
       : `<p class="muted">${diagnostics.length ? 'No encontré cartas con esa búsqueda.' : 'Todavía no hay diagnósticos creados.'}</p>`;
     list.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDiagnostic(button.dataset.open); });
   }
@@ -163,18 +190,18 @@
     const values = core.calculateStage(current.data.checkpoints[stage]);
     return `<div class="calcs">
       <div class="calc-block"><p class="calc-title">Margen de contribución neto</p><div class="calc-row"><span>Costo financiero efectivo</span><strong data-calc="financialCost">${core.formatPercent(values.financialCost)}</strong></div><div class="calc-row"><span>Impuesto variable efectivo</span><strong data-calc="taxCost">${core.formatPercent(values.taxCost)}</strong></div><div class="calc-row total"><span>Margen neto</span><strong data-calc="netMargin">${core.formatPercent(values.netMargin)}</strong></div></div>
-      <div class="calc-block"><p class="calc-title">Rentabilidad calculada</p><div class="calc-row"><span>Ventas</span><strong data-calc="sales">${core.formatMoney(values.sales)}</strong></div><div class="calc-row"><span>Costos variables</span><strong data-calc="variableCosts">${core.formatMoney(values.variableCosts)}</strong></div><div class="calc-row"><span>Contribución marginal</span><strong data-calc="contribution">${core.formatMoney(values.contribution)}</strong></div><div class="calc-row"><span>Costos fijos</span><strong data-calc="fixedCosts">${core.formatMoney(values.fixedCosts)}</strong></div><div class="calc-row total"><span>Resultado del mes</span><strong data-calc="monthlyResult">${core.formatMoney(values.monthlyResult)}</strong></div><div class="calc-row"><span>Rentabilidad neta</span><strong data-calc="netProfitPercent">${core.formatPercent(values.netProfitPercent)}</strong></div><div class="calc-row"><span>Punto de equilibrio</span><strong data-calc="breakEven">${core.formatMoney(values.breakEven)}</strong></div></div>
+      <div class="calc-block"><p class="calc-title">Rentabilidad calculada</p><div class="calc-row"><span>Ventas</span><strong data-calc="sales">${core.formatMoney(values.sales)}</strong></div><div class="calc-row section-end"><span>Costos variables</span><span class="calc-values"><strong data-calc="variableCosts">${core.formatMoney(values.variableCosts)}</strong><small data-calc="variableCostPercent">${core.formatPercent(values.variableCostPercent)}</small></span></div><div class="calc-row"><span>Contribución marginal</span><span class="calc-values"><strong data-calc="contribution">${core.formatMoney(values.contribution)}</strong><small data-calc="contributionPercent">${core.formatPercent(values.contributionPercent)}</small></span></div><div class="calc-row section-end"><span>Costos fijos</span><strong data-calc="fixedCosts">${core.formatMoney(values.fixedCosts)}</strong></div><div class="calc-row"><span>Resultado del mes</span><strong data-calc="monthlyResult">${core.formatMoney(values.monthlyResult)}</strong></div><div class="calc-row"><span>% de rentabilidad</span><strong data-calc="netProfitPercent">${core.formatPercent(values.netProfitPercent)}</strong></div><div class="calc-row"><span>Punto de equilibrio</span><strong data-calc="breakEven">${core.formatMoney(values.breakEven)}</strong></div></div>
     </div>`;
   }
 
   function financeBlock(stage) {
     const values = core.calculateStage(current.data.checkpoints[stage]).finance;
-    return `<div class="calcs"><div class="calc-block"><p class="calc-title">Resultado financiero a 30 días</p><div class="calc-row"><span>Solo proveedores</span><strong data-finance="providersResult">${core.formatMoney(values?.providersResult)}</strong></div><div class="calc-row total"><span>Todas las deudas</span><strong data-finance="totalResult">${core.formatMoney(values?.totalResult)}</strong></div></div><div class="calc-block"><p class="calc-title">Cashflow proyectado a 30 días</p><div class="calc-row"><span>Ingresos proyectados</span><strong data-finance="projectedIncome">${core.formatMoney(values?.projectedIncome)}</strong></div><div class="calc-row"><span>Egresos proyectados</span><strong data-finance="projectedExpense">${core.formatMoney(values?.projectedExpense)}</strong></div><div class="calc-row total"><span>Resultado proyectado</span><strong data-finance="projectedResult">${core.formatMoney(values?.projectedResult)}</strong></div></div></div>`;
+    return `<div class="calcs"><div class="calc-block"><p class="calc-title">Resultado financiero a 30 días</p><div class="calc-formula"><span><b>Saldo:</b> Disponible + A cobrar − Proveedores</span><span><b>Resultado final:</b> Disponible + A cobrar − Proveedores − Otros pagos</span></div><div class="calc-row"><span>Saldo</span><strong data-finance="providersResult">${core.formatMoney(values?.providersResult)}</strong></div><div class="calc-row total"><span>Resultado final</span><strong data-finance="totalResult">${core.formatMoney(values?.totalResult)}</strong></div></div><div class="calc-block"><p class="calc-title">Cashflow proyectado a 30 días</p><p class="calc-subtitle">Situación actual</p><div class="calc-row"><span>Disponible + A cobrar</span><strong data-finance="currentIncome">${core.formatMoney(values?.currentIncome)}</strong></div><div class="calc-row section-end"><span>Proveedores + Otros pagos</span><strong data-finance="currentExpense">${core.formatMoney(values?.currentExpense)}</strong></div><p class="calc-subtitle">Proyección próximos 30 días</p><div class="calc-row"><span>Cobranzas estimadas</span><strong data-finance="futureIncome">${core.formatMoney(values?.futureIncome)}</strong></div><div class="calc-row section-end"><span>Compras estimadas + Costos fijos</span><strong data-finance="futureExpense">${core.formatMoney(values?.futureExpense)}</strong></div><div class="calc-row"><span>Ingresos totales</span><strong data-finance="projectedIncome">${core.formatMoney(values?.projectedIncome)}</strong></div><div class="calc-row"><span>Egresos totales</span><strong data-finance="projectedExpense">${core.formatMoney(values?.projectedExpense)}</strong></div><div class="calc-row total"><span>Resultado proyectado</span><strong data-finance="projectedResult">${core.formatMoney(values?.projectedResult)}</strong></div></div></div>`;
   }
 
   function areaHtml(item, checkpoint, stage) {
     const area = checkpoint.areas[item.key];
-    return `<article class="area" data-area-card="${item.key}"><div class="area-head"><div><h3>${escapeHtml(item.label)}</h3><p class="question">${escapeHtml(item.question)}</p></div>${scoreBadge(area.score, `score-${stage}-${item.key}`)}</div>${numberFields(item, area, stage)}${selectFields(item, area, stage)}${item.key === 'resultados' ? profitabilityBlock(stage) : ''}${item.key === 'finanzas' ? financeBlock(stage) : ''}<div class="field" style="margin-top:11px"><span>Nota interna del CSM</span><textarea data-note data-stage="${stage}" data-area="${item.key}" placeholder="Nota breve opcional">${escapeHtml(area.note || '')}</textarea></div></article>`;
+    return `<article class="area" data-area-card="${item.key}"><div class="area-head"><div><h3>${escapeHtml(item.label)}</h3><p class="question">${escapeHtml(item.question)}</p></div>${scoreBadge(area.score, `score-${stage}-${item.key}`)}</div>${numberFields(item, area, stage)}${selectFields(item, area, stage)}${item.key === 'resultados' ? profitabilityBlock(stage) : ''}${item.key === 'finanzas' ? financeBlock(stage) : ''}<div class="field" style="margin-top:11px"><span>Nota interna del CCM</span><textarea data-note data-stage="${stage}" data-area="${item.key}" placeholder="Nota breve opcional">${escapeHtml(area.note || '')}</textarea></div></article>`;
   }
 
   function summaryHtml(checkpoint, stage) {
@@ -190,7 +217,7 @@
   function stageHtml(stage) {
     const checkpoint = current.data.checkpoints[stage];
     const labels = { inicial: 'Antes de empezar', medio: 'Unidades 2, 3 y 4', final: 'Unidades 6 y 7' };
-    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><input data-meta="csm" data-stage="${stage}" value="${escapeHtml(checkpoint.csm || current.csmName || '')}"/></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
+    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CCM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${ccmOptions(checkpoint.csm || current.csmName || '')}</select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
   }
 
   const ROUTE_METRICS = [
@@ -244,9 +271,9 @@
       if (badge) { badge.className = `score-badge ${core.band(score)}`; badge.textContent = score == null ? 'Sin datos aún' : `${score}/5 · ${core.bandLabel(core.band(score))}`; }
     });
     const values = core.calculateStage(checkpoint);
-    const calcFormat = { financialCost: core.formatPercent, taxCost: core.formatPercent, netMargin: core.formatPercent, sales: core.formatMoney, variableCosts: core.formatMoney, contribution: core.formatMoney, fixedCosts: core.formatMoney, monthlyResult: core.formatMoney, netProfitPercent: core.formatPercent, breakEven: core.formatMoney };
+    const calcFormat = { financialCost: core.formatPercent, taxCost: core.formatPercent, netMargin: core.formatPercent, sales: core.formatMoney, variableCosts: core.formatMoney, variableCostPercent: core.formatPercent, contribution: core.formatMoney, contributionPercent: core.formatPercent, fixedCosts: core.formatMoney, monthlyResult: core.formatMoney, netProfitPercent: core.formatPercent, breakEven: core.formatMoney };
     Object.entries(calcFormat).forEach(([key, formatter]) => { const element = $(`[data-calc="${key}"]`); if (element) element.textContent = formatter(values[key]); });
-    ['providersResult', 'totalResult', 'projectedIncome', 'projectedExpense', 'projectedResult'].forEach((key) => { const element = $(`[data-finance="${key}"]`); if (element) element.textContent = core.formatMoney(values.finance?.[key]); });
+    ['providersResult', 'totalResult', 'currentIncome', 'currentExpense', 'futureIncome', 'futureExpense', 'projectedIncome', 'projectedExpense', 'projectedResult'].forEach((key) => { const element = $(`[data-finance="${key}"]`); if (element) element.textContent = core.formatMoney(values.finance?.[key]); });
   }
 
   function bindStageEvents(stage) {
@@ -287,30 +314,40 @@
     $('#stageContent').querySelector('[data-save-stage]').onclick = (event) => saveCurrent(`Checkpoint ${stage} guardado.`, event.currentTarget);
   }
 
-  async function load() {
-    setStatus('Cargando...');
-    try {
-      const [diagnosticResponse, csmResponse] = await Promise.all([
-        request('/api/metricas/diagnosticos'),
-        request('/api/metricas/diagnosticos/clientes-csm')
-      ]);
-      diagnostics = diagnosticResponse.diagnosticos || [];
-      clients = csmResponse.clients || [];
-      $('#clientSearch').addEventListener('input', searchClients);
-      $('#diagnosticSearch').addEventListener('input', renderList);
-      renderPicker();
+  async function loadDiagnostics() {
+    if (diagnosticsLoaded) {
       renderList();
-      setStatus('');
+      return;
+    }
+    renderList();
+    try {
+      const diagnosticResponse = await request('/api/metricas/diagnosticos');
+      diagnostics = diagnosticResponse.diagnosticos || [];
+      diagnosticsLoaded = true;
+      renderList();
     } catch (error) {
+      $('#clientList').innerHTML = '<p class="muted">No se pudieron cargar las cartas existentes.</p>';
       setStatus(error.message, 'error');
     }
+  }
+
+  function load() {
+    clients = [];
+    diagnostics = [];
+    populateCcmSelect('#createCsmName');
+    populateCcmSelect('#csmName');
+    $('#clientSearch').addEventListener('input', searchClients);
+    $('#diagnosticSearch').addEventListener('input', renderList);
+    renderPicker();
+    $('#clientList').innerHTML = '';
+    setStatus('');
   }
 
   async function openDiagnostic(id) {
     current = diagnostics.find((item) => item.id === id);
     if (!current) return;
     current.data = core.normalizeData(current.data, current.csmName);
-    $('#csmName').value = current.csmName || '';
+    populateCcmSelect('#csmName', current.csmName || '');
     $('#modeChooser').hidden = true;
     $('#createMode').hidden = true;
     $('#editMode').hidden = true;

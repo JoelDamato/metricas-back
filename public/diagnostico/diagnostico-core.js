@@ -4,6 +4,7 @@
   if (root) root.DiagnosticCore = api;
 }(typeof window !== 'undefined' ? window : globalThis, function buildDiagnosticCore() {
   const STAGES = ['inicial', 'medio', 'final'];
+  const CCM_OPTIONS = ['Vale', 'Lidia Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía'];
   const PERCENT_FIELDS = new Set([
     'margenContribucion', 'margenMarcacion', 'costosFinancieros', 'impuestosVariables',
     'margenMarcacionProducto', 'margenContribucionProducto'
@@ -41,6 +42,7 @@
     { key: 'deudaProveedores', label: 'A pagar a proveedores, 30 días ($)' },
     { key: 'otrasDeudas', label: 'Otras deudas/pagos, 30 días ($)' },
     { key: 'cobranzaEstimada', label: 'Cobranza estimada por ventas, próximos 30 días ($)' },
+    { key: 'comprasProveedoresEstimadas', label: 'Compras a proveedores estimadas, próximos 30 días ($)' },
     { key: 'pagosCostosFijos', label: 'Pagos de costos fijos, próximos 30 días ($)' }
   ];
   const FINANCE_SELECT_FIELDS = [
@@ -350,11 +352,13 @@
     const fixedCosts = parseMoney(results.nums?.costosFijos);
     const contribution = Number.isFinite(sales) && netMargin !== null ? sales * (netMargin / 100) : null;
     const variableCosts = contribution !== null ? sales - contribution : null;
+    const variableCostPercent = variableCosts !== null && sales !== 0 ? (variableCosts / sales) * 100 : null;
+    const contributionPercent = contribution !== null && sales !== 0 ? (contribution / sales) * 100 : null;
     const monthlyResult = contribution !== null && Number.isFinite(fixedCosts) ? contribution - fixedCosts : null;
     const netProfitPercent = monthlyResult !== null && sales !== 0 ? (monthlyResult / sales) * 100 : null;
     const breakEven = Number.isFinite(fixedCosts) && netMargin ? fixedCosts / (netMargin / 100) : null;
 
-    const financeKeys = ['dineroDisponible', 'porCobrar', 'deudaProveedores', 'otrasDeudas', 'cobranzaEstimada', 'pagosCostosFijos'];
+    const financeKeys = ['dineroDisponible', 'porCobrar', 'deudaProveedores', 'otrasDeudas', 'cobranzaEstimada', 'comprasProveedoresEstimadas', 'pagosCostosFijos'];
     const hasFinance = financeKeys.some((key) => String(finance.nums?.[key] || '').trim());
     const numberOrZero = (key) => {
       const parsed = parseMoney(finance.nums?.[key]);
@@ -365,17 +369,27 @@
     const providerDebt = numberOrZero('deudaProveedores');
     const otherDebt = numberOrZero('otrasDeudas');
     const estimatedCollection = numberOrZero('cobranzaEstimada');
+    const estimatedPurchases = numberOrZero('comprasProveedoresEstimadas');
     const fixedPayments = numberOrZero('pagosCostosFijos');
+    const currentIncome = available + receivable;
+    const currentExpense = providerDebt + otherDebt;
+    const futureIncome = estimatedCollection;
+    const futureExpense = estimatedPurchases + fixedPayments;
 
     return {
-      financialCost, taxCost, netMargin, sales, variableCosts, contribution, fixedCosts,
+      financialCost, taxCost, netMargin, sales, variableCosts, variableCostPercent,
+      contribution, contributionPercent, fixedCosts,
       monthlyResult, netProfitPercent, breakEven,
       finance: hasFinance ? {
         providersResult: available + receivable - providerDebt,
         totalResult: available + receivable - providerDebt - otherDebt,
-        projectedIncome: available + receivable + estimatedCollection,
-        projectedExpense: providerDebt + otherDebt + fixedPayments,
-        projectedResult: available + receivable + estimatedCollection - providerDebt - otherDebt - fixedPayments
+        currentIncome,
+        currentExpense,
+        futureIncome,
+        futureExpense,
+        projectedIncome: currentIncome + futureIncome,
+        projectedExpense: currentExpense + futureExpense,
+        projectedResult: currentIncome + futureIncome - currentExpense - futureExpense
       } : null
     };
   }
@@ -391,7 +405,7 @@
   }
 
   return {
-    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS,
+    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CCM_OPTIONS,
     emptyData, normalizeData, computeAutoScore, applyAutoScores, getPatternScore,
     computeSummary, band, bandLabel, parseMoney, parsePercent, formatMoneyInput,
     formatPercentInput, formatField, marginContributionFromMarkup, autofillDerivedMargins,

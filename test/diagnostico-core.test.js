@@ -45,6 +45,7 @@ test('calcula automáticamente puntajes, márgenes, rentabilidad y cashflow', ()
     deudaProveedores: '50.000',
     otrasDeudas: '20.000',
     cobranzaEstimada: '300.000',
+    comprasProveedoresEstimadas: '80.000',
     pagosCostosFijos: '100.000'
   };
 
@@ -57,11 +58,18 @@ test('calcula automáticamente puntajes, márgenes, rentabilidad y cashflow', ()
   assert.equal(checkpoint.areas.resultados.score, 5);
   assert.equal(checkpoint.areas.finanzas.score, 3);
   assert.equal(calculated.netMargin, 47);
+  assert.equal(calculated.variableCostPercent, 53);
+  assert.equal(calculated.contributionPercent, 47);
   assert.equal(calculated.monthlyResult, 170000);
   assert.equal(calculated.netProfitPercent, 17);
   assert.equal(Math.round(calculated.breakEven), 638298);
   assert.equal(calculated.finance.totalResult, 230000);
-  assert.equal(calculated.finance.projectedResult, 430000);
+  assert.equal(calculated.finance.currentIncome, 300000);
+  assert.equal(calculated.finance.currentExpense, 70000);
+  assert.equal(calculated.finance.futureIncome, 300000);
+  assert.equal(calculated.finance.futureExpense, 180000);
+  assert.equal(calculated.finance.projectedExpense, 250000);
+  assert.equal(calculated.finance.projectedResult, 350000);
 });
 
 test('un diagnóstico vacío no aparece como avanzado ni inventa costos en cero', () => {
@@ -112,6 +120,7 @@ test('migra diagnósticos anteriores sin perder valores, puntajes ni dificultade
   assert.match(migrated.checkpoints.inicial.otroDetalle, /No conoce su margen/);
   assert.equal(migrated.checkpoints.final.areas.resultados.nums.facturacionPromedio, '2.000.000');
   assert.equal(migrated.checkpoints.final.areas.finanzas.score, 4);
+  assert.equal(migrated.checkpoints.final.areas.finanzas.nums.comprasProveedoresEstimadas, '');
 });
 
 test('mantiene búsqueda CSM, persistencia Supabase y link público por GHL', () => {
@@ -147,7 +156,7 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
   });
   assert.match(adminScript, /terms\.every/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-2/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-1/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
@@ -181,8 +190,51 @@ test('la carta separa crear de editar y bloquea visualmente la identidad elegida
   assert.match(adminHtml, /Confirmación obligatoria/);
   assert.match(adminHtml, /id="editingClientName"/);
   assert.match(adminHtml, /Cliente bloqueado/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260825-2/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-1/);
   assert.match(adminScript, /createConfirmTitle/);
   assert.match(adminScript, /editingClientName/);
   assert.match(adminScript, /showWorkflow\('edit'\)/);
+});
+
+test('CCM usa una lista única y conserva valores históricos', () => {
+  assert.deepEqual(core.CCM_OPTIONS, ['Vale', 'Lidia Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía']);
+  assert.match(adminHtml, /<select id="createCsmName"><\/select>/);
+  assert.match(adminHtml, /<select id="csmName"><\/select>/);
+  assert.match(adminScript, /if \(currentValue && !values\.includes\(currentValue\)\) values\.push\(currentValue\)/);
+  assert.match(adminScript, /CCM responsable en esta etapa/);
+});
+
+test('la rentabilidad expone porcentajes, separadores y las fórmulas solicitadas', () => {
+  [adminScript, publicHtml].forEach((source) => {
+    assert.match(source, /% de rentabilidad/);
+    assert.doesNotMatch(source, /Rentabilidad neta/);
+    assert.match(source, /variableCostPercent/);
+    assert.match(source, /contributionPercent/);
+    assert.match(source, /section-end/);
+    assert.match(source, /Disponible \+ A cobrar − Proveedores/);
+    assert.match(source, /Disponible \+ A cobrar − Proveedores − Otros pagos/);
+  });
+});
+
+test('las compras futuras impactan en egresos y se separan de la situación actual', () => {
+  const data = core.emptyData();
+  const finance = data.checkpoints.inicial.areas.finanzas.nums;
+  assert.ok(Object.hasOwn(finance, 'comprasProveedoresEstimadas'));
+  assert.match(core.STAGE_ITEMS.inicial.find((area) => area.key === 'finanzas').numFields.map((field) => field.label).join(' '), /Compras a proveedores estimadas/);
+  assert.match(adminScript, /Situación actual/);
+  assert.match(adminScript, /Proyección próximos 30 días/);
+  assert.match(publicHtml, /Compras estimadas \+ Costos fijos/);
+});
+
+test('las cartas existentes solo se cargan al entrar al flujo de edición', () => {
+  assert.match(adminScript, /if \(mode === 'edit'\) loadDiagnostics\(\)/);
+  assert.match(adminScript, /function load\(\) \{[\s\S]*clients = \[\];[\s\S]*diagnostics = \[\];/);
+  assert.match(adminScript, /if \(mode === 'create'\) \{[\s\S]*clientList/);
+});
+
+test('el tema claro usa la paleta azul de la marca en ambas cartas', () => {
+  [adminHtml, publicHtml].forEach((source) => {
+    assert.match(source, /--(?:diag-)?gold:#1f66b3/);
+    assert.match(source, /--(?:diag-)?bg:#f3f7fc/);
+  });
 });
