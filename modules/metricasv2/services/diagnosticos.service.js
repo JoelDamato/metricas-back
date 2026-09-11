@@ -2,6 +2,16 @@ const axios = require('axios');
 const crypto = require('crypto');
 const env = require('../config/env');
 
+const CSM_NAMES = ['Valeria Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía Gallardo'];
+const CSM_NAME_ALIASES = {
+  vale: 'Valeria Calmet',
+  valeria: 'Valeria Calmet',
+  'lidia calmet': 'Valeria Calmet',
+  sofia: 'Sofía Gallardo',
+  sofi: 'Sofía Gallardo',
+  sofie: 'Sofía Gallardo'
+};
+
 function headers(extra = {}) {
   if (!env.supabaseUrl || !env.supabaseKey) {
     const error = new Error('Faltan las credenciales de datos para Diagnósticos');
@@ -15,6 +25,27 @@ function cleanText(value, limit = 400) { return String(value || '').trim().slice
 function cleanData(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
 function tableUrl() { return `${env.supabaseUrl}/rest/v1/csm_diagnosticos`; }
 function safeId(value) { return String(value || '').replace(/[^a-f0-9-]/gi, ''); }
+
+function normalizeCsmName(value) {
+  const current = cleanText(value, 180).replace(/\s+/g, ' ');
+  if (!current) return '';
+  const key = current.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+  const canonical = CSM_NAMES.find((name) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es') === key);
+  return canonical || CSM_NAME_ALIASES[key] || current;
+}
+
+function normalizeDiagnosticData(value, fallbackCsm = '') {
+  const data = cleanData(value);
+  const checkpoints = cleanData(data.checkpoints);
+  if (!Object.keys(checkpoints).length) return data;
+  return {
+    ...data,
+    checkpoints: Object.fromEntries(Object.entries(checkpoints).map(([stage, checkpointValue]) => {
+      const checkpoint = cleanData(checkpointValue);
+      return [stage, { ...checkpoint, csm: normalizeCsmName(checkpoint.csm || fallbackCsm) }];
+    }))
+  };
+}
 
 function normalizeSearchTerm(value) {
   return String(value || '')
@@ -98,13 +129,14 @@ async function listDiagnosticClients(rawQuery) {
 
 function normalize(row) {
   if (!row) return null;
+  const csmName = normalizeCsmName(row.csm_name);
   return {
     id: row.id,
     clientGhlId: row.client_ghlid || '',
     clientName: row.client_name || '',
     businessName: row.business_name || '',
-    csmName: row.csm_name || '',
-    data: cleanData(row.data),
+    csmName,
+    data: normalizeDiagnosticData(row.data, csmName),
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null
   };
@@ -113,6 +145,7 @@ function normalize(row) {
 function payloadFrom(input = {}, user = {}) {
   const clientGhlId = cleanText(input.clientGhlId, 180);
   const clientName = cleanText(input.clientName, 180);
+  const csmName = normalizeCsmName(input.csmName);
   if (!clientGhlId || !clientName) {
     const error = new Error('Elegí un cliente válido de la base CSM');
     error.statusCode = 400;
@@ -122,8 +155,8 @@ function payloadFrom(input = {}, user = {}) {
     client_ghlid: clientGhlId,
     client_name: clientName,
     business_name: cleanText(input.businessName, 180) || null,
-    csm_name: cleanText(input.csmName, 180) || null,
-    data: cleanData(input.data),
+    csm_name: csmName || null,
+    data: normalizeDiagnosticData(input.data, csmName),
     updated_by_email: cleanText(user.email, 180).toLowerCase() || null,
     updated_at: new Date().toISOString()
   };
@@ -170,7 +203,8 @@ async function getPublicDiagnosticoByGhlId(ghlId) {
   const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'client_name,business_name,csm_name,data,updated_at', client_ghlid: `eq.${safeGhlId}`, limit: 1 } });
   const row = response.data?.[0];
   if (!row) { const error = new Error('Este cliente todavía no tiene un diagnóstico'); error.statusCode = 404; throw error; }
-  return { clientName: row.client_name || '', businessName: row.business_name || '', csmName: row.csm_name || '', data: cleanData(row.data), updatedAt: row.updated_at || null };
+  const csmName = normalizeCsmName(row.csm_name);
+  return { clientName: row.client_name || '', businessName: row.business_name || '', csmName, data: normalizeDiagnosticData(row.data, csmName), updatedAt: row.updated_at || null };
 }
 
 module.exports = {
@@ -180,5 +214,5 @@ module.exports = {
   updateDiagnostico,
   deleteDiagnostico,
   getPublicDiagnosticoByGhlId,
-  _test: { normalizeSearchTerm, buildNameSearchParams, mergeDiagnosticClients }
+  _test: { normalizeSearchTerm, buildNameSearchParams, mergeDiagnosticClients, normalizeCsmName, normalizeDiagnosticData }
 };

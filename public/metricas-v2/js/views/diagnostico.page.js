@@ -12,17 +12,17 @@
   const $ = (selector) => document.querySelector(selector);
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
-  function ccmOptions(selectedValue = '') {
-    const currentValue = String(selectedValue || '').trim();
-    const values = [...core.CCM_OPTIONS];
+  function csmOptions(selectedValue = '') {
+    const currentValue = core.normalizeCsmName(selectedValue);
+    const values = [...core.CSM_OPTIONS];
     if (currentValue && !values.includes(currentValue)) values.push(currentValue);
-    return ['<option value="">— Elegir CCM —</option>', ...values.map((name) => `<option value="${escapeHtml(name)}" ${currentValue === name ? 'selected' : ''}>${escapeHtml(name)}</option>`)].join('');
+    return ['<option value="">— Elegir CSM —</option>', ...values.map((name) => `<option value="${escapeHtml(name)}" ${currentValue === name ? 'selected' : ''}>${escapeHtml(name)}</option>`)].join('');
   }
 
-  function populateCcmSelect(selector, selectedValue = '') {
+  function populateCsmSelect(selector, selectedValue = '') {
     const select = $(selector);
     if (!select) return;
-    select.innerHTML = ccmOptions(selectedValue);
+    select.innerHTML = csmOptions(selectedValue);
   }
 
   async function request(url, options = {}) {
@@ -102,7 +102,7 @@
       $('#clientPicker').value = '';
       $('#clientSuggestions').innerHTML = '';
       $('#clientList').innerHTML = '';
-      populateCcmSelect('#createCsmName');
+      populateCsmSelect('#createCsmName');
       showCreateSelection(null);
     }
     if (mode === 'edit') loadDiagnostics();
@@ -149,11 +149,11 @@
     }
     const terms = String($('#diagnosticSearch')?.value || '').trim().toLocaleLowerCase('es').split(/\s+/).filter(Boolean);
     const filtered = diagnostics.filter((item) => {
-      const searchable = `${item.clientName} ${item.businessName} ${item.csmName}`.toLocaleLowerCase('es');
+      const searchable = `${item.clientName} ${item.businessName} ${core.normalizeCsmName(item.csmName)}`.toLocaleLowerCase('es');
       return terms.every((term) => searchable.includes(term));
     });
     list.innerHTML = filtered.length
-      ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(item.csmName || 'Sin CCM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
+      ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(core.normalizeCsmName(item.csmName) || 'Sin CSM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
       : `<p class="muted">${diagnostics.length ? 'No encontré cartas con esa búsqueda.' : 'Todavía no hay diagnósticos creados.'}</p>`;
     list.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDiagnostic(button.dataset.open); });
   }
@@ -201,7 +201,7 @@
 
   function areaHtml(item, checkpoint, stage) {
     const area = checkpoint.areas[item.key];
-    return `<article class="area" data-area-card="${item.key}"><div class="area-head"><div><h3>${escapeHtml(item.label)}</h3><p class="question">${escapeHtml(item.question)}</p></div>${scoreBadge(area.score, `score-${stage}-${item.key}`)}</div>${numberFields(item, area, stage)}${selectFields(item, area, stage)}${item.key === 'resultados' ? profitabilityBlock(stage) : ''}${item.key === 'finanzas' ? financeBlock(stage) : ''}<div class="field" style="margin-top:11px"><span>Nota interna del CCM</span><textarea data-note data-stage="${stage}" data-area="${item.key}" placeholder="Nota breve opcional">${escapeHtml(area.note || '')}</textarea></div></article>`;
+    return `<article class="area" data-area-card="${item.key}"><div class="area-head"><div><h3>${escapeHtml(item.label)}</h3><p class="question">${escapeHtml(item.question)}</p></div>${scoreBadge(area.score, `score-${stage}-${item.key}`)}</div>${numberFields(item, area, stage)}${selectFields(item, area, stage)}${item.key === 'resultados' ? profitabilityBlock(stage) : ''}${item.key === 'finanzas' ? financeBlock(stage) : ''}<div class="field" style="margin-top:11px"><span>Nota interna del CSM</span><textarea data-note data-stage="${stage}" data-area="${item.key}" placeholder="Nota breve opcional">${escapeHtml(area.note || '')}</textarea></div></article>`;
   }
 
   function summaryHtml(checkpoint, stage) {
@@ -217,7 +217,7 @@
   function stageHtml(stage) {
     const checkpoint = current.data.checkpoints[stage];
     const labels = { inicial: 'Antes de empezar', medio: 'Unidades 2, 3 y 4', final: 'Unidades 6 y 7' };
-    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CCM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${ccmOptions(checkpoint.csm || current.csmName || '')}</select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
+    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${csmOptions(checkpoint.csm || current.csmName || '')}</select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
   }
 
   const ROUTE_METRICS = [
@@ -334,8 +334,8 @@
   function load() {
     clients = [];
     diagnostics = [];
-    populateCcmSelect('#createCsmName');
-    populateCcmSelect('#csmName');
+    populateCsmSelect('#createCsmName');
+    populateCsmSelect('#csmName');
     $('#clientSearch').addEventListener('input', searchClients);
     $('#diagnosticSearch').addEventListener('input', renderList);
     renderPicker();
@@ -347,7 +347,8 @@
     current = diagnostics.find((item) => item.id === id);
     if (!current) return;
     current.data = core.normalizeData(current.data, current.csmName);
-    populateCcmSelect('#csmName', current.csmName || '');
+    current.csmName = core.normalizeCsmName(current.csmName);
+    populateCsmSelect('#csmName', current.csmName);
     $('#modeChooser').hidden = true;
     $('#createMode').hidden = true;
     $('#editMode').hidden = true;

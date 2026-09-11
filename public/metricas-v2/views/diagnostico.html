@@ -59,7 +59,7 @@
         <div class="workflow-panel-head"><div><span class="editing-eyebrow">Nueva carta</span><h2>Crear Carta de Rumbo</h2><p class="muted">Primero seleccioná y confirmá el cliente correcto.</p></div><button class="btn alt workflow-back" type="button" data-back-to-modes>← Cambiar acción</button></div>
         <div class="client-form">
           <div class="field"><label>Buscar cliente</label><input id="clientSearch" type="search" placeholder="Escribí nombre o negocio" autocomplete="off"/><div id="clientSuggestions" class="client-suggestions"></div><input id="clientPicker" type="hidden"/></div>
-          <div class="field"><label>CCM responsable</label><select id="createCsmName"></select></div>
+          <div class="field"><label>CSM responsable</label><select id="createCsmName"></select></div>
           <button id="newClient" class="btn" type="button" disabled>Revisar y confirmar</button>
         </div>
         <p class="muted" style="font-size:12px">El cliente se busca en CSM y en Leads; el diagnóstico queda vinculado a su GHL ID.</p>
@@ -76,7 +76,7 @@
       <section id="editor" hidden>
         <div class="editing-identity">
           <div><span class="editing-eyebrow">Estás editando la Carta de</span><h2 id="editingClientName"></h2><p id="editingClientMeta" class="muted"></p></div>
-          <div class="field"><label>CCM responsable general</label><select id="csmName"></select></div>
+          <div class="field"><label>CSM responsable general</label><select id="csmName"></select></div>
           <div><div class="identity-lock"><strong>🔒 Cliente bloqueado</strong>Esta carta no puede cambiar de cliente mientras la editás.</div><button id="backToEditList" class="btn alt" type="button" style="margin-top:9px">← Elegir otra Carta</button></div>
         </div>
         <div class="panel editor-actions-panel">
@@ -87,7 +87,7 @@
         <section id="stageContent"></section>
       </section>
     </main>
-    <script src="/diagnostico/diagnostico-core.js?v=20260911-1"></script>
-    <script src="/js/views/diagnostico.page.js?v=20260911-1"></script>
+    <script src="/diagnostico/diagnostico-core.js?v=20260911-2"></script>
+    <script src="/js/views/diagnostico.page.js?v=20260911-2"></script>
   </body>
 </html>

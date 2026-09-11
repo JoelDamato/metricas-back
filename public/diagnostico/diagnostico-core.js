@@ -4,7 +4,15 @@
   if (root) root.DiagnosticCore = api;
 }(typeof window !== 'undefined' ? window : globalThis, function buildDiagnosticCore() {
   const STAGES = ['inicial', 'medio', 'final'];
-  const CCM_OPTIONS = ['Vale', 'Lidia Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía'];
+  const CSM_OPTIONS = ['Valeria Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía Gallardo'];
+  const CSM_NAME_ALIASES = {
+    vale: 'Valeria Calmet',
+    valeria: 'Valeria Calmet',
+    'lidia calmet': 'Valeria Calmet',
+    sofia: 'Sofía Gallardo',
+    sofi: 'Sofía Gallardo',
+    sofie: 'Sofía Gallardo'
+  };
   const PERCENT_FIELDS = new Set([
     'margenContribucion', 'margenMarcacion', 'costosFinancieros', 'impuestosVariables',
     'margenMarcacionProducto', 'margenContribucionProducto'
@@ -129,6 +137,14 @@
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   }
 
+  function normalizeCsmName(value) {
+    const current = String(value || '').trim().replace(/\s+/g, ' ');
+    if (!current) return '';
+    const key = current.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+    const canonical = CSM_OPTIONS.find((name) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es') === key);
+    return canonical || CSM_NAME_ALIASES[key] || current;
+  }
+
   function emptyCheckpoint(stage) {
     const areas = {};
     STAGE_ITEMS[stage].forEach((item) => {
@@ -141,7 +157,7 @@
 
   function emptyData(csmName = '') {
     const checkpoints = Object.fromEntries(STAGES.map((stage) => [stage, emptyCheckpoint(stage)]));
-    STAGES.forEach((stage) => { checkpoints[stage].csm = csmName; });
+    STAGES.forEach((stage) => { checkpoints[stage].csm = normalizeCsmName(csmName); });
     return { schemaVersion: 2, checkpoints };
   }
 
@@ -188,7 +204,7 @@
         migrateValues(area, item);
       });
       checkpoint.date = String(checkpoint.date || '');
-      checkpoint.csm = String(checkpoint.csm || csmName || '');
+      checkpoint.csm = normalizeCsmName(checkpoint.csm || csmName);
       checkpoint.riesgo = String(checkpoint.riesgo || '');
       const legacyPatterns = Object.values(checkpoint.areas).flatMap((area) => Array.isArray(area.patterns) ? area.patterns : []);
       const currentPatterns = Array.isArray(checkpoint.patterns) ? checkpoint.patterns : [];
@@ -405,10 +421,10 @@
   }
 
   return {
-    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CCM_OPTIONS,
+    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS,
     emptyData, normalizeData, computeAutoScore, applyAutoScores, getPatternScore,
     computeSummary, band, bandLabel, parseMoney, parsePercent, formatMoneyInput,
     formatPercentInput, formatField, marginContributionFromMarkup, autofillDerivedMargins,
-    effectiveCost, calculateStage, formatMoney, formatPercent
+    effectiveCost, calculateStage, formatMoney, formatPercent, normalizeCsmName
   };
 }));

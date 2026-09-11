@@ -156,7 +156,7 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
   });
   assert.match(adminScript, /terms\.every/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-1/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-2/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
@@ -190,18 +190,25 @@ test('la carta separa crear de editar y bloquea visualmente la identidad elegida
   assert.match(adminHtml, /Confirmación obligatoria/);
   assert.match(adminHtml, /id="editingClientName"/);
   assert.match(adminHtml, /Cliente bloqueado/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-1/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-2/);
   assert.match(adminScript, /createConfirmTitle/);
   assert.match(adminScript, /editingClientName/);
   assert.match(adminScript, /showWorkflow\('edit'\)/);
 });
 
-test('CCM usa una lista única y conserva valores históricos', () => {
-  assert.deepEqual(core.CCM_OPTIONS, ['Vale', 'Lidia Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía']);
+test('CSM usa nombres completos y normaliza los valores históricos', () => {
+  assert.deepEqual(core.CSM_OPTIONS, ['Valeria Calmet', 'Belén Herrera', 'Gabriela Costarelli', 'Sofía Gallardo']);
+  assert.equal(core.normalizeCsmName('Vale'), 'Valeria Calmet');
+  assert.equal(core.normalizeCsmName('Lidia Calmet'), 'Valeria Calmet');
+  assert.equal(core.normalizeCsmName('Sofía'), 'Sofía Gallardo');
+  assert.equal(core.normalizeCsmName('Sofi'), 'Sofía Gallardo');
+  assert.equal(diagnosticService._test.normalizeCsmName('sofie'), 'Sofía Gallardo');
+  assert.equal(diagnosticService._test.normalizeDiagnosticData({ checkpoints: { inicial: { csm: 'Vale' } } }).checkpoints.inicial.csm, 'Valeria Calmet');
   assert.match(adminHtml, /<select id="createCsmName"><\/select>/);
   assert.match(adminHtml, /<select id="csmName"><\/select>/);
   assert.match(adminScript, /if \(currentValue && !values\.includes\(currentValue\)\) values\.push\(currentValue\)/);
-  assert.match(adminScript, /CCM responsable en esta etapa/);
+  assert.match(adminScript, /CSM responsable en esta etapa/);
+  [adminHtml, adminScript, publicHtml].forEach((source) => assert.doesNotMatch(source, /CCM/));
 });
 
 test('la rentabilidad expone porcentajes, separadores y las fórmulas solicitadas', () => {
