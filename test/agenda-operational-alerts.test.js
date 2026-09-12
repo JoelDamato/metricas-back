@@ -121,6 +121,31 @@ test('desde septiembre prorratea el objetivo quincenal conservando la proporció
   assert.equal(Number(total.toFixed(2)), 42857.14);
 });
 
+test('la segunda quincena calcula cash y objetivo desde el día 16', () => {
+  const result = build({
+    year: 2026,
+    month: 9,
+    today: '2026-09-20',
+    periodTarget: 40000,
+    closerNames: ['Mauro Gaitan', 'Carlos Tu'],
+    agendaRows: [agendaRow(), agendaRow({ closer: 'Carlos Tu' })],
+    cashRows: [
+      cashRow('2026-09-10', 9000),
+      cashRow('2026-09-18', 500),
+      cashRow('2026-09-18', 9500, 'Carlos Tu')
+    ]
+  });
+
+  const cashAlert = result.alerts.find((alert) => alert.id === 'cash-semana');
+  assert.equal(result.period.cadence, 'fortnightly');
+  assert.equal(result.period.periodStart, '2026-09-16');
+  assert.equal(result.period.periodEnd, '2026-09-30');
+  assert.equal(result.totals.teamPeriodCash, 10000);
+  assert.equal(Number(result.totals.teamTargetToDate.toFixed(2)), 14285.71);
+  assert.equal(cashAlert.title, 'Cash quincenal bajo');
+  assert.equal(cashAlert.affected[0].value, '5%');
+});
+
 test('adjunta los leads y comprobantes reales que explican cada alerta', () => {
   const result = build({
     year: 2026,

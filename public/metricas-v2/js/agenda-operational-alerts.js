@@ -90,33 +90,46 @@
     const monthEnd = new Date(year, month, 0);
     const today = dateFromKey(dateKey(todayValue)) || new Date();
     const evaluationDate = today < monthStart ? monthStart : today > monthEnd ? monthEnd : today;
-    const weekStart = new Date(evaluationDate);
-    const day = weekStart.getDay();
-    weekStart.setDate(weekStart.getDate() + (day === 0 ? -6 : 1 - day));
-    if (weekStart < monthStart) weekStart.setTime(monthStart.getTime());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    if (weekEnd > monthEnd) weekEnd.setTime(monthEnd.getTime());
+    const cadence = monthKey(year, month) >= '2026-09' ? 'fortnightly' : 'weekly';
+    let periodStart;
+    let periodEnd;
+    if (cadence === 'fortnightly') {
+      periodStart = new Date(year, month - 1, evaluationDate.getDate() <= 15 ? 1 : 16);
+      periodEnd = new Date(year, month - 1, evaluationDate.getDate() <= 15 ? 15 : monthEnd.getDate());
+    } else {
+      periodStart = new Date(evaluationDate);
+      const day = periodStart.getDay();
+      periodStart.setDate(periodStart.getDate() + (day === 0 ? -6 : 1 - day));
+      if (periodStart < monthStart) periodStart.setTime(monthStart.getTime());
+      periodEnd = new Date(periodStart);
+      periodEnd.setDate(periodEnd.getDate() + 6);
+      if (periodEnd > monthEnd) periodEnd.setTime(monthEnd.getTime());
+    }
 
     return {
+      cadence,
       monthStart,
       monthEnd,
       evaluationDate,
-      weekStart,
-      weekEnd,
+      periodStart,
+      periodEnd,
       monthStartKey: dateKey(monthStart),
       monthEndKey: dateKey(monthEnd),
       evaluationKey: dateKey(evaluationDate),
-      weekStartKey: dateKey(weekStart),
-      weekEndKey: dateKey(weekEnd)
+      periodStartKey: dateKey(periodStart),
+      periodEndKey: dateKey(periodEnd),
+      weekStartKey: dateKey(periodStart),
+      weekEndKey: dateKey(periodEnd)
     };
   }
 
   function targetToDate(period, configuredTarget) {
     const target = safeNumber(configuredTarget);
     if (target <= 0) return 0;
-    const elapsedDays = Math.floor((period.evaluationDate - period.monthStart) / 86400000) + 1;
-    const standardDays = dateKey(period.monthStart).slice(0, 7) >= '2026-09' ? 14 : 7;
+    const fortnightly = period.cadence === 'fortnightly' || dateKey(period.monthStart).slice(0, 7) >= '2026-09';
+    const elapsedFrom = fortnightly ? (period.periodStart || period.monthStart) : period.monthStart;
+    const elapsedDays = Math.floor((period.evaluationDate - elapsedFrom) / 86400000) + 1;
+    const standardDays = fortnightly ? 14 : 7;
     return target * (Math.max(0, elapsedDays) / standardDays);
   }
 
@@ -130,7 +143,7 @@
       pendientes: 0,
       efectuadas: 0,
       ventas: 0,
-      weekCash: 0,
+      periodCash: 0,
       monthCash: 0,
       historyCash: new Map(),
       leadRecords: [],
@@ -231,8 +244,8 @@
       }
       if (cashMonthKey === selectedMonthKey && acreditacion <= period.evaluationKey) {
         closer.monthCash += cash;
-        if (acreditacion >= period.weekStartKey && acreditacion <= period.weekEndKey) {
-          closer.weekCash += cash;
+        if (acreditacion >= period.periodStartKey && acreditacion <= period.periodEndKey) {
+          closer.periodCash += cash;
         }
       }
       if (historyKeys.includes(cashMonthKey)) {
@@ -240,8 +253,8 @@
       }
     });
 
-    const teamWeekCash = [...closerMap.values()].reduce((sum, closer) => sum + closer.weekCash, 0);
-    const teamTargetToDate = targetToDate(period, options.weeklyTarget);
+    const teamPeriodCash = [...closerMap.values()].reduce((sum, closer) => sum + closer.periodCash, 0);
+    const teamTargetToDate = targetToDate(period, options.periodTarget ?? options.weeklyTarget);
     const individualTargetToDate = teamTargetToDate * 0.10;
     const elapsedDays = Math.floor((period.evaluationDate - period.monthStart) / 86400000) + 1;
     const daysInMonth = period.monthEnd.getDate();
@@ -253,7 +266,7 @@
         : null;
       const noShow = closer.aplica > 0 ? closer.noAsistidas / closer.aplica : null;
       const closeRate = closer.efectuadas > 0 ? closer.ventas / closer.efectuadas : null;
-      const weekShare = teamWeekCash > 0 ? closer.weekCash / teamWeekCash : null;
+      const periodShare = teamPeriodCash > 0 ? closer.periodCash / teamPeriodCash : null;
       const monthTargetRatio = individualTargetToDate > 0 ? closer.monthCash / individualTargetToDate : null;
       const historyValues = historyKeys.map((key) => closer.historyCash.get(key) || 0);
       const historyMonthsWithCash = historyValues.filter((value) => value > 0).length;
@@ -263,11 +276,13 @@
 
       return {
         ...closer,
+        weekCash: closer.periodCash,
         active,
         noAplica,
         noShow,
         closeRate,
-        weekShare,
+        periodShare,
+        weekShare: periodShare,
         monthTargetRatio,
         historyMonthsWithCash,
         historyAverage,
@@ -368,18 +383,18 @@
       },
       {
         id: 'cash-semana',
-        title: 'Cash semanal bajo',
+        title: `Cash ${period.cadence === 'fortnightly' ? 'quincenal' : 'semanal'} bajo`,
         icon: '💸',
         severity: 'medium',
         threshold: '< 10% del total del equipo',
-        reading: 'Activa riesgo de pérdida de categoría de agenda la semana siguiente.',
-        check: (closer) => closer.active && closer.weekShare !== null && closer.weekShare < 0.10,
-        value: (closer) => percent(closer.weekShare),
-        detail: (closer) => `${money(closer.weekCash)} de ${money(teamWeekCash)}`,
-        bar: (closer) => clamp(closer.weekShare / 0.10, 0, 1),
+        reading: `Activa riesgo de pérdida de categoría de agenda la ${period.cadence === 'fortnightly' ? 'quincena' : 'semana'} siguiente.`,
+        check: (closer) => closer.active && closer.periodShare !== null && closer.periodShare < 0.10,
+        value: (closer) => percent(closer.periodShare),
+        detail: (closer) => `${money(closer.periodCash)} de ${money(teamPeriodCash)}`,
+        bar: (closer) => clamp(closer.periodShare / 0.10, 0, 1),
         cases: (closer) => cashCases(
           closer,
-          (record) => record.date >= period.weekStartKey && record.date <= period.evaluationKey
+          (record) => record.date >= period.periodStartKey && record.date <= period.evaluationKey
         )
       },
       {
@@ -467,7 +482,8 @@
         affectedPeople: new Set(alerts.flatMap((alert) => alert.affected.map((row) => normalizeText(row.name)))).size
       },
       totals: {
-        teamWeekCash,
+        teamPeriodCash,
+        teamWeekCash: teamPeriodCash,
         teamTargetToDate,
         individualTargetToDate
       },
@@ -477,8 +493,11 @@
         monthStart: period.monthStartKey,
         monthEnd: period.monthEndKey,
         evaluationDate: period.evaluationKey,
-        weekStart: period.weekStartKey,
-        weekEnd: period.weekEndKey,
+        cadence: period.cadence,
+        periodStart: period.periodStartKey,
+        periodEnd: period.periodEndKey,
+        weekStart: period.periodStartKey,
+        weekEnd: period.periodEndKey,
         historyMonths: historyKeys
       }
     };

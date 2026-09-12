@@ -489,7 +489,7 @@
     const minKpis = Math.min(...model.kpis.map((row) => row.achieved.length));
     const lowerKpiNames = model.kpis.filter((row) => row.achieved.length === minKpis).map((row) => row.name);
     if (lowerKpiNames.length) recommendations.push(`Revisar los objetivos no cumplidos de ${lowerKpiNames.join(', ')} y acordar una acción concreta para el próximo mes.`);
-    if (!recommendations.length) recommendations.push('Sostener el ritmo actual y revisar semanalmente cash, pendientes y KPIs para prevenir desvíos.');
+    if (!recommendations.length) recommendations.push(`Sostener el ritmo actual y revisar ${periodName === 'quincena' ? 'quincenalmente' : 'semanalmente'} cash, pendientes y KPIs para prevenir desvíos.`);
     return recommendations;
   }
 

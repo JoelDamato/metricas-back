@@ -518,9 +518,9 @@
     <div id="mbar-scale"></div>
   </div>
 
-  <!-- Next week categories -->
+  <!-- Next period categories -->
   <div class="nw-panel">
-    <div class="nw-title">Categorías próxima semana</div>
+    <div class="nw-title" id="next-period-title">Categorías próxima quincena</div>
     <div class="nw-grid" id="nw-grid"></div>
   </div>
 
@@ -531,7 +531,7 @@
 
   <!-- Category chain -->
   <div class="chain-section">
-    <div class="chain-title">Progresión de categorías por semana</div>
+    <div class="chain-title" id="category-chain-title">Progresión de categorías por quincena</div>
     <div style="overflow-x:auto"><table class="chain-table" id="chain-tbl"></table></div>
   </div>
 
@@ -596,12 +596,12 @@
     <div class="rc">
       <h3>Categorías — Lógica Completa</h3>
       <ul class="il">
-        <li><span class="dot">→</span><strong style="color:var(--text)">S1–S2 (fase libre):</strong> todos reciben todas las categorías. Sin ranking, eligen franja horaria.</li>
-        <li><span class="dot">→</span><strong style="color:var(--text)">S3+ (fase rankeada):</strong> top 3 en cash collected del mes anterior → A,B,C · resto → D,E</li>
-        <li><span class="dot">→</span><strong style="color:var(--text)">Mínimo semanal individual:</strong> 10% del cash total del equipo esa semana</li>
-        <li><span class="dot">→</span>Si un closer no llega al 10% → baja o mantiene en D,E la semana siguiente (ABC→DE / DE→DE)</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Q1 (fase libre):</strong> todos reciben todas las categorías. Sin ranking, eligen franja horaria.</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Q2 (fase rankeada):</strong> top 3 en cash collected del mes anterior → A,B,C · resto → D,E</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Mínimo quincenal individual:</strong> 10% del cash total del equipo en esa quincena</li>
+        <li><span class="dot">→</span>Si un closer no llega al 10% → baja o mantiene en D,E la quincena siguiente (ABC→DE / DE→DE)</li>
         <li><span class="dot">→</span><strong style="color:var(--text)">La base del mes</strong> se define una vez, al arrancar el mes, con el ranking del mes anterior.</li>
-        <li><span class="dot">→</span><strong style="color:var(--text)">Durante el mes</strong> la categoría solo puede mantenerse o bajar según el cash semanal. No recupera ni sube hasta el cierre mensual.</li>
+        <li><span class="dot">→</span><strong style="color:var(--text)">Durante el mes</strong> la categoría solo puede mantenerse o bajar según el cash quincenal. No recupera ni sube hasta el cierre mensual.</li>
         <li><span class="dot">→</span><strong style="color:var(--text)">Todos siguen con agendas:</strong> el sistema no deja más estados de “sin agendas”; la base mínima es D,E.</li>
       </ul>
     </div>
@@ -628,12 +628,11 @@
     <div class="rc">
       <h3>Períodos automáticos</h3>
       <ul class="il">
-        <li><span class="dot">→</span> Las semanas van de lunes a domingo</li>
-        <li><span class="dot">→</span> Si el mes arranca en miércoles → S1 tiene 5 días (mié–dom)</li>
-        <li><span class="dot">→</span> Si el mes termina en jueves → última semana tiene 4 días</li>
-        <li><span class="dot">→</span> Desde septiembre de 2026, el monto base, el objetivo y los escalones del bonus se evalúan por quincena calendario (1–15 y 16–fin de mes)</li>
+        <li><span class="dot">→</span> La primera quincena va del día 1 al 15</li>
+        <li><span class="dot">→</span> La segunda quincena va del día 16 al último día del mes</li>
+        <li><span class="dot">→</span> El monto base, el objetivo y los escalones del bonus se evalúan por quincena calendario</li>
         <li><span class="dot">→</span> Los importes se prorratean automáticamente según los días de cada quincena, conservando la misma proporción diaria</li>
-        <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo esa semana</li>
+        <li><span class="dot">→</span> Mínimo individual = 10% del cash real del equipo en esa quincena</li>
         <li><span class="dot">→</span> Bono mensual de US$ 40 para cada closer que alcance al menos el 40% del cash collected total del equipo</li>
       </ul>
     </div>
@@ -648,7 +647,7 @@
     </div>
     <iframe
       class="manual-frame"
-      src="/views/mag-manual-closers.html?embed=1"
+      src="/views/mag-manual-closers.html?embed=1&amp;v=20260912-1"
       title="Manual de Closers"
       loading="lazy"
     ></iframe>
@@ -674,7 +673,7 @@
   <div class="manual-frame-wrap">
     <div class="manual-frame-head">
       <h3>Reporte Mensual Final de Closers</h3>
-      <p>Resumen ejecutivo, puntaje, pendientes, KPIs, cash oficial, semanas, bonus y recomendaciones para cualquier mes.</p>
+      <p>Resumen ejecutivo, puntaje, pendientes, KPIs, cash oficial, quincenas, bonus y recomendaciones para cualquier mes.</p>
     </div>
     <iframe
       id="monthlyReportFrame"
@@ -758,7 +757,7 @@
 <script src="/js/api/metricas.api.js"></script>
 <script src="/js/auth-shell.js"></script>
 <script src="/js/mag-theme.js"></script>
-<script src="/js/agenda-operational-alerts.js"></script>
+<script src="/js/agenda-operational-alerts.js?v=20260912-1"></script>
 <script src="/js/agenda-objective-periods.js?v=20260909-1"></script>
 <script src="/js/agenda-bonus-policy.js"></script>
 <script>
@@ -768,7 +767,7 @@ const MAY_2026_TARGET=16500;
 const MAY_2026_FLOOR=12500;
 const COLORS=['#4B8EF5','#2DD4A0','#F59E0B','#A78BFA','#F472B6','#34D399'];
 const MS=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const MIN_PCT=10; // individual minimum % of team weekly cash
+const MIN_PCT=10; // individual minimum % of team period cash
 const MONTHLY_CASH_SHARE_BONUS_PCT=40;
 const MONTHLY_CASH_SHARE_BONUS_USD=40;
 const STRIKE_REWARD_RULES=[
@@ -1793,22 +1792,44 @@ function getBonusWeekRows(){
 }
 
 /* ═══ CATEGORY CHAIN ═══ */
-// Returns array per week: {type:'libre'|'ranked'|'special', cat:'ABC'|'DE'|'NONE'|'ALL'|'SP', met:bool|null, pct:number|null}
-function catChain(c, wkTotals){
+function categoryContext(){
+  const {year,month}=getSelectedPeriod();
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  return {
+    fortnightly,
+    periods:fortnightly?bonusPeriods:weeks,
+    cashFor:(closer)=>fortnightly?(closer.bonusPeriods||[]):closer.weeks,
+    freePeriods:fortnightly?1:2,
+    periodName:fortnightly?'Quincena':'Semana',
+    periodPrefix:fortnightly?'Q':'S'
+  };
+}
+
+function currentCategoryPeriodIndex(){
+  return categoryContext().fortnightly?curBonusPeriodIdx():curWeekIdx();
+}
+
+function categoryTotals(){
+  const context=categoryContext();
+  return context.periods.map((_,index)=>closers.reduce((sum,closer)=>sum+(context.cashFor(closer)[index]||0),0));
+}
+
+// Returns array per active period: {type:'libre'|'ranked', cat:'ABC'|'DE'|'LIB', met:bool|null, pct:number|null}
+function catChain(c, periodTotals){
+  const context=categoryContext();
+  const cash=context.cashFor(c);
   let cat=c.startCat||'ABC';
   const chain=[];
 
-  for(let w=0;w<weeks.length;w++){
-    if(w<2){chain.push({type:'libre',cat:'LIB',met:null,pct:null});continue;}
+  for(let index=0;index<context.periods.length;index++){
+    if(index<context.freePeriods){chain.push({type:'libre',cat:'LIB',met:null,pct:null});continue;}
 
-    // Check performance in week w-1
-    const teamT=wkTotals[w-1]||0;
-    const myT=c.weeks[w-1]||0;
+    const teamT=periodTotals[index-1]||0;
+    const myT=cash[index-1]||0;
     const pct=teamT>0?myT/teamT*100:null;
     const met=pct===null?null:pct>=MIN_PCT;
 
     if(met===null){
-      // No data for previous week, don't change
       chain.push({type:'ranked',cat,met:null,pct:null});
       continue;
     }
@@ -1821,20 +1842,20 @@ function catChain(c, wkTotals){
   return chain;
 }
 
-// Project category for NEXT week based on current week's performance so far
-function nextWeekCat(c, wkTotals, curIdx){
+// Project category for the next active period based on the current period's performance.
+function nextPeriodCat(c, periodTotals, curIdx){
+  const context=categoryContext();
+  const cash=context.cashFor(c);
   const nextIdx=curIdx+1;
-  if(nextIdx>=0&&nextIdx<2) return{cat:'LIB',met:null,pct:null}; // next is still libre
+  if(nextIdx>=0&&nextIdx<context.freePeriods) return{cat:'LIB',met:null,pct:null};
   if(nextIdx<0) return{cat:'LIB',met:null,pct:null};
 
-  // Current week status
-  const teamT=wkTotals[curIdx]||0;
-  const myT=curIdx>=0?(c.weeks[curIdx]||0):0;
+  const teamT=periodTotals[curIdx]||0;
+  const myT=curIdx>=0?(cash[curIdx]||0):0;
   const pct=teamT>0?myT/teamT*100:null;
   const met=pct===null?null:pct>=MIN_PCT;
 
-  // Get current category from chain
-  const chain=catChain(c,wkTotals);
+  const chain=catChain(c,periodTotals);
   let currentCat=c.startCat||'ABC';
   if(curIdx>=0&&curIdx<chain.length){
     const cur=chain[curIdx];
@@ -1843,26 +1864,27 @@ function nextWeekCat(c, wkTotals, curIdx){
   }
 
   const todayKey=toDateKey(new Date());
-  const currentWeek=curIdx>=0&&curIdx<weeks.length?weeks[curIdx]:null;
-  const weekStillOpen=!!currentWeek && todayKey>=currentWeek.startKey && todayKey<=currentWeek.endKey;
+  const currentPeriod=curIdx>=0&&curIdx<context.periods.length?context.periods[curIdx]:null;
+  const periodStillOpen=!!currentPeriod && todayKey>=currentPeriod.startKey && todayKey<=currentPeriod.endKey;
 
   if(met===null) return{cat:currentCat,met:null,pct:null};
-  if(weekStillOpen) return{cat:currentCat,met:null,pct};
+  if(periodStillOpen) return{cat:currentCat,met:null,pct};
   if(met) return{cat:currentCat,met:true,pct};
   const next='DE';
   return{cat:next,met:false,pct};
 }
 
-function projectFromWeek(c, wkTotals, weekIdx){
-  if(weekIdx<0) return{cat:'LIB',met:null,pct:null};
-  if(weekIdx===0) return{cat:'LIB',met:null,pct:null};
-  if(weekIdx===1) return{cat:c.startCat||'ABC',met:null,pct:null};
-
-  const chain=catChain(c,wkTotals);
-  const current=chain[weekIdx];
+function projectFromPeriod(c, periodTotals, periodIdx){
+  const context=categoryContext();
+  if(periodIdx<0) return{cat:'LIB',met:null,pct:null};
+  const nextIdx=periodIdx+1;
+  if(nextIdx<context.freePeriods) return{cat:'LIB',met:null,pct:null};
+  const chain=catChain(c,periodTotals);
+  const current=chain[periodIdx];
   const currentCat=current?.type==='ranked'?current.cat:(c.startCat||'ABC');
-  const teamT=wkTotals[weekIdx]||0;
-  const myT=c.weeks[weekIdx]||0;
+  const cash=context.cashFor(c);
+  const teamT=periodTotals[periodIdx]||0;
+  const myT=cash[periodIdx]||0;
   const pct=teamT>0?myT/teamT*100:null;
   const met=pct===null?null:pct>=MIN_PCT;
 
@@ -1895,17 +1917,22 @@ function getMonthlyCashShareBonusRows(){
 
 /* ═══ RENDER ALL ═══ */
 function renderAll(){
-  const ci=curWeekIdx();
-  const phase=ci<0?'out':ci<2?'libre':'rank';
+  const context=categoryContext();
+  const ci=currentCategoryPeriodIndex();
+  const phase=ci<0?'out':ci<context.freePeriods?'libre':'rank';
   const pb=document.getElementById('phase-badge');
-  const wLabel=ci>=0&&ci<weeks.length?`Semana ${ci+1}`:ci<0?'Antes del mes':'Mes cerrado';
+  const periodLabel=ci>=0&&ci<context.periods.length?`${context.periodName} ${ci+1}`:ci<0?'Antes del mes':'Mes cerrado';
   pb.className='phase-badge '+(phase==='libre'?'libre':phase==='rank'?'rank':'out');
-  pb.textContent=`${wLabel} · ${phase==='libre'?'Fase Libre':phase==='rank'?'Fase Rankeada':'—'}`;
+  pb.textContent=`${periodLabel} · ${phase==='libre'?'Fase Libre':phase==='rank'?'Fase Rankeada':'—'}`;
+  const nextTitle=document.getElementById('next-period-title');
+  const chainTitle=document.getElementById('category-chain-title');
+  if(nextTitle) nextTitle.textContent=`Categorías próxima ${context.periodName.toLowerCase()}`;
+  if(chainTitle) chainTitle.textContent=`Progresión de categorías por ${context.periodName.toLowerCase()}`;
   const t=new Date();
   document.getElementById('today-lbl').innerHTML=`Hoy: <b>${t.getDate()}/${t.getMonth()+1}/${t.getFullYear()}</b>`;
   renderPills(ci);
   renderMilestoneBar();
-  renderNextWeek(ci);
+  renderNextPeriod(ci);
   renderMainTable(ci);
   renderChain(ci);
   renderRanking();
@@ -2035,14 +2062,15 @@ function renderPills(ci){
   });
 }
 
-/* ═══ NEXT WEEK ═══ */
-function renderNextWeek(ci){
+/* ═══ NEXT PERIOD ═══ */
+function renderNextPeriod(ci){
+  const context=categoryContext();
   const g=document.getElementById('nw-grid'); g.innerHTML='';
-  const tots=wkTotals();
+  const tots=categoryTotals();
   closers.forEach((c,idx)=>{
-    const nw=nextWeekCat(c,tots,ci);
-    const nextW=ci+1;
-    const wLabel=nextW>=0&&nextW<weeks.length?`Semana ${nextW+1}`:nextW<0?'Semana 1':'Mes terminado';
+    const nw=nextPeriodCat(c,tots,ci);
+    const nextIndex=ci+1;
+    const nextLabel=nextIndex>=0&&nextIndex<context.periods.length?`${context.periodName} ${nextIndex+1}`:nextIndex<0?`${context.periodName} 1`:'Mes terminado';
 
     let cardCls='nw-card',cats=[],statusTxt='',statusCls='',pctTxt='';
     if(nw.cat==='LIB'){
@@ -2061,7 +2089,7 @@ function renderNextWeek(ci){
     const catChips=cats.map(x=>`<span class="cc ${x}">${x}</span>`).join('');
     const d=document.createElement('div'); d.className=cardCls;
     d.innerHTML=`<div class="nw-name">${c.name}</div>
-      <div class="nw-sub">${wLabel}</div>
+      <div class="nw-sub">${nextLabel}</div>
       <div class="nw-cats">${catChips}</div>
       <div class="nw-status ${statusCls}">${statusTxt}</div>
       ${pctTxt?`<div class="nw-pct">${pctTxt}</div>`:''}`;
@@ -2173,10 +2201,11 @@ function renderMainTable(ci){
 
 /* ═══ CATEGORY CHAIN TABLE ═══ */
 function renderChain(ci){
-  const tots=wkTotals();
+  const context=categoryContext();
+  const tots=categoryTotals();
   const tbl=document.getElementById('chain-tbl');
   let th=`<thead><tr><th class="lft">Closer</th>`;
-  weeks.forEach((_,i)=>th+=`<th>Semana ${i+1}</th>`);
+  context.periods.forEach((_,i)=>th+=`<th>${context.periodName} ${i+1}</th>`);
   th+=`</tr></thead>`;
 
   let tb='<tbody>';
@@ -2192,14 +2221,14 @@ function renderChain(ci){
       else if(entry.cat==='DE'){badge='DE';label='D,E';}
       else{badge='DE';label='D,E';}
 
-      const projected=projectFromWeek(c,tots,w);
+      const projected=projectFromPeriod(c,tots,w);
       let projectedBadge,labelProjected;
       if(projected.cat==='ALL'||projected.cat==='LIB'){projectedBadge='ALL';labelProjected=projected.cat==='ALL'?'Base libre':'Libre';}
       else if(projected.cat==='ABC'){projectedBadge='ABC';labelProjected='A,B,C';}
       else if(projected.cat==='DE'){projectedBadge='DE';labelProjected='D,E';}
       else{projectedBadge='DE';labelProjected='D,E';}
 
-      const projMeta=projected.pct!==null?`${projected.pct.toFixed(1)}% / mín ${MIN_PCT}%`:w<2?'Regla libre':'Sin base';
+      const projMeta=projected.pct!==null?`${projected.pct.toFixed(1)}% / mín ${MIN_PCT}%`:w<context.freePeriods?'Regla libre':'Sin base';
       tb+=`<td ${isCur?'style="background:rgba(75,142,245,.05)"':''}>
         <div class="chain-cell">
           <span class="cat-badge ${badge}">${label}</span>
@@ -2219,7 +2248,7 @@ function renderChain(ci){
 
 /* ═══ RANKING ═══ */
 function renderRanking(){
-  const tots=wkTotals();
+  const tots=categoryTotals();
   const total=closers.reduce((s,c)=>s+monthTotal(c),0);
   const body=document.getElementById('rank-body');
   if(!total){body.innerHTML='<div class="empty">Sin cash conciliado para el período.</div>';return;}
@@ -2273,7 +2302,7 @@ function rrHTML(c,num,numCls,barColor,maxCash,cats,options={}){
 /* ═══ BONUS ═══ */
 function renderBonus(){
   const rows=getBonusWeekRows();
-  const tots=wkTotals();
+  const tots=bonusTotals();
   const {year,month}=getSelectedPeriod();
   const fortnightly=usesFortnightlyObjectives(year,month);
   const periodName=fortnightly?'Quincena':'Semana';
@@ -2675,7 +2704,7 @@ async function loadAgendaOperationalAlerts(){
       year,
       month,
       today:new Date(),
-      weeklyTarget:Number(config.objetivo_mensual||0),
+      periodTarget:Number(config.objetivo_mensual||0),
       closerNames:closers.map((closer)=>closer.name),
       agendaRows:agendaResponse.rows||[],
       leadRows:leadResponse.rows||[],
@@ -2683,8 +2712,9 @@ async function loadAgendaOperationalAlerts(){
       saleRows:saleResponse.rows||[]
     });
     agendaOperationalAlertState.result=result;
+    const alertPeriodName=result.period.cadence==='fortnightly'?'Quincena':'Semana';
     setAgendaAlertMeta(
-      `Corte ${formatAgendaAlertDate(result.period.evaluationDate)} · Semana ${formatAgendaAlertDate(result.period.weekStart)} al ${formatAgendaAlertDate(result.period.weekEnd)} · ${leadResponse.rows?.length||0} leads, ${cashResponse.rows?.length||0} movimientos de cash y ${saleResponse.rows?.length||0} comprobantes revisados.`
+      `Corte ${formatAgendaAlertDate(result.period.evaluationDate)} · ${alertPeriodName} ${formatAgendaAlertDate(result.period.periodStart)} al ${formatAgendaAlertDate(result.period.periodEnd)} · ${leadResponse.rows?.length||0} leads, ${cashResponse.rows?.length||0} movimientos de cash y ${saleResponse.rows?.length||0} comprobantes revisados.`
     );
   }catch(error){
     console.error(error);

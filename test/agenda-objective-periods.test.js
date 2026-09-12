@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const periods = require('../public/metricas-v2/js/agenda-objective-periods');
 
@@ -53,4 +54,56 @@ test('la tabla principal cambia de semanas a quincenas desde el corte', () => {
   assert.match(view, /const tots=fortnightly\?bonusTotals\(\):wkTotals\(\)/);
   assert.match(view, /const periodPrefix=fortnightly\?'Q':'S'/);
   assert.match(view, /const periodCash=fortnightly\?\(c\.bonusPeriods\|\|\[\]\):c\.weeks/);
+});
+
+test('categorías, reglas, alertas y manual usan quincenas desde el corte', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-sistema-agendas.html'),
+    'utf8'
+  );
+  const manual = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-manual-closers.html'),
+    'utf8'
+  );
+
+  assert.match(view, /freePeriods:fortnightly\?1:2/);
+  assert.match(view, /Categorías próxima quincena/);
+  assert.match(view, /Progresión de categorías por quincena/);
+  assert.match(view, /Mínimo quincenal individual/);
+  assert.match(view, /result\.period\.cadence==='fortnightly'\?'Quincena':'Semana'/);
+  assert.doesNotMatch(manual, /semana/i);
+  assert.match(manual, /Quincena 1 · días 1–15/);
+  assert.match(manual, /Mínimo 10% quincenal/);
+});
+
+test('la progresión de categorías usa el cash de cada quincena', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-sistema-agendas.html'),
+    'utf8'
+  );
+  const start = view.indexOf('function categoryContext()');
+  const end = view.indexOf('/* ═══ HELPERS ═══ */', start);
+  const low = { name: 'Closer bajo', startCat: 'ABC', weeks: [], bonusPeriods: [5, 0] };
+  const high = { name: 'Closer alto', startCat: 'ABC', weeks: [], bonusPeriods: [95, 0] };
+  const context = {
+    getSelectedPeriod: () => ({ year: 2026, month: 9 }),
+    usesFortnightlyObjectives: () => true,
+    bonusPeriods: [{}, {}],
+    weeks: [{}, {}, {}, {}],
+    closers: [low, high],
+    MIN_PCT: 10,
+    curBonusPeriodIdx: () => 0,
+    curWeekIdx: () => 0,
+    toDateKey: () => '2026-09-12',
+    Date
+  };
+
+  vm.createContext(context);
+  vm.runInContext(view.slice(start, end), context);
+  const totals = context.categoryTotals();
+
+  assert.deepEqual(Array.from(totals), [100, 0]);
+  assert.equal(context.categoryContext().freePeriods, 1);
+  assert.deepEqual(Array.from(context.catChain(low, totals), (row) => row.cat), ['LIB', 'DE']);
+  assert.deepEqual(Array.from(context.catChain(high, totals), (row) => row.cat), ['LIB', 'ABC']);
 });
