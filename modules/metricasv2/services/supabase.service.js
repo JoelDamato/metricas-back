@@ -337,15 +337,15 @@ async function getKpiCloserRules({ anio, mes }) {
 function getLegacyAgendaBonusDefaults(year, month) {
   const safeYear = Number(year);
   const safeMonth = Number(month);
+  const isFortnightly = `${safeYear}-${String(safeMonth).padStart(2, '0')}` >= '2026-09';
   const legacyWeeklyBase = safeYear === 2026 && safeMonth === 5 ? 12500 : 16500;
   const legacyWeeklyTarget = safeYear === 2026 && safeMonth === 5 ? 16500 : 20000;
-  const fortnightlyMultiplier = `${safeYear}-${String(safeMonth).padStart(2, '0')}` >= '2026-09' ? 2 : 1;
 
   return {
     anio: safeYear,
     mes: safeMonth,
-    monto_base_mensual: Number((legacyWeeklyBase * fortnightlyMultiplier).toFixed(2)),
-    objetivo_mensual: Number((legacyWeeklyTarget * fortnightlyMultiplier).toFixed(2)),
+    monto_base_mensual: isFortnightly ? 22000 : legacyWeeklyBase,
+    objetivo_mensual: isFortnightly ? 30000 : legacyWeeklyTarget,
     updated_at: null,
     updated_by_email: null,
     is_default: true

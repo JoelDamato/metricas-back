@@ -112,13 +112,13 @@ test('prorratea el objetivo semanal por los días transcurridos del mes', () => 
   assert.equal(total, 7000);
 });
 
-test('desde septiembre prorratea el objetivo quincenal conservando la proporción diaria', () => {
+test('desde septiembre usa una referencia quincenal de 15 días', () => {
   const total = targetToDate({
     monthStart: new Date(2026, 8, 1),
     evaluationDate: new Date(2026, 8, 15)
-  }, 40000);
+  }, 30000);
 
-  assert.equal(Number(total.toFixed(2)), 42857.14);
+  assert.equal(Number(total.toFixed(2)), 30000);
 });
 
 test('la segunda quincena calcula cash y objetivo desde el día 16', () => {
@@ -126,7 +126,7 @@ test('la segunda quincena calcula cash y objetivo desde el día 16', () => {
     year: 2026,
     month: 9,
     today: '2026-09-20',
-    periodTarget: 40000,
+    periodTarget: 30000,
     closerNames: ['Mauro Gaitan', 'Carlos Tu'],
     agendaRows: [agendaRow(), agendaRow({ closer: 'Carlos Tu' })],
     cashRows: [
@@ -141,7 +141,7 @@ test('la segunda quincena calcula cash y objetivo desde el día 16', () => {
   assert.equal(result.period.periodStart, '2026-09-16');
   assert.equal(result.period.periodEnd, '2026-09-30');
   assert.equal(result.totals.teamPeriodCash, 10000);
-  assert.equal(Number(result.totals.teamTargetToDate.toFixed(2)), 14285.71);
+  assert.equal(Number(result.totals.teamTargetToDate.toFixed(2)), 10000);
   assert.equal(cashAlert.title, 'Cash quincenal bajo');
   assert.equal(cashAlert.affected[0].value, '5%');
 });

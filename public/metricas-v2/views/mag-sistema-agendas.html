@@ -51,6 +51,13 @@
     .bonus-config-meta{font-size:9px;color:var(--muted);min-height:12px;line-height:1.3;}
     .bonus-config-meta.error{color:var(--red);}
     .bonus-config-meta.ok{color:var(--green);}
+    .cash-load-meta{display:flex;align-items:center;gap:8px;margin:10px 0 8px;padding:9px 12px;border:1px solid rgba(126,137,175,.2);border-radius:9px;background:rgba(255,255,255,.025);color:#b7c2e0;font-size:11px;}
+    .cash-load-meta::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--muted);flex:0 0 auto;}
+    .cash-load-meta.loading::before{background:var(--amber);box-shadow:0 0 0 4px rgba(245,158,11,.1);}
+    .cash-load-meta.ok{color:#dffbf2;border-color:rgba(45,212,160,.24);background:rgba(45,212,160,.055);}
+    .cash-load-meta.ok::before{background:var(--green);box-shadow:0 0 0 4px rgba(45,212,160,.1);}
+    .cash-load-meta.error{color:#ffd4d4;border-color:rgba(248,113,113,.28);background:rgba(248,113,113,.06);}
+    .cash-load-meta.error::before{background:var(--red);box-shadow:0 0 0 4px rgba(248,113,113,.1);}
 
     /* MILESTONE BAR */
     .mbar{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01)),var(--s1);border:1px solid rgba(126,137,175,.22);border-radius:12px;padding:16px 20px;margin-bottom:18px;box-shadow:0 14px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);}
@@ -501,6 +508,8 @@
     </div>
   </div>
 
+  <div id="cash-load-meta" class="cash-load-meta loading">Cargando cash del período…</div>
+
   <div class="wk-pills" id="wk-pills"></div>
 
   <!-- Milestone bar -->
@@ -607,11 +616,11 @@
     </div>
     <div class="rc">
       <h3>Escala de Bonus Quincenal</h3>
-      <div class="bsr"><span class="bsr-l">Bajo el monto base quincenal</span><span class="bsr-r" style="color:var(--red)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">Base quincenal – Objetivo quincenal</span><span class="bsr-r" style="color:var(--amber)">Sin bonus</span></div>
-      <div class="bsr"><span class="bsr-l">Objetivo quincenal alcanzado</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
-      <div class="bsr"><span class="bsr-l">Escalón +1</span><span class="bsr-r" style="color:var(--green)">1,5%</span></div>
-      <div class="bsr"><span class="bsr-l">Escalón +2</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Menos de US$ 22.000</span><span class="bsr-r" style="color:var(--red)">Bajo base</span></div>
+      <div class="bsr"><span class="bsr-l">US$ 22.000 – US$ 29.999</span><span class="bsr-r" style="color:var(--amber)">Base · sin bonus</span></div>
+      <div class="bsr"><span class="bsr-l">Desde US$ 30.000</span><span class="bsr-r" style="color:var(--green)">1,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Desde US$ 40.000</span><span class="bsr-r" style="color:var(--green)">2,0%</span></div>
+      <div class="bsr"><span class="bsr-l">Desde US$ 50.000</span><span class="bsr-r" style="color:var(--green)">3,0% máximo</span></div>
       <div class="bsr"><span class="bsr-l">Quincena de N días</span><span class="bsr-r" style="color:var(--amber)">Prorrateo automático</span></div>
       <div class="bsr"><span class="bsr-l">Distribución</span><span class="bsr-r" style="color:var(--blue)">Por % de aporte</span></div>
     </div>
@@ -647,7 +656,7 @@
     </div>
     <iframe
       class="manual-frame"
-      src="/views/mag-manual-closers.html?embed=1&amp;v=20260912-1"
+      src="/views/mag-manual-closers.html?embed=1&amp;v=20260912-2"
       title="Manual de Closers"
       loading="lazy"
     ></iframe>
@@ -757,8 +766,8 @@
 <script src="/js/api/metricas.api.js"></script>
 <script src="/js/auth-shell.js"></script>
 <script src="/js/mag-theme.js"></script>
-<script src="/js/agenda-operational-alerts.js?v=20260912-1"></script>
-<script src="/js/agenda-objective-periods.js?v=20260909-1"></script>
+<script src="/js/agenda-operational-alerts.js?v=20260912-2"></script>
+<script src="/js/agenda-objective-periods.js?v=20260912-2"></script>
 <script src="/js/agenda-bonus-policy.js"></script>
 <script>
 /* ═══ CONSTANTS ═══ */
@@ -805,6 +814,7 @@ let selectedProgressWeekIndex=null;
 let selectedProgressMonthKey='';
 let agendaBonusConfig=null;
 let agendaCalendarAssignments={};
+let cashLoadState={status:'idle',includedRows:0,total:0,error:''};
 let strikeCheckpointState={anio:null,mes:null,entries:[],canEdit:false,updated_at:null,updated_by_email:null};
 let agendaOperationalAlertState={result:null,filter:'all',loading:false,loadId:0};
 let closers=[
@@ -1434,6 +1444,7 @@ async function loadRealCashByAcreditacion(year,month){
   });
 
   const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
+  let includedRows=0;
   (response.rows || []).forEach((row)=>{
     if(normalizeText(row?.producto_format).includes('club')) return;
     const effectiveCash=Number(row?.cash_collected_neto ?? row?.cash_collected ?? 0);
@@ -1449,12 +1460,19 @@ async function loadRealCashByAcreditacion(year,month){
     if(!closer) return;
     const weekIndex=getWeekIndexForValue(cashRow.fecha_acreditacion);
     if(weekIndex<0) return;
+    includedRows+=1;
     closer.weeks[weekIndex]=(closer.weeks[weekIndex]||0)+getConciliadoAmount(cashRow);
     const bonusPeriodIndex=getBonusPeriodIndexForValue(cashRow.fecha_acreditacion);
     if(bonusPeriodIndex>=0){
       closer.bonusPeriods[bonusPeriodIndex]=(closer.bonusPeriods[bonusPeriodIndex]||0)+getConciliadoAmount(cashRow);
     }
   });
+  cashLoadState={
+    status:'ok',
+    includedRows,
+    total:closers.reduce((sum,closer)=>sum+closer.weeks.reduce((subtotal,value)=>subtotal+(value||0),0),0),
+    error:''
+  };
 }
 
 async function loadMonthlyBaseCategories(year,month){
@@ -1504,9 +1522,11 @@ async function loadMonthlyBaseCategories(year,month){
 
 function getDefaultAgendaBonus(year,month){
   const sharedDefaults=window.agendaObjectivePeriods?.defaultRules?.(year,month);
-  const multiplier=usesFortnightlyObjectives(year,month)?2:1;
-  const periodBase=sharedDefaults?.floor ?? ((year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR)*multiplier);
-  const periodTarget=sharedDefaults?.target ?? ((year===2026 && month===5 ? MAY_2026_TARGET : TARGET)*multiplier);
+  const fortnightly=usesFortnightlyObjectives(year,month);
+  const legacyBase=year===2026 && month===5 ? MAY_2026_FLOOR : FLOOR;
+  const legacyTarget=year===2026 && month===5 ? MAY_2026_TARGET : TARGET;
+  const periodBase=sharedDefaults?.floor ?? (fortnightly?22000:legacyBase);
+  const periodTarget=sharedDefaults?.target ?? (fortnightly?30000:legacyTarget);
   return {
     monto_base_mensual: Number(periodBase.toFixed(2)),
     objetivo_mensual: Number(periodTarget.toFixed(2))
@@ -1721,7 +1741,7 @@ function getObjectiveThresholds(){
     floor: Number(config.monto_base_mensual || 0),
     target: Number(config.objetivo_mensual || 0),
     step: Number(defaults?.step ?? (STEP*(usesFortnightlyObjectives(year,month)?2:1))),
-    standardDays: Number(defaults?.standardDays ?? (usesFortnightlyObjectives(year,month)?14:7))
+    standardDays: Number(defaults?.standardDays ?? (usesFortnightlyObjectives(year,month)?15:7))
   };
 }
 function roundMoney(value){
@@ -1739,6 +1759,10 @@ function adj(days){
 function bonusPct(cash,days){
   const{target,step}=adj(days);
   if(cash<target || step<=0) return 0;
+  const {year,month}=getSelectedPeriod();
+  if(usesFortnightlyObjectives(year,month)){
+    return Math.min(0.03,0.01+Math.floor((cash-target)/step)*0.01);
+  }
   return 0.01+Math.floor((cash-target)/step)*0.005;
 }
 function wkStatus(cash,days){const{floor,target}=adj(days);if(!cash)return'idle';if(cash<floor)return'miss';if(cash<target)return'mid';return'hit';}
@@ -1915,6 +1939,22 @@ function getMonthlyCashShareBonusRows(){
   }).sort((a,b)=>b.sharePct-a.sharePct||a.name.localeCompare(b.name,'es'));
 }
 
+function renderCashLoadMeta(){
+  const el=document.getElementById('cash-load-meta');
+  if(!el) return;
+  el.className=`cash-load-meta ${cashLoadState.status==='ok'?'ok':cashLoadState.status==='error'?'error':'loading'}`;
+  if(cashLoadState.status==='error'){
+    el.textContent=`No se pudo cargar el cash: ${cashLoadState.error||'error desconocido'}`;
+    return;
+  }
+  if(cashLoadState.status!=='ok'){
+    el.textContent='Cargando cash del período…';
+    return;
+  }
+  const movements=Number(cashLoadState.includedRows||0);
+  el.textContent=`Cash visible: ${fmt(Number(cashLoadState.total||0))} · ${movements} comprobante${movements===1?'':'s'} conciliado${movements===1?'':'s'} · neto de IVA · por fecha de acreditación`;
+}
+
 /* ═══ RENDER ALL ═══ */
 function renderAll(){
   const context=categoryContext();
@@ -1930,6 +1970,7 @@ function renderAll(){
   if(chainTitle) chainTitle.textContent=`Progresión de categorías por ${context.periodName.toLowerCase()}`;
   const t=new Date();
   document.getElementById('today-lbl').innerHTML=`Hoy: <b>${t.getDate()}/${t.getMonth()+1}/${t.getFullYear()}</b>`;
+  renderCashLoadMeta();
   renderPills(ci);
   renderMilestoneBar();
   renderNextPeriod(ci);
@@ -1948,9 +1989,10 @@ function renderMilestoneBar(){
   const {year,month}=getSelectedPeriod();
   const fortnightly=usesFortnightlyObjectives(year,month);
   const periodName=fortnightly?'Quincena':'Semana';
-  const activeDays=activeWeek?.days || (fortnightly?14:7);
+  const activeDays=activeWeek?.days || (fortnightly?15:7);
   const { floor, target, step } = adj(activeDays);
-  const SCALE_MAX=Math.max(target+step*3,periodTotal,1)*1.05;
+  const highestTier=target+step*(fortnightly?2:3);
+  const SCALE_MAX=Math.max(highestTier,periodTotal,1)*1.05;
 
   document.getElementById('mbar-val').textContent=fmt(periodTotal);
   const title=document.getElementById('mbar-title');
@@ -1971,8 +2013,8 @@ function renderMilestoneBar(){
       hint.textContent=`${periodName} ${activeIndex+1} · ${activeWeek.label} · ${activeWeek.days} día${activeWeek.days===1?'':'s'}`;
     }
   }else if(periodTotal<floor){
-    pill.className='mpill none';pill.textContent='Bajo el piso';
-    hint.textContent=`${hint.textContent} · Faltan ${fmt(floor-periodTotal)} para el piso`;
+    pill.className='mpill none';pill.textContent=fortnightly?'Bajo la base':'Bajo el piso';
+    hint.textContent=`${hint.textContent} · Faltan ${fmt(floor-periodTotal)} para la ${fortnightly?'base':'piso'}`;
   }else if(periodTotal<target){
     pill.className='mpill floor';pill.textContent='Sobre el piso';
     hint.textContent=`${hint.textContent} · Faltan ${fmt(target-periodTotal)} para bonus 1%`;
@@ -1981,7 +2023,12 @@ function renderMilestoneBar(){
     const steps=step>0?Math.floor((periodTotal-target)/step):0;
     const nextVal=target+((steps+1)*step);
     pill.className='mpill bonus';pill.textContent=`Bonus acumulado ${(pct*100).toFixed(1)}%`;
-    hint.textContent=`${hint.textContent} · ${fmt(nextVal-periodTotal)} más → ${((pct+0.005)*100).toFixed(1)}%`;
+    if(fortnightly && pct>=0.03){
+      hint.textContent=`${hint.textContent} · Nivel máximo alcanzado`;
+    }else{
+      const nextPct=Math.min(fortnightly?0.03:Number.POSITIVE_INFINITY,pct+(fortnightly?0.01:0.005));
+      hint.textContent=`${hint.textContent} · ${fmt(nextVal-periodTotal)} más → ${(nextPct*100).toFixed(1)}%`;
+    }
   }
 
   const capVal=Math.min(periodTotal,SCALE_MAX);
@@ -1990,12 +2037,17 @@ function renderMilestoneBar(){
   const targetPct=(target/SCALE_MAX)*100;
   let fillColor=!periodTotal?'transparent':periodTotal<floor?'linear-gradient(90deg,#4D1212,#7A2020)':periodTotal<target?'linear-gradient(90deg,#4D3200,#7A5000)':'linear-gradient(90deg,#0A4A30,#2DD4A0)';
 
-  const milestones=[
-    {val:floor,       label:`${fmtK(floor)} · Piso`, color:'#F59E0B',pct:null},
-    {val:target,      label:`${fmtK(target)} · Meta`,color:'#2DD4A0',pct:'1%'},
-    {val:target+step, label:fmtK(target+step),       color:'#2DD4A0',pct:'1.5%'},
-    {val:target+step*2,label:fmtK(target+step*2),    color:'#2DD4A0',pct:'2%'},
-    {val:target+step*3,label:fmtK(target+step*3),    color:'#2DD4A0',pct:'2.5%'},
+  const milestones=fortnightly?[
+    {val:floor,        label:`${fmtK(floor)} · Base`,color:'#F59E0B',pct:null},
+    {val:target,       label:`${fmtK(target)} · Meta`,color:'#2DD4A0',pct:'1%'},
+    {val:target+step,  label:fmtK(target+step),color:'#2DD4A0',pct:'2%'},
+    {val:target+step*2,label:fmtK(target+step*2),color:'#2DD4A0',pct:'3%'},
+  ]:[
+    {val:floor,        label:`${fmtK(floor)} · Piso`,color:'#F59E0B',pct:null},
+    {val:target,       label:`${fmtK(target)} · Meta`,color:'#2DD4A0',pct:'1%'},
+    {val:target+step,  label:fmtK(target+step),color:'#2DD4A0',pct:'1.5%'},
+    {val:target+step*2,label:fmtK(target+step*2),color:'#2DD4A0',pct:'2%'},
+    {val:target+step*3,label:fmtK(target+step*3),color:'#2DD4A0',pct:'2.5%'},
   ];
   const marksHTML=milestones.map(m=>{
     const mp=(m.val/SCALE_MAX)*100;
@@ -2054,7 +2106,7 @@ function renderPills(ci){
       <div class="wkp-days">${wk.days} día${wk.days>1?'s':''}</div>
       <div class="wkp-cash">Cash: ${fmt(weekTotal)}</div>
       <div class="wkp-meta ${full?'full':'part'}">Meta: ${fmtK(target)}</div>
-      <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">Piso: ${fmtK(floor)}</div>
+      <div class="wkp-meta ${full?'full':'part'}" style="opacity:.7">${fortnightly?'Base':'Piso'}: ${fmtK(floor)}</div>
       ${poolPct>0?`<div class="wkp-meta full" style="color:${bonusRow.revoked?'var(--red)':'var(--green)'}">${bonusRow.revoked?'Revocado':'Pool'}: ${fmt(poolValue)}</div>`:''}
       ${bonusRow.baseMiss?`<div class="wkp-meta full" style="color:var(--red)">Bajo base cerrada</div>`:''}
       <div class="wkp-ph ${fortnightly?'libre':ph}">${fortnightly?'Objetivo quincenal':ph==='libre'?'Libre':'Rankeada'}</div>`;
@@ -2116,7 +2168,7 @@ function renderMainTable(ci){
     const pct=bonusPct(t,period.days);
     let cc,ct;
     if(st==='idle'){cc='idle';ct='Sin datos';}
-    else if(st==='miss'){cc='miss';ct='Bajo piso';}
+    else if(st==='miss'){cc='miss';ct=fortnightly?'Bajo base':'Bajo piso';}
     else if(st==='mid'){cc='mid';ct='Sin bonus';}
     else{cc='hit';ct=`✓ ${(pct*100).toFixed(1)}%`;}
     th+=`<th class="wth" ${isCur?'style="background:rgba(75,142,245,.05)"':''}><div class="wth-in">
@@ -2825,6 +2877,8 @@ async function boot(){
   selectedProgressMonthKey=monthKey;
   syncWeekProgressSelect();
   resetCloserWeeks();
+  cashLoadState={status:'loading',includedRows:0,total:0,error:''};
+  renderCashLoadMeta();
 
   const today=document.getElementById('today-lbl');
   const phase=document.getElementById('phase-badge');
@@ -2835,16 +2889,25 @@ async function boot(){
     phase.textContent='Actualizando';
   }
 
-  try{
-    await Promise.all([
-      loadAgendaBonusConfig(yr,mo),
-      loadAgendaCalendarAssignments(yr,mo),
-      loadMonthlyBaseCategories(yr,mo),
-      loadRealCashByAcreditacion(yr,mo)
-    ]);
-  }catch(error){
-    console.error(error);
-    if(today) today.innerHTML='No se pudo cargar el cash conciliado real.';
+  const loadResults=await Promise.allSettled([
+    loadAgendaBonusConfig(yr,mo),
+    loadAgendaCalendarAssignments(yr,mo),
+    loadMonthlyBaseCategories(yr,mo),
+    loadRealCashByAcreditacion(yr,mo)
+  ]);
+  loadResults.slice(0,3).forEach((result)=>{
+    if(result.status==='rejected') console.error(result.reason);
+  });
+  const cashResult=loadResults[3];
+  if(cashResult?.status==='rejected'){
+    console.error(cashResult.reason);
+    resetCloserWeeks();
+    cashLoadState={
+      status:'error',
+      includedRows:0,
+      total:0,
+      error:cashResult.reason?.message||'No se pudo leer Supabase'
+    };
   }
 
   renderAll();

@@ -389,7 +389,12 @@
       const floor = roundMoney(rules.floorWeekly * ratio);
       const target = roundMoney(rules.targetWeekly * ratio);
       const step = roundMoney(rules.stepWeekly * ratio);
-      const pct = total >= target && step > 0 ? 0.01 + Math.floor((total - target) / step) * 0.005 : 0;
+      const fortnightly = OBJECTIVE_PERIODS.isFortnightly(year, month);
+      const pct = total >= target && step > 0
+        ? fortnightly
+          ? Math.min(0.03, 0.01 + Math.floor((total - target) / step) * 0.01)
+          : 0.01 + Math.floor((total - target) / step) * 0.005
+        : 0;
       const closed = isWeekClosed(week, year, month, now);
       return {
         ...week,

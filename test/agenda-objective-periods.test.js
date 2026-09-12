@@ -24,14 +24,22 @@ test('los meses históricos conservan la cadencia semanal', () => {
   assert.equal(result[0].endKey, '2026-08-02');
 });
 
-test('la meta quincenal mantiene la misma proporción diaria de la regla semanal', () => {
+test('la escala quincenal usa base 22k, objetivo 30k y referencia de 15 días', () => {
   const defaults = periods.defaultRules(2026, 9);
   const adjusted = periods.adjustRules(defaults, 15, 2026, 9);
 
-  assert.deepEqual(defaults, { floor: 33000, target: 40000, step: 10000, standardDays: 14 });
-  assert.equal(adjusted.floor, 35357.14);
-  assert.equal(adjusted.target, 42857.14);
-  assert.equal(adjusted.step, 10714.29);
+  assert.deepEqual(defaults, { floor: 22000, target: 30000, step: 10000, standardDays: 15 });
+  assert.equal(adjusted.floor, 22000);
+  assert.equal(adjusted.target, 30000);
+  assert.equal(adjusted.step, 10000);
+});
+
+test('la escala quincenal prorratea quincenas de distinta duración', () => {
+  const adjusted = periods.adjustRules(periods.defaultRules(2027, 2), 13, 2027, 2);
+
+  assert.equal(adjusted.floor, 19066.67);
+  assert.equal(adjusted.target, 26000);
+  assert.equal(adjusted.step, 8666.67);
 });
 
 test('el resumen de cada período muestra su cash acumulado', () => {
@@ -42,6 +50,34 @@ test('el resumen de cada período muestra su cash acumulado', () => {
 
   assert.match(view, /class="wkp-cash">Cash: \$\{fmt\(weekTotal\)\}/);
   assert.match(view, /const totals=bonusTotals\(\)/);
+  assert.match(view, /id="cash-load-meta"/);
+  assert.match(view, /Cash visible: \$\{fmt\(Number\(cashLoadState\.total\|\|0\)\)\}/);
+  assert.match(view, /Promise\.allSettled/);
+});
+
+test('el bonus quincenal aplica 1% en 30k, 2% en 40k y tope de 3% desde 50k', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '../public/metricas-v2/views/mag-sistema-agendas.html'),
+    'utf8'
+  );
+  const start = view.indexOf('function bonusPct(cash,days)');
+  const end = view.indexOf('function wkStatus', start);
+  const context = {
+    adj: () => ({ target: 30000, step: 10000 }),
+    getSelectedPeriod: () => ({ year: 2026, month: 9 }),
+    usesFortnightlyObjectives: () => true,
+    Math
+  };
+
+  vm.createContext(context);
+  vm.runInContext(view.slice(start, end), context);
+
+  assert.equal(context.bonusPct(29999, 15), 0);
+  assert.equal(context.bonusPct(30000, 15), 0.01);
+  assert.equal(context.bonusPct(39999, 15), 0.01);
+  assert.equal(context.bonusPct(40000, 15), 0.02);
+  assert.equal(context.bonusPct(50000, 15), 0.03);
+  assert.equal(context.bonusPct(90000, 15), 0.03);
 });
 
 test('la tabla principal cambia de semanas a quincenas desde el corte', () => {

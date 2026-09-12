@@ -129,7 +129,7 @@
     const fortnightly = period.cadence === 'fortnightly' || dateKey(period.monthStart).slice(0, 7) >= '2026-09';
     const elapsedFrom = fortnightly ? (period.periodStart || period.monthStart) : period.monthStart;
     const elapsedDays = Math.floor((period.evaluationDate - elapsedFrom) / 86400000) + 1;
-    const standardDays = fortnightly ? 14 : 7;
+    const standardDays = fortnightly ? 15 : 7;
     return target * (Math.max(0, elapsedDays) / standardDays);
   }
 

@@ -86,14 +86,21 @@
 
   function defaultRules(year, month) {
     const may2026 = Number(year) === 2026 && Number(month) === 5;
+    if (isFortnightly(year, month)) {
+      return {
+        floor: 22000,
+        target: 30000,
+        step: 10000,
+        standardDays: 15
+      };
+    }
     const weeklyFloor = may2026 ? 12500 : 16500;
     const weeklyTarget = may2026 ? 16500 : 20000;
-    const multiplier = isFortnightly(year, month) ? 2 : 1;
     return {
-      floor: weeklyFloor * multiplier,
-      target: weeklyTarget * multiplier,
-      step: 5000 * multiplier,
-      standardDays: 7 * multiplier
+      floor: weeklyFloor,
+      target: weeklyTarget,
+      step: 5000,
+      standardDays: 7
     };
   }
 
