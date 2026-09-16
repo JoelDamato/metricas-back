@@ -222,12 +222,12 @@ function mapToSupabase(payload) {
     f_venta_meg: getValue(p['F.venta MEG']),
 
     // Números
-    facturacion: getValue(p['Facturacion']),
-    facturacion_total: getValue(p['Facturacion total']),
-    cash_collected_total: getValue(p['Cash collected total']),
-    saldo: getValue(p['Saldo']),
-    inversion: getValue(p['Inversion']),
-    score: getValue(p['Score']),
+    facturacion: toNumber(getValue(p['Facturacion'])),
+    facturacion_total: toNumber(getValue(p['Facturacion total'])),
+    cash_collected_total: toNumber(getValue(p['Cash collected total'])),
+    saldo: toNumber(getValue(p['Saldo'])),
+    inversion: toNumber(getValue(p['Inversion'])),
+    score: toNumber(getValue(p['Score'])),
     // Monto incobrable (número)
     monto_incobrable: toNumber(getValue(p['Monto incobrable'])),
 
@@ -261,7 +261,21 @@ function mapToSupabase(payload) {
 // Helper para convertir valores a número o null
 function toNumber(val) {
   if (val === null || val === undefined || val === '') return null;
-  const n = Number(val);
+  if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+
+  let normalized = String(val).trim().replace(/\s/g, '');
+  if (!normalized) return null;
+
+  // Algunas fórmulas históricas de Notion devuelven números con formato AR.
+  if (normalized.includes(',') && normalized.includes('.')) {
+    normalized = normalized.lastIndexOf(',') > normalized.lastIndexOf('.')
+      ? normalized.replace(/\./g, '').replace(',', '.')
+      : normalized.replace(/,/g, '');
+  } else if (normalized.includes(',')) {
+    normalized = normalized.replace(',', '.');
+  }
+
+  const n = Number(normalized);
   return Number.isNaN(n) ? null : n;
 }
 
