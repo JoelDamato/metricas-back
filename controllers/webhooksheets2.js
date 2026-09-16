@@ -3,14 +3,6 @@ const axios = require('axios');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// URL de tu App Script desplegado como endpoint web
-
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzbjJ8jT6XYDbwls0zWcCJzaerciuqsII9KU9oWXY8t5tVfXz-vZ9DNuqoSFYB2J4jmFg/exec";
-
-// Cola en memoria para los envíos
-const queue = [];
-let isProcessing = false;
-
 // Función para normalizar fechas: resta 3 horas y devuelve ISO con hora
 function normalizeDate(dateValue) {
   if (!dateValue) return null;
@@ -296,7 +288,9 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ No se envía: ID inválido');
-    return;
+    const error = new Error('El payload de Notion no contiene un ID válido');
+    error.code = 'INVALID_NOTION_ID';
+    throw error;
   }
 
   try {
@@ -327,6 +321,7 @@ async function sendToSupabase(payload) {
     
     await saveLog(successLog);
     console.log('✅ Guardado en Supabase');
+    return row;
   } catch (err) {
     const errorLog = {
       webhook_type: 'CRM',
@@ -341,6 +336,7 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ Error Supabase:', err.response?.status, err.response?.data || err.message);
+    throw err;
   }
 }
 
@@ -351,7 +347,7 @@ function delay(ms) { return new Promise(res => setTimeout(res, ms)); }
 async function supabasePostWithRetry(url, body, config = {}) {
   const MAX_RETRIES = parseInt(process.env.SUPABASE_MAX_RETRIES || '3', 10);
   const BASE_BACKOFF = parseInt(process.env.SUPABASE_BASE_BACKOFF_MS || '500', 10); // ms
-  const SPACING_MS = parseInt(process.env.SUPABASE_SPACING_MS || '1000', 10); // ms entre requests para evitar picos
+  const SPACING_MS = parseInt(process.env.SUPABASE_SPACING_MS || '0', 10); // el limitador ya controla la concurrencia
 
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -390,45 +386,6 @@ async function supabaseWithLimit(fn) {
   }
 }
 
-async function processQueue() {
-  if (isProcessing || queue.length === 0) return;
-  isProcessing = true;
-
-  const { payload } = queue.shift();
-  
-  // Procesar Google Sheets (no bloqueante)
-  try {
-    console.log("⏳ Procesando Sheets...");
-    await axios.post(googleScriptUrl, payload, { 
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 30000
-    });
-    console.log("✅ Google Sheets procesado exitosamente");
-  } catch (error) {
-    console.error("❌ Error al procesar Google Sheets:", error.message);
-    console.error("⚠️  Continuando con Supabase de todos modos...");
-  }
-  
-  // Procesar Supabase (independiente de Sheets)
-  try {
-    console.log("⏳ Procesando Supabase...");
-    await sendToSupabase(payload);
-  } catch (error) {
-    console.error("❌ Error al procesar Supabase:", error.message);
-    
-    // Log del error de Supabase
-    await saveLog({
-      webhook_type: 'CRM',
-      type: 'supabase_process_error',
-      message: error.message,
-      payload: payload
-    });
-  }
-  
-  isProcessing = false;
-  if (queue.length > 0) setImmediate(processQueue);
-}
-
 exports.handleWebhook = async (req, res) => {
   try {
     console.log('📥 Webhook recibido (CRM)');
@@ -451,29 +408,23 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ error: 'Payload inválido', received: payload.type || 'unknown' });
     }
 
-    res.status(200).json({ 
+    await sendToSupabase(payload);
+
+    return res.status(200).json({
       status: "ok",
-      message: "Webhook de CRM recibido y encolado",
+      message: "Webhook de CRM guardado en Supabase",
       receivedAt: new Date().toISOString()
     });
-    
-    try {
-      queue.push({ payload: req.body });
-      processQueue();
-    } catch (err) {
-      console.error('❌ Error al encolar payload:', err.message);
-      const errorLog = {
-        webhook_type: 'CRM',
-        type: 'enqueue_error',
-        message: err.message,
-        payload: req.body
-      };
-      await saveLog(errorLog);
-    }
   } catch (err) {
     console.error('❌ Error en handler CRM:', err.message);
-    return res.status(500).json({ error: 'Error interno en el handler CRM' });
+    const status = err.code === 'INVALID_NOTION_ID' ? 422 : 502;
+    return res.status(status).json({
+      error: status === 422
+        ? 'El payload de Notion no contiene un ID válido'
+        : 'No se pudo guardar el webhook de CRM en Supabase'
+    });
   }
 };
 
 exports.mapToSupabase = mapToSupabase;
+exports.sendToSupabase = sendToSupabase;
