@@ -35,6 +35,29 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(date);
 }
 
+function mercadoPagoStatusLabel(row = {}) {
+  const status = String(row.status || '').toLowerCase();
+  const labels = {
+    approved: 'Aprobado',
+    authorized: row.kind === 'subscription' ? 'Suscripción autorizada' : 'Autorizado',
+    pending: 'Pendiente',
+    in_process: 'En proceso',
+    rejected: 'Rechazado',
+    cancelled: 'Cancelado',
+    canceled: 'Cancelado',
+    paused: 'Pausado',
+    manual: 'Manual'
+  };
+  return labels[status] || row.status || '—';
+}
+
+function hasValidFiscalIdentification(row = {}) {
+  const type = String(row.identificationType || '').toUpperCase();
+  const number = String(row.identificationNumber || '').replace(/\D/g, '');
+  return (type === 'DNI' && [7, 8].includes(number.length))
+    || (type === 'CUIT' && number.length === 11);
+}
+
 function recordKey(row) { return `${row.kind}:${row.id}`; }
 
 function activeRecords() {
@@ -349,9 +372,9 @@ function renderRecords() {
       <td><span class="type ${escapeHtml(row.kind)}">${row.kind === 'subscription' ? 'Suscripción' : row.kind === 'manual' ? 'Manual' : 'Pago'}</span></td>
       <td><strong>${escapeHtml(row.arcaDescription || row.description)}</strong><small>${escapeHtml(row.externalReference || '')}</small>${row.arcaTaxTreatment ? `<small>${escapeHtml(row.arcaTaxTreatment)}</small>` : ''}${['invoiced', 'credit_notes'].includes(row.workflowStatus) ? `<a class="invoice-link" href="/api/metricas/mercado-pago/club/invoice/${encodeURIComponent(row.kind)}/${encodeURIComponent(row.id)}?format=pdf" target="_blank" rel="noopener">Ver factura</a>` : ''}</td>
       <td>${escapeHtml(row.payer || '—')}</td>
-      <td><strong>${escapeHtml(row.identificationNumber || '—')}</strong><small>${escapeHtml(row.identificationType || 'No informado')}</small></td>
+      <td class="${hasValidFiscalIdentification(row) ? '' : 'fiscal-data-missing'}"><strong>${escapeHtml(row.identificationNumber || '—')}</strong><small>${escapeHtml(row.identificationType || 'No informado')}</small>${hasValidFiscalIdentification(row) ? '' : '<span>Completar antes de facturar</span>'}</td>
       <td><span class="workflow-state ${escapeHtml(row.workflowStatus)}">${row.workflowStatus === 'reconciled' ? 'Conciliada' : row.workflowStatus === 'invoiced' ? `Factura ${escapeHtml(row.arcaInvoiceType || '—')}` : row.workflowStatus === 'credit_notes' ? `Nota de Crédito ${escapeHtml(row.creditNoteType || '—')}` : 'Pendiente'}</span><small>${row.workflowStatus === 'reconciled' ? formatDate(row.reconciledAt) : row.workflowStatus === 'invoiced' ? `${escapeHtml(row.arcaInvoiceNumber || '')} · ${escapeHtml(row.arcaVatCondition || '')} · CAE ${escapeHtml(row.arcaCae || '')}` : row.workflowStatus === 'credit_notes' ? `${escapeHtml(row.creditNoteNumber || '')} · CAE ${escapeHtml(row.creditNoteCae || '')}` : ''}</small></td>
-      <td><span class="state ${escapeHtml(row.status)}">${escapeHtml(row.status || '—')}</span></td>
+      <td><span class="state ${escapeHtml(row.status)}">${escapeHtml(mercadoPagoStatusLabel(row))}</span></td>
       <td>${escapeHtml(row.paymentMethod || '—')}</td>
       <td class="amount">${formatMoney(row.amount, row.currency)}</td>
       <td><code>${escapeHtml(row.id)}</code></td>
@@ -365,9 +388,9 @@ function render(data) {
   const totals = data.totals || {};
   summaryNode.innerHTML = `
     <article><span>Registros</span><strong>${totals.records || 0}</strong></article>
-    <article><span>Pagos</span><strong>${totals.payments || 0}</strong></article>
-    <article><span>Suscripciones</span><strong>${totals.subscriptions || 0}</strong></article>
-    <article><span>Pagos aprobados</span><strong>${formatMoney(totals.approvedAmount || 0)}</strong></article>`;
+    <article><span>Pagos aprobados</span><strong>${totals.payments || 0}</strong></article>
+    <article><span>Sin DNI/CUIT</span><strong>${totals.missingIdentification || 0}</strong></article>
+    <article><span>Total aprobado</span><strong>${formatMoney(totals.approvedAmount || 0)}</strong></article>`;
 
   allRecords = data.records || [];
   ['pending', 'reconciled', 'invoiced', 'credit_notes'].forEach((status) => {
@@ -511,7 +534,9 @@ reconcileButton.addEventListener('click', async () => {
 invoiceButton.addEventListener('click', async () => {
   const records = allRecords.filter((row) => selectedKeys.has(recordKey(row)) && row.workflowStatus === 'reconciled');
   if (!records.length) return;
-  await openResolvedInvoicePreview(records);
+  const completedRecords = await completeRecipientData(records);
+  if (!completedRecords) return;
+  await openResolvedInvoicePreview(completedRecords);
 });
 
 function recipientDataIsIncomplete(row) {
@@ -520,8 +545,10 @@ function recipientDataIsIncomplete(row) {
   const identificationNumber = String(row.identificationNumber || '').replace(/\D/g, '');
   if (!String(row.payer || '').trim() || !String(row.payerAddress || '').trim()) return true;
   if (![1, 5, 6].includes(vatConditionId)) return true;
-  return [1, 6].includes(vatConditionId)
-    && (identificationType !== 'CUIT' || identificationNumber.length !== 11);
+  const validDni = identificationType === 'DNI' && [7, 8].includes(identificationNumber.length);
+  const validCuit = identificationType === 'CUIT' && identificationNumber.length === 11;
+  if (!validDni && !validCuit) return true;
+  return [1, 6].includes(vatConditionId) && !validCuit;
 }
 
 async function completeRecipientData(records) {
@@ -556,7 +583,7 @@ function openRecipientForm(existing, options = {}) {
       resolve(value);
     };
     modal.className = 'invoice-preview';
-    modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2>${stepLabel ? `<p class="invoice-preview-note">${escapeHtml(stepLabel)}</p>` : ''}</div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Consumidor final</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric"></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Confirmá la condición IVA y el domicilio antes de solicitar el CAE. Para Monotributo y Responsable Inscripto se requiere CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
+    modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2>${stepLabel ? `<p class="invoice-preview-note">${escapeHtml(stepLabel)}</p>` : ''}</div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Seleccionar</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric" required></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Para facturar se exige DNI o CUIT. Monotributo y Responsable Inscripto requieren CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
     document.body.appendChild(modal);
     const form = modal.querySelector('form');
     const values = {

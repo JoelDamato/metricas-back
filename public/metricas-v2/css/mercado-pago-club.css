@@ -77,6 +77,8 @@ td small { display: block; color: #8793a4; margin-top: 4px; max-width: 300px; }
 .manual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }.manual-grid label { display: grid; gap: 6px; color: #53647b; font-size: 12px; font-weight: 700; }.manual-grid input,.manual-grid select { width: 100%; box-sizing: border-box; border: 1px solid #d7e0eb; border-radius: 9px; padding: 10px; background: #fff !important; color: #14213d !important; color-scheme: light; font: 400 14px "DM Sans",sans-serif; }.manual-wide { grid-column: 1/-1; }
 .state.approved, .state.authorized { color: #087342; background: #dff8ec; }
 .state.rejected, .state.cancelled, .state.canceled { color: #a42e2e; background: #ffe5e5; }
+.fiscal-data-missing { background: #fff9ea; }
+.fiscal-data-missing > span { display: inline-flex; margin-top: 6px; padding: 4px 7px; border-radius: 99px; color: #8a5a00; background: #ffe7ad; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .amount { font-weight: 700; white-space: nowrap; } code { font-size: 11px; color: #53647b; }
 .empty { padding: 50px 20px; text-align: center; color: #78879b; }
 @media (max-width: 850px) { .mp-hero { align-items: stretch; flex-direction: column; }.summary { grid-template-columns: repeat(2, 1fr); }.workflow-bar { align-items: stretch; flex-direction: column; }.workflow-tabs, .workflow-actions { flex-wrap: wrap; } }

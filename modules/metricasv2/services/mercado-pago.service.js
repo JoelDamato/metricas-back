@@ -7,8 +7,11 @@ const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGES = 30;
 const SUPABASE_PAGE_SIZE = 1000;
 const MAX_SUPABASE_PAGES = 100;
+const PAYMENT_DETAIL_CONCURRENCY = 4;
+const PAYMENT_DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
 const WORKFLOW_TABLE = 'mercado_pago_club_workflow';
 let invoiceRequestQueue = Promise.resolve();
+const paymentDetailCache = new Map();
 
 function validateManualInvoiceFields(payload) {
   const vatConditionId = Number(payload.vatConditionId);
@@ -40,6 +43,11 @@ function validateRecipientFields(payload, invoiced = false) {
   const identificationNumber = String(payload.identificationNumber || '').replace(/\D/g, '');
   if (![1, 5, 6].includes(vatConditionId)) {
     throw Object.assign(new Error('Elegí Consumidor Final, Monotributo o Responsable Inscripto'), { statusCode: 400 });
+  }
+  const validDni = identificationType === 'DNI' && [7, 8].includes(identificationNumber.length);
+  const validCuit = identificationType === 'CUIT' && identificationNumber.length === 11;
+  if (!validDni && !validCuit) {
+    throw Object.assign(new Error('Ingresá un DNI o CUIT válido para facturar'), { statusCode: 400 });
   }
   if ([1, 6].includes(vatConditionId) && (identificationType !== 'CUIT' || identificationNumber.length !== 11)) {
     throw Object.assign(new Error('Monotributo y Responsable Inscripto requieren un CUIT válido'), { statusCode: 400 });
@@ -114,6 +122,7 @@ async function getStoredWorkflowRecords(month, requestedStatus) {
     .filter((row) => requestedStatus === 'credit_notes'
       ? Boolean(row.arca_credit_note_cae)
       : row.status === requestedStatus)
+    .filter((row) => requestedStatus !== 'reconciled' || isBillableClubRecord(row.record_snapshot || {}))
     .map((row) => ({
       ...(row.record_snapshot || {}), workflowStatus: requestedStatus === 'credit_notes' ? requestedStatus : row.status,
       reconciledAt: row.reconciled_at || null, invoicedAt: row.invoiced_at || null,
@@ -141,10 +150,11 @@ async function getStoredWorkflowRecords(month, requestedStatus) {
       records: records.length,
       payments: records.filter((row) => row.kind === 'payment').length,
       subscriptions: records.filter((row) => row.kind === 'subscription').length,
+      missingIdentification: records.filter((row) => !String(row.identificationNumber || '').replace(/\D/g, '')).length,
       approvedAmount: records.filter((row) => row.status === 'approved').reduce((sum, row) => sum + Number(row.amount || 0), 0)
     },
     workflowCounts: {
-      reconciled: monthRows.filter((row) => row.status === 'reconciled').length,
+      reconciled: monthRows.filter((row) => row.status === 'reconciled' && isBillableClubRecord(row.record_snapshot || {})).length,
       invoiced: monthRows.filter((row) => row.status === 'invoiced').length,
       credit_notes: monthRows.filter((row) => Boolean(row.arca_credit_note_cae)).length
     }
@@ -244,8 +254,8 @@ async function reconcileRecords(records, user) {
   const body = records.map((record) => {
     const kind = String(record?.kind || '');
     const id = String(record?.id || '').trim();
-    if (!['payment', 'subscription'].includes(kind) || !id) {
-      const error = new Error('Hay un registro inválido en la selección');
+    if (!id || !isBillableClubRecord(record)) {
+      const error = new Error('Solo se pueden conciliar pagos de Mercado Pago con estado aprobado');
       error.statusCode = 400;
       throw error;
     }
@@ -296,6 +306,9 @@ async function previewInvoiceRecords(keys) {
     if (!workflow || workflow.status !== 'reconciled') {
       throw Object.assign(new Error(`La operación ${id} ya no está conciliada`), { statusCode: 409 });
     }
+    if (!isBillableClubRecord(workflow.record_snapshot || {})) {
+      throw Object.assign(new Error(`La operación ${id} no es un pago aprobado y no se puede facturar`), { statusCode: 409 });
+    }
     previews.push({
       kind,
       id,
@@ -330,6 +343,10 @@ async function executeInvoiceRecords(keys, user) {
       }
       const status = row?.status || 'sin registro';
       throw Object.assign(new Error(`La operación ${id} no está disponible para facturar (estado: ${status})`), { statusCode: 409 });
+    }
+    if (!isBillableClubRecord(workflow.record_snapshot || {})) {
+      await axios.post(`${env.supabaseUrl}/rest/v1/rpc/release_mp_invoice`, { p_kind: kind, p_id: id }, { headers: supabaseHeaders() });
+      throw Object.assign(new Error(`La operación ${id} no es un pago aprobado y no se puede facturar`), { statusCode: 409 });
     }
     const saveAttempt = async (attempt) => {
       await axios.patch(`${env.supabaseUrl}/rest/v1/${WORKFLOW_TABLE}`, {
@@ -482,6 +499,76 @@ function paymentClubFields(payment) {
   ];
 }
 
+function paymentIdentification(payment = {}) {
+  const primary = payment.payer?.identification || {};
+  const additional = payment.additional_info?.payer?.identification || {};
+  return {
+    type: primary.type || additional.type || '',
+    number: primary.number || additional.number || ''
+  };
+}
+
+function hasPaymentIdentification(payment = {}) {
+  return Boolean(String(paymentIdentification(payment).number || '').replace(/\D/g, ''));
+}
+
+function isBillableClubRecord(record = {}) {
+  const kind = String(record.kind || '').toLowerCase();
+  const status = String(record.status || '').toLowerCase();
+  if (kind === 'manual') return status === 'manual' || record.source === 'manual';
+  return kind === 'payment' && status === 'approved';
+}
+
+function mergePaymentDetail(payment, detail) {
+  return {
+    ...payment,
+    ...detail,
+    payer: { ...(payment.payer || {}), ...(detail.payer || {}) },
+    additional_info: {
+      ...(payment.additional_info || {}),
+      ...(detail.additional_info || {}),
+      payer: {
+        ...(payment.additional_info?.payer || {}),
+        ...(detail.additional_info?.payer || {})
+      }
+    }
+  };
+}
+
+async function hydratePaymentDetail(payment, client) {
+  if (hasPaymentIdentification(payment) || !payment?.id) return payment;
+  const cacheKey = String(payment.id);
+  const cached = paymentDetailCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return mergePaymentDetail(payment, cached.detail);
+  try {
+    const response = await client.get(`/v1/payments/${encodeURIComponent(cacheKey)}`);
+    const detail = response.data && typeof response.data === 'object' ? response.data : {};
+    paymentDetailCache.set(cacheKey, { detail, expiresAt: Date.now() + PAYMENT_DETAIL_CACHE_TTL_MS });
+    return mergePaymentDetail(payment, detail);
+  } catch (_error) {
+    return payment;
+  }
+}
+
+async function hydrateMissingPaymentDetails(payments) {
+  const rows = [...payments];
+  if (!rows.length) return rows;
+  const client = apiClient();
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < rows.length) {
+      const index = cursor;
+      cursor += 1;
+      rows[index] = await hydratePaymentDetail(rows[index], client);
+    }
+  };
+  await Promise.all(Array.from(
+    { length: Math.min(PAYMENT_DETAIL_CONCURRENCY, rows.length) },
+    () => worker()
+  ));
+  return rows;
+}
+
 function payerAddress(payer = {}) {
   const address = payer.address || {};
   const street = [address.street_name, address.street_number].filter(Boolean).join(' ').trim();
@@ -489,7 +576,7 @@ function payerAddress(payer = {}) {
 }
 
 function mapPayment(payment) {
-  const identification = payment.payer?.identification || payment.additional_info?.payer?.identification || {};
+  const identification = paymentIdentification(payment);
   const payer = {
     ...(payment.payer || {}),
     ...(payment.additional_info?.payer || {}),
@@ -517,58 +604,25 @@ function mapPayment(payment) {
   };
 }
 
-function mapSubscription(subscription) {
-  const payer = subscription.payer || {};
-  return {
-    kind: 'subscription',
-    id: String(subscription.id || ''),
-    date: subscription.date_created || null,
-    createdAt: subscription.date_created || null,
-    description: subscription.reason || 'Suscripción',
-    externalReference: subscription.external_reference || '',
-    payer: [payer.first_name, payer.last_name].filter(Boolean).join(' ').trim() || subscription.payer_email || String(subscription.payer_id || ''),
-    payerEmail: subscription.payer_email || '',
-    payerAddress: payerAddress(payer),
-    identificationType: subscription.payer?.identification?.type || '',
-    identificationNumber: subscription.payer?.identification?.number || '',
-    amount: Number(subscription.auto_recurring?.transaction_amount || 0),
-    currency: subscription.auto_recurring?.currency_id || 'ARS',
-    status: subscription.status || '',
-    statusDetail: '',
-    paymentMethod: subscription.payment_method_id || '',
-    subscriptionId: String(subscription.id || ''),
-    nextPaymentDate: subscription.next_payment_date || null,
-    lastChargedDate: subscription.summarized?.last_charged_date || null,
-    chargedAmount: Number(subscription.summarized?.charged_amount || 0)
-  };
-}
-
 async function getClubRecords(month) {
   const bounds = monthBounds(month);
   const beginDate = bounds.from.toISOString();
   const endDate = new Date(bounds.to.getTime() - 1).toISOString();
 
   try {
-    const [payments, subscriptions] = await Promise.all([
-      fetchAll('/v1/payments/search', {
-        sort: 'date_created', criteria: 'desc', range: 'date_created', begin_date: beginDate, end_date: endDate
-      }),
-      fetchAll('/preapproval/search')
-    ]);
+    const payments = await fetchAll('/v1/payments/search', {
+      sort: 'date_created', criteria: 'desc', range: 'date_created', begin_date: beginDate, end_date: endDate,
+      status: 'approved'
+    });
 
-    const paymentRows = payments
+    const approvedClubPayments = payments
       .filter((payment) => payment.status === 'approved')
-      .filter((payment) => dateInMonth(payment.date_created, bounds) && containsClub(paymentClubFields(payment)))
-      .map(mapPayment);
-
-    const subscriptionRows = subscriptions
-      .filter((subscription) => containsClub([subscription.reason, subscription.external_reference]))
-      .filter((subscription) => [subscription.date_created, subscription.summarized?.last_charged_date].some((date) => dateInMonth(date, bounds)))
-      .map(mapSubscription);
+      .filter((payment) => dateInMonth(payment.date_created, bounds) && containsClub(paymentClubFields(payment)));
+    const paymentRows = (await hydrateMissingPaymentDetails(approvedClubPayments)).map(mapPayment);
 
     const workflowRows = await getWorkflowRows();
     const workflowByKey = new Map(workflowRows.map((row) => [`${row.record_kind}:${row.record_id}`, row]));
-    const records = [...paymentRows, ...subscriptionRows]
+    const records = paymentRows
       .map((record) => {
         const workflow = workflowByKey.get(`${record.kind}:${record.id}`);
         return {
@@ -603,7 +657,8 @@ async function getClubRecords(month) {
       totals: {
         records: records.length,
         payments: paymentRows.length,
-        subscriptions: subscriptionRows.length,
+        subscriptions: 0,
+        missingIdentification: paymentRows.filter((row) => !String(row.identificationNumber || '').replace(/\D/g, '')).length,
         approvedAmount: paymentRows.filter((row) => row.status === 'approved').reduce((sum, row) => sum + row.amount, 0)
       }
     };
@@ -617,4 +672,4 @@ async function getClubRecords(month) {
   }
 }
 
-module.exports = { getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, updateInvoiceRecipient, validateRecipientFields, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote };
+module.exports = { getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, updateInvoiceRecipient, validateRecipientFields, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote, paymentIdentification, isBillableClubRecord };
