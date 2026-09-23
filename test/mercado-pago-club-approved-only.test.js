@@ -9,6 +9,7 @@ process.env.MERCADO_PAGO_ACCESS_TOKEN = 'test-access-token';
 
 const axios = require('axios');
 const service = require('../modules/metricasv2/services/mercado-pago.service');
+const arcaInvoicingService = require('../modules/metricasv2/services/arca-invoicing.service');
 
 const root = path.resolve(__dirname, '..');
 const pageScript = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/mercado-pago-club.page.js'), 'utf8');
@@ -19,6 +20,35 @@ test('la identificación usa additional_info cuando payer trae un objeto vacío'
     payer: { identification: { type: null, number: null } },
     additional_info: { payer: { identification: { type: 'DNI', number: '30111222' } } }
   }), { type: 'DNI', number: '30111222' });
+});
+
+test('CUIL se acepta como identificación válida y usa su código documental de ARCA', async () => {
+  assert.deepEqual(service.paymentIdentification({
+    payer: { identification: { type: 'CUIL', number: '20324887629' } }
+  }), { type: 'CUIL', number: '20324887629' });
+  assert.equal(service.validateRecipientFields({
+    payer: 'Cliente con CUIL',
+    payerAddress: 'Calle 123',
+    vatConditionId: 5,
+    identificationType: 'CUIL',
+    identificationNumber: '20324887629'
+  }).identificationType, 'CUIL');
+  const preview = await arcaInvoicingService.previewInvoice({
+    source: 'manual',
+    status: 'manual',
+    currency: 'ARS',
+    amount: 1000,
+    description: 'Club del Costo',
+    payer: 'Cliente con CUIL',
+    payerAddress: 'Calle 123',
+    vatConditionId: 5,
+    requestedInvoiceType: 'B',
+    identificationType: 'CUIL',
+    identificationNumber: '20324887629'
+  });
+  assert.equal(preview.documentType, 86);
+  assert.equal(preview.documentNumber, '20324887629');
+  assert.match(pageScript, /\['CUIT', 'CUIL'\]\.includes\(type\)/);
 });
 
 test('la cola facturable admite sólo pagos aprobados y cargas manuales', () => {
@@ -86,18 +116,18 @@ test('el backend rechaza conciliar suscripciones autorizadas o pagos pendientes'
   );
 });
 
-test('la facturación exige DNI o CUIT y la pantalla completa los datos antes de previsualizar', () => {
+test('la facturación exige DNI, CUIT o CUIL y la pantalla completa los datos antes de previsualizar', () => {
   assert.throws(() => service.validateRecipientFields({
     payer: 'Cliente sin documento',
     payerAddress: 'Calle 123',
     vatConditionId: 5,
     identificationType: '',
     identificationNumber: ''
-  }), /DNI o CUIT válido/);
+  }), /DNI, CUIT o CUIL válido/);
   assert.match(pageScript, /const completedRecords = await completeRecipientData\(records\)/);
   assert.match(pageScript, /if \(!completedRecords\) return/);
   assert.match(pageScript, /openResolvedInvoicePreview\(completedRecords\)/);
   assert.match(pageScript, /approved: 'Aprobado'/);
   assert.match(pageScript, /Sin DNI\/CUIT/);
-  assert.match(pageHtml, /approved-payments-1/);
+  assert.match(pageHtml, /cuil-support-2/);
 });

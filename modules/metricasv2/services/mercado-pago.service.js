@@ -17,7 +17,7 @@ function validateManualInvoiceFields(payload) {
   const vatConditionId = Number(payload.vatConditionId);
   const expectedInvoiceType = vatConditionId === 5 ? 'B' : [1, 6].includes(vatConditionId) ? 'A' : '';
   const invoiceType = String(payload.invoiceType || expectedInvoiceType).toUpperCase();
-  const identificationType = String(payload.identificationType || '').toUpperCase();
+  const identificationType = String(payload.identificationType || '').trim().toUpperCase();
   const identificationNumber = String(payload.identificationNumber || '').replace(/\D/g, '');
   const amount = Number(payload.amount);
   const payer = String(payload.payer || '').trim();
@@ -39,18 +39,19 @@ function validateRecipientFields(payload, invoiced = false) {
   if (invoiced) return { payer, payerAddress };
 
   const vatConditionId = Number(payload.vatConditionId);
-  const identificationType = String(payload.identificationType || '').toUpperCase();
+  const identificationType = String(payload.identificationType || '').trim().toUpperCase();
   const identificationNumber = String(payload.identificationNumber || '').replace(/\D/g, '');
   if (![1, 5, 6].includes(vatConditionId)) {
     throw Object.assign(new Error('Elegí Consumidor Final, Monotributo o Responsable Inscripto'), { statusCode: 400 });
   }
   const validDni = identificationType === 'DNI' && [7, 8].includes(identificationNumber.length);
   const validCuit = identificationType === 'CUIT' && identificationNumber.length === 11;
-  if (!validDni && !validCuit) {
-    throw Object.assign(new Error('Ingresá un DNI o CUIT válido para facturar'), { statusCode: 400 });
-  }
-  if ([1, 6].includes(vatConditionId) && (identificationType !== 'CUIT' || identificationNumber.length !== 11)) {
+  const validCuil = identificationType === 'CUIL' && identificationNumber.length === 11;
+  if ([1, 6].includes(vatConditionId) && !validCuit) {
     throw Object.assign(new Error('Monotributo y Responsable Inscripto requieren un CUIT válido'), { statusCode: 400 });
+  }
+  if (!validDni && !validCuit && !validCuil) {
+    throw Object.assign(new Error('Ingresá un DNI, CUIT o CUIL válido para facturar'), { statusCode: 400 });
   }
   return {
     payer,

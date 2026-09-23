@@ -52,10 +52,10 @@ function mercadoPagoStatusLabel(row = {}) {
 }
 
 function hasValidFiscalIdentification(row = {}) {
-  const type = String(row.identificationType || '').toUpperCase();
+  const type = String(row.identificationType || '').trim().toUpperCase();
   const number = String(row.identificationNumber || '').replace(/\D/g, '');
   return (type === 'DNI' && [7, 8].includes(number.length))
-    || (type === 'CUIT' && number.length === 11);
+    || (['CUIT', 'CUIL'].includes(type) && number.length === 11);
 }
 
 function recordKey(row) { return `${row.kind}:${row.id}`; }
@@ -541,13 +541,14 @@ invoiceButton.addEventListener('click', async () => {
 
 function recipientDataIsIncomplete(row) {
   const vatConditionId = Number(row.vatConditionId);
-  const identificationType = String(row.identificationType || '').toUpperCase();
+  const identificationType = String(row.identificationType || '').trim().toUpperCase();
   const identificationNumber = String(row.identificationNumber || '').replace(/\D/g, '');
   if (!String(row.payer || '').trim() || !String(row.payerAddress || '').trim()) return true;
   if (![1, 5, 6].includes(vatConditionId)) return true;
   const validDni = identificationType === 'DNI' && [7, 8].includes(identificationNumber.length);
   const validCuit = identificationType === 'CUIT' && identificationNumber.length === 11;
-  if (!validDni && !validCuit) return true;
+  const validCuil = identificationType === 'CUIL' && identificationNumber.length === 11;
+  if (!validDni && !validCuit && !validCuil) return true;
   return [1, 6].includes(vatConditionId) && !validCuit;
 }
 
@@ -583,7 +584,7 @@ function openRecipientForm(existing, options = {}) {
       resolve(value);
     };
     modal.className = 'invoice-preview';
-    modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2>${stepLabel ? `<p class="invoice-preview-note">${escapeHtml(stepLabel)}</p>` : ''}</div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Seleccionar</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric" required></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Para facturar se exige DNI o CUIT. Monotributo y Responsable Inscripto requieren CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
+    modal.innerHTML = `<form class="invoice-preview-card manual-form"><div class="invoice-preview-head"><div><span class="eyebrow">Datos del receptor</span><h2>Datos fiscales</h2>${stepLabel ? `<p class="invoice-preview-note">${escapeHtml(stepLabel)}</p>` : ''}</div><button type="button" data-close-preview>×</button></div><div class="manual-grid"><label class="manual-wide">Apellido y Nombre / Razón Social<input name="payer" required placeholder="Nombre o razón social"></label><label class="manual-wide">Domicilio comercial<input name="payerAddress" required placeholder="Calle, número, localidad y provincia"></label>${isInvoiced ? '' : `<label>Condición IVA<select name="vatConditionId"><option value="5">Consumidor Final</option><option value="6">Monotributo</option><option value="1">Responsable Inscripto</option></select></label><label>Tipo de documento<select name="identificationType"><option value="">Seleccionar</option><option value="DNI">DNI</option><option value="CUIT">CUIT</option><option value="CUIL">CUIL</option></select></label><label>Número de documento<input name="identificationNumber" inputmode="numeric" required></label>`}</div><p class="invoice-preview-note">${isInvoiced ? 'La factura ya fue autorizada: solo se actualizarán el nombre y el domicilio visibles. El CAE, CUIT y condición IVA no se modifican.' : 'Para facturar se exige DNI, CUIT o CUIL. Monotributo y Responsable Inscripto requieren CUIT.'}</p><div class="invoice-preview-actions"><button type="button" class="preview-cancel" data-close-preview>Cancelar</button><button class="preview-confirm" type="submit">Guardar datos</button></div></form>`;
     document.body.appendChild(modal);
     const form = modal.querySelector('form');
     const values = {

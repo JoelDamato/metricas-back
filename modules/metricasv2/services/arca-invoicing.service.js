@@ -80,13 +80,15 @@ function validateRecord(record) {
 }
 
 function consumerFinalRecipient(record = {}, raw = '') {
-  const hasCuit = String(record.identificationType || '').toUpperCase() === 'CUIT' && /^\d{11}$/.test(raw);
+  const identificationType = String(record.identificationType || '').toUpperCase();
+  const hasCuit = identificationType === 'CUIT' && /^\d{11}$/.test(raw);
+  const hasCuil = identificationType === 'CUIL' && /^\d{11}$/.test(raw);
   const hasDni = /^\d{7,8}$/.test(raw);
   return {
     invoiceType: 'B',
     invoiceTypeCode: FACTURA_B,
-    documentType: hasCuit ? 80 : hasDni ? 96 : 99,
-    documentNumber: hasCuit || hasDni ? raw : '0',
+    documentType: hasCuit ? 80 : hasCuil ? 86 : hasDni ? 96 : 99,
+    documentNumber: hasCuit || hasCuil || hasDni ? raw : '0',
     vatConditionId: CONSUMIDOR_FINAL,
     vatCondition: 'Consumidor Final',
     recipientName: String(record.payer || '').trim(),
