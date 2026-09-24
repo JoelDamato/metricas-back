@@ -113,8 +113,6 @@ function getResponsibleCloser(row) {
       sin_onboarding: '👥',
       sin_diagnostico_7: '🩺',
       agendas_pendientes: '📅',
-      cash_raro: '$',
-      leads_duplicados: '👥',
       comprobantes_sin_conciliar: '📋',
       comprobantes_rebotados: '🧾'
     };
@@ -150,14 +148,6 @@ function getResponsibleCloser(row) {
       icon: '📌',
       description: ''
     };
-  }
-
-  function normalizeDigits(value) {
-    return String(value || '').replace(/\D+/g, '');
-  }
-
-  function normalizeEmail(value) {
-    return String(value || '').trim().toLowerCase();
   }
 
   function isAbandonmentActivity(row) {
@@ -274,14 +264,19 @@ function getResponsibleCloser(row) {
 
   function buildAlerts({ csmRows, comprobantesRows, leadsRows }) {
     const today = startOfToday();
-    const currentYear = today.getFullYear();
 
     const csmNormalized = normalizeCsmRows(csmRows).filter((row) => row.payDate && !isAbandonmentActivity(row));
 
     const agendaPendingRows = (leadsRows || [])
       .map((row) => {
+        const callDate = parseDateAsLocalDay(row.fecha_llamada);
         const agendaDate = parseDateAsLocalDay(row.fecha_agenda);
-        if (!agendaDate || agendaDate.getFullYear() !== currentYear) return null;
+        if (
+          !callDate
+          || callDate.getFullYear() !== today.getFullYear()
+          || callDate.getMonth() !== today.getMonth()
+          || callDate > today
+        ) return null;
         if (normalizeText(row.agendo) !== 'agendo') return null;
         if (normalizeText(row.aplica) !== 'aplica') return null;
 
@@ -302,8 +297,8 @@ function getResponsibleCloser(row) {
       })
       .filter(Boolean)
       .sort((a, b) =>
+        String(a.fechaLlamada || '').localeCompare(String(b.fechaLlamada || '')) ||
         a.closer.localeCompare(b.closer, 'es') ||
-        String(a.fechaAgenda || '').localeCompare(String(b.fechaAgenda || '')) ||
         a.cliente.localeCompare(b.cliente, 'es')
       );
 
@@ -330,93 +325,7 @@ function getResponsibleCloser(row) {
       .filter((row) => row.elapsedDays !== null && row.elapsedDays > 7)
       .sort((a, b) => b.elapsedDays - a.elapsedDays || a.nombre.localeCompare(b.nombre));
 
-    const weirdCashRows = (comprobantesRows || [])
-      .filter((row) => normalizeText(row.tipo) === 'venta')
-      .filter((row) => !normalizeText(row.producto_format).includes('club'))
-      .map((row) => {
-        const facturacion = safeNumber(row.facturacion);
-        const cash = getNetCashCollected(row);
-        const issues = [];
-
-        if (cash < 0) issues.push('Cash negativo');
-        if (facturacion <= 0) issues.push('Facturación no positiva');
-        if (facturacion > 0 && cash > facturacion * 1.05) issues.push('Cash mayor a facturación');
-        if (cash > 0 && !toDateOnly(row.f_acreditacion)) issues.push('Cash sin fecha de acreditación');
-
-        if (!issues.length) return null;
-
-        return {
-          closer: getResponsibleCloser(row),
-          ghlid: row.ghlid || row.ghl_id || '-',
-          producto: row.producto_format || '-',
-          venta: toDateOnly(row.f_venta || ''),
-          acreditacion: toDateOnly(row.f_acreditacion || ''),
-          facturacion,
-          cash,
-          motivo: issues.join(' · ')
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.cash - a.cash || a.closer.localeCompare(b.closer));
-
-    const duplicateLeadGroups = [];
-    const duplicateLeadMap = new Map();
-
-    (leadsRows || []).forEach((row) => {
-      const whatsapp = normalizeDigits(row.whatsapp);
-      const telefono = normalizeDigits(row.telefono);
-      const mail = normalizeEmail(row.mail);
-
-      let identityType = '';
-      let identityValue = '';
-
-      if (whatsapp.length >= 8) {
-        identityType = 'WhatsApp';
-        identityValue = whatsapp;
-      } else if (telefono.length >= 8) {
-        identityType = 'Teléfono';
-        identityValue = telefono;
-      } else if (mail) {
-        identityType = 'Mail';
-        identityValue = mail;
-      } else {
-        return;
-      }
-
-      const identityKey = `${identityType}:${identityValue}`;
-      const current = duplicateLeadMap.get(identityKey) || {
-        identityType,
-        identityValue,
-        rows: []
-      };
-
-      current.rows.push({
-        nombre: row.nombre || 'Sin nombre',
-        ghlid: row.ghlid || '-',
-        fechaCreada: toDateOnly(row.fecha_creada || row.created_time || ''),
-        origen: row.origen || row.primer_origen || '-',
-        setter: row.setter || '-',
-        closer: row.closer || '-'
-      });
-
-      duplicateLeadMap.set(identityKey, current);
-    });
-
-    duplicateLeadMap.forEach((group) => {
-      if ((group.rows || []).length < 2) return;
-      const orderedRows = [...group.rows].sort((a, b) => String(a.fechaCreada || '').localeCompare(String(b.fechaCreada || '')));
-      duplicateLeadGroups.push({
-        identityType: group.identityType,
-        identityValue: group.identityValue,
-        count: orderedRows.length,
-        names: [...new Set(orderedRows.map((row) => row.nombre))].join(' | '),
-        rows: orderedRows
-      });
-    });
-
-    duplicateLeadGroups.sort((a, b) => b.count - a.count || a.names.localeCompare(b.names));
-
-    const unconciledRows = (comprobantesRows || [])
+    const unreconciledRows = (comprobantesRows || [])
       .map((row) => {
         const estado = normalizeText(row.estado);
         if (!estado.includes('sin conciliar')) return null;
@@ -461,17 +370,17 @@ function getResponsibleCloser(row) {
         title: 'Agendas pendientes',
         severity: 'high',
         count: agendaPendingRows.length,
-        description: `Agendas ${currentYear} con aplica, agendo y llamada MEG en pendiente o vacía.`,
-        base: `${formatInteger(agendaPendingRows.length)} agendas del año ${currentYear} con "llamada_meg" pendiente o vacía`,
-        fieldsLabel: '"fecha_agenda", "agendo", "aplica", "llamada_meg"',
-        logic: 'Usa la misma regla de Agendas: agendo = Agendo, aplica = Aplica y llamada_meg = Pendiente o vacío. Ordena por closer y fecha de agenda.',
-        columns: ['Closer', 'Cliente', 'GHL ID', 'F. agenda', 'F. llamada', 'Setter', 'Origen', 'Estrategia', 'Estado'],
+        description: 'Solo incluye llamadas del mes actual, desde el día 1 hasta hoy, cuyo campo “Llamada MEG” está vacío o en Pendiente.',
+        base: `${formatInteger(agendaPendingRows.length)} llamadas del mes actual hasta hoy con "llamada_meg" pendiente o vacía`,
+        fieldsLabel: '"fecha_llamada", "agendo", "aplica", "llamada_meg"',
+        logic: 'Usa agendo = Agendo, aplica = Aplica y llamada_meg = Pendiente o vacío. El período y el orden se determinan por fecha_llamada; los registros sin esa fecha no entran.',
+        columns: ['Closer', 'Cliente', 'GHL ID', 'F. llamada', 'F. agenda', 'Setter', 'Origen', 'Estrategia', 'Estado'],
         rows: agendaPendingRows.map((row) => [
           row.closer,
           createContactCell(row.cliente, row.ghlid),
           row.ghlid,
-          formatDate(row.fechaAgenda),
           formatDate(row.fechaLlamada),
+          formatDate(row.fechaAgenda),
           row.setter,
           row.origen,
           row.estrategia,
@@ -508,63 +417,17 @@ function getResponsibleCloser(row) {
         emptyText: 'No hay clientes atrasados en diagnóstico.'
       },
       {
-        key: 'cash_raro',
-        area: 'administracion',
-        title: 'Ventas con cash raro',
-        severity: 'medium',
-        count: weirdCashRows.length,
-        description: 'Ventas con cash incoherente, negativo o sin acreditación cargada.',
-        base: `${formatInteger(weirdCashRows.length)} comprobantes de venta con inconsistencias de cash`,
-        fieldsLabel: '"tipo", "facturacion", "cash_collected_total", "cash_collected", "f_acreditacion"',
-        logic: 'Marca ventas no Club cuando el cash es negativo, la facturación no es positiva, el cash supera la facturación o hay cash cargado sin fecha de acreditación.',
-        columns: ['Closer', 'GHL ID', 'Producto', 'F. venta', 'F. acreditación', 'Facturación', 'Cash', 'Motivo'],
-        rows: weirdCashRows.map((row) => [
-          row.closer,
-          row.ghlid,
-          row.producto,
-          formatDate(row.venta),
-          formatDate(row.acreditacion),
-          formatCurrency(row.facturacion),
-          formatCurrency(row.cash),
-          row.motivo
-        ]),
-        emptyText: 'No hay ventas con cash extraño.'
-      },
-      {
-        key: 'leads_duplicados',
-        area: 'comercial',
-        title: 'Clientes duplicados en leads',
-        severity: 'medium',
-        count: duplicateLeadGroups.length,
-        description: 'Agrupa leads repetidos por WhatsApp, teléfono o mail dentro de la base.',
-        base: `${formatInteger(duplicateLeadGroups.length)} grupos duplicados detectados en leads_raw`,
-        fieldsLabel: '"whatsapp", "telefono", "mail", "nombre", "ghlid"',
-        logic: 'Busca duplicados en leads_raw usando primero WhatsApp, si falta teléfono, y si falta mail. Solo marca grupos con 2 o más filas.',
-        columns: ['Identidad', 'Valor', 'Cantidad', 'GHL ID', 'Nombres', 'Fechas', 'Setters', 'Closers'],
-        rows: duplicateLeadGroups.map((group) => [
-          group.identityType,
-          group.identityValue,
-          formatInteger(group.count),
-          [...new Set(group.rows.map((row) => row.ghlid).filter(Boolean))].join(' | ') || '-',
-          group.names,
-          group.rows.map((row) => formatDate(row.fechaCreada)).join(' | '),
-          [...new Set(group.rows.map((row) => row.setter).filter(Boolean))].join(' | ') || '-',
-          [...new Set(group.rows.map((row) => row.closer).filter(Boolean))].join(' | ') || '-'
-        ]),
-        emptyText: 'No hay clientes duplicados detectados con la lógica actual.'
-      },
-      {
         key: 'comprobantes_sin_conciliar',
         area: 'administracion',
         title: 'Comprobantes sin conciliar',
         severity: 'medium',
-        count: unconciledRows.length,
+        count: unreconciledRows.length,
         description: 'Cantidad en vivo de comprobantes que siguen marcados como sin conciliar.',
-        base: `${formatInteger(unconciledRows.length)} comprobantes con estado sin conciliar`,
+        base: `${formatInteger(unreconciledRows.length)} comprobantes con estado sin conciliar`,
         fieldsLabel: '"estado", "tipo", "f_venta", "f_acreditacion"',
         logic: 'Cuenta comprobantes cuyo estado contiene "sin conciliar". La lectura es en vivo sobre la tabla de comprobantes.',
         columns: ['Closer', 'Estado', 'Tipo', 'Producto', 'F. venta', 'F. acreditación', 'Facturación', 'Cash'],
-        rows: unconciledRows.map((row) => [
+        rows: unreconciledRows.map((row) => [
           row.closer,
           row.estado,
           row.tipo,
