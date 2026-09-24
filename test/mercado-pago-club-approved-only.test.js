@@ -116,7 +116,7 @@ test('el backend rechaza conciliar suscripciones autorizadas o pagos pendientes'
   );
 });
 
-test('la facturación exige DNI, CUIT o CUIL y la pantalla completa los datos antes de previsualizar', () => {
+test('la facturación abre la previsualización directamente sin exigir formularios intermedios', () => {
   assert.throws(() => service.validateRecipientFields({
     payer: 'Cliente sin documento',
     payerAddress: 'Calle 123',
@@ -124,10 +124,10 @@ test('la facturación exige DNI, CUIT o CUIL y la pantalla completa los datos an
     identificationType: '',
     identificationNumber: ''
   }), /DNI, CUIT o CUIL válido/);
-  assert.match(pageScript, /const completedRecords = await completeRecipientData\(records\)/);
-  assert.match(pageScript, /if \(!completedRecords\) return/);
-  assert.match(pageScript, /openResolvedInvoicePreview\(completedRecords\)/);
+  assert.match(pageScript, /await openResolvedInvoicePreview\(records\)/);
+  assert.doesNotMatch(pageScript, /completeRecipientData/);
+  assert.doesNotMatch(pageScript, /Completá los datos fiscales .* antes de facturar/);
   assert.match(pageScript, /approved: 'Aprobado'/);
   assert.match(pageScript, /Sin DNI\/CUIT/);
-  assert.match(pageHtml, /cuil-support-2/);
+  assert.match(pageHtml, /direct-invoice-1/);
 });

@@ -534,41 +534,8 @@ reconcileButton.addEventListener('click', async () => {
 invoiceButton.addEventListener('click', async () => {
   const records = allRecords.filter((row) => selectedKeys.has(recordKey(row)) && row.workflowStatus === 'reconciled');
   if (!records.length) return;
-  const completedRecords = await completeRecipientData(records);
-  if (!completedRecords) return;
-  await openResolvedInvoicePreview(completedRecords);
+  await openResolvedInvoicePreview(records);
 });
-
-function recipientDataIsIncomplete(row) {
-  const vatConditionId = Number(row.vatConditionId);
-  const identificationType = String(row.identificationType || '').trim().toUpperCase();
-  const identificationNumber = String(row.identificationNumber || '').replace(/\D/g, '');
-  if (!String(row.payer || '').trim() || !String(row.payerAddress || '').trim()) return true;
-  if (![1, 5, 6].includes(vatConditionId)) return true;
-  const validDni = identificationType === 'DNI' && [7, 8].includes(identificationNumber.length);
-  const validCuit = identificationType === 'CUIT' && identificationNumber.length === 11;
-  const validCuil = identificationType === 'CUIL' && identificationNumber.length === 11;
-  if (!validDni && !validCuit && !validCuil) return true;
-  return [1, 6].includes(vatConditionId) && !validCuit;
-}
-
-async function completeRecipientData(records) {
-  const incomplete = records.filter(recipientDataIsIncomplete);
-  for (let index = 0; index < incomplete.length; index += 1) {
-    const row = incomplete[index];
-    statusNode.textContent = `Completá los datos fiscales (${index + 1} de ${incomplete.length}) antes de facturar`;
-    const saved = await openRecipientForm(row, {
-      reloadAfterSave: false,
-      stepLabel: `Comprobante ${index + 1} de ${incomplete.length} · Operación ${row.id}`
-    });
-    if (!saved) {
-      statusNode.textContent = 'Facturación cancelada: faltan datos fiscales';
-      return null;
-    }
-    Object.assign(row, saved, { workflowStatus: 'reconciled' });
-  }
-  return records;
-}
 
 function openRecipientForm(existing, options = {}) {
   const reloadAfterSave = options.reloadAfterSave !== false;
