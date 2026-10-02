@@ -1071,6 +1071,24 @@ function buildDetailFinancials(row) {
   };
 }
 
+// Todas las ventas Club suman al tramo mensual de Nahuel; las transferencias
+// pagan siempre 40%, independientemente del tramo y de escalas guardadas.
+function resolveNahuelClubRule(row, monthlySales) {
+  if (isTransferPayment(row.medios_de_pago)) {
+    return {
+      pct: 0.4,
+      sourceRule: 'Transferencia Club Nahuel fija',
+      sourceRuleNote: `40% sobre el valor comisionable. La transferencia suma a las ${monthlySales} ventas Club del mes para definir la escala.`
+    };
+  }
+  const pct = monthlySales >= 16 ? 0.65 : monthlySales >= 11 ? 0.6 : monthlySales >= 6 ? 0.55 : 0.5;
+  return {
+    pct,
+    sourceRule: 'Escala mensual Club Nahuel',
+    sourceRuleNote: `${monthlySales} ventas Club del mes: ${Math.round(pct * 100)}% sobre el valor comisionable.`
+  };
+}
+
 function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey));
@@ -1087,6 +1105,10 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const areaMap = buildAreaMap(config);
   const roleMap = buildRoleMap(config);
   const details = [];
+  const nahuelClubSales = new Set(activeRows
+    .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
+    .filter((row) => isNahuelSetter(row.setter) || isNahuelSetter(row.responsable_venta || row.creado_por))
+    .map((row) => row.id)).size;
   const closerMegCache = new Map();
   const bonusTc = resolveMonthBonusTc(activeRows);
 
@@ -1103,7 +1125,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
         const sequentialCount = Number(closerClubSequenceMap.get(sequenceKey) || 0);
-        const clubPaymentRule = resolveClubPaymentRule(
+        const clubPaymentRule = isNahuelSetter(closerName) ? resolveNahuelClubRule(row, nahuelClubSales) : resolveClubPaymentRule(
           row,
           config,
           pickScalePct(config.clubScale, sequentialCount, config.global.defaultCloserPct)
@@ -1151,7 +1173,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
             counters: {
               agendas: 0,
-              clubSalesSequential: sequentialCount
+              clubSalesSequential: isNahuelSetter(closerName) ? nahuelClubSales : sequentialCount
             }
           });
         }
@@ -1213,11 +1235,65 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     }
 
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
-    if (isClub) return;
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
+
+    if (isClub && type === 'venta' && isNahuelSetter(setterName)) {
+      if (isNahuelSetter(closerName)) return;
+
+      const clubPaymentRule = resolveNahuelClubRule(row, nahuelClubSales);
+      const baseAmount = row.commission_base_ars;
+      if (baseAmount <= 0 || clubPaymentRule.pct <= 0) return;
+
+      details.push({
+        id: `${row.id}:setter`,
+        transactionId: row.id,
+        date: row.f_venta_only || row.f_acreditacion_only || '',
+        dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
+        acreditacionDate: row.f_acreditacion_only || '',
+        acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+        ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
+        area,
+        person: setterName,
+        role: 'Setter',
+        category: 'Club',
+        tipo: row.tipo || 'Venta',
+        product: row.producto_format || 'Club',
+        clientName: row.cliente_format || '',
+        ghlid: row.ghlid || '',
+        setter: setterName,
+        closer: closerName,
+        origin: row.origen_actual || '',
+        firstOrigin: row.primer_origen || '',
+        paymentMethod: row.medios_de_pago || '',
+        tc: row.tc,
+        cheque: row.cheque,
+        conciliado: row.conciliado || '',
+        status: row.estado || '',
+        facturacionUsd: row.facturacion,
+        facturacionArs: row.facturacion_display_ars,
+        cashUsd: row.cash_usd,
+        cashArs: row.cash_collected_ars,
+        ...buildDetailFinancials(row),
+        baseAmount,
+        commissionPct: clubPaymentRule.pct,
+        commissionAmount: baseAmount * clubPaymentRule.pct,
+        bonusUsd: 0,
+        bonusArs: 0,
+        isBonus: false,
+        sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
+        sourceRuleNote: clubPaymentRule.sourceRuleNote,
+        counters: {
+          agendas: setterAgendas,
+          clubSalesSequential: nahuelClubSales
+        }
+      });
+      return;
+    }
+
+    if (isClub) return;
 
     if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row, setterName)) {
       return;

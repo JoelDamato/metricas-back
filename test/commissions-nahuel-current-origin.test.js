@@ -184,7 +184,7 @@ test('Nahuel cobra 4,5% cuando APSET está en Primer origen aunque Origen actual
   assert.equal(setterDetail?.firstOrigin, 'Postulación MEG - APSET');
 });
 
-test('Club paga únicamente al responsable de venta y nunca genera comisión de setter', () => {
+test('Club paga al responsable y también a Nahuel cuando figura como setter', () => {
   const config = commissionsService.normalizeConfig({
     global: {
       includeOnlyVerified: false
@@ -216,7 +216,11 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
     agendaRows: []
   });
 
-  assert.equal(details.some((detail) => detail.role === 'Setter' && detail.category === 'Club'), false);
+  const setterDetail = details.find((detail) => detail.role === 'Setter' && detail.category === 'Club');
+  assert.equal(setterDetail?.person, 'Nahuel Iasci');
+  assert.equal(setterDetail?.commissionPct, 0.5);
+  assert.equal(setterDetail?.commissionAmount > 0, true);
+  assert.match(setterDetail?.sourceRule || '', /Club/);
   assert.equal(details.some((detail) => detail.role === 'Closer' && detail.category === 'Club'), true);
   assert.equal(details.find((detail) => detail.role === 'Closer')?.paymentMethod, 'Mercado Pago');
 });
