@@ -1071,21 +1071,21 @@ function buildDetailFinancials(row) {
   };
 }
 
-// Todas las ventas Club suman al tramo mensual de Nahuel; las transferencias
+// Cada venta Club ocupa un puesto en la escalera mensual de Nahuel; las transferencias
 // pagan siempre 40%, independientemente del tramo y de escalas guardadas.
-function resolveNahuelClubRule(row, monthlySales) {
+function resolveNahuelClubRule(row, saleNumber) {
   if (isTransferPayment(row.medios_de_pago)) {
     return {
       pct: 0.4,
       sourceRule: 'Transferencia Club Nahuel fija',
-      sourceRuleNote: `40% sobre el valor comisionable. La transferencia suma a las ${monthlySales} ventas Club del mes para definir la escala.`
+      sourceRuleNote: `40% sobre el valor comisionable. Venta Club #${saleNumber} del mes: cuenta para la escalera y conserva el 40%.`
     };
   }
-  const pct = monthlySales >= 16 ? 0.65 : monthlySales >= 11 ? 0.6 : monthlySales >= 6 ? 0.55 : 0.5;
+  const pct = saleNumber >= 16 ? 0.65 : saleNumber >= 11 ? 0.6 : saleNumber >= 6 ? 0.55 : 0.5;
   return {
     pct,
-    sourceRule: 'Escala mensual Club Nahuel',
-    sourceRuleNote: `${monthlySales} ventas Club del mes: ${Math.round(pct * 100)}% sobre el valor comisionable.`
+    sourceRule: 'Escala por venta Club Nahuel',
+    sourceRuleNote: `Venta Club #${saleNumber} del mes: ${Math.round(pct * 100)}% sobre el valor comisionable.`
   };
 }
 
@@ -1105,10 +1105,14 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const areaMap = buildAreaMap(config);
   const roleMap = buildRoleMap(config);
   const details = [];
-  const nahuelClubSales = new Set(activeRows
+  const nahuelClubSequence = new Map();
+  activeRows
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
     .filter((row) => isNahuelSetter(row.setter) || isNahuelSetter(row.responsable_venta || row.creado_por))
-    .map((row) => row.id)).size;
+    .sort(compareRowsByArrival)
+    .forEach((row) => {
+      if (!nahuelClubSequence.has(row.id)) nahuelClubSequence.set(row.id, nahuelClubSequence.size + 1);
+    });
   const closerMegCache = new Map();
   const bonusTc = resolveMonthBonusTc(activeRows);
 
@@ -1125,7 +1129,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
         const sequentialCount = Number(closerClubSequenceMap.get(sequenceKey) || 0);
-        const clubPaymentRule = isNahuelSetter(closerName) ? resolveNahuelClubRule(row, nahuelClubSales) : resolveClubPaymentRule(
+        const clubPaymentRule = isNahuelSetter(closerName) ? resolveNahuelClubRule(row, nahuelClubSequence.get(row.id)) : resolveClubPaymentRule(
           row,
           config,
           pickScalePct(config.clubScale, sequentialCount, config.global.defaultCloserPct)
@@ -1173,7 +1177,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
             counters: {
               agendas: 0,
-              clubSalesSequential: isNahuelSetter(closerName) ? nahuelClubSales : sequentialCount
+              clubSalesSequential: isNahuelSetter(closerName) ? nahuelClubSequence.get(row.id) : sequentialCount
             }
           });
         }
@@ -1243,7 +1247,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     if (isClub && type === 'venta' && isNahuelSetter(setterName)) {
       if (isNahuelSetter(closerName)) return;
 
-      const clubPaymentRule = resolveNahuelClubRule(row, nahuelClubSales);
+      const clubPaymentRule = resolveNahuelClubRule(row, nahuelClubSequence.get(row.id));
       const baseAmount = row.commission_base_ars;
       if (baseAmount <= 0 || clubPaymentRule.pct <= 0) return;
 
@@ -1287,7 +1291,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         sourceRuleNote: clubPaymentRule.sourceRuleNote,
         counters: {
           agendas: setterAgendas,
-          clubSalesSequential: nahuelClubSales
+          clubSalesSequential: nahuelClubSequence.get(row.id)
         }
       });
       return;
