@@ -37,7 +37,7 @@ function mapGhlCsm(payload){
   else warnings.push({field:key,reason:'unsupported_text_type'});
  }
  if(!patch.nombre){const name=[fields.first_name,fields.last_name].filter(v=>typeof v==='string'&&v.trim()).join(' ');if(name)patch.nombre=name;}
- const dates={...DATE_FIELDS};for(let n=1;n<=10;n++)dates['modulo_'+n]=[n<=7?`F. Inicio M${n}`:`F. Inicio MP${n-7}`];
+ const dates={...DATE_FIELDS};for(let n=1;n<=10;n++){dates['modulo_'+n]=[n<=7?`F. Inicio M${n}`:`F. Inicio MP${n-7}`];dates[`modulo_${n}_fin`]=[n<=7?`F. Fin M${n}`:`F. Fin MP${n-7}`];}
  for(const [column,aliases]of Object.entries(dates)){const field=pick(aliases);if(!field)continue;const parsed=parseDate(field[1]);if(!parsed){warnings.push({field:field[0],reason:'invalid_date'});continue;}
   patch[column]=column==='caso_de_exito'?parsed.slice(0,10):parsed;
   const format=FORMATS[column]||(/^modulo_\d+$/.test(column)?column+'_format':null);if(format){const d=parsed.slice(0,10).split('-');patch[format]=`${d[2]}/${d[1]}/${d[0].slice(2)}`;}

@@ -8,3 +8,6 @@ test('fechas sin desplazamiento de día y errores conservados como advertencias'
  assert.equal(parseDate('2026-10-06'),'2026-10-06T00:00:00.000Z');assert.equal(parseDate('2026-02-30'),null);assert.equal(parseDate('06/10/2026'),null);
  const result=mapGhlCsm({'F. Onboarding':'mala',Closer:{id:'x'},'Notion Id':'wrong',customData:{extra:{anything:true}}});assert.deepEqual(result.patch,{});assert.equal(result.warnings.length,2);
 });
+test('mapea las diez fechas de fin de módulos y pilares',()=>{
+ const payload={};for(let n=1;n<=10;n++)payload['F. Fin '+(n<=7?'M'+n:'MP'+(n-7))]='2026-10-06';const {patch,warnings}=mapGhlCsm(payload);assert.equal(warnings.length,0);for(let n=1;n<=10;n++)assert.equal(patch[`modulo_${n}_fin`],'2026-10-06T00:00:00.000Z');
+});

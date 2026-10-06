@@ -8,7 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css" />
-  </head>
+    <link rel="stylesheet" href="/css/csm-module-durations.css?v=20261006-1" />
+</head>
   <body class="ranking-page csm-page" data-csm-page="tiempo">
     <main class="container">
       <div class="nav"><a href="/index.html">Volver al listado</a></div>
@@ -38,6 +39,7 @@
         <canvas id="csmChart" height="120"></canvas>
       </section>
       <section id="detailContainer" class="csm-detail-grid"></section>
+      <section id="csmModuleDurations" class="csm-module-durations"></section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
@@ -45,5 +47,6 @@
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js"></script>
     <script src="/js/views/csm.page.js"></script>
+    <script src="/js/views/csm-module-durations.js?v=20261006-1"></script>
   </body>
 </html>
