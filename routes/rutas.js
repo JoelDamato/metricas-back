@@ -15,6 +15,7 @@ const authMiddleware = require('../modules/auth/middleware');
 /*Sheets*/
 router.post('/webhook3', webhookController3.handleWebhook);
 router.post('/webhookv2', webhookController4.handleWebhook);
+router.get('/csm', webhookController5.getCapabilities);
 router.post('/csm', webhookController5.handleWebhook);
 router.post('/comprobantes', webhookController6.handleWebhook);
 router.post('/distribuidor', webhookDistribuidor.handleWebhook);
