@@ -1,6 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),axios=require('axios');
-const {identifyGhlPayload}=require('../modules/csm/ghl-webhook-preview');
-const {handleWebhook}=require('../controllers/webhookcsm');
+const {identifyGhlPayload,receivePreview}=require('../modules/csm/ghl-webhook-preview');
+async function handleWebhook(req,res){try{return res.status(200).json(await receivePreview(req.body,identifyGhlPayload(req.body)));}catch{return res.status(503).json({csmWritten:false});}}
 test('identifica GHL plano, anidado y declarado sin confundir páginas Notion',()=>{
  for(const p of [{contact_id:'abc'},{contact:{id:'abc'}},{data:{contactId:'abc'}},{id:'abc',location:{id:'location'}},{source:'ghl',id:'abc'}])assert.equal(identifyGhlPayload(p).contactId,'abc');
  assert.equal(identifyGhlPayload({id:'unknown'}),null);

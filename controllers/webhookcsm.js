@@ -1,5 +1,6 @@
 const axios = require('axios');
 const ghlPreview = require('../modules/csm/ghl-webhook-preview');
+const ghlIngestion = require('../modules/csm/ghl-csm-ingestion');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -569,8 +570,8 @@ exports.handleWebhook = async (req, res) => {
     const ghlIdentity = ghlPreview.identifyGhlPayload(payload);
     if (ghlIdentity) {
       try {
-        const result = await ghlPreview.receivePreview(payload, ghlIdentity);
-        return res.status(200).json(result);
+        const result = await ghlIngestion.ingest(payload, ghlIdentity);
+        return res.status(result.csmWritten ? 200 : 422).json(result);
       } catch (error) {
         console.error('No se pudo registrar la prueba GHL de CSM:', error.response?.status || error.code || 'capture_failed');
         return res.status(503).json({ status: 'capture_failed', source: 'ghl', csmWritten: false, message: 'No se pudo guardar la prueba. Reintentá el envío.' });
@@ -652,5 +653,5 @@ exports._test = {
 
 // Read-only capability check used to verify the deployed receiver without sending a customer event.
 exports.getCapabilities = (_req, res) => res.set('Cache-Control', 'no-store').json({
-  endpoint: 'csm', version: 'ghl-preview-v1', ghl: { accepted: true, mode: 'capture_only', csmWritten: false }, notion: { accepted: true }
+  endpoint: 'csm', version: 'ghl-csm-write-v1', ghl: { accepted: true, mode: 'write_and_archive', preservesEmptyFields: true }, notion: { accepted: true }
 });
