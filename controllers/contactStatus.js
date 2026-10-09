@@ -1,3 +1,4 @@
+const csmContactSummary = require('../modules/csm/contact-summary');
 const {listContactReceipts,totals}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -86,7 +87,7 @@ async function fetchContactByGhlId(ghlId) {
     axios.get(`${supabaseUrl}/rest/v1/csm`, {
       headers: buildHeaders(),
       params: {
-        select: 'id,crm_2_0,nombre,mail,telefono,ghlid,onboarding,f_onboarding,modulo_1,proximo_contacto_csm,ultima_respuesta,ultimo_producto_adquirido,closer',
+        select: ['id','crm_2_0','nombre','mail','telefono','ghlid','ultimo_producto_adquirido','closer',...csmContactSummary.fields].join(','),
         ghlid: `eq.${ghlId}`,
         order: 'updated_at.desc',
         limit: 5
@@ -118,11 +119,7 @@ async function fetchContactByGhlId(ghlId) {
       { label: 'Setter', value: row.setter || 'Sin dato' },
       { label: 'Closer', value: row.closer || csmRow?.closer || 'Sin dato' }
     ],
-    csm: [
-      { label: 'Onboarding', value: csmRow?.onboarding || 'Sin dato' },
-      { label: 'Fecha onboarding', value: csmRow?.f_onboarding || 'Sin dato' },
-      { label: 'Próximo contacto', value: csmRow?.proximo_contacto_csm || csmRow?.modulo_1 || csmRow?.ultima_respuesta || 'Sin dato' }
-    ],
+    csm: csmContactSummary.summary(csmRow),
     administracion: [
       { label: 'Facturación total', value: receiptTotals.facturacion, type: 'amount' },
       { label: 'Cobrado conciliado sin IVA', value: receiptTotals.cobrado, type: 'amount' },
