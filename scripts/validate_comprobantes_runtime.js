@@ -14,6 +14,8 @@ const files=new Map(),calls=[];let failDelete=false;
  await db.exec('create role anon;create role authenticated;create role service_role;');
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261003120000_comprobantes_internal_runtime.sql'),'utf8'));
  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261003140000_comprobantes_motivo_rebote.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261009120000_reconciliation_notes.sql'),'utf8'));
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261009150000_receipt_note_insert_default.sql'),'utf8'));
  const get=async(table,id)=>(await db.query(`select to_jsonb(t) as row from ${table} t where id=$1`,[id])).rows[0]?.row;
  axios.get=async(url,{params={}}={})=>{
   calls.push(url);if(url.includes('/storage/v1/object/authenticated/'))return {data:structuredClone(config)};
@@ -37,6 +39,7 @@ const files=new Map(),calls=[];let failDelete=false;
  assert.equal((await local.create(base,user)).created[0].id,saleId);
  assert.equal(files.size,1);
  const historical=await get('comprobantes',saleId);assert.ok(!historical.cliente_format.includes('[TEST]'));assert.ok(historical.info_comprobantes.startsWith('[SUPABASE DIRECT]'));
+ assert.equal(historical.nota_conciliacion_revision,0);
  const collection=await local.create({...base,tipo:'Cobranza',latestSaleId:saleId,fechaAcreditacion:'2026-10-03',submissionKey:'local-lifecycle-cobranza-0001',facturacionUsd:undefined},user),id=collection.created[0].id;
  assert.equal((await get('comprobantes',id)).producto_format,'Meg 2.1');
  assert.equal((await get('leads_raw',base.clientPageId)).saldo,1000);
