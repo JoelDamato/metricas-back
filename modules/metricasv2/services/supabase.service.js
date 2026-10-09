@@ -2059,6 +2059,10 @@ function normalizeMarketingOriginGroup(value) {
 
 function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
   const currentOrigin = resolveMarketingOrigin(row, leadByGhlId);
+  if (selectedOrigin === 'VSL + rt') {
+    const linked = leadByGhlId.get(String(row.ghlid || row.ghl_id || '').trim().toLowerCase());
+    return require('../../../public/metricas-v2/js/marketing-cohort').matches({origen_actual:currentOrigin,primer_origen:linked ? linked.primer_origen : row.primer_origen},selectedOrigin);
+  }
   if (!currentOrigin) return false;
   return !selectedOrigin || normalizeMarketingOriginGroup(currentOrigin) === selectedOrigin;
 }
@@ -2079,7 +2083,7 @@ async function listMarketingOriginLeadsForRows(rows = []) {
     {
       headers: buildHeaders(),
       params: {
-        select: 'ghlid,origen_actual,last_edited_time,created_time',
+        select: 'ghlid,origen_actual,primer_origen,last_edited_time,created_time',
         ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
         limit: 1000
       }
@@ -2718,6 +2722,8 @@ async function getMarketingVentasTotales({ from, to, origen }) {
 
   return {
     ventasTotales: filtered.length,
+    ventasCce: filtered.filter(row => normalizeMarketingText(row.estado_cc) === 'exitoso').length,
+    ventasCcne: filtered.filter(row => normalizeMarketingText(row.estado_cc) === 'no exitoso').length,
     facturacionVentasTotales: filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0)
   };
 }

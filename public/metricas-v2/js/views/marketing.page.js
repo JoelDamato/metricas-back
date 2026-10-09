@@ -654,8 +654,8 @@ function setDefaultDates() {
 
 function setOriginOptions(origins) {
   const select = document.getElementById('origen');
-  select.innerHTML = ['<option value="">Todos</option>']
-    .concat(origins.map((origin) => `<option value="${origin}">${origin}</option>`))
+  select.innerHTML = ['<option value="">Todos</option>', '<option value="VSL + rt">VSL + rt</option>']
+    .concat(origins.filter(origin=>origin!=='VSL + rt').map((origin) => `<option value="${escapeHtml(origin)}">${escapeHtml(origin)}</option>`))
     .join('');
 }
 
@@ -802,6 +802,7 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
 
 function isMarketingLeadInSelectedOrigin(row, filters) {
   const currentOrigin = getMarketingLeadOrigin(row);
+  if(filters.origen==='VSL + rt')return window.marketingCohort.matches(row,filters.origen);
   return Boolean(currentOrigin) && (!filters.origen || normalizeOriginGroup(currentOrigin) === filters.origen);
 }
 
@@ -1045,7 +1046,7 @@ function aggregateAdsMetrics(rows, filters) {
     if (!adname) return;
 
     const currentOrigin = getMarketingLeadOrigin(row);
-    if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
+    if (!isMarketingLeadInSelectedOrigin(row, filters)) {
       return;
     }
 
@@ -1139,7 +1140,7 @@ function aggregateQualityMetrics(rows, filters) {
     const calidad = String(row.calidad_lead || '').trim() || 'Sin calidad';
 
     const currentOrigin = getMarketingLeadOrigin(row);
-    if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
+    if (!isMarketingLeadInSelectedOrigin(row, filters)) {
       return;
     }
 
@@ -1621,6 +1622,20 @@ function renderDashboard(rows, investment, extras = {}) {
   });
 }
 
+function renderAgendaBreakdown(rows, filters) {
+  const ordered=[...rows].sort((a,b)=>String(b.fecha_agenda||'').localeCompare(String(a.fecha_agenda||''))||String(a.nombre||'').localeCompare(String(b.nombre||''),'es'));
+  const container=document.getElementById('agendaBreakdown');let visible=50;
+  function draw(){
+    container.innerHTML=`<h2>Leads agendados · ${ordered.length}</h2><p>${escapeHtml(filters.from)} al ${escapeHtml(filters.to)} · ${escapeHtml(filters.origen||'Todos los orígenes')}.</p><p>Detalle de las agendas contabilizadas por fecha de agenda. Incluye el estado “Agendó” para validar en GHL.</p><button type="button" data-export-agendas ${ordered.length?'':'disabled'}>Descargar CSV para validar en GHL (${ordered.length})</button><div class="table-wrap"><table class="marketing-table"><thead><tr><th>Fecha agenda</th><th>Cliente</th><th>GHL ID</th><th>Email</th><th>Teléfono</th><th>Closer</th><th>Origen actual</th><th>Primer origen</th><th>Agendó</th><th>Aplica</th></tr></thead><tbody>${ordered.slice(0,visible).map(row=>`<tr><td>${escapeHtml(formatDateLabel(row.fecha_agenda))}</td><td>${escapeHtml(row.nombre||'Sin nombre')}</td><td>${row.ghlid?`<a target="_blank" rel="noopener noreferrer" href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(row.ghlid)}">${escapeHtml(row.ghlid)}</a>`:'Sin GHL ID'}</td>${['mail','telefono','closer','origen_actual','primer_origen','agendo','aplica'].map(key=>`<td>${escapeHtml(row[key]||'—')}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="10">Sin agendas para estos filtros.</td></tr>'}</tbody></table></div>${visible<ordered.length?`<button type="button" data-more-agendas>Mostrar más (${Math.min(visible,ordered.length)} de ${ordered.length})</button>`:''}`;
+    container.querySelector('[data-more-agendas]')?.addEventListener('click',()=>{visible+=50;draw();});
+    container.querySelector('[data-export-agendas]').addEventListener('click',()=>{
+      const blob=new Blob([window.marketingCohort.csv(ordered,filters)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=`agendas-mkt-${filters.from}-${filters.to}-${(filters.origen||'todos').replace(/[^a-z0-9]+/gi,'-')}.csv`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+  }
+  draw();
+}
+
 async function loadOrigins() {
   const response = await window.metricasApi.fetchAllRows('leads_raw', {
     limit: 1000,
@@ -1638,15 +1653,20 @@ async function loadOrigins() {
   setOriginOptions(origins);
 }
 
+let marketingLoadVersion = 0;
 async function loadDashboard() {
+  const loadVersion = ++marketingLoadVersion;
   const status = document.getElementById('status');
   const filters = getFilters();
 
-  if (!filters.from || !filters.to) {
-    status.textContent = 'Seleccioná un rango de fechas.';
+  if (!filters.from || !filters.to || filters.from > filters.to) {
+    document.getElementById('agendaBreakdown').textContent='Seleccioná un rango de fechas válido.';
+    hideLoading();
+    status.textContent = 'Seleccioná un rango de fechas válido.';
     return;
   }
 
+  document.getElementById('agendaBreakdown').textContent='Cargando detalle de agendas…';
   showLoading('Cargando KPI Marketing...');
   status.textContent = 'Consultando Supabase...';
 
@@ -1663,7 +1683,7 @@ async function loadDashboard() {
     }
 
     const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, cashCollectedResponse, campaignTotalsResponse, leadsResponse, traceabilityResponse] = await Promise.all([
-      window.metricasApi.fetchAllRows('kpi_marketing_diario', rowOptions),
+      filters.origen === 'VSL + rt' ? Promise.resolve({rows:[]}) : window.metricasApi.fetchAllRows('kpi_marketing_diario', rowOptions),
       window.metricasApi.fetchMarketingInvestment(filters),
       window.metricasApi.fetchMarketingAovDia1(filters),
       window.metricasApi.fetchMarketingVentasTotales(filters),
@@ -1683,14 +1703,18 @@ async function loadDashboard() {
       })
     ]);
 
-    const rows = rowsResponse.rows || [];
+    if(loadVersion !== marketingLoadVersion)return;
+    let rows = rowsResponse.rows || [];
     const leadRows = leadsResponse.rows || [];
+    const agendaRows = leadRows.filter(row=>isMarketingLeadInSelectedOrigin(row,filters));
+    renderAgendaBreakdown(agendaRows,filters);
+    if(filters.origen==='VSL + rt')rows=[{reuniones_agendadas:agendaRows.length,agendas_aplicables:agendaRows.filter(row=>row.aplica==='Aplica').length,ventas_cce:ventasTotalesResponse.ventasCce||0,ventas_ccne:ventasTotalesResponse.ventasCcne||0}];
     const agendaAlignedMeetings = aggregateAgendaAlignedMeetings(leadRows, filters);
     const adRows = aggregateAdsMetrics(leadRows, filters);
     const qualityRows = aggregateQualityMetrics(leadRows, filters);
     const traceabilityRows = (traceabilityResponse.rows || []).filter((row) => {
       const currentOrigin = getMarketingLeadOrigin(row);
-      if (!currentOrigin || (filters.origen && normalizeOriginGroup(currentOrigin) !== filters.origen)) {
+      if (!isMarketingLeadInSelectedOrigin(row, filters)) {
         return false;
       }
       return true;
@@ -1707,7 +1731,9 @@ async function loadDashboard() {
     renderTraceabilityTable(traceabilityRows);
     status.textContent = `${rows.length} registros KPI, ${(campaignTotalsResponse.rows || []).length} campaigns, ${adRows.length} anuncios y ${traceabilityRows.length} leads de trazabilidad procesados.`;
   } catch (error) {
+    if(loadVersion !== marketingLoadVersion)return;
     status.textContent = error.message;
+    document.getElementById('agendaBreakdown').textContent='No se pudo cargar el detalle de agendas.';
     document.getElementById('creditBalanceSummary').innerHTML = '';
     document.getElementById('marketingContainer').innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No se pudo cargar el KPI de marketing.</div></div>';
     document.getElementById('campaignTotalsContainer').innerHTML = '';
@@ -1715,7 +1741,7 @@ async function loadDashboard() {
     document.getElementById('qualityMetricsContainer').innerHTML = '';
     document.getElementById('traceabilityContainer').innerHTML = '';
   } finally {
-    hideLoading();
+    if(loadVersion === marketingLoadVersion)hideLoading();
   }
 }
 
@@ -1791,6 +1817,7 @@ async function init() {
   await loadDashboard();
 
   document.getElementById('reload').addEventListener('click', loadDashboard);
+  ['desde','hasta','origen'].forEach(id=>document.getElementById(id).addEventListener('change',loadDashboard));
   document.getElementById('saveInvestment').addEventListener('click', saveInvestment);
   document.getElementById('saveCreditBalance').addEventListener('click', saveCreditBalance);
   document.getElementById('openInvestmentHistory').addEventListener('click', (event) => {
