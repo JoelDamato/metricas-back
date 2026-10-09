@@ -4,6 +4,7 @@ const controller = require('../modules/metricasv2/controllers/metricas.controlle
 const authController = require('../modules/metricasv2/controllers/auth.controller');
 
 const router = express.Router();
+router.use('/training', require('../modules/training/router').privateRouter());
 router.use('/recordings', require('../modules/recordings/router').createRouter());
 router.use('/tickets', require('../modules/tickets/router'));
 const comprobanteAttachments = multer({

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test DISC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: una columna centrada, una pregunta por pantalla. Colores DISC como único acento. */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --fg:#17202a; --muted:#5b6673; --line:#d9dde3;
+  --accent:#1d4ed8; --accent-fg:#ffffff; --sel:#e8eefc;
+  --d:#d62f2f; --i:#e8920c; --s:#1f8a4c; --c:#2563eb;
+  --display:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1318; --surface:#181e26; --fg:#e7ebf0; --muted:#9aa5b2; --line:#2b3440;
+  --accent:#6b93f5; --accent-fg:#0f1318; --sel:#1d2a44;
+  --d:#f06262; --i:#f3ab3c; --s:#45b878; --c:#6b93f5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --surface:#181e26; --fg:#e7ebf0; --muted:#9aa5b2; --line:#2b3440;
+  --accent:#6b93f5; --accent-fg:#0f1318; --sel:#1d2a44;
+  --d:#f06262; --i:#f3ab3c; --s:#45b878; --c:#6b93f5; color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 var(--body);padding-inline:16px}
+main{max-width:640px;margin:0 auto;padding-block:40px 64px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-size:clamp(1.8rem,5vw,2.4rem);line-height:1.1;font-weight:800}
+h2{font-size:1.3rem;line-height:1.3;font-weight:700}
+.kicker{font:700 .78rem/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+p{margin:0}
+.stack{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px}
+.discbar{display:flex;height:6px;border-radius:3px;overflow:hidden}
+.discbar span{flex:1}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600}
+input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.btn{font:700 1rem var(--display);padding:14px 20px;border-radius:8px;border:1px solid transparent;cursor:pointer;background:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row .btn{flex:1 1 140px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.progress{display:flex;align-items:center;gap:12px;font-size:.9rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.track i{display:block;height:100%;background:var(--accent);transition:width .25s}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer}
+.opt:hover{border-color:var(--accent)}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--sel)}
+.dot{flex:none;width:18px;height:18px;margin-top:3px;border-radius:50%;border:2px solid var(--line)}
+.opt[aria-pressed="true"] .dot{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.note{font-size:.9rem;color:var(--muted)}
+.err{color:var(--d);font-size:.9rem}
+.bars{display:flex;flex-direction:column;gap:14px}
+.bar{display:grid;grid-template-columns:110px 1fr 56px;gap:12px;align-items:center;font-variant-numeric:tabular-nums}
+.bar b{font-family:var(--display)}
+.bar .t{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:7px}
+.bar span:last-child{text-align:right}
+.prof{border-left:4px solid var(--accent);padding-left:14px}
+.prof ul{margin:8px 0 0;padding-left:20px}
+@media (max-width:420px){.bar{grid-template-columns:90px 1fr 48px}}
+@media (prefers-reduced-motion:reduce){.track i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+
+<section id="v-intro" class="stack">
+  <div class="discbar" aria-hidden="true"><span style="background:var(--d)"></span><span style="background:var(--i)"></span><span style="background:var(--s)"></span><span style="background:var(--c)"></span></div>
+  <p class="kicker">Perfil de comportamiento</p>
+  <h1>Test DISC</h1>
+  <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos.</p>
+  <div class="card stack">
+    <label class="f" for="nombre">Nombre y apellido
+      <input id="nombre" maxlength="150" type="text" autocomplete="name" required>
+    </label>
+    <label class="f" for="email">Email
+      <input id="email" type="email" autocomplete="email" required maxlength="254">
+    </label>
+    <p id="intro-err" class="err" hidden>Escribí tu nombre y un email válido para empezar.</p>
+    <p class="note">Se admite un envío por email. Tus respuestas y el resultado quedarán disponibles para el equipo responsable del entrenamiento.</p>
+    <button id="start" class="btn" type="button">Empezar</button>
+  </div>
+</section>
+
+<section id="v-quiz" class="stack" hidden>
+  <div class="progress"><span id="count">1 de 30</span><div class="track"><i id="bar" style="width:0%"></i></div></div>
+  <p id="part" class="kicker"></p>
+  <h2 id="q"></h2>
+  <div id="opts" class="opts" role="group" aria-labelledby="q"></div>
+  <div class="row">
+    <button id="back" class="btn ghost" type="button">Anterior</button>
+    <button id="next" class="btn" type="button" disabled>Siguiente</button>
+  </div>
+</section>
+
+<section id="v-result" class="stack" hidden>
+  <p class="kicker">Tu resultado</p>
+  <h1 id="r-title"></h1>
+  <p id="r-name" class="note"></p>
+  <div class="card bars" id="r-bars"></div>
+  <div class="prof stack" id="r-prof"></div>
+  <p id="r-send" class="note" role="status" aria-live="polite"></p><button id="retry" class="btn" type="button" hidden>Reintentar envío</button>
+  <div class="row">
+    <button id="copy" class="btn" type="button">Copiar resultado</button>
+    <a id="wa" class="btn ghost" href="#" target="_blank" rel="noopener" hidden style="text-align:center;text-decoration:none">Enviar por WhatsApp</a>
+  </div>
+  <p class="note">Este test es orientativo: describe tendencias de comportamiento, no capacidades ni valor como persona.</p>
+</section>
+
+</main>
+<script>
+/* ===== CONFIGURACIÓN =====
+   ENDPOINT: URL que recibe el resultado por POST en JSON (Google Apps Script, Supabase, Zapier, etc.). Vacío = no envía.
+   WHATSAPP: número con código de país, sin + ni espacios (ej: 5491112345678). Vacío = oculta el botón. */
+const CONFIG = { ENDPOINT: "/api/entrenamiento/disc", WHATSAPP: "" };
+
+const DIM = {
+  D:{name:"Dominio",color:"var(--d)"},
+  I:{name:"Influencia",color:"var(--i)"},
+  S:{name:"Estabilidad",color:"var(--s)"},
+  C:{name:"Conformidad",color:"var(--c)"}
+};
+
+/* 30 preguntas: cada una con una opción por perfil. El orden se mezcla al mostrarlas. */
+const Q = [
+ ["Cuando necesito un resultado rápido en una situación difícil…",{D:"Tomo el control y actúo enseguida.",I:"Busco convencer a otros para que me apoyen.",S:"Mantengo la calma y avanzo paso a paso.",C:"Reviso la información antes de moverme."}],
+ ["Cuando encaro una meta nueva…",{D:"Me pongo un objetivo alto y voy por él.",I:"La comparto con entusiasmo y contagio a otros.",S:"Armo un ritmo constante que pueda sostener.",C:"Hago un plan detallado antes de empezar."}],
+ ["Cuando tengo que tomar una decisión importante…",{D:"Decido rápido y me hago cargo.",I:"Me guío por mi intuición y lo que opinan otros.",S:"Me tomo tiempo y pienso cómo afecta a los demás.",C:"Comparo opciones, pros, contras y datos."}],
+ ["En un equipo de trabajo, suelo…",{D:"Marcar el rumbo.",I:"Generar buen clima y entusiasmo.",S:"Apoyar para que nadie quede atrás.",C:"Ordenar las tareas y cuidar la calidad."}],
+ ["Cuando hablo con alguien que no conozco…",{D:"Voy directo al punto.",I:"Rompo el hielo enseguida.",S:"Escucho primero y después hablo.",C:"Observo y hablo cuando tengo algo concreto para decir."}],
+ ["Ante un cambio inesperado…",{D:"Lo tomo como una oportunidad y me muevo.",I:"Me entusiasma la novedad.",S:"Necesito un tiempo para acomodarme.",C:"Quiero entender por qué cambió y cómo va a funcionar."}],
+ ["Cuando alguien no está de acuerdo conmigo…",{D:"Defiendo mi postura con firmeza.",I:"Trato de convencerlo con buena onda.",S:"Busco un punto medio para evitar el conflicto.",C:"Le muestro argumentos y datos."}],
+ ["Lo que más me motiva en un trabajo es…",{D:"Lograr resultados y ganar.",I:"El reconocimiento y trabajar con gente.",S:"La estabilidad y el buen ambiente.",C:"Hacer las cosas bien y con precisión."}],
+ ["Cuando tengo que convencer a alguien…",{D:"Voy al grano y le planteo qué gana.",I:"Cuento historias y transmito energía.",S:"Genero confianza con tiempo.",C:"Presento pruebas y un razonamiento claro."}],
+ ["Cuando recibo una tarea nueva…",{D:"Arranco ya y ajusto en el camino.",I:"Pienso a quién puedo sumar.",S:"Pregunto cómo se hizo antes.",C:"Leo todas las instrucciones antes de empezar."}],
+ ["Con poco tiempo y mucho trabajo…",{D:"Acelero y priorizo lo importante.",I:"Me apoyo en el equipo.",S:"Mantengo mi ritmo sin desbordarme.",C:"Reviso que no se escape ningún detalle."}],
+ ["Mi manera de organizar el día es…",{D:"Foco en lo que más resultado da.",I:"Flexible, según lo que vaya surgiendo.",S:"Una rutina estable.",C:"Una lista detallada que sigo."}],
+ ["Cuando un proyecto sale mal…",{D:"Busco la solución inmediata.",I:"Levanto el ánimo del grupo.",S:"Acompaño a quien lo está pasando peor.",C:"Analizo qué falló para que no se repita."}],
+ ["Los demás suelen verme como alguien…",{D:"Decidido y exigente.",I:"Simpático y comunicativo.",S:"Paciente y confiable.",C:"Prolijo y analítico."}],
+ ["Cuando me dan una devolución sobre mi trabajo…",{D:"Quiero saber qué cambiar ya.",I:"Me importa mucho cómo me lo dicen.",S:"Necesito tiempo para pensarlo.",C:"Pido ejemplos concretos."}],
+ ["En una reunión…",{D:"Llevo la conversación hacia una decisión.",I:"Aporto ideas y energía.",S:"Escucho y apoyo las propuestas.",C:"Hago preguntas sobre los detalles."}],
+ ["Frente a un riesgo…",{D:"Me la juego si el premio vale la pena.",I:"Me entusiasma si hay otros que se suman.",S:"Prefiero lo seguro.",C:"Calculo bien antes de decidir."}],
+ ["Cuando trabajo solo…",{D:"Avanzo rápido.",I:"Extraño interactuar con otros.",S:"Trabajo tranquilo y constante.",C:"Aprovecho para profundizar."}],
+ ["Ante reglas y procedimientos…",{D:"Si frenan los resultados, los cuestiono.",I:"Los sigo con flexibilidad.",S:"Los sigo porque dan orden.",C:"Los sigo al pie de la letra."}],
+ ["Al vender o presentar una idea, mi punto fuerte es…",{D:"Pedir la decisión y cerrar.",I:"Conectar y entusiasmar.",S:"Escuchar y generar confianza.",C:"Explicar con claridad y precisión."}],
+ ["Cuando estoy estresado, a veces…",{D:"Me pongo impaciente y brusco.",I:"Hablo de más y me disperso.",S:"Me guardo lo que me molesta.",C:"Me vuelvo muy crítico."}],
+ ["Lo que más me cuesta es…",{D:"Esperar a que otros se decidan.",I:"Hacer seguimiento de los detalles.",S:"Decir que no.",C:"Decidir sin tener toda la información."}],
+ ["Un error que cometo seguido es…",{D:"Decidir sin consultar.",I:"Prometer más de lo que puedo cumplir.",S:"Postergar conversaciones incómodas.",C:"Demorarme por querer que quede perfecto."}],
+ ["Cuando algo no sale como quiero…",{D:"Me enojo y presiono más.",I:"Me frustro y pierdo el interés.",S:"Me la banco en silencio.",C:"Me lo reprocho y lo repaso una y otra vez."}],
+ ["Lo que me suelen criticar es…",{D:"Ser mandón.",I:"Ser desorganizado.",S:"Resistirme a los cambios.",C:"Ser frío o distante."}],
+ ["En un conflicto, me equivoco cuando…",{D:"Gano la discusión pero lastimo.",I:"Lo tapo con humor.",S:"Cedo para no pelear.",C:"Me cierro en tener razón."}],
+ ["Con un proyecto de plazo largo…",{D:"Me aburro y quiero ir más rápido.",I:"Me cuesta mantener el foco.",S:"Cumplo, pero me cuesta acelerar si hace falta.",C:"Me demoro puliendo cada parte."}],
+ ["Cuando delego una tarea…",{D:"Exijo resultados y acompaño poco.",I:"Delego sin dar instrucciones claras.",S:"Termino haciéndola yo.",C:"Controlo cada detalle."}],
+ ["Mi punto débil con la gente es que…",{D:"Puedo sonar duro.",I:"Busco demasiado la aprobación.",S:"Me cuesta poner límites.",C:"Desconfío hasta tener pruebas."}],
+ ["Ante una crítica que me parece injusta…",{D:"Respondo de inmediato y con fuerza.",I:"Me afecta y lo comento con otros.",S:"Lo dejo pasar aunque me moleste.",C:"Preparo una respuesta con datos."}]
+];
+
+const PROF = {
+  D:{t:"Dominio",s:"Orientado a resultados, directo y rápido para decidir.",f:["Toma la iniciativa y pide la decisión sin rodeos.","Rinde bien con metas exigentes y competencia."],w:["Puede sonar duro o impaciente.","Le conviene escuchar más antes de proponer."]},
+  I:{t:"Influencia",s:"Comunicativo, entusiasta y orientado a las personas.",f:["Conecta rápido y genera buen clima.","Contagia energía y entusiasmo al presentar."],w:["Puede dispersarse o prometer de más.","Le conviene ordenar el seguimiento y los detalles."]},
+  S:{t:"Estabilidad",s:"Paciente, constante y confiable.",f:["Escucha y genera confianza con el tiempo.","Sostiene el ritmo y cumple lo que promete."],w:["Puede evitar conversaciones incómodas o el cierre.","Le conviene practicar poner límites y pedir la decisión."]},
+  C:{t:"Conformidad",s:"Analítico, preciso y cuidadoso con la calidad.",f:["Explica con claridad y se prepara a fondo.","Detecta errores y cuida los detalles."],w:["Puede demorarse buscando la perfección.","Le conviene decidir aunque falte algo de información."]}
+};
+
+const $ = id => document.getElementById(id);
+const st = { nombre:"", email:"", i:0, ans:Array(Q.length).fill(null), order:[] };
+
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function show(id){ ["v-intro","v-quiz","v-result"].forEach(v=>$(v).hidden = v!==id); window.scrollTo(0,0); }
+
+$("start").addEventListener("click",()=>{
+  const n=$("nombre").value.trim();
+  if(n.length<2 || !$("email").checkValidity()){ $("intro-err").hidden=false; $("nombre").focus(); return; }
+  st.nombre=n; st.email=$("email").value.trim().toLowerCase(); st.submissionKey=crypto.randomUUID();
+  st.order = Q.map(()=>shuffle(["D","I","S","C"]));
+  show("v-quiz"); render();
+});
+
+function render(){
+  const [text,opts]=Q[st.i];
+  $("count").textContent=(st.i+1)+" de "+Q.length;
+  $("bar").style.width=(st.i/Q.length*100)+"%";
+  $("part").textContent = st.i<20 ? "Cómo actuás" : "Tus puntos a mejorar";
+  $("q").textContent=text;
+  const box=$("opts"); box.textContent="";
+  st.order[st.i].forEach(k=>{
+    const b=document.createElement("button");
+    b.type="button"; b.className="opt"; b.setAttribute("aria-pressed", st.ans[st.i]===k);
+    const d=document.createElement("span"); d.className="dot"; d.setAttribute("aria-hidden","true");
+    const s=document.createElement("span"); s.textContent=opts[k];
+    b.append(d,s);
+    b.addEventListener("click",()=>{ st.ans[st.i]=k; render(); });
+    box.append(b);
+  });
+  $("back").disabled = st.i===0;
+  $("next").disabled = st.ans[st.i]===null;
+  $("next").textContent = st.i===Q.length-1 ? "Enviar y ver resultado" : "Siguiente";
+}
+$("back").addEventListener("click",()=>{ if(st.i>0){ st.i--; render(); } });
+$("next").addEventListener("click",()=>{
+  if(st.ans[st.i]===null) return;
+  if(st.i<Q.length-1){ st.i++; render(); } else finish();
+});
+
+function score(){
+  const c={D:0,I:0,S:0,C:0}; st.ans.forEach(k=>c[k]++);
+  const p={}; for(const k in c) p[k]=Math.round(c[k]/Q.length*1000)/10;
+  return {c,p};
+}
+
+function finish(){
+  const {c,p}=score();
+  const ranked=Object.keys(c).sort((a,b)=>c[b]-c[a]);
+  const top=ranked.filter(k=>c[k]===c[ranked[0]]);
+  const second=ranked.find(k=>!top.includes(k));
+  $("r-title").textContent = "Perfil predominante: " + top.map(k=>DIM[k].name).join(" y ");
+  $("r-name").textContent = st.nombre + (st.email ? " · "+st.email : "");
+
+  const bars=$("r-bars"); bars.textContent="";
+  ["D","I","S","C"].forEach(k=>{
+    const row=document.createElement("div"); row.className="bar";
+    row.innerHTML='<b></b><div class="t"><i></i></div><span></span>';
+    row.querySelector("b").textContent=DIM[k].name;
+    const i=row.querySelector("i"); i.style.width=p[k]+"%"; i.style.background=DIM[k].color;
+    row.querySelector("span").textContent=p[k].toLocaleString("es-AR")+"%";
+    bars.append(row);
+  });
+
+  const prof=$("r-prof"); prof.textContent="";
+  top.forEach(k=>{
+    const x=PROF[k], el=document.createElement("div"); el.className="stack"; el.style.gap="6px";
+    el.innerHTML='<h2></h2><p></p><p class="note">Fortalezas</p><ul class="f"></ul><p class="note">A trabajar</p><ul class="w"></ul>';
+    el.querySelector("h2").textContent=x.t; el.querySelector("h2").style.color=DIM[k].color;
+    el.querySelector("p").textContent=x.s;
+    x.f.forEach(t=>{const li=document.createElement("li"); li.textContent=t; el.querySelector(".f").append(li);});
+    x.w.forEach(t=>{const li=document.createElement("li"); li.textContent=t; el.querySelector(".w").append(li);});
+    prof.append(el);
+  });
+  if(second && top.length===1){
+    const n=document.createElement("p"); n.className="note";
+    n.textContent="Perfil secundario: "+DIM[second].name+" ("+p[second].toLocaleString("es-AR")+"%).";
+    prof.append(n);
+  }
+
+  const txt = "Test DISC – "+st.nombre+(st.email?" ("+st.email+")":"")+"\n"+
+    ["D","I","S","C"].map(k=>DIM[k].name+": "+p[k].toLocaleString("es-AR")+"%").join("\n")+
+    "\nPredominante: "+top.map(k=>DIM[k].name).join(" y ")+
+    "\nRespuestas: "+st.ans.join("");
+  st.text=txt;
+
+  if(CONFIG.WHATSAPP){
+    $("wa").href="https://wa.me/"+CONFIG.WHATSAPP+"?text="+encodeURIComponent(txt);
+    $("wa").hidden=false;
+  }
+  send({nombre:st.nombre,email:st.email,submissionKey:st.submissionKey,porcentajes:p,conteo:c,predominante:top,respuestas:st.ans});
+  $("bar").style.width="100%";
+  show("v-result");
+}
+
+async function send(data){
+  st.payload=data;
+  const el=$("r-send");$("retry").hidden=true;
+  el.textContent="Guardando tu resultado…";
+  try{
+    const response=await fetch(CONFIG.ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+    const result=await response.json();
+    if(!response.ok){el.textContent=result.message||"No se pudo guardar el test.";$("retry").hidden=response.status===409;return;}
+    el.textContent="Resultado guardado el "+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+" (hora Argentina).";
+  }catch{el.textContent="No se pudo confirmar el envío. Reintentá sin cerrar esta pantalla.";$("retry").hidden=false;}
+}
+$("retry").addEventListener('click',()=>send(st.payload));
+
+$("copy").addEventListener("click",async()=>{
+  try{ await navigator.clipboard.writeText(st.text); $("copy").textContent="Copiado"; }
+  catch(e){ const t=document.createElement("textarea"); t.value=st.text; document.body.append(t); t.select(); try{document.execCommand("copy"); $("copy").textContent="Copiado";}catch(_){ } t.remove(); }
+  setTimeout(()=>{$("copy").textContent="Copiar resultado";},2000);
+});
+</script>
+</body>
+</html>

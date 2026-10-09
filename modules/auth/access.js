@@ -43,6 +43,7 @@ const PAGE_ROLE_ACCESS = {
   'herramientas.html': ['total', 'comercial', 'csm'],
   'generador-params.html': ['total', 'comercial', 'csm'],
   'area-comercial.html': ['total', 'comercial'],
+  'entrenamiento.html': ['total', 'comercial'],
   'grabaciones.html': ['total', 'comercial', 'csm'],
   'pdi.html': ['total', 'comercial'],
   'view.html': ['total']
@@ -479,6 +480,7 @@ function canAccessFeature(role, featureName) {
 
 function canAccessPageForUser(user, pageName) {
   pageName = canonicalPageName(pageName);
+  if (pageName === 'entrenamiento.html') return require('../training/router').canRead(user);
   if (pageName === 'area-comercial.html' && commissionAreaForUser(user)) return true;
   if (pageName === 'tickets.html') return Boolean(user);
   if (pageName === 'pdi.html') return canAccessPdiForUser(user);
@@ -610,6 +612,7 @@ function getUserPermissions(user) {
   const override = getUserAccessOverride(user);
   const allowedPages = override ? new Set(override.allowedPages) : null;
   if (allowedPages && user) allowedPages.add('tickets.html');
+  if (allowedPages && canAccessPageForUser(user, 'entrenamiento.html')) allowedPages.add('entrenamiento.html');
   if (allowedPages && canAccessPageForUser(user, 'dashboard.html')) {
     allowedPages.add('dashboard.html');
   }

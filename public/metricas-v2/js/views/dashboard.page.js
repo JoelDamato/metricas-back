@@ -31,6 +31,7 @@
   if (refs.welcomeLoader) refs.welcomeLoader.hidden = false;
 
   const QUICK_LINKS = [
+    {page:'entrenamiento.html',href:'/views/entrenamiento.html',label:'Centro de entrenamiento',description:'Test DISC y resultados de cada participante.',icon:'◇',roles:['total','comercial']},
     { page: 'metricas.html', href: '/metricas.html', label: 'Central de Métricas', description: 'Todos los tableros y reportes.', icon: '▦', roles: ['total', 'comercial', 'csm'] },
     { page: 'carga-comprobantes.html', href: '/views/carga-comprobantes.html', label: 'Cargar Comprobante', description: 'Registrar una venta o cobranza.', icon: '+', roles: ['total', 'comercial', 'csm'] },
     { page: 'instructivos-externos', href: 'https://central.scalo.tech/clientes/matias-randazzo/instructivos', label: 'Instructivos', description: 'Guías, procesos y recursos para usar la Central Matías Randazzo.', icon: '▶', roles: ['total', 'comercial', 'csm'], external: true },
@@ -269,6 +270,7 @@
 
   function canOpen(item, user) {
     const permissions = user.permissions || {};
+    if (item?.page === 'entrenamiento.html') return ['leonardoalaniz19@gmail.com','matirandazzo@gmail.com'].includes(String(user.email||'').toLowerCase());
     if (item?.page === 'tickets.html') return Boolean(user);
     if (!item || !item.roles.includes(user.role)) return false;
     if (item.permission && permissions[item.permission] !== true) return false;

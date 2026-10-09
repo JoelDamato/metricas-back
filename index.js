@@ -62,6 +62,8 @@ app.get('/diagnostico', (req, res) => res.sendFile(path.join(__dirname, 'public/
 app.get('/api/diagnostico/cliente/:ghlId', metricasV2Controller.getPublicDiagnosticoByGhlId);
 
 app.use('/api', routes);
+app.use('/entrenamiento/disc', express.static(path.join(__dirname, 'public/entrenamiento/disc')));
+app.use('/api/entrenamiento', require('./modules/training/router').publicRouter());
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
