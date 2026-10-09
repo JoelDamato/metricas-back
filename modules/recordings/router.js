@@ -26,7 +26,7 @@ function extractRecordings(rows) {
   }
   return [...results.values()].sort((a,b)=>(b.callDate||'').localeCompare(a.callDate||'')||a.name.localeCompare(b.name,'es')||a.id.localeCompare(b.id));
 }
-const canCurate = user => ['leonardoalaniz19@gmail.com','matirandazzo@gmail.com'].includes(String(user?.email || '').trim().toLowerCase());
+const canCurate = user => ['leonardoalaniz19@gmail.com','matirandazzo@gmail.com','walteralegre56@gmail.com'].includes(String(user?.email || '').trim().toLowerCase());
 function createRouter(request=db) {
   const router=express.Router(); let cached=null,expires=0;
   async function library() {
@@ -44,7 +44,7 @@ function createRouter(request=db) {
     res.json({recordings:recordings.map(row=>({...row,top:selected.get(row.id)||null})),canCurate:canCurate(req.authUser)});
   }));
   router.put('/:recordingId/top',wrap(async(req,res)=>{
-    if(!canCurate(req.authUser))return res.status(403).json({message:'Sólo Leo o Mati pueden seleccionar grabaciones Top'});
+    if(!canCurate(req.authUser))return res.status(403).json({message:'Sólo Leo, Mati o Walter pueden seleccionar grabaciones Top'});
     const id=req.params.recordingId;
     if(typeof req.body?.selected!=='boolean')return res.status(400).json({message:'Selección inválida'});
     if((await library()).every(row=>row.id!==id))return res.status(404).json({message:'Grabación no encontrada'});
