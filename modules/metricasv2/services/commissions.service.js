@@ -1835,8 +1835,36 @@ function buildPersonalClubMonthly(comprobantesRows, user = {}, year, includeOnly
   return totals;
 }
 
+function buildMarketingCloserPersonalArea(dashboard, user) {
+  const personal = buildPersonalCommercialArea(dashboard, user);
+  const eligible = row => row.category !== 'Club' && !isClubProduct(row.product);
+  const closerDetails = personal.details.filter(row => row.role === 'Closer' && eligible(row));
+  const areaDetails = (dashboard.areaCommissions.find(row => row.label === 'Marketing')?.details || []).filter(eligible);
+  const details = [...closerDetails, ...areaDetails];
+  const transactions = uniqueTransactions(details);
+  const sum = (rows, key) => rows.reduce((total, row) => total + safeNumber(row[key]), 0);
+  const sales = transactions.filter(row => normalizeText(row.tipo) === 'venta');
+  const closerCommission = sum(closerDetails, 'commissionAmount');
+  const areaCommission = sum(areaDetails, 'commissionAmount');
+  return {
+    month: dashboard.month, locked: dashboard.locked, person: personal.person,
+    identities: personal.identities, commissionArea: 'Marketing + Closer', excludesClub: true,
+    commissionBreakdown: {closer: closerCommission, marketing: areaCommission},
+    details, people: summarizeDetails(details).people,
+    summary: {
+      totalCommission: closerCommission + areaCommission,
+      totalBase: sum(transactions, 'cashArs'), cashArs: sum(transactions, 'cashArs'),
+      cashUsd: sum(transactions, 'cashUsd'), facturacionUsd: sum(sales, 'facturacionUsd'),
+      totalDeductionsArs: sum(transactions, 'totalDeductionsArs'),
+      transactionCount: transactions.length, salesCount: sales.length, agendas: personal.summary.agendas,
+      clubSales: 0
+    }
+  };
+}
+
 async function getMyCommercialArea(monthKey, user) {
   const dashboard = await buildCommissionDashboard(monthKey, { includeSourceRows: true });
+  if (String(user?.email || '').trim().toLowerCase() === 'walteralegre56@gmail.com') return buildMarketingCloserPersonalArea(dashboard, user);
   const area=commissionAreaForUser(user);
   if(area){
     const selected=dashboard.areaCommissions.find(row=>row.label===area);
@@ -1877,6 +1905,7 @@ module.exports = {
     computeClubNetBreakdown,
     buildMarketingAreaSummary,
     buildAreaCommissionData,
+    buildMarketingCloserPersonalArea,
     buildPersonalCommercialArea,
     buildPersonalClubMonthly
   }

@@ -23,3 +23,14 @@ test('cada cuenta accede sólo a su resumen asignado, incluso Belu con rol CSM',
  }
  assert.equal(commissionAreaForUser({email:'valecalmet@gmail.com',nombre:'Belu',role:'csm'}),null);
 });
+test('Wally suma closer y Marketing, excluye Club y no duplica cash de operaciones compartidas',()=>{
+ const row={...detail('same','MEG 2.1'),person:'Walter Alegre',role:'Closer',commissionAmount:9000,netTotalArs:90000};
+ const club={...row,transactionId:'club',product:'Club del costo',category:'Club',commissionAmount:50000};
+ const dashboard={month:'2026-10',details:[row,club,{...row,person:'Otro closer',transactionId:'other'}],areaCommissions:[{label:'Marketing',details:[{...row,person:'Marketing',role:'Área',cashArs:90000,cashUsd:90,commissionAmount:4500}, {...club,role:'Área'}]}]};
+ const result=service._test.buildMarketingCloserPersonalArea(dashboard,{email:'walteralegre56@gmail.com',nombre:'Walter Alegre'});
+ assert.deepEqual(result.commissionBreakdown,{closer:9000,marketing:4500});
+ assert.equal(result.summary.totalCommission,13500);
+ assert.equal(result.summary.cashArs,90000);assert.equal(result.summary.transactionCount,1);
+ assert.equal(result.summary.clubSales,0);assert.equal(result.details.length,2);
+ assert(result.details.every(d=>d.category!=='Club'));
+});

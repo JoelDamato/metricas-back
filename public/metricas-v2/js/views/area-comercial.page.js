@@ -21,7 +21,7 @@
 
   function renderSummary(data) {
     const items = [
-      [data.commissionArea ? `Comisión del área ${data.commissionArea}` : 'Comisión total calculada', formatArs(data.summary?.totalCommission)],
+      [data.commissionBreakdown ? 'Comisión total · Marketing + Closer' : data.commissionArea ? `Comisión del área ${data.commissionArea}` : 'Comisión total calculada', formatArs(data.summary?.totalCommission)],
       ['Comprobantes comisionables', String(data.summary?.transactionCount || 0)],
       ['Cash neto USD', formatUsd(data.summary?.cashUsd)],
       ['Cash neto ARS', formatArs(data.summary?.cashArs)],
@@ -30,6 +30,7 @@
       ['Base total comisionable', formatArs(data.summary?.totalBase)],
       ['Agendas', String(data.summary?.agendas || 0)]
     ];
+    if (data.commissionBreakdown) items.splice(1, 0, ['Comisión como closer', formatArs(data.commissionBreakdown.closer)], ['Comisión de Marketing', formatArs(data.commissionBreakdown.marketing)]);
     summary.innerHTML = items.map(([label, value]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join('');
   }
 

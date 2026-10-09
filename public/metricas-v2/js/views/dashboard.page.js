@@ -576,7 +576,7 @@
       { icon: '▥', label: personal?.commissionArea ? `Ventas · ${personal.commissionArea}` : isPersonal ? 'Tus ventas' : 'Ventas del mes', value: formatInteger(sales), numericValue: sales, format: 'integer', comparison: buildComparison(sales, previousSales, { kind: 'count', available: comparisonAvailable }) },
       {
         icon: '★',
-        label: personal?.commissionArea ? `Comisión ${personal.commissionArea}` : personal?.summary ? 'Tu comisión calculada' : 'Posición destacada',
+        label: personal?.commissionBreakdown ? 'Comisión total · Marketing + Closer' : personal?.commissionArea ? `Comisión ${personal.commissionArea}` : personal?.summary ? 'Tu comisión calculada' : 'Posición destacada',
         value: personal?.summary
           ? formatArs(commission)
           : (personalRow?.ranking_posicion ? `#${personalRow.ranking_posicion}` : '—'),
@@ -588,6 +588,10 @@
         actionLabel: personal?.summary ? 'Detalle privado por comprobante' : '',
         href: personal?.summary ? `/views/area-comercial.html?mes=${encodeURIComponent(period.key)}` : ''
       }
+      ,...(personal?.commissionBreakdown ? [
+        {icon:'$',label:'Comisión como closer',value:formatArs(personal.commissionBreakdown.closer),numericValue:personal.commissionBreakdown.closer,format:'ars'},
+        {icon:'$',label:'Comisión de Marketing',value:formatArs(personal.commissionBreakdown.marketing),numericValue:personal.commissionBreakdown.marketing,format:'ars'}
+      ] : [])
     ];
   }
 
