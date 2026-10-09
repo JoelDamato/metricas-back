@@ -2047,16 +2047,7 @@ const {
 } = require('./marketing-origin.service');
 
 function normalizeMarketingOriginGroup(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return 'Sin origen';
-  if (!/^postulación meg - /i.test(raw)) return raw;
-
-  const segment = String(raw.split(' - ')[1] || '').trim();
-  const normalizedSegment = segment.toUpperCase();
-  if (normalizedSegment.includes('VSL')) return 'VSL';
-  if (normalizedSegment.includes('ORG')) return 'ORG';
-  if (normalizedSegment.includes('APSET')) return 'APSET';
-  return segment || raw;
+  return require('../../../public/metricas-v2/js/marketing-cohort').label(value);
 }
 
 function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
@@ -3219,14 +3210,14 @@ async function getMarketingDashboard(filters){
     const {from,to,origen}=filters;
     const agendaOptions={limit:1000,from,to,dateField:'fecha_agenda',orderBy:'fecha_agenda',orderDir:'desc'};
     const [rows,investment,aov,ventas,cash,campaigns,leads,traceability]=await Promise.all([
-      origen==='VSL + rt'?[]:listAllRows('kpi_marketing_diario',{limit:1000,from,to,dateField:'fecha',...(origen?{eqFilters:{origen}}:{})}),
+      origen==='VSL + rt'?[]:listAllRows('kpi_marketing_diario',{limit:1000,from,to,dateField:'fecha'}),
       getMarketingInvestment(filters),getMarketingAovDia1(filters),getMarketingVentasTotales(filters),getMarketingCashCollectedAgenda(filters),getMarketingCampaignTotals(filters),
       listAllRows('leads_raw',agendaOptions),
       listAllRows('leads_raw',{limit:1000,from,to,dateField:'created_time'})
     ]);
     const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
     const slim=records=>records.map(row=>Object.fromEntries(columns.map(key=>[key,row[key]??null])));
-    return {rows:rows.filter(row=>!isClientSession(row.origen)),investment,aov,ventas,cash,campaigns,leads:slim(leads.filter(row=>!isClientSession(row.origen_actual))),traceability:slim(traceability.filter(row=>!isClientSession(row.origen_actual)))};
+    return {rows:rows.filter(row=>!isClientSession(row.origen) && (!origen || normalizeMarketingOriginGroup(row.origen)===normalizeMarketingOriginGroup(origen))),investment,aov,ventas,cash,campaigns,leads:slim(leads.filter(row=>!isClientSession(row.origen_actual))),traceability:slim(traceability.filter(row=>!isClientSession(row.origen_actual)))};
   });
 }
 

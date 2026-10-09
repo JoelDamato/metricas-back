@@ -30,3 +30,10 @@ test('sesiones de clientas quedan fuera incluso en Todos y con acentos o URL enc
  const linked=buildMarketingLeadByGhlId([{ghlid:'abc',origen_actual:'Sesión de apoyo'}]);
  assert.equal(matches({ghlid:'abc'},linked,''),false);
 });
+test('VSL B con flecha, tilde y URL encoding pertenece a VSL y al primer origen de VSL + rt',()=>{
+ for(const origen of ['➡️ Postulación MEG - VSL | B','Postulacion MEG - VSL | B',encodeURIComponent('➡️ Postulación MEG - VSL | B')]){
+  assert.equal(cohort.group(origen),'vsl');
+  assert.equal(cohort.matches({origen_actual:origen},'VSL'),true);
+  assert.equal(cohort.matches({origen_actual:'RT',primer_origen:origen},cohort.combined),true);
+ }
+});

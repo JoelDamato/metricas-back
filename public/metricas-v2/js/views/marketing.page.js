@@ -654,9 +654,11 @@ function setDefaultDates() {
 
 function setOriginOptions(origins) {
   const select = document.getElementById('origen');
-  select.innerHTML = ['<option value="">Todos</option>', '<option value="VSL + rt">VSL + rt</option>']
-    .concat(origins.filter(origin=>origin!=='VSL + rt' && !window.marketingCohort.isClientSession(origin)).map((origin) => `<option value="${escapeHtml(origin)}">${escapeHtml(origin)}</option>`))
-    .join('');
+  const options = [...new Set([...origins, 'VSL + rt'])]
+    .filter(origin=>origin && !window.marketingCohort.isClientSession(origin))
+    .sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base',numeric:true}));
+  select.innerHTML = '<option value="">Todos</option>' + options
+    .map(origin=>`<option value="${escapeHtml(origin)}">${escapeHtml(origin)}</option>`).join('');
 }
 
 function getFilters() {
@@ -676,26 +678,7 @@ function normalizeText(value) {
 }
 
 function normalizeOriginGroup(value) {
-  const encodedValue = String(value || '').trim();
-  let raw = encodedValue;
-
-  if (/%[0-9a-f]{2}/i.test(encodedValue)) {
-    try {
-      raw = decodeURIComponent(encodedValue);
-    } catch (error) {
-      raw = encodedValue;
-    }
-  }
-
-  if (!raw) return 'Sin origen';
-  if (!/^postulación meg - /i.test(raw)) return raw;
-
-  const segment = String(raw.split(' - ')[1] || '').trim();
-  const normalizedSegment = normalizeText(segment);
-  if (normalizedSegment.includes('vsl')) return 'VSL';
-  if (normalizedSegment.includes('org')) return 'ORG';
-  if (normalizedSegment.includes('apset')) return 'APSET';
-  return segment || raw;
+  return window.marketingCohort.label(value);
 }
 
 function getMarketingLeadOrigin(row) {
