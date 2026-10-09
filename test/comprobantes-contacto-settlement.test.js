@@ -16,3 +16,9 @@ test('únicamente conciliado genera comisión, incluso al desactivar el filtro d
   assert.equal(details.length>0,estado==='Conciliado');if(details.length)assert.equal(details[0].baseAmount,85000);
  }
 });
+test('saldo del cliente descuenta IVA con el TC del comprobante pero no comisiones del medio',()=>{
+ const result=totals([{tipo:'Venta',facturacion:1000,cash_collected:1210,cash_ar:1210000,iva:210000,tc:1000,comisiones:50000,estado:'Conciliado'}]);
+ assert.equal(result.cobrado,1000);assert.equal(result.saldo,0);
+ const historical=totals([{tipo:'Venta',facturacion:1000,cash_collected:1210,cash_ar:1210000,iva:210000,estado:'Conciliado'}]);assert.equal(historical.saldo,0);
+ const pending=totals([{tipo:'Venta',facturacion:1000,cash_collected:1210,iva:210000,tc:1000,estado:'No conciliado'}]);assert.equal(pending.cobrado,0);assert.equal(pending.pendiente,1000);assert.equal(pending.saldo,1000);
+});

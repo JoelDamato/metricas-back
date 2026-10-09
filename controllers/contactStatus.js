@@ -125,7 +125,7 @@ async function fetchContactByGhlId(ghlId) {
     ],
     administracion: [
       { label: 'Facturación total', value: receiptTotals.facturacion, type: 'amount' },
-      { label: 'Cash collected total', value: receiptTotals.cobrado, type: 'amount' },
+      { label: 'Cobrado conciliado sin IVA', value: receiptTotals.cobrado, type: 'amount' },
       { label: 'Último comprobante', value: latestComprobante ? `${latestComprobante.tipo || 'Sin tipo'} · ${latestComprobante.medios_de_pago_format || latestComprobante.estado || latestComprobante.producto_format || 'Sin dato'}` : 'Sin dato' }
     ]
   };
