@@ -19,7 +19,8 @@ function metricasV2ErrorHandler(err, req, res, next) {
     console.error('[metricas-v2 details]', JSON.stringify(err.details));
   }
 
-  const isPayloadTooLarge = err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413;
+  const isUploadLimit = typeof err.code === 'string' && err.code.startsWith('LIMIT_');
+  const isPayloadTooLarge = isUploadLimit || err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413;
   return res.status(isPayloadTooLarge ? 413 : (err.statusCode || 500)).json({
     ok: false,
     code: err.code || null,

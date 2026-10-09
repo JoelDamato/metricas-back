@@ -55,6 +55,6 @@ test('normaliza números argentinos devueltos como texto por fórmulas históric
   });
 
   assert.equal(row.facturacion, 0);
-  assert.equal(row.facturacion_total, 1234.56);
-  assert.equal(row.cash_collected_total, 1234.56);
+  assert.equal(Object.hasOwn(row, 'facturacion_total'), false);
+  assert.equal(Object.hasOwn(row, 'cash_collected_total'), false);
 });

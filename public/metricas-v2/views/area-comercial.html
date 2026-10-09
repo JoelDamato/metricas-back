@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mi Área Comercial | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+  </head>
+  <body class="ranking-page commercial-area-page premium-navy-background">
+    <main class="container">
+      <div class="nav"><a href="/metricas.html">Volver a la central</a></div>
+      <section class="ranking-hero commercial-area-hero">
+        <span>Espacio personal</span>
+        <h1>Mi Área Comercial</h1>
+        <p id="commercialAreaIdentity">Tus comisiones, comprobantes y métricas comerciales en un mismo lugar.</p>
+      </section>
+
+      <section class="ranking-actions commercial-area-filter">
+        <label>Mes <input id="commercialAreaMonth" type="month" /></label>
+        <button id="commercialAreaReload" type="button">Actualizar</button>
+        <a class="commercial-area-proof-link" href="/views/mis-comprobantes.html">Ver mis comprobantes</a>
+      </section>
+      <p id="commercialAreaStatus"></p>
+
+      <section id="commercialAreaSummary" class="commercial-area-summary" aria-live="polite"></section>
+
+      <section class="commercial-area-panel">
+        <div class="commercial-area-panel-head">
+          <div><span>Detalle privado</span><h2>Comisión por comprobante</h2></div>
+          <p>Consultá tu comisión y el desglose de cada comprobante: cash bruto, impuestos, descuentos y base neta.</p>
+        </div>
+        <div id="commercialAreaTable" class="table-wrap"></div>
+      </section>
+
+      <section class="commercial-area-panel">
+        <div class="commercial-area-panel-head"><div><span>Referencias</span><h2>Métricas del área</h2></div></div>
+        <div class="commercial-area-links">
+          <a href="/views/mag-sistema-agendas.html"><strong>Sistema de Agendas</strong><small>Objetivos, cash y desempeño quincenal.</small></a>
+          <a href="/views/ranking.html"><strong>Ranking mensual</strong><small>Resultados comerciales del equipo.</small></a>
+          <a href="/views/reportes.html"><strong>Reportes</strong><small>Ventas y cash collected por período.</small></a>
+          <a href="/views/mis-comprobantes.html"><strong>Mis comprobantes</strong><small>Historial, conciliación y gestión de tus cargas.</small></a>
+        </div>
+      </section>
+    </main>
+
+    <script src="/js/api/http.js"></script>
+    <script src="/js/api/metricas.api.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/area-comercial.page.js?v=20261008-area-net-1"></script>
+  </body>
+</html>

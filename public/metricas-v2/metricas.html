@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Central de Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+  </head>
+  <body class="ranking-page central-page central-brand-page premium-navy-background">
+    <main class="container">
+      <section class="ranking-hero central-brand-hero">
+        <div class="central-hero-copy">
+          <div class="central-hero-heading">
+            <div class="central-hero-icon" aria-hidden="true"></div>
+            <span class="central-brand-kicker">Tu espacio de análisis</span>
+          </div>
+          <h1>Central de Métricas</h1>
+          <p>Accedé a los principales tableros y reportes para analizar, medir y tomar mejores decisiones.</p>
+        </div>
+        <div class="central-hero-visual" aria-hidden="true">
+          <div class="central-visual-insight">
+            <span class="central-visual-insight-icon"><i></i><i></i><i></i></span>
+            <span><strong>Insights en tiempo real</strong><small>Datos que impulsan decisiones</small></span>
+          </div>
+          <span class="central-visual-growth">↗&nbsp;&nbsp;Crecimiento</span>
+          <svg class="central-visual-chart" viewBox="0 0 760 280" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="centralBars" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#4b91ff" stop-opacity=".88" />
+                <stop offset="1" stop-color="#183a74" stop-opacity=".28" />
+              </linearGradient>
+              <linearGradient id="centralLine" x1="0" x2="1">
+                <stop offset="0" stop-color="#20c7ff" />
+                <stop offset=".58" stop-color="#5368ff" />
+                <stop offset="1" stop-color="#28c8ff" />
+              </linearGradient>
+            </defs>
+            <g class="central-chart-grid">
+              <path d="M0 60H760M0 130H760M0 200H760" />
+              <path d="M105 0V280M220 0V280M335 0V280M450 0V280M565 0V280M680 0V280" />
+            </g>
+            <g class="central-chart-bars">
+              <rect x="410" y="216" width="31" height="54" rx="7" />
+              <rect x="469" y="198" width="31" height="72" rx="7" />
+              <rect x="528" y="154" width="31" height="116" rx="7" />
+              <rect x="587" y="119" width="31" height="151" rx="7" />
+              <rect x="646" y="84" width="31" height="186" rx="7" />
+              <rect x="705" y="61" width="31" height="209" rx="7" />
+            </g>
+            <path class="central-chart-line central-chart-line--back" d="M0 250 C85 228 90 126 194 134 S305 207 395 172 S503 75 575 78 S684 138 760 143" />
+            <path class="central-chart-line" d="M0 250 C74 232 115 157 204 174 S304 111 392 142 S500 136 566 76 S674 91 760 122" />
+            <circle class="central-chart-dot" cx="204" cy="174" r="8" />
+            <circle class="central-chart-dot central-chart-dot--blue" cx="566" cy="76" r="8" />
+          </svg>
+        </div>
+      </section>
+
+      <section class="central-groups">
+        <details class="central-group" data-roles="total,comercial" data-group="agendas">
+          <summary class="central-group-summary">
+            <span class="central-group-icon" aria-hidden="true"></span>
+            <div>
+              <h2>Agendas</h2>
+              <p>Lectura del embudo de agendas, origen y detalle por closer.</p>
+            </div>
+          </summary>
+          <div class="cards central-cards">
+            <a class="card" href="/views/agendas-totales.html" data-roles="total,comercial">
+              <h3>Agendas Totales</h3>
+              <p>Matriz de meses y totales por embudo.</p>
+            </a>
+            <a class="card" href="/views/agendas-ultimo-origen.html" data-roles="total,comercial">
+              <h3>Agendas por Último Origen</h3>
+              <p>Matriz de meses filtrada por último origen registrado.</p>
+            </a>
+            <a class="card" href="/views/agendas-detalle-closer.html" data-roles="total,comercial">
+              <h3>Agendas por Closer</h3>
+              <p>Detalle mensual por origen y closer.</p>
+            </a>
+          </div>
+        </details>
+
+        <details class="central-group" data-roles="total,comercial,csm" data-group="ventas">
+          <summary class="central-group-summary">
+            <span class="central-group-icon" aria-hidden="true"></span>
+            <div>
+              <h2>Ventas</h2>
+              <p>Ranking, análisis comercial, setting, renovaciones y reportes.</p>
+            </div>
+          </summary>
+          <div class="cards central-cards">
+            <a class="card" href="/views/ranking.html" data-roles="total,comercial">
+              <h3>Ranking Closers Mensual</h3>
+              <p>Ranking comercial con filtros y lectura rápida.</p>
+            </a>
+            <a class="card" href="/views/mag-sistema-agendas.html" data-roles="total,comercial">
+              <h3>Sistema de Agendas</h3>
+              <p>Guía visual del sistema de agendas, categorías, ranking y bonus.</p>
+            </a>
+            <a class="card" href="/views/analisis-ventas.html" data-roles="total,comercial">
+              <h3>Analisis de Ventas</h3>
+              <p>Ventas por fecha de agendamiento, separadas entre señas y ventas con 30% o mas.</p>
+            </a>
+            <a class="card" href="/views/kpi-closers.html" data-roles="total,comercial">
+              <h3>KPI Closers Mensual</h3>
+              <p>Objetivos editables y cumplimiento por closer.</p>
+            </a>
+            <a class="card" href="/views/reportes.html" data-roles="total,comercial">
+              <h3>Reportes</h3>
+              <p>Resumen diario por closer con ventas y cash collected.</p>
+            </a>
+            <a class="card" href="/views/leads-bdd.html" data-roles="total,comercial,csm">
+              <h3>Informe Por Respuestas</h3>
+              <p>Tablas de respuestas desde la base de leads por fecha de agenda.</p>
+            </a>
+            <a class="card" href="/views/setting.html" data-roles="total,comercial">
+              <h3>Setting</h3>
+              <p>Embudo detallado por setter y período.</p>
+            </a>
+            <a class="card" href="/views/csm-renovaciones.html" data-roles="total,comercial">
+              <h3>Renovaciones</h3>
+              <p>Panel de renovaciones y oportunidades pendientes de seguimiento.</p>
+            </a>
+          </div>
+        </details>
+
+        <details class="central-group" data-roles="total,comercial,csm" data-group="marketing">
+          <summary class="central-group-summary">
+            <span class="central-group-icon" aria-hidden="true"></span>
+            <div>
+              <h2>Marketing</h2>
+              <p>KPIs de inversión, agendas y rentabilidad por período.</p>
+            </div>
+          </summary>
+          <div class="cards central-cards">
+            <a class="card" href="/views/marketing.html" data-roles="total,comercial,csm">
+              <h3>Totales MKT</h3>
+              <p>KPI de marketing con inversión editable por período y origen.</p>
+            </a>
+          </div>
+        </details>
+
+        <details class="central-group" data-roles="total,comercial,csm" data-group="herramientas">
+          <summary class="central-group-summary">
+            <span class="central-group-icon" aria-hidden="true"></span>
+            <div>
+              <h2>Herramientas</h2>
+              <p>Utilidades puntuales para flujos internos que no encajan en otro panel.</p>
+            </div>
+          </summary>
+          <div class="cards central-cards">
+            <a class="card" href="/views/herramientas.html" data-roles="total,comercial,csm">
+              <h3>Generador UTM</h3>
+              <p>Entrá a Herramientas y elegí el Generador de params para armar links y guardar presets.</p>
+            </a>
+          </div>
+        </details>
+
+        <details class="central-group" data-roles="total,csm" data-group="csm">
+          <summary class="central-group-summary">
+            <span class="central-group-icon" aria-hidden="true"></span>
+            <div>
+              <h2>CSM</h2>
+              <p>Métricas de seguimiento del equipo CSM con base en campos de "csm".</p>
+            </div>
+          </summary>
+          <div class="cards central-cards central-cards-soon">
+            <a class="card" href="/views/csm-tiempo.html">
+              <h3>Por Tiempo</h3>
+              <p>Vista de seguimiento por tiempo y ventanas operativas.</p>
+            </a>
+            <a class="card" href="/views/csm-situacion.html">
+              <h3>Por Estado</h3>
+              <p>Estado de acceso, ingresos, sesiones y desglose individual de clientes.</p>
+            </a>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <script src="/js/api/http.js"></script>
+    <script src="/js/api/metricas.api.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+  </body>
+</html>

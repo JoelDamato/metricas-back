@@ -7,9 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
   </head>
-  <body class="ranking-page comisiones-page">
+  <body class="ranking-page comisiones-page premium-navy-background">
     <main class="container">
       <section class="ranking-hero comisiones-hero">
         <div class="comisiones-hero-copy">
@@ -94,6 +94,10 @@
               <button id="commissionAgendaClearFilters" type="button" class="button-secondary">Limpiar filtros</button>
             </div>
             <div class="comisiones-detail-toolbar comisiones-agendas-toolbar">
+              <label class="comisiones-filter-field">
+                <span>Buscar contacto</span>
+                <input id="commissionAgendaSearch" type="search" placeholder="Nombre o últimos 4 dígitos del teléfono" />
+              </label>
               <label class="comisiones-filter-field">
                 <span>Setter</span>
                 <select id="commissionAgendaSetterSelect"></select>
@@ -259,7 +263,7 @@
 
     <script src="/js/api/http.js"></script>
     <script src="/js/api/metricas.api.js"></script>
-    <script src="/js/auth-shell.js"></script>
-    <script src="/js/views/comisiones.page.js?v=20260904-nahuel-ventas-2"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/comisiones.page.js?v=20261008-area-net-1"></script>
   </body>
 </html>

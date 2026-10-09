@@ -106,7 +106,7 @@ test('Nahuel cobra 4,5% fijo si VSL está en Primer origen u Origen actual', () 
     ]
   });
   const baseSale = {
-    tipo: 'Venta',
+    tipo: 'Venta', estado: 'Conciliado',
     producto_format: 'MEG 2.1',
     responsable_venta: 'Patricia Conti',
     setter: 'Nahuel Iasci',
@@ -161,7 +161,7 @@ test('Nahuel cobra 4,5% cuando APSET está en Primer origen aunque Origen actual
     config,
     comprobantesRows: [{
       id: 'meg-apset-primer-origen',
-      tipo: 'Venta',
+      tipo: 'Venta', estado: 'Conciliado',
       producto_format: 'MEG 2.1',
       cliente_format: 'Cliente APSET',
       responsable_venta: 'Patricia Conti',
@@ -184,7 +184,7 @@ test('Nahuel cobra 4,5% cuando APSET está en Primer origen aunque Origen actual
   assert.equal(setterDetail?.firstOrigin, 'Postulación MEG - APSET');
 });
 
-test('Club paga únicamente al responsable de venta y nunca genera comisión de setter', () => {
+test('Club paga al responsable y también a Nahuel cuando figura como setter', () => {
   const config = commissionsService.normalizeConfig({
     global: {
       includeOnlyVerified: false
@@ -199,7 +199,7 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
     config,
     comprobantesRows: [{
       id: 'club-sin-setting',
-      tipo: 'Venta',
+      tipo: 'Venta', estado: 'Conciliado',
       producto_format: 'Club',
       cliente_format: 'Cliente Club',
       responsable_venta: 'Patricia Conti',
@@ -216,7 +216,11 @@ test('Club paga únicamente al responsable de venta y nunca genera comisión de 
     agendaRows: []
   });
 
-  assert.equal(details.some((detail) => detail.role === 'Setter' && detail.category === 'Club'), false);
+  const setterDetail = details.find((detail) => detail.role === 'Setter' && detail.category === 'Club');
+  assert.equal(setterDetail?.person, 'Nahuel Iasci');
+  assert.equal(setterDetail?.commissionPct, 0.5);
+  assert.equal(setterDetail?.commissionAmount > 0, true);
+  assert.match(setterDetail?.sourceRule || '', /Club/);
   assert.equal(details.some((detail) => detail.role === 'Closer' && detail.category === 'Club'), true);
   assert.equal(details.find((detail) => detail.role === 'Closer')?.paymentMethod, 'Mercado Pago');
 });
@@ -231,7 +235,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
     comprobantesRows: [
       {
         id: 'meg-venta-1',
-        tipo: 'Venta',
+        tipo: 'Venta', estado: 'Conciliado',
         producto_format: 'MEG 2.1',
         f_acreditacion: '2026-09-01',
         cash_ar: 100000,
@@ -240,7 +244,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
       },
       {
         id: 'meg-venta-1',
-        tipo: 'Venta',
+        tipo: 'Venta', estado: 'Conciliado',
         producto_format: 'MEG 2.1',
         f_acreditacion: '2026-09-01',
         cash_ar: 100000,
@@ -249,7 +253,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
       },
       {
         id: 'club-venta-1',
-        tipo: 'Venta',
+        tipo: 'Venta', estado: 'Conciliado',
         producto_format: 'Club del Costo',
         f_acreditacion: '2026-09-02',
         cash_ar: 121000,
@@ -258,7 +262,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
       },
       {
         id: 'club-cobranza-1',
-        tipo: 'Cobranza',
+        tipo: 'Cobranza', estado: 'Conciliado',
         producto_format: 'Club del Costo',
         f_acreditacion: '2026-09-03',
         cash_ar: 121000,
@@ -266,7 +270,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
       },
       {
         id: 'con-error',
-        tipo: 'Venta',
+        tipo: 'Venta', estado: 'Conciliado',
         producto_format: 'MEG 2.1',
         f_acreditacion: '2026-09-02',
         cash_ar: 999999,
@@ -274,7 +278,7 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
       },
       {
         id: 'otro-mes',
-        tipo: 'Venta',
+        tipo: 'Venta', estado: 'Conciliado',
         producto_format: 'MEG 2.1',
         f_acreditacion: '2026-08-31',
         cash_ar: 999999,
@@ -300,11 +304,11 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   const source = fs.readFileSync(path.join(__dirname, '../public/metricas-v2/js/views/comisiones.page.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '../public/metricas-v2/views/comisiones.html'), 'utf8');
 
-  assert.match(source, /label: 'Marketing'/);
-  assert.match(source, /dashboard\?\.marketingArea/);
+  assert.match(source, /dashboard\?\.areaCommissions/);
+
   assert.match(source, /<th>Ventas Club<\/th>/);
-  assert.match(source, /marketingArea\?\.ventasClub/);
+  assert.match(source, /row\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
-  assert.match(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20260904-nahuel-ventas-2/);
+  assert.doesNotMatch(source, /label: 'VSL \+ RT'/);
+  assert.match(html, /comisiones\.page\.js\?v=20261008-area-net-1/);
 });

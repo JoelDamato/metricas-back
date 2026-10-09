@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grabaciones | Central Matías Randazzo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/pdi.css?v=20260924-pdi-1" />
+  <link rel="stylesheet" href="/css/recordings.css?v=20261008-top-1"></head>
+  <body class="ranking-page workspace-brand-page premium-navy-background">
+    <main class="container workspace-brand-layout">
+      <section class="workspace-brand-hero">
+        <div>
+          <span class="workspace-brand-kicker">Biblioteca del equipo</span>
+          <h1>Grabaciones</h1>
+          <p>Grabaciones de llamadas de los closers y comentarios del equipo.</p>
+        </div>
+        <span class="workspace-brand-chip">Llamadas comerciales</span>
+      </section>
+
+      <section class="recordings-library">
+        <div class="recording-tabs" role="group" aria-label="Lista de grabaciones"><button type="button" data-tab="all" aria-pressed="true">Todas</button><button type="button" data-tab="top" aria-pressed="false">★ Top</button></div>
+        <label for="recordingSearch">Buscar por cliente</label><input id="recordingSearch" type="search" placeholder="Nombre del cliente…">
+        <p id="recordingStatus" role="status" aria-live="polite">Cargando grabaciones…</p>
+        <div id="recordingList"></div><button id="recordingMore" hidden>Mostrar más</button>
+      </section>
+    </main>
+
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+  <script src="/js/views/recordings.page.js?v=20261008-top-1"></script></body>
+</html>

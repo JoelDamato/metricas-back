@@ -506,57 +506,13 @@ async function supabaseWithLimit(fn) {
   }
 }
 
-exports.handleWebhook = async (req, res) => {
-  try {
-    console.log('📥 Webhook recibido (Comprobantes)');
-    const payload = req.body;
-
-    const isValidPayload =
-      (payload.data && payload.data.object === 'page') ||
-      (payload.type === 'page.deleted' && payload.entity);
-
-    if (!isValidPayload) {
-      console.warn('⚠️ Payload no válido');
-      const errorLog = {
-        webhook_type: 'com',
-        type: 'invalid_payload',
-        message: 'Payload no válido - no es un evento reconocido',
-        payload: payload
-      };
-      await saveLog(errorLog);
-      return res.status(400).json({ error: 'Payload inválido', received: payload.type || 'unknown' });
-    }
-
-    try {
-      console.log('⏳ Procesando Supabase (Comprobantes)...');
-      await sendToSupabase(payload);
-    } catch (error) {
-      console.error('❌ Error al procesar Supabase:', error.message);
-      await saveLog({
-        webhook_type: 'com',
-        type: 'supabase_process_error',
-        message: error.message,
-        payload
-      });
-      const statusCode = Number(error.statusCode || error.response?.status || 502);
-      return res.status(statusCode >= 400 && statusCode < 500 ? statusCode : 502).json({
-        error: 'No pude persistir el webhook de comprobantes',
-        message: error.message
-      });
-    }
-
-    // Sheets conserva su propia cola y no demora la confirmación de la réplica crítica.
-    enqueueGoogleSheets(payload);
-    return res.status(200).json({
-      status: 'ok',
-      message: 'Webhook de comprobantes persistido en Supabase',
-      receivedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error('❌ Error en handler de Comprobantes:', err.message);
-    return res.status(500).json({ error: 'Error interno en el handler de Comprobantes' });
-  }
-};
+// Retired: receipt changes are owned by the internal application.
+// Acknowledge deliveries without processing them so senders do not retry forever.
+exports.handleWebhook = async (_req, res) => res.status(200).json({
+  status: 'ignored',
+  reason: 'comprobantes_webhook_retired',
+  message: 'Los comprobantes se administran exclusivamente desde la aplicación interna.'
+});
 
 exports.getValue = getValue;
 exports.mapToSupabase = mapToSupabase;

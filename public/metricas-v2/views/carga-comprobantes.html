@@ -7,44 +7,37 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
-    <script defer src="/js/api/http.js"></script>
-    <script defer src="/js/api/metricas.api.js"></script>
-    <script defer src="/js/auth-shell.js"></script>
-    <script defer src="/js/views/carga-comprobantes.page.js?v=20260814-club-prices-2"></script>
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/carga-comprobantes.css?v=20261002-brand-1" />
+    <script defer src="/js/api/http.js?v=20261003-runtime-v2"></script>
+    <script defer src="/js/api/metricas.api.js?v=20261003-runtime-v2"></script>
+    <script defer src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script defer src="/js/views/carga-comprobantes.page.js?v=20261003-runtime-v2"></script>
   </head>
-  <body class="carga-comprobantes-page">
+  <body class="carga-comprobantes-page carga-renovada premium-navy-background">
     <main class="container carga-comprobantes-layout">
-      <section class="metric-page-hero carga-comprobantes-hero">
-        <div class="metric-page-hero-copy">
-          <span class="metric-page-eyebrow">Operación Comercial</span>
-          <h1>Carga de Comprobantes</h1>
-          <p>
-            Cargá ventas, cobranzas y devoluciones para crear el registro en Notion, asociarlo al cliente por GHL ID
-            y dejar listo el flujo que después replica a Supabase.
-          </p>
-          <div class="metric-page-hero-meta">
-            <span class="metric-chip">Relaciona por "Identificador"</span>
-            <span class="metric-chip">Responsable venta nuevo</span>
-            <span class="metric-chip">Sincroniza por webhook</span>
-          </div>
+      <header class="carga-brand-hero">
+        <div>
+          <a class="carga-back-link" href="/dashboard.html">← Volver al dashboard</a>
+          <span class="carga-brand-eyebrow">OPERACIÓN COMERCIAL</span>
+          <h1>Cada pago, en su lugar.</h1>
+          <p>Registrá ventas, cobranzas y devoluciones en un solo recorrido.</p>
         </div>
-        <div class="carga-comprobantes-hero-card">
-          <div class="carga-comprobantes-hero-icon">↗</div>
-          <h2>Flujo</h2>
-          <ol>
-            <li>Buscás el cliente con la URL o GHL ID.</li>
-            <li>Elegís el tipo de comprobante.</li>
-            <li>Validás cash, TC y campos operativos.</li>
-            <li>Se crea en Notion y después baja solo al resto.</li>
-          </ol>
-        </div>
-      </section>
+        <div class="carga-brand-seal" aria-hidden="true">↗</div>
+      </header>
+      <nav class="carga-journey" aria-label="Progreso de la carga">
+        <ol>
+          <li data-carga-step="0" aria-current="step"><span>01</span><div><strong>Cliente</strong><small>Buscá y vinculá</small></div></li>
+          <li data-carga-step="1"><span>02</span><div><strong>Operación</strong><small>Completá el pago</small></div></li>
+          <li data-carga-step="2"><span>03</span><div><strong>Archivos</strong><small>Adjuntá comprobantes</small></div></li>
+          <li data-carga-step="3"><span>04</span><div><strong>Revisión</strong><small>Confirmá los datos</small></div></li>
+        </ol>
+      </nav>
 
       <section class="carga-comprobantes-panel">
         <div class="carga-comprobantes-toolbar">
           <div class="carga-comprobantes-toolbar-copy">
-            <strong>Estado del formulario</strong>
+            <strong>Nuevo comprobante</strong>
             <p id="comprobanteLoaderHint">Cargando opciones y usuario responsable...</p>
           </div>
           <button id="reloadComprobanteLoader" type="button" class="metricas-secondary-button">Recargar</button>
@@ -78,7 +71,7 @@
                 <input id="ghlId" name="ghlId" type="text" readonly />
               </label>
               <label class="carga-field">
-                <span>Page ID CRM 2.0</span>
+                <span>Referencia del cliente</span>
                 <input id="clientPageId" name="clientPageId" type="text" readonly />
               </label>
               <label class="carga-field">
@@ -130,11 +123,11 @@
           <section id="cobranzaLinkSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Venta relacionada</h2>
-              <p>Para cobranzas se busca automáticamente la última venta del cliente. En devoluciones podés pegar el Notion ID para traer la referencia.</p>
+              <p>Para cobranzas se busca automáticamente la última venta del cliente. En devoluciones podés pegar el ID para traer la referencia.</p>
             </div>
             <div class="carga-grid carga-grid--two">
               <label class="carga-field">
-                <span>Venta relacionada (Notion ID)</span>
+                <span>Venta relacionada (ID)</span>
                 <div class="carga-field-row">
                   <input id="latestSaleId" name="latestSaleId" type="text" readonly />
                   <button id="searchRelatedSaleBtn" type="button" class="metricas-secondary-button">Buscar venta</button>
@@ -164,7 +157,7 @@
               <label id="clubPriceField" class="carga-field" hidden>
                 <span>Precio de Club</span>
                 <select id="clubPriceKey" name="clubPriceKey"></select>
-                <small class="carga-field-help">Importes actualizados desde el producto Club en Notion.</small>
+                <small class="carga-field-help">Importes actualizados desde la configuración del producto Club.</small>
               </label>
               <label id="cantidadPagosField" class="carga-field">
                 <span>Cantidad de pagos</span>
@@ -218,7 +211,7 @@
 
           <section id="attachmentsSection" class="carga-section">
             <div class="carga-section-head">
-              <h2>Adjuntos e info</h2>
+              <h2>Archivos y detalles</h2>
               <p>Podés subir JPG, PNG, WEBP o PDF. Máximo 20 MB por archivo y 30 MB en total.</p>
             </div>
             <div class="carga-grid carga-grid--two">
@@ -258,7 +251,7 @@
           <section id="previewSection" class="carga-section carga-preview-section" hidden>
             <div class="carga-section-head">
               <h2>Revisión previa</h2>
-              <p>Chequeá el detalle antes de crear el comprobante en Notion.</p>
+              <p>Chequeá el detalle antes de crear el comprobante.</p>
             </div>
             <div id="previewAlerts" class="carga-preview-alerts" hidden></div>
             <div id="previewGrid" class="carga-preview-grid"></div>
@@ -293,14 +286,14 @@
           Organizando los datos y archivos antes de enviarlos.
         </p>
         <div class="carga-progress-meta">
-          <span id="comprobanteProgressStep">Progreso estimado · Preparación</span>
+          <span id="comprobanteProgressStep">Preparación</span>
           <strong id="comprobanteProgressPercent">0%</strong>
         </div>
         <div
           id="comprobanteProgressBar"
           class="carga-progress-track"
           role="progressbar"
-          aria-label="Progreso estimado de la carga"
+          aria-label="Estado de la carga"
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow="0"

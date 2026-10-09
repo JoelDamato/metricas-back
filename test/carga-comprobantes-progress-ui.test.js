@@ -27,11 +27,12 @@ test('el popup de carga expone progreso y mensajes accesibles', () => {
   assert.match(html, /aria-modal="true"[\s\S]*tabindex="-1"/);
 });
 
-test('el progreso estimado no llega a 100 antes de la respuesta real', () => {
-  assert.match(script, /const SUBMISSION_PROGRESS_MAX_PENDING = 92;/);
-  assert.match(script, /progress = Math\.min\(SUBMISSION_PROGRESS_MAX_PENDING/);
+test('el progreso muestra etapas del servidor y sólo completa al recibir confirmación', () => {
+  assert.doesNotMatch(script, /function updateSubmissionProgressFromElapsed/);
+  assert.match(script, /function updateRealProgress/);
+  assert.match(script, /removeAttribute\('aria-valuenow'\)/);
 
-  const requestPosition = script.indexOf('await api.createComprobanteManual(payload)');
+  const requestPosition = script.indexOf('await api.createComprobanteManual(payload, getAllAttachments(), updateRealProgress)');
   const completedPosition = script.indexOf('completeSubmissionProgress(response.created.length)');
   const hundredPosition = script.indexOf('value: 100');
   assert.ok(requestPosition >= 0, 'debe existir la llamada de creación');
@@ -40,11 +41,8 @@ test('el progreso estimado no llega a 100 antes de la respuesta real', () => {
 });
 
 test('la carga múltiple informa etapas y evita envíos duplicados', () => {
-  assert.match(script, /Guardando \$\{count\} \$\{recordPlural\}/);
-  assert.match(script, /Los pagos se están guardando en la base de datos/);
-  assert.match(script, /cada registro y archivo se guarda por separado/);
-  assert.match(script, /SUBMISSION_LONG_WAIT_ROTATION_MS/);
-  assert.match(script, /Seguimos guardando la información/);
+  assert.match(script, /Subiendo archivos/);
+  assert.match(script, /Actualizando los registros y saldos/);
   assert.ok(
     script.match(/if \(state\.isSubmitting\) return;/g)?.length >= 2,
     'el submit y la confirmación deben bloquear duplicados'

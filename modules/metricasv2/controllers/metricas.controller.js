@@ -1,12 +1,15 @@
+const comprobantesLocalTest = require('../services/comprobantes-supabase.service');
 const supabaseService = require('../services/supabase.service');
 const assistantService = require('../services/assistant.service');
 const comprobantesLoaderService = require('../services/comprobantes-loader.service');
+const comprobantesDirectService = require('../services/comprobantes-direct.service');
 const comprobantesReconciliationService = require('../services/comprobantes-reconciliation.service');
 const closerPersonalReportService = require('../services/closer-personal-report.service');
 const mercadoPagoService = require('../services/mercado-pago.service');
 const arcaPdfService = require('../services/arca-pdf.service');
 const commissionsService = require('../services/commissions.service');
 const diagnosticosService = require('../services/diagnosticos.service');
+const pdiService = require('../services/pdi.service');
 const access = require('../../auth/access');
 
 async function health(req, res) {
@@ -42,6 +45,32 @@ async function deleteDiagnostico(req, res, next) {
 
 async function getPublicDiagnosticoByGhlId(req, res, next) {
   try { res.json({ ok: true, diagnostico: await diagnosticosService.getPublicDiagnosticoByGhlId(req.params.ghlId) }); } catch (error) { next(error); }
+}
+
+async function listPdiRecords(req, res, next) {
+  try {
+    const result = await pdiService.listPdiRecords();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function upsertPdiRecord(req, res, next) {
+  try {
+    const record = await pdiService.upsertPdiRecord(req.body || {}, req.authUser);
+    res.json({ ok: true, record });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deletePdiRecord(req, res, next) {
+  try {
+    res.json({ ok: true, ...(await pdiService.deletePdiRecord(req.params.closerKey)) });
+  } catch (error) {
+    next(error);
+  }
 }
 
 async function getResources(req, res, next) {
@@ -124,6 +153,15 @@ async function getCommissionPersonDetail(req, res, next) {
       ok: true,
       ...data
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getMyCommercialArea(req, res, next) {
+  try {
+    const data = await commissionsService.getMyCommercialArea(req.query.month, req.authUser);
+    res.json({ ok: true, ...data });
   } catch (error) {
     next(error);
   }
@@ -670,7 +708,9 @@ async function getDollarQuotes(req, res, next) {
 
 async function getComprobantesLoaderBootstrap(req, res, next) {
   try {
-    const bootstrap = await comprobantesLoaderService.getBootstrap(req.authUser);
+    const bootstrap = comprobantesLocalTest.enabled()
+      ? await comprobantesLocalTest.getBootstrap(req.authUser)
+      : await comprobantesDirectService.getBootstrap(req.authUser, { allowOperationalUser: true });
     res.json({
       ok: true,
       bootstrap
@@ -682,7 +722,10 @@ async function getComprobantesLoaderBootstrap(req, res, next) {
 
 async function lookupComprobantesLoaderClient(req, res, next) {
   try {
-    const client = await comprobantesLoaderService.lookupClientByGhlId(req.query.ghlId || req.query.url || '');
+    const rawGhlId = req.query.ghlId || req.query.url || '';
+    const client = comprobantesLocalTest.enabled()
+      ? await comprobantesLocalTest.lookupClient(rawGhlId, req.authUser)
+      : await comprobantesDirectService.lookupClient(rawGhlId, req.authUser, { allowOperationalUser: true });
     res.json({
       ok: true,
       client
@@ -694,13 +737,18 @@ async function lookupComprobantesLoaderClient(req, res, next) {
 
 async function lookupComprobantesLoaderRelatedSale(req, res, next) {
   try {
-    const sale = await comprobantesLoaderService.lookupRelatedSaleById(
-      req.query.saleId || req.query.id || '',
-      {
-        ghlId: req.query.ghlId || '',
-        clientPageId: req.query.clientPageId || ''
-      }
-    );
+    const expectedClient = {
+      ghlId: req.query.ghlId || '',
+      clientPageId: req.query.clientPageId || ''
+    };
+    const sale = comprobantesLocalTest.enabled()
+      ? await comprobantesLocalTest.lookupRelatedSale(req.query.saleId || req.query.id || '', expectedClient, req.authUser)
+      : await comprobantesDirectService.lookupRelatedSale(
+          req.query.saleId || req.query.id || '',
+          expectedClient,
+          req.authUser,
+          { allowOperationalUser: true }
+        );
     res.json({
       ok: true,
       sale
@@ -712,11 +760,121 @@ async function lookupComprobantesLoaderRelatedSale(req, res, next) {
 
 async function createComprobanteManual(req, res, next) {
   try {
-    const result = await comprobantesLoaderService.createComprobante(req.body || {}, req.authUser);
-    res.json({
-      ok: true,
-      ...result
-    });
+    let payload = req.body || {};
+    if (typeof req.body?.payload === 'string') {
+      try {
+        payload = JSON.parse(req.body.payload);
+      } catch (_error) {
+        const invalidPayload = new Error('La información de la carga no tiene un formato válido');
+        invalidPayload.statusCode = 400;
+        throw invalidPayload;
+      }
+    }
+
+    if (Array.isArray(req.files)) {
+      payload = {
+        ...payload,
+        attachmentFiles: req.files.map((file) => ({
+          name: file.originalname,
+          type: file.mimetype || 'application/octet-stream',
+          size: Number(file.size || file.buffer?.length || 0),
+          base64: file.buffer.toString('base64')
+        }))
+      };
+    }
+
+    const streaming=String(req.headers?.accept||'').includes('application/x-ndjson');
+    const send=event=>{if(!res.writableEnded&&!res.destroyed){res.write(JSON.stringify(event)+'\n');res.flush?.();}};
+    let heartbeat;
+    if(streaming){res.setHeader('Content-Type','application/x-ndjson');res.setHeader('Cache-Control','no-store, no-transform');res.setHeader('X-Accel-Buffering','no');res.flushHeaders();heartbeat=setInterval(()=>send({type:'heartbeat'}),10000);}
+    try {
+      const result=await comprobantesLocalTest.create(payload,req.authUser,streaming?{onProgress:progress=>send({type:'progress',...progress})}:{});
+      if(streaming){send({type:'result',data:{ok:true,...result}});res.end();}else res.json({ok:true,...result});
+    } catch(error){if(streaming){send({type:'error',message:error.message});res.end();}else throw error;}
+    finally {if(heartbeat)clearInterval(heartbeat);}
+  } catch (error) {
+    next(error);
+  }
+}
+
+function parseComprobanteLabPayload(req) {
+  let payload = req.body || {};
+  if (typeof req.body?.payload === 'string') {
+    try {
+      payload = JSON.parse(req.body.payload);
+    } catch (_error) {
+      const invalidPayload = new Error('La información de la carga no tiene un formato válido');
+      invalidPayload.statusCode = 400;
+      throw invalidPayload;
+    }
+  }
+  if (Array.isArray(req.files)) {
+    payload = {
+      ...payload,
+      attachmentFiles: req.files.map((file) => ({
+        name: file.originalname,
+        type: file.mimetype || 'application/octet-stream',
+        size: Number(file.size || file.buffer?.length || 0),
+        base64: file.buffer.toString('base64')
+      }))
+    };
+  }
+  return payload;
+}
+
+async function getComprobantesDirectConfig(req, res, next) {
+  try {
+    const config = comprobantesLocalTest.enabled() ? await comprobantesLocalTest.getConfig(req.authUser) : await comprobantesDirectService.getConfig(req.authUser, { allowFallback: true });
+    res.json({ ok: true, config });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function saveComprobantesDirectConfig(req, res, next) {
+  try {
+    const result = comprobantesLocalTest.enabled() ? await comprobantesLocalTest.saveConfig(req.body || {}, req.authUser) : await comprobantesDirectService.saveConfig(req.body || {}, req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getComprobantesStorageCleanup(req, res, next) {
+  try {
+    const result = comprobantesLocalTest.enabled() ? await comprobantesLocalTest.cleanupQueue(req.authUser) : await comprobantesDirectService.getStorageCleanupQueue(req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function retryComprobantesStorageCleanup(req, res, next) {
+  try {
+    const result = comprobantesLocalTest.enabled() ? await comprobantesLocalTest.cleanupQueue(req.authUser,true) : await comprobantesDirectService.retryStorageCleanup(req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function previewComprobanteDirect(req, res, next) {
+  try {
+    const result = await comprobantesLocalTest.preview(parseComprobanteLabPayload(req), req.authUser);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createComprobanteDirect(req, res, next) {
+  try {
+    const result = await comprobantesLocalTest.create(
+      parseComprobanteLabPayload(req),
+      req.authUser,
+      { allowMissingAttachments: false }
+    );
+    res.json({ ok: true, ...result });
   } catch (error) {
     next(error);
   }
@@ -725,7 +883,11 @@ async function createComprobanteManual(req, res, next) {
 async function listReconciliationComprobantes(req, res, next) {
   try {
     const result = await comprobantesReconciliationService.listAllComprobantes();
-    res.json({ ok: true, ...result });
+    res.json({
+      ok: true,
+      ...result,
+      dataSource: 'supabase_direct'
+    });
   } catch (error) {
     next(error);
   }
@@ -733,10 +895,23 @@ async function listReconciliationComprobantes(req, res, next) {
 
 async function updateReconciliationComprobante(req, res, next) {
   try {
-    const result = await comprobantesReconciliationService.updateComprobanteState(
-      req.params.id,
-      req.body?.state
-    );
+    if (comprobantesLocalTest.enabled()) {
+      return res.json({ ok: true, ...await comprobantesLocalTest.reconcile(req.params.id, req.body?.state, req.authUser, req.body?.reason) });
+    }
+    const useDirect = comprobantesDirectService.isCutoverActive()
+      || (comprobantesDirectService.getSafetyStatus().enabled
+        && await comprobantesDirectService.isDirectComprobante(req.params.id));
+    const result = useDirect
+      ? await comprobantesDirectService.updateReconciliation(
+          req.params.id,
+          req.body?.state,
+          req.authUser,
+          { allowOperationalUser: true }
+        )
+      : await comprobantesReconciliationService.updateComprobanteState(
+          req.params.id,
+          req.body?.state
+        );
     res.json({ ok: true, ...result });
   } catch (error) {
     next(error);
@@ -745,7 +920,11 @@ async function updateReconciliationComprobante(req, res, next) {
 
 async function getEditableComprobante(req, res, next) {
   try {
-    const comprobante = await comprobantesLoaderService.getEditableComprobante(req.params.id, req.authUser);
+    if (comprobantesLocalTest.enabled()) {
+      const result = await comprobantesLocalTest.getEditable(req.params.id, req.authUser);
+      return res.json({ ok: true, comprobante: result });
+    }
+    const comprobante = await comprobantesDirectService.getEditableComprobante(req.params.id, req.authUser, { allowOperationalUser: true });
     res.json({ ok: true, comprobante });
   } catch (error) {
     next(error);
@@ -754,7 +933,11 @@ async function getEditableComprobante(req, res, next) {
 
 async function updateEditableComprobante(req, res, next) {
   try {
-    const result = await comprobantesLoaderService.updateEditableComprobante(req.params.id, req.body || {}, req.authUser);
+    if (comprobantesLocalTest.enabled()) {
+      const result = await comprobantesLocalTest.updateEditable(req.params.id, req.body || {}, req.authUser);
+      return res.json({ ok: true, ...result });
+    }
+    const result = await comprobantesDirectService.updateEditableComprobante(req.params.id, req.body || {}, req.authUser, { allowOperationalUser: true });
     res.json({ ok: true, ...result });
   } catch (error) {
     next(error);
@@ -763,10 +946,34 @@ async function updateEditableComprobante(req, res, next) {
 
 async function deleteEditableComprobante(req, res, next) {
   try {
-    const result = await comprobantesLoaderService.deleteEditableComprobante(req.params.id, req.authUser);
+    if (comprobantesLocalTest.enabled()) {
+      const result = await comprobantesLocalTest.deleteEditable(req.params.id, req.authUser);
+      return res.json({ ok: true, ...result });
+    }
+    const result = await comprobantesDirectService.deleteEditableComprobante(req.params.id, req.authUser, { allowOperationalUser: true });
     res.json({ ok: true, ...result });
   } catch (error) {
     next(error);
+  }
+}
+
+async function listComprobanteFiles(req, res, next) {
+  try {
+    if (comprobantesLocalTest.enabled()) {
+      const files = await comprobantesLocalTest.listFiles(req.params.id, req.authUser);
+      return res.json({ ok: true, count: files.length, files, dataSource: 'supabase_direct' });
+    }
+    if (!comprobantesDirectService.getSafetyStatus().enabled) {
+      return res.json({ ok: true, count: 0, files: [], dataSource: 'notion' });
+    }
+    const files = await comprobantesDirectService.listSignedFiles(
+      req.params.id,
+      req.authUser,
+      { allowOperationalUser: true }
+    );
+    return res.json({ ok: true, count: files.length, files, dataSource: 'supabase_direct' });
+  } catch (error) {
+    return next(error);
   }
 }
 
@@ -1097,10 +1304,14 @@ module.exports = {
   updateDiagnostico,
   deleteDiagnostico,
   getPublicDiagnosticoByGhlId,
+  listPdiRecords,
+  upsertPdiRecord,
+  deletePdiRecord,
   health,
   getCommissionConfig,
   getCommissionsDashboard,
   getCommissionPersonDetail,
+  getMyCommercialArea,
   saveCommissionConfig,
   saveDefaultCommissionConfig,
   lockCommissionMonth,
@@ -1137,11 +1348,18 @@ module.exports = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  getComprobantesDirectConfig,
+  saveComprobantesDirectConfig,
+  getComprobantesStorageCleanup,
+  retryComprobantesStorageCleanup,
+  previewComprobanteDirect,
+  createComprobanteDirect,
   listReconciliationComprobantes,
   updateReconciliationComprobante,
   getEditableComprobante,
   updateEditableComprobante,
   deleteEditableComprobante,
+  listComprobanteFiles,
   listMyComprobantes,
   listUtmBuilderPresets,
   saveUtmBuilderPreset,

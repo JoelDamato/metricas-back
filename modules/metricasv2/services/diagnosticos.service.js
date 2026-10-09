@@ -97,6 +97,19 @@ function mergeDiagnosticClients(csmRows = [], leadRows = []) {
     .sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 
+async function withClientRubro(items, idField = 'clientGhlId') {
+  const ids = [...new Set(items.map(item => item[idField]).filter(id => /^[A-Za-z0-9_-]+$/.test(id || '')))];
+  const rubros = new Map();
+  for (let offset = 0; offset < ids.length; offset += 100) {
+    const response = await axios.get(`${env.supabaseUrl}/rest/v1/csm_followup_profiles`, {
+      headers: headers(), timeout: 15000,
+      params: { select: 'ghlid,rubro', ghlid: `in.(${ids.slice(offset, offset + 100).join(',')})` }
+    });
+    for (const row of response.data || []) rubros.set(row.ghlid, cleanText(row.rubro, 400));
+  }
+  return items.map(item => ({ ...item, rubro: rubros.get(item[idField]) || '' }));
+}
+
 async function listDiagnosticClients(rawQuery) {
   const query = normalizeSearchTerm(rawQuery);
   const csmParams = {
@@ -124,7 +137,7 @@ async function listDiagnosticClients(rawQuery) {
     : Promise.resolve({ data: [] });
   const [csmResponse, leadResponse] = await Promise.all([csmRequest, leadRequest]);
 
-  return mergeDiagnosticClients(csmResponse.data || [], leadResponse.data || []);
+  return withClientRubro(mergeDiagnosticClients(csmResponse.data || [], leadResponse.data || []), 'ghlId');
 }
 
 function normalize(row) {
@@ -164,14 +177,14 @@ function payloadFrom(input = {}, user = {}) {
 
 async function listDiagnosticos() {
   const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
-  return (response.data || []).map(normalize).filter(Boolean);
+  return withClientRubro((response.data || []).map(normalize).filter(Boolean));
 }
 
 async function createDiagnostico(input, user) {
   const body = { ...payloadFrom(input, user), public_token: crypto.randomBytes(24).toString('base64url'), created_by_email: cleanText(user.email, 180).toLowerCase() || null };
   try {
     const response = await axios.post(tableUrl(), body, { headers: headers({ Prefer: 'return=representation' }) });
-    return normalize(response.data?.[0]);
+    return (await withClientRubro([normalize(response.data?.[0])].filter(Boolean)))[0] || null;
   } catch (error) {
     if (error.response?.status === 409) {
       const exists = new Error('Ese cliente ya tiene un diagnóstico. Abrilo desde el listado para continuarlo.');
@@ -187,7 +200,7 @@ async function updateDiagnostico(id, input, user) {
   if (!recordId) { const error = new Error('Diagnóstico inválido'); error.statusCode = 400; throw error; }
   const response = await axios.patch(tableUrl(), payloadFrom(input, user), { headers: headers({ Prefer: 'return=representation' }), params: { id: `eq.${recordId}` } });
   if (!response.data?.[0]) { const error = new Error('No encontré ese diagnóstico'); error.statusCode = 404; throw error; }
-  return normalize(response.data[0]);
+  return (await withClientRubro([normalize(response.data[0])]))[0];
 }
 
 async function deleteDiagnostico(id) {
@@ -204,7 +217,8 @@ async function getPublicDiagnosticoByGhlId(ghlId) {
   const row = response.data?.[0];
   if (!row) { const error = new Error('Este cliente todavía no tiene un diagnóstico'); error.statusCode = 404; throw error; }
   const csmName = normalizeCsmName(row.csm_name);
-  return { clientName: row.client_name || '', businessName: row.business_name || '', csmName, data: normalizeDiagnosticData(row.data, csmName), updatedAt: row.updated_at || null };
+  const [profile] = await withClientRubro([{ clientGhlId: safeGhlId }]);
+  return { clientName: row.client_name || '', businessName: row.business_name || '', rubro: profile.rubro, csmName, data: normalizeDiagnosticData(row.data, csmName), updatedAt: row.updated_at || null };
 }
 
 module.exports = {

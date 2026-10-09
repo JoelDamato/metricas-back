@@ -223,9 +223,6 @@ function mapToSupabase(payload) {
 
     // Números
     facturacion: toNumber(getValue(p['Facturacion'])),
-    facturacion_total: toNumber(getValue(p['Facturacion total'])),
-    cash_collected_total: toNumber(getValue(p['Cash collected total'])),
-    saldo: toNumber(getValue(p['Saldo'])),
     inversion: toNumber(getValue(p['Inversion'])),
     score: toNumber(getValue(p['Score'])),
     // Monto incobrable (número)

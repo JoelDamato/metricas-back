@@ -52,7 +52,7 @@ test('cada vendedor recibe sólo sus comprobantes cargados', async (t) => {
 
   const result = await comprobantesLoaderService.listMyComprobantes(MAURO, { limit: 50 });
 
-  assert.equal(requestParams.responsable_venta, 'eq.Mauro Gaitan');
+  assert.equal(requestParams.responsable_venta, 'ilike.Mauro Gaitan');
   assert.equal(result.canViewAll, false);
   assert.equal(result.selectedResponsible, 'Mauro Gaitan');
   assert.deepEqual(result.rows.map((row) => row.id), ['own']);
@@ -96,12 +96,69 @@ test('Nahuel ve sus comprobantes y los que tiene asignados como setter', async (
   const result = await comprobantesLoaderService.listMyComprobantes(NAHUEL, { limit: 50 });
 
   assert.equal(requestParams.responsable_venta, undefined);
-  assert.match(requestParams.or, /responsable_venta\.eq\.Nahue Randazzo/);
-  assert.match(requestParams.or, /setter\.eq\.Nahue/);
+  assert.match(requestParams.or, /responsable_venta\.ilike\.Nahue Randazzo/);
+  assert.match(requestParams.or, /setter\.ilike\.Nahue/);
   assert.equal(result.canViewAll, false);
   assert.equal(result.canViewBySetter, true);
   assert.deepEqual(result.rows.map((row) => row.id), ['own', 'setter']);
   assert.deepEqual(result.rows.map((row) => row.accessScope), ['mine', 'setter']);
+});
+
+test('Nahuel ve comprobantes aunque Notion guarde el responsable en minúsculas', async (t) => {
+  installSupabaseMock(t, [
+    {
+      id: 'luciana-andretta',
+      cliente_format: 'Lucíana Andretta',
+      responsable_venta: 'nahuel iasci',
+      setter: null,
+      f_acreditacion: '2026-09-15'
+    }
+  ]);
+
+  const result = await comprobantesLoaderService.listMyComprobantes(
+    { email: 'iascinahuel@gmail.com', nombre: 'Nahuel Iasci' },
+    { limit: 50 }
+  );
+
+  assert.deepEqual(result.rows.map((row) => row.id), ['luciana-andretta']);
+  assert.deepEqual(result.rows.map((row) => row.accessScope), ['mine']);
+});
+
+test('la vista personal funciona antes y después de agregar source_system a Supabase', async (t) => {
+  const previousEnv = {
+    supabaseUrl: env.supabaseUrl,
+    supabaseKey: env.supabaseKey
+  };
+  env.supabaseUrl = 'https://supabase.visibility.test';
+  env.supabaseKey = 'test-supabase-service-key';
+  t.after(() => Object.assign(env, previousEnv));
+
+  const selects = [];
+  t.mock.method(axios, 'get', async (url, config = {}) => {
+    assert.equal(url, 'https://supabase.visibility.test/rest/v1/comprobantes');
+    selects.push(config.params?.select || '');
+    if (selects.length === 1) {
+      const error = new Error('Request failed with status code 400');
+      error.response = {
+        status: 400,
+        data: {
+          code: '42703',
+          message: 'column comprobantes.source_system does not exist'
+        }
+      };
+      throw error;
+    }
+    return {
+      data: [{ id: 'legacy-row', responsable_venta: 'Mauro Gaitan', cliente_format: 'Cliente legado' }]
+    };
+  });
+
+  const result = await comprobantesLoaderService.listMyComprobantes(MAURO, { limit: 50 });
+
+  assert.equal(selects.length, 2);
+  assert.match(selects[0], /source_system/);
+  assert.doesNotMatch(selects[1], /source_system/);
+  assert.deepEqual(result.rows.map((row) => row.id), ['legacy-row']);
 });
 
 test('sólo quien creó un comprobante no conciliado o rebotado puede gestionarlo', () => {

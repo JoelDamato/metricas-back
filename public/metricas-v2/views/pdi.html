@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDI | Central Matías Randazzo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/pdi.css?v=20260924-pdi-2" />
+  </head>
+  <body class="ranking-page pdi-page workspace-brand-page premium-navy-background">
+    <main class="container workspace-brand-layout">
+      <section class="workspace-brand-hero">
+        <div>
+          <span class="workspace-brand-kicker">Desarrollo del equipo comercial</span>
+          <h1>PDI</h1>
+          <p>Plan de Desafío Individual para acompañar el desempeño, el perfil DISC y los planes de acción de cada closer.</p>
+        </div>
+        <span class="workspace-brand-chip">Acceso privado · Mati y Leo</span>
+      </section>
+
+      <section class="pdi-toolbar" aria-label="Controles del PDI">
+        <label>
+          Closer
+          <select id="pdiCloserSelect" aria-label="Seleccionar closer"></select>
+        </label>
+        <button id="pdiManageButton" class="pdi-button pdi-button-secondary" type="button">Gestionar closers</button>
+        <button id="pdiSaveButton" class="pdi-button" type="button">Guardar en Supabase</button>
+      </section>
+      <p id="pdiStatus" class="pdi-status" role="status" aria-live="polite">Cargando PDI…</p>
+
+      <nav class="pdi-tabs" aria-label="Secciones del PDI">
+        <button class="pdi-tab is-active" type="button" data-pdi-tab="datos">Datos</button>
+        <button class="pdi-tab" type="button" data-pdi-tab="disc">DISC</button>
+        <button class="pdi-tab" type="button" data-pdi-tab="performance">Performance</button>
+        <button class="pdi-tab" type="button" data-pdi-tab="plan">Plan de acción</button>
+        <button class="pdi-tab" type="button" data-pdi-tab="gestion">Gestión</button>
+      </nav>
+
+      <section class="pdi-tab-panel" data-pdi-panel="datos">
+        <article class="pdi-card">
+          <header class="pdi-card-head">
+            <div><span>Datos del colaborador</span><h2>Plan de Desafío Individual</h2></div>
+          </header>
+          <div class="pdi-card-body">
+            <div class="pdi-info-grid">
+              <label class="pdi-field">Colaborador<input id="pdiNombre" type="text" placeholder="Nombre completo" /></label>
+              <label class="pdi-field">Cargo<input id="pdiCargo" type="text" placeholder="Ej: Closer" /></label>
+              <label class="pdi-field">Líder superior<input id="pdiLider" type="text" placeholder="Nombre del líder" /></label>
+              <label class="pdi-field">Inicio del PDI<input id="pdiFechaInicio" type="date" /></label>
+            </div>
+
+            <div class="pdi-cycle-table-wrap">
+              <table class="pdi-table pdi-cycle-table">
+                <thead><tr><th>Seguimiento</th><th>Ciclo 1</th><th>Ciclo 2</th><th>Ciclo 3</th></tr></thead>
+                <tbody>
+                  <tr><th>Fecha del ciclo</th><td><input id="pdiF1" type="date" /></td><td><input id="pdiF2" type="date" /></td><td><input id="pdiF3" type="date" /></td></tr>
+                  <tr><th>Desempeño actual</th><td><input id="pdiD1" type="text" placeholder="—" /></td><td><input id="pdiD2" type="text" placeholder="—" /></td><td><input id="pdiD3" type="text" placeholder="—" /></td></tr>
+                  <tr><th>Desafío próxima retroalimentación</th><td><input id="pdiT1" type="text" placeholder="—" /></td><td><input id="pdiT2" type="text" placeholder="—" /></td><td><input id="pdiT3" type="text" placeholder="—" /></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="pdi-tab-panel" data-pdi-panel="disc" hidden>
+        <article class="pdi-card">
+          <header class="pdi-card-head">
+            <div><span>Perfil conductual</span><h2>DISC · <b id="pdiDiscCloser">—</b></h2></div>
+          </header>
+          <div class="pdi-card-body">
+            <div id="pdiDiscInputs" class="pdi-disc-grid"></div>
+            <div id="pdiDiscChart" class="pdi-disc-chart" aria-label="Distribución del perfil DISC"></div>
+            <div id="pdiDiscDominant" class="pdi-dominant"></div>
+          </div>
+        </article>
+        <div id="pdiDiscSuggestions" class="pdi-suggestion-grid"></div>
+      </section>
+
+      <section class="pdi-tab-panel" data-pdi-panel="performance" hidden>
+        <article class="pdi-card">
+          <header class="pdi-card-head">
+            <div><span>Seguimiento</span><h2>Competencias y comportamientos</h2></div>
+          </header>
+          <div class="pdi-table-wrap">
+            <table class="pdi-table pdi-performance-table">
+              <thead><tr><th>#</th><th>Competencia</th><th>Ciclo 1</th><th>Ejemplos</th><th>Ciclo 2</th><th>Ejemplos</th><th>Ciclo 3</th><th>Ejemplos</th><th></th></tr></thead>
+              <tbody id="pdiPerformanceBody"></tbody>
+              <tfoot>
+                <tr><td></td><td>Total</td><td id="pdiTotal1">—</td><td></td><td id="pdiTotal2">—</td><td></td><td id="pdiTotal3">—</td><td></td><td></td></tr>
+                <tr><td></td><td>Desempeño calculado</td><td id="pdiPct1">—</td><td></td><td id="pdiPct2">—</td><td></td><td id="pdiPct3">—</td><td></td><td></td></tr>
+                <tr><td></td><td>Perfil máximo</td><td id="pdiMax1">—</td><td></td><td id="pdiMax2">—</td><td></td><td id="pdiMax3">—</td><td></td><td></td></tr>
+              </tfoot>
+            </table>
+          </div>
+          <button id="pdiAddCompetency" class="pdi-add-row" type="button">+ Agregar competencia manualmente</button>
+        </article>
+        <p class="pdi-status">Escala: 1 — No cumple · 2 — Cumple parcialmente · 3 — Cumple · 4 — Supera expectativas.</p>
+      </section>
+
+      <section class="pdi-tab-panel" data-pdi-panel="plan" hidden>
+        <article class="pdi-card">
+          <header class="pdi-card-head">
+            <div><span>Acciones concretas</span><h2>Plan de acción</h2></div>
+            <div id="pdiPlanStats" class="pdi-status"></div>
+          </header>
+          <div class="pdi-table-wrap">
+            <table class="pdi-table pdi-plan-table">
+              <thead><tr><th>Competencia</th><th>Tipo</th><th>Acción</th><th>Semana</th><th>Fecha</th><th>Estado</th><th>Observaciones</th><th></th></tr></thead>
+              <tbody id="pdiPlanBody"></tbody>
+            </table>
+          </div>
+          <button id="pdiAddTask" class="pdi-add-row" type="button">+ Agregar tarea</button>
+        </article>
+      </section>
+
+      <section class="pdi-tab-panel" data-pdi-panel="gestion" hidden>
+        <article class="pdi-card">
+          <header class="pdi-card-head">
+            <div><span>Administración del módulo</span><h2>Closers registrados</h2></div>
+          </header>
+          <div class="pdi-card-body">
+            <div id="pdiCloserList" class="pdi-management-list"></div>
+            <div class="pdi-management-add">
+              <input id="pdiNewCloser" type="text" placeholder="Nombre completo del closer" />
+              <button id="pdiAddCloser" class="pdi-button" type="button">Agregar closer</button>
+            </div>
+            <p class="pdi-status is-warning">Eliminar un closer también elimina su PDI guardado.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/js/api/http.js?v=20260924-pdi-1"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/pdi.page.js?v=20260924-pdi-2"></script>
+  </body>
+</html>

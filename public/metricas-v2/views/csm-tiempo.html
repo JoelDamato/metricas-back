@@ -7,43 +7,37 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
-  </head>
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/csm-module-durations.css?v=20261006-1" />
+</head>
   <body class="ranking-page csm-page" data-csm-page="tiempo">
     <main class="container">
-      <div class="nav"><a href="/index.html">Volver al listado</a></div>
+      <div class="nav"><a href="/metricas.html">Volver al listado</a></div>
       <section class="ranking-hero">
         <h1>CSM · Por Tiempo</h1>
         <p>Sesiones realizadas por fecha real, tiempos entre hitos y cobertura de los datos.</p>
       </section>
 
-      <section class="ranking-actions csm-filter-bar">
-        <label>
-          Año
-          <select id="csmYear"></select>
-        </label>
-        <label>
-          Mes
-          <select id="csmMonth"></select>
-        </label>
-        <button id="reload" type="button">Aplicar</button>
-      </section>
-
-      <p id="status"></p>
-      <section id="kpiContainer" class="cards"></section>
-      <section id="tableContainer"></section>
-      <section class="chart-panel">
+      <p id="status" hidden></p>
+      <section id="kpiContainer" class="cards" hidden></section>
+      <section id="tableContainer" hidden></section>
+      <section class="chart-panel" hidden>
         <h3 id="chartTitle">Sesiones realizadas</h3>
         <p id="chartDescription">Conteo por la fecha real de cada sesión.</p>
         <canvas id="csmChart" height="120"></canvas>
       </section>
+      <section class="csm-directory-heading">
+        <span>Métricas disponibles</span>
+        <h2>Elegí qué querés consultar</h2>
+      </section>
       <section id="detailContainer" class="csm-detail-grid"></section>
+      <section id="csmModuleDurations" class="csm-module-durations"></section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
     <script src="/js/api/http.js"></script>
     <script src="/js/api/metricas.api.js"></script>
-    <script src="/js/auth-shell.js"></script>
-    <script src="/js/views/csm.page.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/csm.page.js?v=20260924-csm-modules-7"></script>
+    <script src="/js/views/csm-module-durations.js?v=20261006-1"></script>
   </body>
 </html>

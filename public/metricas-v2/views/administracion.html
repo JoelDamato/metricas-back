@@ -7,9 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
   </head>
-  <body class="ranking-page dashboard-home-page">
+  <body class="ranking-page dashboard-home-page administration-page premium-navy-background">
     <main class="container">
       <div class="nav"><a href="/dashboard.html">← Volver al dashboard</a></div>
       <section class="ranking-hero dashboard-hero">
@@ -18,23 +18,65 @@
       </section>
 
       <section class="cards central-cards">
-        <a class="card" href="/views/comisiones.html">
-          <h3>Comisiones</h3>
-          <p>Seguimiento, configuración y lectura de comisiones.</p>
+        <a class="card administration-card administration-card-comisiones" href="/views/comisiones.html">
+          <span class="administration-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M19 5 5 19" />
+              <circle cx="7" cy="7" r="2.5" />
+              <circle cx="17" cy="17" r="2.5" />
+            </svg>
+          </span>
+          <span class="administration-card-copy">
+            <h3>Comisiones</h3>
+            <p>Seguimiento, configuración y lectura de comisiones.</p>
+          </span>
+          <span class="administration-card-arrow" aria-hidden="true">→</span>
         </a>
 
-        <a class="card" href="/views/mercado-pago-club.html">
-          <h3>Ventas Club</h3>
-          <p>Pagos y suscripciones Club del mes consultados directamente en Mercado Pago.</p>
+        <a class="card administration-card administration-card-club" href="/views/mercado-pago-club.html">
+          <span class="administration-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" />
+              <path d="M3 9h18M7 15h4" />
+            </svg>
+          </span>
+          <span class="administration-card-copy">
+            <h3>Ventas Club</h3>
+            <p>Pagos y suscripciones Club del mes consultados directamente en Mercado Pago.</p>
+          </span>
+          <span class="administration-card-arrow" aria-hidden="true">→</span>
         </a>
 
-        <a class="card" href="/views/conciliacion.html">
-          <h3>Conciliación</h3>
-          <p>Todos los comprobantes de Supabase y gestión de estados conciliado, no conciliado y rebotado.</p>
+        <a class="card administration-card administration-card-conciliacion" href="/views/conciliacion.html">
+          <span class="administration-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
+              <path d="M14 3v5h5M13 15l3 3 5-6" />
+            </svg>
+          </span>
+          <span class="administration-card-copy">
+            <h3>Conciliación</h3>
+            <p>Todos los comprobantes de Supabase y gestión de estados conciliado, no conciliado y rebotado.</p>
+          </span>
+          <span class="administration-card-arrow" aria-hidden="true">→</span>
+        </a>
+
+        <a class="card administration-card administration-card-comprobantes-lab" href="/views/comprobantes-config.html">
+          <span class="administration-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M8 3h8M9 3v5l-5 9a2 2 0 0 0 1.8 3h12.4a2 2 0 0 0 1.8-3l-5-9V3" />
+              <path d="M7 15h10M9 12h6" />
+            </svg>
+          </span>
+          <span class="administration-card-copy">
+            <h3>Configuración de carga de comprobantes</h3>
+            <p>Productos habilitados, medios de pago generales y descuentos de IVA y costos.</p>
+          </span>
+          <span class="administration-card-arrow" aria-hidden="true">→</span>
         </a>
       </section>
     </main>
     <script src="/js/api/http.js"></script>
-    <script src="/js/auth-shell.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
   </body>
 </html>

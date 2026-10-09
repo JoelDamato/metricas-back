@@ -1,5 +1,6 @@
 const DEFAULT_HOME_PATH = '/dashboard.html';
 const MARKETING_HOME_PATH = '/views/marketing.html';
+const LOGIN_WELCOME_STORAGE_KEY = 'metricas-play-login-welcome';
 
 function resolveHomePath(response) {
   const explicitHomePath = response?.user?.permissions?.homePath;
@@ -28,6 +29,7 @@ async function handleLogin(event) {
       email: document.getElementById('email').value,
       password: document.getElementById('password').value
     });
+    sessionStorage.setItem(LOGIN_WELCOME_STORAGE_KEY, '1');
     window.location.href = resolveHomePath(response);
   } catch (error) {
     status.textContent = error.message;

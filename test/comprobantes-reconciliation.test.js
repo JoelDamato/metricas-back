@@ -21,7 +21,7 @@ function installEnv(t) {
   };
   env.supabaseUrl = 'https://supabase.reconciliation.test';
   env.supabaseKey = 'test-service-key';
-  env.notionApiKey = 'test-notion-key';
+  env.notionApiKey = null;
   t.after(() => Object.assign(env, previous));
 }
 
@@ -74,7 +74,7 @@ test('lista todos los comprobantes con paginación por cursor, sin OFFSET', asyn
   assert.equal(result.summary.bounced, 1);
 });
 
-test('actualiza Notion y Supabase al mover un comprobante a Rebotado', async (t) => {
+test('actualiza sólo Supabase al mover un comprobante a Rebotado', async (t) => {
   installEnv(t);
   const patches = [];
 
@@ -89,15 +89,15 @@ test('actualiza Notion y Supabase al mover un comprobante a Rebotado', async (t)
 
   const result = await service.updateComprobanteState(COMPROBANTE_ID, 'bounced');
 
-  assert.equal(patches.length, 2);
-  assert.deepEqual(patches[0].body.properties.Estado, { select: { name: 'Rebotado' } });
-  assert.deepEqual(patches[1].body, { estado: 'Rebotado', rebotar_pago: false });
-  assert.equal(patches[1].config.headers.Prefer, 'return=representation');
+  assert.equal(patches.length, 1);
+  assert.ok(patches.every(patch => !patch.url.includes('notion.com')));
+  assert.deepEqual(patches[0].body, { estado: 'Rebotado', rebotar_pago: true });
+  assert.equal(patches[0].config.headers.Prefer, 'return=representation');
   assert.equal(result.previousState, 'conciliated');
   assert.equal(result.state, 'bounced');
 });
 
-test('No conciliado limpia el select Estado de Notion y el estado de Supabase', async (t) => {
+test('No conciliado limpia el estado directamente en Supabase', async (t) => {
   installEnv(t);
   const patches = [];
 
@@ -113,7 +113,17 @@ test('No conciliado limpia el select Estado de Notion y el estado de Supabase', 
 
   const result = await service.updateComprobanteState(COMPROBANTE_ID, 'not_conciliated');
 
-  assert.deepEqual(patches[0].body.properties.Estado, { select: null });
-  assert.deepEqual(patches[1].body, { estado: null, rebotar_pago: false });
+  assert.equal(patches.length, 1);
+  assert.ok(patches.every(patch => !patch.url.includes('notion.com')));
+  assert.deepEqual(patches[0].body, { estado: null, rebotar_pago: false });
   assert.equal(result.state, 'not_conciliated');
+});
+
+test('la nota usa escritura acotada sin cambiar estado y detecta conflictos',async t=>{
+ installEnv(t);const original=axios.post;t.after(()=>{axios.post=original});let sent;
+ axios.post=async(url,body)=>{sent={url,body};return {data:{row:{id:COMPROBANTE_ID,nota_conciliacion:body.p_note,estado:'Conciliado'}}};};
+ const result=await service.saveReconciliationNote(COMPROBANTE_ID,{note:' Revisar CUIT ',revision:0},{nombre:'Admin',email:'admin@example.com'});
+ assert.equal(result.row.nota_conciliacion,'Revisar CUIT');assert.equal(result.row.estado,'Conciliado');assert(sent.url.endsWith('/rpc/metricas_reconciliation_note'));assert.deepEqual(Object.keys(sent.body).sort(),['p_author','p_id','p_note','p_revision']);
+ axios.post=async()=>({data:{conflict:true}});await assert.rejects(service.saveReconciliationNote(COMPROBANTE_ID,{note:'Otra',revision:0},{nombre:'Admin'}),{statusCode:409});
+ await assert.rejects(service.saveReconciliationNote(COMPROBANTE_ID,{note:'x'.repeat(4001),revision:0},{nombre:'Admin'}),{statusCode:400});
 });

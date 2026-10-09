@@ -1,4 +1,6 @@
 const axios = require('axios');
+const ghlPreview = require('../modules/csm/ghl-webhook-preview');
+const ghlIngestion = require('../modules/csm/ghl-csm-ingestion');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -304,7 +306,7 @@ function mapToSupabase(payload) {
   };
 }
 
-async function sendToSupabase(payload) {
+async function sendToSupabase(payload, options = {}) {
   const data = payload.data || payload;
   const p = data.properties || {};
   
@@ -384,10 +386,12 @@ async function sendToSupabase(payload) {
   }
 
   // Log simple: campos y valores que se envían a Supabase
-  console.log('\n📤 Enviando a Supabase (CSM) – campos y valores:');
-  Object.keys(row).forEach((key) => {
-    console.log(`  ${key}: ${row[key] === null || row[key] === undefined ? 'null' : row[key]}`);
-  });
+  if (!options.quiet) {
+    console.log('\n📤 Enviando a Supabase (CSM) – campos y valores:');
+    Object.keys(row).forEach((key) => {
+      console.log(`  ${key}: ${row[key] === null || row[key] === undefined ? 'null' : row[key]}`);
+    });
+  }
 
   if (!row.id || row.id === '') {
     const errorLog = {
@@ -400,7 +404,7 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ No se envía: ID inválido');
-    return;
+    return { ok: false, reason: 'invalid_id', row };
   }
 
   try {
@@ -435,6 +439,7 @@ async function sendToSupabase(payload) {
         ? `✅ Guardado parcialmente en Supabase; campos omitidos: ${omittedColumns.join(', ')}`
         : '✅ Guardado en Supabase'
     );
+    return { ok: true, row, omittedColumns, status: response.status };
   } catch (err) {
     const errorLog = {
       webhook_type: 'csm',
@@ -449,6 +454,13 @@ async function sendToSupabase(payload) {
     };
     await saveLog(errorLog);
     console.error('❌ Error Supabase:', err.response?.status, err.response?.data || err.message);
+    return {
+      ok: false,
+      reason: 'supabase_error',
+      row,
+      status: err.response?.status || null,
+      error: err.response?.data || err.message
+    };
   }
 }
 
@@ -565,6 +577,19 @@ exports.handleWebhook = async (req, res) => {
   try {
     console.log('📥 Webhook recibido (CSM)');
     const payload = req.body;
+    const ghlIdentity = ghlPreview.identifyGhlPayload(payload);
+    if (ghlIdentity) {
+      try {
+        const result = await ghlIngestion.ingest(payload, ghlIdentity);
+        return res.status(result.csmWritten ? 200 : 422).json(result);
+      } catch (error) {
+        console.error('No se pudo registrar la prueba GHL de CSM:', error.response?.status || error.code || 'capture_failed');
+        return res.status(503).json({ status: 'capture_failed', source: 'ghl', csmWritten: false, message: 'No se pudo guardar la prueba. Reintentá el envío.' });
+      }
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ error: 'Payload inválido' });
+    }
 
     try {
       const traceData = payload?.data || payload || {};
@@ -630,7 +655,14 @@ exports.handleWebhook = async (req, res) => {
 };
 
 exports._test = {
+  mapToSupabase,
+  sendToSupabase,
   extractMissingCsmColumn,
   isRetryableSupabaseError,
   upsertCsmRowKeepingKnownFields
 };
+
+// Read-only capability check used to verify the deployed receiver without sending a customer event.
+exports.getCapabilities = (_req, res) => res.set('Cache-Control', 'no-store').json({
+  endpoint: 'csm', version: 'ghl-csm-write-v1', ghl: { accepted: true, mode: 'write_and_archive', preservesEmptyFields: true }, notion: { accepted: true }
+});

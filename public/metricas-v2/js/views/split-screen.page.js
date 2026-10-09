@@ -1,7 +1,7 @@
 (function initSplitScreenPage() {
   const PAGE_OPTIONS = [
     { value: '/dashboard.html', label: 'Dashboard' },
-    { value: '/index.html', label: 'Central de Métricas' },
+    { value: '/metricas.html', label: 'Central de Métricas' },
     { value: '/views/ranking.html', label: 'Ranking Closers' },
     { value: '/views/agendas-totales.html', label: 'Agendas Totales' },
     { value: '/views/agendas-ultimo-origen.html', label: 'Agendas por Último Origen' },

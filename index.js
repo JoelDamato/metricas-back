@@ -47,9 +47,12 @@ app.get('/metricas/login.html', (req, res) => {
 app.get('/metricas/unauthorized.html', (req, res) => {
   res.redirect('/unauthorized.html');
 });
-app.use('/metricas', (req, res) => {
-  const nextPath = req.originalUrl.replace(/^\/metricas/, '') || '/index.html';
-  res.redirect(nextPath === '/' ? '/index.html' : nextPath);
+app.get(['/metricas', '/metricas/'], (req, res) => {
+  res.redirect('/metricas.html');
+});
+app.use('/metricas/', (req, res) => {
+  const nextPath = req.originalUrl.replace(/^\/metricas/, '') || '/metricas.html';
+  res.redirect(nextPath === '/' ? '/metricas.html' : nextPath);
 });
 app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
@@ -62,6 +65,9 @@ app.use('/api', routes);
 app.use('/api/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.use('/api/v2/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
+app.get('/index.html', authMiddleware.metricasPageGuard, (req, res) => {
+  res.redirect('/metricas.html');
+});
 app.use(authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
 app.use(metricasV2ErrorHandler);
 app.use((error, req, res, next) => {
@@ -74,6 +80,17 @@ app.use((error, req, res, next) => {
 
 // --- 5. INICIAR SERVIDOR ---
 const PORT = process.env.PORT || 3101;
-app.listen(PORT, () => {
+const localTestHost = (process.env.COMPROBANTES_LOCAL_REAL_TEST === '1' || process.env.COMPROBANTES_LOCAL_DIRECT === '1') ? '127.0.0.1' : undefined;
+app.listen(PORT, localTestHost, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
+
+// Durable outbox: concurrent instances claim separate jobs in PostgreSQL.
+let receiptCleanupRunning=false;
+const receiptCleanupTimer=setInterval(async()=>{
+  if(receiptCleanupRunning)return;receiptCleanupRunning=true;
+  try{await require('./modules/metricasv2/services/comprobantes-supabase.service').retryCleanup();}
+  catch(error){console.error('[comprobantes cleanup]',error.message);}
+  finally{receiptCleanupRunning=false;}
+},60000);
+receiptCleanupTimer.unref();

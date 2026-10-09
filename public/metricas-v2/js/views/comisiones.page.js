@@ -17,6 +17,7 @@
     pinnedPersonColumn: '',
     pinnedAgendaColumn: '',
     agendaFilters: {
+      search: '',
       setter: '',
       from: '',
       to: '',
@@ -38,6 +39,7 @@
   const reconciliationFilterSelect = document.getElementById('commissionReconciliationFilter');
   const clubFilterSelect = document.getElementById('commissionClubFilter');
   const typeFilterSelect = document.getElementById('commissionTypeFilter');
+  const agendaSearchInput = document.getElementById('commissionAgendaSearch');
   const agendaDateFromInput = document.getElementById('commissionAgendaDateFrom');
   const agendaDateToInput = document.getElementById('commissionAgendaDateTo');
   const pinnedAgendaColumnSelect = document.getElementById('commissionAgendaPinnedColumnSelect');
@@ -852,6 +854,12 @@
 
   function filterAgendaRows(rows, filters) {
     return (rows || []).filter((row) => {
+      const search = normalizeText(filters.search);
+      const digits = search.replace(/\D/g, '');
+      const isPhoneSearch = digits.length >= 4 && /^[+\d\s().-]+$/.test(search);
+      if (search && !(isPhoneSearch
+        ? String(row.phone || '').replace(/\D/g, '').endsWith(digits)
+        : search.split(/\s+/).every((part) => normalizeText(row.clientName).includes(part)))) return false;
       if (filters.setter && normalizeText(row.setter) !== normalizeText(filters.setter)) return false;
       if (filters.from && row.agendaDate && row.agendaDate < filters.from) return false;
       if (filters.to && row.agendaDate && row.agendaDate > filters.to) return false;
@@ -1153,79 +1161,11 @@
     });
   }
 
-  function buildAreaCommercialSummary(details, marketingArea) {
-    const rows = details || [];
-    const isMeg = (detail) => detail.category === 'MEG';
-    const isSale = (detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta';
-    const hasRt = (detail) => [detail.origin, detail.firstOrigin]
-      .some((value) => /(^|[^A-Z])RT([^A-Z]|$)/.test(String(value || '').toUpperCase()));
-    const sumBy = (arr, getter) => arr.reduce((sum, item) => sum + Number(getter(item) || 0), 0);
-
-    const closerMegSales = rows.filter((detail) => detail.role === 'Closer' && isMeg(detail) && isSale(detail));
-    const setterMegRows = rows.filter((detail) => detail.role === 'Setter' && isMeg(detail));
-
-    const rtSetterRows = setterMegRows.filter(hasRt);
-
-    const totalCloserFacturacion = sumBy(closerMegSales, (detail) => detail.baseAmount);
-    const totalSetterCc = sumBy(setterMegRows, (detail) => detail.baseAmount);
-    const totalCommercialGain = totalSetterCc * 0.04;
-
-    const rtCc = sumBy(rtSetterRows, (detail) => detail.baseAmount);
-    const rtGain = rtCc * 0.05;
-
-    return [
-      {
-        label: 'VSL + RT',
-        ventasMeg: '',
-        ventasClub: '',
-        facturacion: '',
-        cc: rtCc,
-        percentage: 0.05,
-        gain: rtGain,
-        gainFinal: rtGain,
-        total: ''
-      },
-      {
-        label: 'Comercial',
-        ventasMeg: closerMegSales.length,
-        ventasClub: '',
-        facturacion: totalCloserFacturacion,
-        cc: totalSetterCc,
-        percentage: 0.04,
-        gain: totalCommercialGain,
-        gainFinal: totalCommercialGain,
-        total: ''
-      },
-      {
-        label: 'CSM',
-        ventasMeg: closerMegSales.length,
-        ventasClub: '',
-        facturacion: totalCloserFacturacion,
-        cc: totalSetterCc,
-        percentage: 0.04,
-        gain: totalCommercialGain,
-        gainFinal: totalCommercialGain,
-        total: ''
-      },
-      {
-        label: 'Marketing',
-        ventasMeg: Number(marketingArea?.ventasMeg || 0),
-        ventasClub: Number(marketingArea?.ventasClub || 0),
-        facturacion: Number(marketingArea?.facturacion || 0),
-        cc: Number(marketingArea?.cc || 0),
-        percentage: Number(marketingArea?.percentage || 0.05),
-        gain: Number(marketingArea?.gain || 0),
-        gainFinal: Number(marketingArea?.gainFinal || 0),
-        total: Number(marketingArea?.total || 0)
-      }
-    ];
-  }
-
   function renderSheetOverview(dashboard) {
     const node = document.getElementById('commissionsSheetOverview');
     const filteredDetails = getAllCommissionDetails();
     const rows = buildSheetRows(filteredDetails);
-    const commercialSummaryRows = buildAreaCommercialSummary(filteredDetails, dashboard?.marketingArea);
+    const commercialSummaryRows = (dashboard?.areaCommissions || []);
     const uniqueTransactions = new Map();
     filteredDetails.forEach((detail) => {
       const transactionId = String(detail.transactionId || '').trim();
@@ -1330,7 +1270,7 @@
                     <th>Agendas</th>
                     <th>% Setting</th>
                     <th>Facturacion</th>
-                    <th>CC</th>
+                    <th>CC NETO</th>
                     <th>Comisión<br>Meg</th>
                     <th>Comisión<br>Club</th>
                     <th>Comisión<br>Setting</th>
@@ -1383,7 +1323,7 @@
                     <th>Ventas MEG</th>
                     <th>Ventas Club</th>
                     <th>Facturacion</th>
-                    <th>CC</th>
+                    <th>CC NETO</th>
                     <th>Porcentaje</th>
                     <th>Ganancia</th>
                     <th>Ganancia Final</th>
@@ -1508,8 +1448,8 @@
               <th>${renderComprobanteSortHeader('Medio de pago', 'paymentMethod')}</th>
               <th>${renderComprobanteSortHeader('Nombre cliente', 'clientName')}</th>
               <th>${renderComprobanteSortHeader('Responsable venta', 'closer')}</th>
-              <th>${renderComprobanteSortHeader('Cash AR', 'cashArs')}</th>
-              <th>${renderComprobanteSortHeader('Cash USD', 'cashUsd')}</th>
+              <th>${renderComprobanteSortHeader('Cash neto AR', 'cashArs')}</th>
+              <th>${renderComprobanteSortHeader('Cash neto USD', 'cashUsd')}</th>
               <th>${renderComprobanteSortHeader('Facturación USD', 'facturacionUsd')}</th>
               <th>${renderComprobanteSortHeader('Porcentaje', 'commissionPct')}</th>
               <th>${renderComprobanteSortHeader('TC', 'tc')}</th>
@@ -1713,6 +1653,7 @@
     renderAgendaCurrentOriginChecks();
     renderAgendaQualityChecks();
     fillSimpleSelect(aplicaSelect, uniqueSortedValues(state.agendaRows, 'aplica'), state.agendaFilters.aplica);
+    if (agendaSearchInput) agendaSearchInput.value = state.agendaFilters.search || '';
     if (agendaDateFromInput) agendaDateFromInput.value = state.agendaFilters.from || '';
     if (agendaDateToInput) agendaDateToInput.value = state.agendaFilters.to || '';
     syncAgendaMoreFiltersToggle();
@@ -1720,6 +1661,7 @@
 
   function resetAgendaFilters() {
     const { from, to } = getMonthRange(state.month);
+    state.agendaFilters.search = '';
     state.agendaFilters.setter = '';
     state.agendaFilters.from = from;
     state.agendaFilters.to = to;
@@ -2068,6 +2010,11 @@
   personSelect.addEventListener('change', () => {
     state.selectedPerson = personSelect.value;
     renderPersonPanel();
+  });
+
+  agendaSearchInput?.addEventListener('input', () => {
+    state.agendaFilters.search = agendaSearchInput.value || '';
+    renderAgendaPanel();
   });
 
   clientSearchInput?.addEventListener('input', () => {

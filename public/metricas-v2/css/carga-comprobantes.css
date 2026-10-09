@@ -1,0 +1,77 @@
+/* Carga: identidad navy compartida con el dashboard. */
+:root body.carga-renovada { color: #edf4ff; color-scheme: dark; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-layout { max-width: 1140px; padding-top: 36px; padding-bottom: 70px; }
+.carga-brand-hero { display:flex; align-items:center; justify-content:space-between; gap:24px; padding: 0 4px 30px; }
+.carga-back-link { display:inline-block; color:#a9bbd5; text-decoration:none; font-size:13px; margin-bottom:30px; }
+.carga-back-link:hover { color:#fff; }
+.carga-brand-eyebrow { display:block; color:#80b6ff; font-size:11px; font-weight:700; letter-spacing:.17em; }
+.carga-brand-hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(30px,4vw,46px); letter-spacing:-.045em; line-height:1.15; margin:12px 0; color:#f5f8ff; }
+.carga-brand-hero p { color:#a9bbd5; margin:0; line-height:1.6; }
+.carga-brand-seal { width:74px; height:74px; display:grid; place-items:center; border-radius:23px; border:1px solid #305a90; background:linear-gradient(145deg,#153c6d,#0b1930); color:#9fcbff; font-size:40px; box-shadow:0 10px 50px #126bff20; }
+.carga-journey { margin-bottom:24px; }
+.carga-journey ol { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin:0; padding:0; list-style:none; gap:8px; }
+.carga-journey li { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid #253349; border-radius:16px; background:#0c1829; color:#9fb0c9; transition:border-color .15s, background .15s; }
+.carga-journey li > span { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:10px; background:#19283d; font-size:12px; font-weight:700; }
+.carga-journey strong { font-size:13px; display:block; }
+.carga-journey small { display:block; font-size:11px; margin-top:3px; color:#a2b3cd; }
+.carga-journey [aria-current] { border-color:#4b91ff; background:#102d52; color:#fff; }
+.carga-journey [aria-current] > span { background:#2874ec; color:#fff; }
+.carga-journey .is-done { border-color:#286459; }
+.carga-journey .is-done > span { background:#153c35; color:#82e5bc; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-panel { background:#0b1626; border:1px solid #273951; border-radius:24px; padding:26px; box-shadow:0 22px 65px #0003; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-toolbar { padding-bottom:20px; border-color:#273951; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-toolbar-copy strong { color:#f1f6ff; font-size:17px; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-toolbar-copy p { color:#a8bad4; font-size:13px; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-form { gap:18px; margin-top:22px; }
+:root .carga-comprobantes-page.carga-renovada .carga-section { background:#101f33; border:1px solid #2b3d55; padding:24px; border-radius:18px; box-shadow:none; }
+:root .carga-comprobantes-page.carga-renovada .carga-section-head h2 { color:#f3f7ff; font-family:'Space Grotesk',sans-serif; font-size:20px; letter-spacing:-.025em; }
+:root .carga-comprobantes-page.carga-renovada .carga-section-head p { color:#a8bad4; font-size:13px; line-height:1.6; }
+:root .carga-comprobantes-page.carga-renovada .carga-field span { color:#d4e2f5; font-size:13px; }
+:root .carga-comprobantes-page.carga-renovada .carga-field input,
+:root .carga-comprobantes-page.carga-renovada .carga-field select,
+:root .carga-comprobantes-page.carga-renovada .carga-field textarea { background:#091525; color:#f1f6ff; border:1px solid #3b506c; border-radius:11px; min-height:46px; box-shadow:none; transition:border-color .15s,box-shadow .15s; }
+:root .carga-comprobantes-page.carga-renovada .carga-field input::placeholder,
+:root .carga-comprobantes-page.carga-renovada .carga-field textarea::placeholder { color:#8ea3bf; }
+:root .carga-comprobantes-page.carga-renovada .carga-field :is(input,select,textarea):focus { outline:none; border-color:#6ba6ff; box-shadow:0 0 0 3px #478bff26; }
+:root .carga-comprobantes-page.carga-renovada .carga-field :is(input,select,textarea):disabled { opacity:.65; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-field small,.carga-submit-status,.carga-inline-status) { color:#a8bad4; }
+:root .carga-comprobantes-page.carga-renovada .metricas-primary-button { background:linear-gradient(135deg,#387ff4,#215ed9); color:#fff; border:1px solid #629cff; border-radius:11px; box-shadow:0 4px 16px #1462ec20; transition:background .15s,transform .15s; }
+:root .carga-comprobantes-page.carga-renovada .metricas-primary-button:hover:not(:disabled) { background:#357ff7; transform:translateY(-1px); }
+:root .carga-comprobantes-page.carga-renovada .metricas-secondary-button { background:#142941; color:#c7dfff; border:1px solid #3b5679; border-radius:11px; }
+:root .carga-comprobantes-page.carga-renovada .carga-dropzone { border:1px dashed #5589c5; border-radius:16px; background:#0a1c32; color:#e0eeff; padding:30px 18px; transition:border-color .15s,background .15s; }
+:root .carga-comprobantes-page.carga-renovada .carga-dropzone:hover,
+:root .carga-comprobantes-page.carga-renovada .carga-dropzone:focus-visible { border-color:#8fbfff; background:#102c4c; outline:2px solid #639fff; outline-offset:3px; }
+:root .carga-comprobantes-page.carga-renovada .carga-dropzone p { color:#a8c1e0; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-client-card,.carga-latest-sale-card,.carga-preview-card,.carga-attachment-item,.carga-cheque-card) { background:#112a40; border-color:#355672; color:#e4efff; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-client-card,.carga-latest-sale-card,.carga-preview-card) :is(strong,h3) { color:#ecf5ff; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-client-card,.carga-latest-sale-card,.carga-preview-card) :is(p,small,span) { color:#b9cce4; }
+:root .carga-comprobantes-page.carga-renovada .carga-submit { padding:18px; background:#0d2037; border:1px solid #365679; border-radius:14px; }
+:root .carga-comprobantes-page.carga-renovada .carga-comprobantes-status { background:#112b49; color:#d0e5ff; border-radius:12px; }
+:root .carga-comprobantes-page.carga-renovada .carga-creating-card { background:#0d1c30; color:#edf5ff; border:1px solid #3d608b; border-radius:24px; box-shadow:0 30px 100px #0009; }
+:root .carga-comprobantes-page.carga-renovada .carga-creating-card :is(h2,h3,strong) { color:#f4f8ff; }
+:root .carga-comprobantes-page.carga-renovada .carga-creating-card :is(p,small) { color:#adc2dd; }
+:root .carga-comprobantes-page.carga-renovada .carga-progress-track { background:#263d59; }
+:root .carga-comprobantes-page.carga-renovada a:focus-visible,
+:root .carga-comprobantes-page.carga-renovada button:focus-visible { outline:2px solid #9bc6ff; outline-offset:4px; }
+@media(max-width:700px) {
+  :root .carga-comprobantes-page.carga-renovada .carga-comprobantes-layout { padding-top:22px; }
+  .carga-brand-hero { padding-bottom:22px; }
+  .carga-brand-seal { display:none; }
+  .carga-back-link { margin-bottom:22px; }
+  .carga-journey ol { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .carga-journey li { padding:12px; gap:9px; }
+  :root .carga-comprobantes-page.carga-renovada .carga-comprobantes-panel { padding:16px; border-radius:18px; }
+  :root .carga-comprobantes-page.carga-renovada .carga-section { padding:16px; }
+  :root .carga-comprobantes-page.carga-renovada :is(.carga-grid--two,.carga-grid--three) { grid-template-columns:minmax(0,1fr); }
+  :root .carga-comprobantes-page.carga-renovada .carga-submit { flex-direction:column; align-items:stretch; }
+}
+@media(prefers-reduced-motion:reduce) {
+  :root .carga-comprobantes-page.carga-renovada *, :root .carga-comprobantes-page.carga-renovada *::before { transition:none!important; animation:none!important; }
+}
+:root .carga-comprobantes-page.carga-renovada :is(.carga-client-summary,.carga-validation-card,.carga-cheque-row,.carga-preview-item,.carga-attachments-list li) { background:#122b43; border-color:#365572; color:#c6dcf3; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-client-summary,.carga-validation-card,.carga-cheque-row,.carga-preview-item) :is(strong,h4) { color:#e6f2ff; }
+:root .carga-comprobantes-page.carga-renovada .carga-validation-card.is-ok { background:#0e352e; border-color:#28775f; color:#b3f0d3; }
+:root .carga-comprobantes-page.carga-renovada :is(.carga-validation-card.is-error,.carga-preview-alerts.has-warnings) { background:#382431; border-color:#995069; color:#ffd1dd; }
+:root .carga-comprobantes-page.carga-renovada .carga-field input[type='checkbox'] { min-height:0; }
+:root .carga-comprobantes-page.carga-renovada [hidden] { display:none!important; }
+:root .carga-comprobantes-page.carga-renovada button:disabled { opacity:.5; cursor:not-allowed; transform:none; }

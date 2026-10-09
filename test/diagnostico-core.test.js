@@ -156,7 +156,7 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
   });
   assert.match(adminScript, /terms\.every/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-2/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261007-rubro-1/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
@@ -190,7 +190,7 @@ test('la carta separa crear de editar y bloquea visualmente la identidad elegida
   assert.match(adminHtml, /Confirmación obligatoria/);
   assert.match(adminHtml, /id="editingClientName"/);
   assert.match(adminHtml, /Cliente bloqueado/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20260911-2/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261007-rubro-1/);
   assert.match(adminScript, /createConfirmTitle/);
   assert.match(adminScript, /editingClientName/);
   assert.match(adminScript, /showWorkflow\('edit'\)/);

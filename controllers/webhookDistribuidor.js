@@ -4,8 +4,7 @@ const axios = require('axios');
 const webhookUrls = [
   'https://metricas-back-eylj.onrender.com/api/webhook3',
   'https://metricas-back-eylj.onrender.com/api/webhookv2',
-  'https://metricas-back-eylj.onrender.com/api/csm',
-  'https://metricas-back-eylj.onrender.com/api/comprobantes'
+  'https://metricas-back-eylj.onrender.com/api/csm'
 ];
 
 // Config de Supabase
@@ -13,7 +12,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Tablas donde buscar y borrar
-const tablasSupabase = ['leads_raw', 'csm', 'comprobantes'];
+const tablasSupabase = ['leads_raw', 'csm'];
 
 // Guardar log en Supabase
 async function guardarLog(tipo, mensaje, datos = {}) {

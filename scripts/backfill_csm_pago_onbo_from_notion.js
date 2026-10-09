@@ -4,7 +4,7 @@ const { Client: NotionClient } = require('@notionhq/client');
 const axios = require('axios');
 
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
-const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
+const NOTION_DATABASE_ID = process.env.NOTION_CSM_DATABASE_ID || process.env.NOTION_DATABASE_ID;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

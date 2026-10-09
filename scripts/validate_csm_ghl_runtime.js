@@ -1,0 +1,20 @@
+const fs=require('fs'),assert=require('node:assert/strict'),crypto=require('crypto');
+const {PGlite}=require(process.env.PGLITE_PACKAGE_PATH||'/tmp/comprobantes-pglite/node_modules/@electric-sql/pglite/dist/index.cjs');
+const {mapGhlCsm}=require('../modules/csm/ghl-csm-mapper');
+(async()=>{const db=new PGlite();try{
+ const schema=require('../test/fixtures/csm-existing-schema.json');await db.exec(`create role anon;create role authenticated;create role service_role;create table leads_raw(id text,ghlid text);create table csm(${schema.map(c=>`"${c.column_name}" ${c.data_type}${c.column_name==='id'?' primary key':''}${c.column_default?' default '+c.column_default:''}`).join(',')});`);
+ await db.exec(fs.readFileSync('supabase/migrations/20261006180000_csm_ghl_ingestion.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261006190000_csm_module_end_dates.sql','utf8'));
+ const ingest=async(p,id=crypto.randomUUID())=>{const {patch,warnings}=mapGhlCsm(p);return(await db.query('select metricas_csm_ghl_ingest($1,$2,$3,$4,$5,$6) result',[id,p.contact_id,p.location?.id||null,JSON.stringify(p),JSON.stringify(patch),JSON.stringify(warnings)])).rows[0].result;};
+ await db.exec("insert into csm(id,ghlid,nombre,pausa,modelo_negocio) values('existing','old','Original','En Pausa','Reventa');insert into leads_raw values('crm-id','old');");
+ const p={contact_id:'old',full_name:'Actualizado',Pausa:'','modelo de negocio':'','F. Inicio MP3':'2026-07-20','F. Fin MP3':'2026-07-27',unused:{deep:['x',false,0]},customData:{new_field:'value'}};
+ const id=crypto.randomUUID();const updated=await ingest(p,id);assert.equal(updated.status,'updated');assert.equal(updated.csmId,'existing');assert.equal((await ingest(p,id)).replayed,true);
+ const row=(await db.query("select * from csm where id='existing'")).rows[0];assert.equal(row.pausa,'En Pausa');assert.equal(row.modelo_negocio,'Reventa');assert.equal(row.crm_2_0,'crm-id');assert.equal(row.modulo_10_format,'20/07/26');assert.equal(new Date(row.modulo_10_fin).toISOString().slice(0,10),'2026-07-27');assert.equal((await ingest(p)).status,'unchanged');
+ const archived=(await db.query('select payload from csm_ghl_events where id=$1',[id])).rows[0].payload;assert.deepEqual(archived,p);
+ await db.exec("update csm set nombre='Notion viejo' where id='existing';insert into csm(id,ghlid,nombre) values('duplicate','old','Notion duplicado');");assert.equal((await db.query("select nombre from csm where ghlid='old'")).rows[0].nombre,'Actualizado');assert.equal((await db.query("select count(*)::int n from csm where ghlid='old'")).rows[0].n,1);
+ const created=await ingest({contact_id:'new',full_name:'Nuevo','F. Onboarding':'2026-10-06',Activos:false});assert.equal(created.status,'created');assert.equal((await ingest({contact_id:'new',full_name:'Nuevo','F. Onboarding':'2026-10-06',Activos:false})).status,'unchanged');
+ await db.exec("insert into csm(id,ghlid) values('dup1','ambiguous'),('dup2','ambiguous');");assert.equal((await ingest({contact_id:'ambiguous',full_name:'Error'})).status,'needs_review');
+ assert.equal((await ingest({contact_id:'no-name',extra:'preservado'})).status,'needs_review');assert.equal((await ingest({contact_id:'foreign',full_name:'Otro',location:{id:'wrong'}})).csmWritten,false);
+ assert.equal((await db.query("select count(*)::int n from csm_ghl_events where status='error'")).rows[0].n,3);
+ console.log('PASS: alta, actualización, reenvío, vacíos, payload completo, identidad CRM, protección Notion, fechas, errores archivados.');
+ }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

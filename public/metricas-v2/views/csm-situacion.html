@@ -3,47 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CSM Por Situación | Métricas</title>
+    <title>CSM Por Estado | Métricas</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
   </head>
   <body class="ranking-page csm-page" data-csm-page="situacion">
     <main class="container">
-      <div class="nav"><a href="/index.html">Volver al listado</a></div>
+      <div class="nav"><a href="/metricas.html">Volver al listado</a></div>
       <section class="ranking-hero">
-        <h1>CSM · Por Situación</h1>
+        <h1>CSM · Por Estado</h1>
         <p>Clientes únicos, estado actual por acceso, nuevos ingresos, sesiones y desglose por rubro.</p>
       </section>
 
-      <section class="ranking-actions csm-filter-bar">
-        <label>
-          Año
-          <select id="csmYear"></select>
-        </label>
-        <label>
-          Mes
-          <select id="csmMonth"></select>
-        </label>
-        <button id="reload" type="button">Aplicar</button>
-      </section>
-
-      <p id="status"></p>
-      <section id="kpiContainer" class="cards"></section>
-      <section class="chart-panel">
+      <p id="status" hidden></p>
+      <section id="kpiContainer" class="cards" hidden></section>
+      <section class="chart-panel" hidden>
         <h3 id="chartTitle">Nuevos ingresos por mes</h3>
         <p id="chartDescription">Cantidad de clientes y variación contra el mes anterior.</p>
         <canvas id="csmChart" height="120"></canvas>
       </section>
-      <section id="tableContainer"></section>
+      <section id="tableContainer" hidden></section>
+      <section class="csm-directory-heading">
+        <span>Métricas disponibles</span>
+        <h2>Elegí qué querés consultar</h2>
+      </section>
       <section id="detailContainer" class="csm-detail-grid"></section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
     <script src="/js/api/http.js"></script>
     <script src="/js/api/metricas.api.js"></script>
-    <script src="/js/auth-shell.js"></script>
-    <script src="/js/views/csm.page.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/csm.page.js?v=20260924-csm-modules-7"></script>
   </body>
 </html>

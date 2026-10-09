@@ -91,6 +91,16 @@ function renderEmptyState() {
   `;
 }
 
+function renderReceipts(contact) {
+  const rows=Array.isArray(contact.comprobantes)?contact.comprobantes:[];
+  const money=(value,currency='USD')=>new Intl.NumberFormat('es-AR',{style:'currency',currency}).format(Number(value||0));
+  return `<section class="contact-receipts"><p class="card-kicker">Historial completo</p><h3>Comprobantes <span>${rows.length}</span></h3>
+    <p>Ventas, cobranzas y devoluciones anteriores y nuevas. Sólo lo conciliado cuenta como cobrado.</p>
+    <div class="receipt-summary"><span>Pendiente: <b>${escapeHtml(money(contact.receiptTotals?.pendiente))}</b></span><span>Rebotado: <b>${escapeHtml(money(contact.receiptTotals?.rebotado))}</b></span><span>Saldo: <b>${escapeHtml(money(contact.receiptTotals?.saldo))}</b></span></div>
+    ${rows.length?`<div class="receipt-scroll" tabindex="0" role="region" aria-label="Historial de comprobantes"><table><thead><tr><th>Fecha</th><th>Tipo / producto</th><th>Medio</th><th>Importe ARS</th><th>Importe USD</th><th>Estado</th><th>Referencia</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(String(r.f_acreditacion||r.fecha_creado||r.f_venta||'').slice(0,10)||'Sin fecha')}</td><td><strong>${escapeHtml(r.tipo||'Sin tipo')}</strong><small>${escapeHtml(r.producto_format||'')}</small></td><td>${escapeHtml(r.medios_de_pago_format||'Sin dato')}</td><td>${escapeHtml(money(r.cash_ar??r.cash_collected_ar??r.cash_collected_ars,'ARS'))}</td><td>${escapeHtml(money(r.cash_collected))}</td><td><span class="receipt-state">${escapeHtml(String(r.rebotar_pago)==='true'?'Rebotado':r.estado||'No conciliado')}</span></td><td><details><summary>Ver ID</summary><code>${escapeHtml(r.id)}</code>${r.venta_relacionada?`<small>Venta: ${escapeHtml(r.venta_relacionada)}</small>`:''}</details></td></tr>`).join('')}</tbody></table></div>`:'<p>Este cliente todavía no tiene comprobantes.</p>'}
+  </section>`;
+}
+
 function renderContact(contact) {
   const container = document.getElementById('cardContainer');
   const statusTone = getStatusTone(contact.estado);
@@ -143,7 +153,7 @@ function renderContact(contact) {
           <strong>${escapeHtml(formatAmount(contact.facturacionTotal))}</strong>
         </article>
         <article class="metric-tile">
-          <span>Cash collected total</span>
+          <span>Cobrado conciliado</span>
           <strong>${escapeHtml(formatAmount(contact.cashCollectedTotal))}</strong>
         </article>
       </section>
@@ -172,12 +182,13 @@ function renderContact(contact) {
           ${areaMarkup}
         </div>
       </section>
+      ${renderReceipts(contact)}
     </article>
   `;
 }
 
 async function fetchContact(ghlId) {
-  const response = await fetch(`/api/contacto-estado/${encodeURIComponent(ghlId)}`);
+  const response = await fetch(`/api/contacto-estado/${encodeURIComponent(ghlId)}`,{cache:'no-store'});
   const data = await response.json();
 
   if (!response.ok || !data.ok) {

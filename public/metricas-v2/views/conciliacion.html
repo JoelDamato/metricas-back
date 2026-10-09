@@ -7,11 +7,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css?v=20260817-conciliacion-3" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-3"></script>
-    <script defer src="/js/auth-shell.js"></script>
-    <script defer src="/js/views/conciliacion.page.js?v=20260817-conciliacion-3"></script>
+    <script defer src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20261009-shared-note-1"></script>
   </head>
   <body class="carga-comprobantes-page mis-comprobantes-page conciliacion-page">
     <main class="container carga-comprobantes-layout mis-comprobantes-layout">
@@ -24,7 +24,7 @@
           <p>Todos los comprobantes guardados en Supabase, en un único lugar. Filtrá, revisá y mové cada operación entre Conciliado, No conciliado y Rebotado.</p>
           <div class="metric-page-hero-meta">
             <span class="metric-chip">Fuente: Supabase</span>
-            <span class="metric-chip">Cambios sincronizados con Notion</span>
+            <span id="conciliacionWriteSourceChip" class="metric-chip">Destino: sistema actual</span>
             <span id="conciliacionTotalChip" class="metric-chip">Cargando total...</span>
           </div>
         </div>
@@ -62,7 +62,7 @@
               <option value="exclude">Excluir Club</option>
               <option value="only">Solo Club</option>
             </select>
-            <input id="conciliacionSearch" type="search" placeholder="Cliente, GHL, producto o responsable" aria-label="Buscar comprobantes" />
+            <input id="conciliacionSearch" type="search" placeholder="Cliente, mail, GHL, producto o responsable" aria-label="Buscar comprobantes" />
             <button id="reloadConciliacion" type="button" class="metricas-secondary-button">Actualizar</button>
           </div>
         </div>

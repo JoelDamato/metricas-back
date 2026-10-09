@@ -27,6 +27,11 @@ async function fetchCommissionPersonDetail(month, person) {
   return window.http.getJson(`/api/metricas/commissions/person?${qs}`);
 }
 
+async function fetchMyCommercialArea(month) {
+  const qs = queryString({ month });
+  return window.http.getJson(`/api/metricas/commercial-area?${qs}`);
+}
+
 async function fetchCommissionConfig(month) {
   const qs = queryString({ month });
   return window.http.getJson(`/api/metricas/commissions/config?${qs}`);
@@ -266,8 +271,24 @@ async function lookupComprobantesLoaderRelatedSale(saleId, client = {}) {
   return window.http.getJson(`/api/metricas/comprobantes-loader/venta-relacionada?${qs}`);
 }
 
-async function createComprobanteManual(payload = {}) {
-  return window.http.postJson('/api/metricas/comprobantes-loader', payload);
+async function createComprobanteManual(payload = {}, files = [], onProgress) {
+  const formData = new FormData();
+  const requestPayload = { ...payload };
+  delete requestPayload.attachmentFiles;
+  formData.append('payload', JSON.stringify(requestPayload));
+  Array.from(files || []).forEach((file) => {
+    formData.append('attachmentFiles', file, file.name);
+  });
+  return window.http.postForm('/api/metricas/comprobantes-loader', formData, {
+    onProgress,
+    timeoutMs: 4 * 60 * 1000,
+    timeoutMessage: 'La carga tardó más de lo esperado. Podés reintentar: el sistema conserva la misma clave para no duplicar comprobantes.'
+  });
+}
+
+async function previewComprobanteFinancials(payload) {
+  const request={...payload,attachmentFiles:[]};
+  return window.http.postJson('/api/metricas/comprobantes-direct/preview',request);
 }
 
 async function fetchEditableComprobante(id) {
@@ -282,14 +303,18 @@ async function deleteEditableComprobante(id) {
   return window.http.deleteJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}`, {});
 }
 
+async function fetchComprobanteFiles(id) {
+  return window.http.getJson(`/api/metricas/comprobantes-loader/${encodeURIComponent(id)}/files`);
+}
+
 async function fetchReconciliationComprobantes() {
   return window.http.getJson('/api/metricas/comprobantes-reconciliation');
 }
 
-async function updateReconciliationComprobante(id, state) {
+async function updateReconciliationComprobante(id, state, reason) {
   return window.http.patchJson(
     `/api/metricas/comprobantes-reconciliation/${encodeURIComponent(id)}`,
-    { state }
+    { state, reason }
   );
 }
 
@@ -343,6 +368,7 @@ window.metricasApi = {
   fetchOperationalAlerts,
   fetchCommissionsDashboard,
   fetchCommissionPersonDetail,
+  fetchMyCommercialArea,
   fetchCommissionConfig,
   saveCommissionConfig,
   saveDefaultCommissionConfig,
@@ -386,9 +412,11 @@ window.metricasApi = {
   lookupComprobantesLoaderClient,
   lookupComprobantesLoaderRelatedSale,
   createComprobanteManual,
+  previewComprobanteFinancials,
   fetchEditableComprobante,
   updateEditableComprobante,
   deleteEditableComprobante,
+  fetchComprobanteFiles,
   fetchReconciliationComprobantes,
   updateReconciliationComprobante,
   generateCloserPersonalReport,

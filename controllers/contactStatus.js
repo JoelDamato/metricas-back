@@ -1,3 +1,4 @@
+const {listContactReceipts,totals}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 
@@ -71,48 +72,46 @@ function getRowScore(row) {
 async function fetchContactByGhlId(ghlId) {
   const { supabaseUrl } = getSupabaseConfig();
 
-  const [leadResponse, csmResponse, comprobantesResponse] = await Promise.all([
-    axios.get(`${supabaseUrl}/rest/v1/leads_raw`, {
-      headers: buildHeaders(),
-      params: {
-        select: 'id,ghlid,nombre,mail,telefono,etapa,facturacion_total,cash_collected_total,setter,closer',
-        ghlid: `eq.${ghlId}`,
-        order: 'last_edited_time.desc',
-        limit: 10
+  const [leadRows, csmResponse] = await Promise.all([
+    (async () => {
+      const result=[];
+      for(let offset=0;;offset+=500){
+        const {data}=await axios.get(`${supabaseUrl}/rest/v1/leads_raw`, {
+          headers:buildHeaders(), timeout:30000,
+          params:{select:'id,ghlid,nombre,mail,telefono,etapa,facturacion_total,cash_collected_total,setter,closer',ghlid:`eq.${ghlId}`,order:'id.asc',limit:500,offset}
+        });
+        result.push(...data);if(data.length<500)return result;
       }
-    }),
+    })(),
     axios.get(`${supabaseUrl}/rest/v1/csm`, {
       headers: buildHeaders(),
       params: {
-        select: 'ghlid,onboarding,f_onboarding,modulo_1,proximo_contacto_csm,ultima_respuesta,ultimo_producto_adquirido,closer',
+        select: 'id,crm_2_0,nombre,mail,telefono,ghlid,onboarding,f_onboarding,modulo_1,proximo_contacto_csm,ultima_respuesta,ultimo_producto_adquirido,closer',
         ghlid: `eq.${ghlId}`,
         order: 'updated_at.desc',
         limit: 5
       }
     }),
-    axios.get(`${supabaseUrl}/rest/v1/comprobantes`, {
-      headers: buildHeaders(),
-      params: {
-        select: 'ghlid,tipo,producto_format,medios_de_pago_format,estado,f_venta,f_acreditacion,facturacion,cash_collected_total',
-        ghlid: `eq.${ghlId}`,
-        order: 'updated_at.desc',
-        limit: 20
-      }
-    })
+
   ]);
 
-  const rows = leadResponse.data || [];
-  const row = rows
+  const rows = leadRows;
+  let row = rows
     .slice()
     .sort((a, b) => getRowScore(b) - getRowScore(a))[0] || null;
 
-  if (!row) return null;
-
   const csmRow = (csmResponse.data || [])[0] || null;
-  const comprobantesRows = comprobantesResponse.data || [];
+  const comprobantesRows = await listContactReceipts(ghlId,[...rows.map(r=>r.id),csmRow?.crm_2_0].filter(Boolean));
   const latestComprobante = comprobantesRows[0] || null;
+  if(!row && !csmRow && !latestComprobante)return null;
+  if(!row)row={nombre:csmRow?.nombre||latestComprobante?.cliente_format||'Sin nombre',mail:csmRow?.mail||latestComprobante?.mail,telefono:csmRow?.telefono||latestComprobante?.telefono,closer:csmRow?.closer,etapa:csmRow?'Cliente CSM':'Con comprobantes'};
 
   const contact = mapLead(row, ghlId);
+  const receiptTotals=totals(comprobantesRows);
+  contact.comprobantes=comprobantesRows;
+  contact.receiptTotals=receiptTotals;
+  contact.facturacionTotal=receiptTotals.facturacion;
+  contact.cashCollectedTotal=receiptTotals.cobrado;
   contact.areas = {
     comercial: [
       { label: 'Etapa', value: row.etapa || 'Sin dato' },
@@ -125,8 +124,8 @@ async function fetchContactByGhlId(ghlId) {
       { label: 'Próximo contacto', value: csmRow?.proximo_contacto_csm || csmRow?.modulo_1 || csmRow?.ultima_respuesta || 'Sin dato' }
     ],
     administracion: [
-      { label: 'Facturación total', value: normalizeAmount(row.facturacion_total) ?? 'Sin dato', type: 'amount' },
-      { label: 'Cash collected total', value: normalizeAmount(row.cash_collected_total) ?? 'Sin dato', type: 'amount' },
+      { label: 'Facturación total', value: receiptTotals.facturacion, type: 'amount' },
+      { label: 'Cash collected total', value: receiptTotals.cobrado, type: 'amount' },
       { label: 'Último comprobante', value: latestComprobante ? `${latestComprobante.tipo || 'Sin tipo'} · ${latestComprobante.medios_de_pago_format || latestComprobante.estado || latestComprobante.producto_format || 'Sin dato'}` : 'Sin dato' }
     ]
   };
@@ -146,23 +145,13 @@ async function getContactStatus(req, res, next) {
       });
     }
 
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(ghlId))return res.status(400).json({ok:false,message:'GHL ID inválido'});
+
     if (acceptsHtml) {
       return res.redirect(`/contacto-estado/${encodeURIComponent(ghlId)}`);
     }
 
     const cacheKey = getCacheKey(ghlId);
-    const cached = responseCache.get(cacheKey);
-
-    if (cached) {
-      res.set('Cache-Control', 'private, max-age=60');
-      return res.json({
-        ok: true,
-        cached: true,
-        source: 'supabase',
-        contact: cached
-      });
-    }
-
     let promise = inFlightRequests.get(cacheKey);
     if (!promise) {
       promise = fetchContactByGhlId(ghlId)
@@ -181,8 +170,8 @@ async function getContactStatus(req, res, next) {
       });
     }
 
-    responseCache.set(cacheKey, contact);
-    res.set('Cache-Control', 'private, max-age=60');
+
+    res.set('Cache-Control', 'no-store');
     res.json({
       ok: true,
       cached: false,
@@ -195,5 +184,7 @@ async function getContactStatus(req, res, next) {
 }
 
 module.exports = {
-  getContactStatus
+  getContactStatus,
+  invalidateCache:()=>responseCache.flushAll(),
+  _test:{fetchContactByGhlId}
 };

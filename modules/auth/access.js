@@ -1,5 +1,8 @@
+const {commissionAreaForUser} = require('../metricasv2/services/commission-area-identity');
 const PAGE_ROLE_ACCESS = {
+  'tickets.html': ['total', 'comercial', 'csm'],
   'dashboard.html': ['total', 'comercial', 'csm'],
+  'metricas.html': ['total', 'comercial', 'csm'],
   'index.html': ['total', 'comercial', 'csm'],
   'split-screen.html': ['total', 'comercial', 'csm'],
   'ranking.html': ['total', 'comercial'],
@@ -11,6 +14,7 @@ const PAGE_ROLE_ACCESS = {
   'mercado-pago-club.html': ['total'],
   'demo-facturacion-club.html': ['total'],
   'conciliacion.html': ['total'],
+  'comprobantes-config.html': ['total'],
   'kpi-closers.html': ['total', 'comercial'],
   'setting.html': ['total', 'comercial'],
   'reportes.html': ['total', 'comercial'],
@@ -32,13 +36,22 @@ const PAGE_ROLE_ACCESS = {
   'estado-contacto-comisiones.html': ['total', 'comercial'],
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
+  'csm-cuadro.html': ['total', 'csm'],
   'csm-rendimiento.html': ['total', 'csm'],
   'diagnostico.html': ['total', 'csm'],
   'csm-renovaciones.html': ['total', 'comercial'],
   'herramientas.html': ['total', 'comercial', 'csm'],
   'generador-params.html': ['total', 'comercial', 'csm'],
+  'area-comercial.html': ['total', 'comercial'],
+  'grabaciones.html': ['total', 'comercial', 'csm'],
+  'pdi.html': ['total', 'comercial'],
   'view.html': ['total']
 };
+
+const CSM_OPERATIONAL_PAGES = new Set([
+  'csm-rendimiento.html',
+  'diagnostico.html'
+]);
 
 const RESOURCE_ROLE_ACCESS = {
   ranking_closers_mensual: ['total', 'comercial'],
@@ -71,6 +84,8 @@ const FEATURE_ROLE_ACCESS = {
   alertas_operativas: ['total', 'comercial', 'csm'],
   auth_session: ['total', 'comercial', 'csm'],
   assistant: ['total', 'comercial', 'csm'],
+  commercial_area: ['total', 'comercial'],
+  pdi: ['total', 'comercial'],
   user_admin: ['total']
 };
 
@@ -119,6 +134,11 @@ const CLOSER_AI_REPORT_EDITOR_EMAILS = new Set([
   'matirandazzo@gmail.com'
 ]);
 
+const PDI_ALLOWED_EMAILS = new Set([
+  'leonardoalaniz19@gmail.com',
+  'matirandazzo@gmail.com'
+]);
+
 const MARKETING_FORCE_ALLOW_EMAILS = new Set([
   'walteralegre56@gmail.com'
 ]);
@@ -134,12 +154,17 @@ const ADMINISTRATION_ALLOWED_EMAILS = new Set([
   'nadia.cavallini@gmail.com'
 ]);
 
+const COMPROBANTES_LAB_ALLOWED_EMAILS = new Set([
+  'matirandazzo@gmail.com',
+  'nadia.cavallini@gmail.com'
+]);
+
 const USER_ACCESS_OVERRIDES = {
   'iascinahuel@gmail.com': {
     homePath: '/dashboard.html',
     allowedPages: new Set([
       'dashboard.html',
-      'index.html',
+      'metricas.html',
       'split-screen.html',
       'ranking.html',
       'agendas-totales.html',
@@ -158,7 +183,9 @@ const USER_ACCESS_OVERRIDES = {
       'reporte_mayo_checkpoints_strikes.html',
       'comprobantes.html',
       'carga-comprobantes.html',
-      'mis-comprobantes.html'
+      'mis-comprobantes.html',
+      'estado-contacto-comisiones.html',
+      'area-comercial.html'
     ]),
     allowedResources: new Set([
       'ranking_closers_mensual',
@@ -174,14 +201,17 @@ const USER_ACCESS_OVERRIDES = {
       'comprobantes'
     ]),
     allowedFeatures: {
-      views: ['GET']
+      views: ['GET'],
+      commercial_area: ['GET']
     }
   },
   'sofiangallardod@gmail.com': {
-    homePath: '/views/csm-tiempo.html',
+    homePath: '/dashboard.html',
     allowedPages: new Set([
+      'dashboard.html',
       'csm-tiempo.html',
       'csm-situacion.html',
+      'csm-cuadro.html',
       'csm-rendimiento.html',
       'csm-renovaciones.html',
       'comprobantes.html',
@@ -206,9 +236,10 @@ const USER_ACCESS_OVERRIDES = {
     )
   },
   'robertoboero83@gmail.com': {
-    homePath: '/index.html',
+    homePath: '/dashboard.html',
     allowedPages: new Set([
-      'index.html',
+      'dashboard.html',
+      'metricas.html',
       'ranking.html',
       'agendas-totales.html',
       'analisis-ventas.html',
@@ -225,6 +256,7 @@ const USER_ACCESS_OVERRIDES = {
       'comprobantes.html',
       'carga-comprobantes.html',
       'mis-comprobantes.html',
+      'area-comercial.html',
       'herramientas.html',
       'generador-params.html'
     ]),
@@ -238,7 +270,8 @@ const USER_ACCESS_OVERRIDES = {
       'comprobantes'
     ]),
     allowedFeatures: {
-      marketing_inversion: ['GET']
+      marketing_inversion: ['GET'],
+      commercial_area: ['GET']
     }
   }
 };
@@ -257,6 +290,14 @@ function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function canonicalPageName(pageName) {
+  return pageName === 'index.html' ? 'metricas.html' : pageName;
+}
+
+function canonicalHomePath(homePath) {
+  return homePath === '/index.html' ? '/metricas.html' : homePath;
+}
+
 function canAccessCommissionsForUser(userOrEmail) {
   const email = typeof userOrEmail === 'string'
     ? normalizeEmail(userOrEmail)
@@ -272,6 +313,20 @@ function canAccessAdministrationForUser(userOrEmail) {
     ? normalizeEmail(userOrEmail)
     : normalizeEmail(userOrEmail?.email);
   return ADMINISTRATION_ALLOWED_EMAILS.has(email);
+}
+
+function canAccessComprobantesLabForUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+  return COMPROBANTES_LAB_ALLOWED_EMAILS.has(email);
+}
+
+function canAccessPdiForUser(userOrEmail) {
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
+  return PDI_ALLOWED_EMAILS.has(email);
 }
 
 function hasForcedMarketingAccess(userOrEmail) {
@@ -292,9 +347,12 @@ function getConfigBoolean(userOrEmail, key) {
 
 function normalizeOverride(rawOverride = null) {
   if (!rawOverride || typeof rawOverride !== 'object') return null;
+  const rawAllowedPages = Array.isArray(rawOverride.allowedPages)
+    ? rawOverride.allowedPages
+    : Array.from(rawOverride.allowedPages || []);
   return {
-    homePath: rawOverride.homePath ? String(rawOverride.homePath).trim() : null,
-    allowedPages: new Set(Array.isArray(rawOverride.allowedPages) ? rawOverride.allowedPages : Array.from(rawOverride.allowedPages || [])),
+    homePath: rawOverride.homePath ? canonicalHomePath(String(rawOverride.homePath).trim()) : null,
+    allowedPages: new Set(rawAllowedPages.map(canonicalPageName)),
     allowedResources: new Set(Array.isArray(rawOverride.allowedResources) ? rawOverride.allowedResources : Array.from(rawOverride.allowedResources || [])),
     allowedFeatures: Object.fromEntries(
       Object.entries(rawOverride.allowedFeatures || {}).map(([feature, methods]) => [
@@ -307,6 +365,9 @@ function normalizeOverride(rawOverride = null) {
 
 function getUserAccessOverride(userOrEmail) {
   const config = getAccessConfig(userOrEmail);
+  const email = typeof userOrEmail === 'string'
+    ? normalizeEmail(userOrEmail)
+    : normalizeEmail(userOrEmail?.email);
   const hasCustomOverride = config.useCustomAccess === true
     || (Array.isArray(config.allowedPages) && config.allowedPages.length > 0)
     || (Array.isArray(config.allowedResources) && config.allowedResources.length > 0)
@@ -314,12 +375,18 @@ function getUserAccessOverride(userOrEmail) {
     || (config.allowedFeatures && typeof config.allowedFeatures === 'object' && Object.keys(config.allowedFeatures).length > 0);
 
   if (hasCustomOverride) {
-    return normalizeOverride(config);
+    const override = normalizeOverride(config);
+    // El panel personal de Nahuel depende de estos accesos aunque su
+    // configuración histórica de Supabase todavía no los incluya.
+    if (email === 'iascinahuel@gmail.com') {
+      override.allowedPages.add('area-comercial.html');
+      override.allowedPages.add('estado-contacto-comisiones.html');
+      override.allowedFeatures.commercial_area = [
+        ...new Set([...(override.allowedFeatures.commercial_area || []), 'GET'])
+      ];
+    }
+    return override;
   }
-
-  const email = typeof userOrEmail === 'string'
-    ? normalizeEmail(userOrEmail)
-    : normalizeEmail(userOrEmail?.email);
 
   return normalizeOverride(USER_ACCESS_OVERRIDES[email] || null);
 }
@@ -411,16 +478,24 @@ function canAccessFeature(role, featureName) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  pageName = canonicalPageName(pageName);
+  if (pageName === 'area-comercial.html' && commissionAreaForUser(user)) return true;
+  if (pageName === 'tickets.html') return Boolean(user);
+  if (pageName === 'pdi.html') return canAccessPdiForUser(user);
+  if (pageName === 'grabaciones.html') return Boolean(user) && canAccessPage(user?.role, pageName);
+  if (pageName === 'comprobantes-config.html') return canAccessComprobantesLabForUser(user);
   if (pageName === 'administracion.html' || pageName === 'mercado-pago-club.html' || pageName === 'demo-facturacion-club.html' || pageName === 'conciliacion.html') {
     return canAccessAdministrationForUser(user);
   }
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
   if (pageName === 'comisiones.html') return canAccessCommissionsForUser(user);
-  if (pageName === 'csm-rendimiento.html') return ['total', 'csm'].includes(user?.role);
+  if (CSM_OPERATIONAL_PAGES.has(pageName)) return ['total', 'csm'].includes(user?.role);
   if (hasForcedMarketingAccess(user) && pageName === 'marketing.html') return true;
+  // The personalized dashboard is the common authenticated landing page. User
+  // overrides still control every link and dataset rendered inside it.
+  if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
   const override = getUserAccessOverride(user);
   if (override) return override.allowedPages.has(pageName);
-  if (pageName === 'dashboard.html') return Boolean(user) && !isMarketingOnlyUser(user);
   if (isMarketingOnlyUser(user)) return MARKETING_ONLY_ALLOWED_PAGES.has(pageName);
   if (!canAccessPage(user?.role, pageName)) return false;
   if (isRestrictedCommercialUser(user) && MARKETING_BLOCKED_PAGES.has(pageName)) return false;
@@ -440,6 +515,11 @@ function canAccessResourceForUser(user, resourceName) {
 }
 
 function canAccessFeatureForUser(user, featureName, options = {}) {
+  if (featureName === 'commercial_area' && commissionAreaForUser(user)) return String(options.method || 'GET').toUpperCase() === 'GET';
+  if (featureName === 'pdi') {
+    return canAccessPdiForUser(user);
+  }
+
   if (featureName === 'user_admin') {
     return canManageUsersForUser(user);
   }
@@ -528,16 +608,34 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 
 function getUserPermissions(user) {
   const override = getUserAccessOverride(user);
+  const allowedPages = override ? new Set(override.allowedPages) : null;
+  if (allowedPages && user) allowedPages.add('tickets.html');
+  if (allowedPages && canAccessPageForUser(user, 'dashboard.html')) {
+    allowedPages.add('dashboard.html');
+  }
+  if (allowedPages && canAccessPageForUser(user, 'grabaciones.html')) {
+    allowedPages.add('grabaciones.html');
+  }
+  if (allowedPages && canAccessPageForUser(user, 'pdi.html')) {
+    allowedPages.add('pdi.html');
+  }
+  if (allowedPages) {
+    CSM_OPERATIONAL_PAGES.forEach((pageName) => {
+      if (canAccessPageForUser(user, pageName)) allowedPages.add(pageName);
+    });
+  }
   return {
     onlyMarketingAccess: isMarketingOnlyUser(user),
-    homePath: override?.homePath || null,
-    allowedPages: override ? Array.from(override.allowedPages) : null,
+    homePath: canonicalHomePath(override?.homePath || null),
+    allowedPages: allowedPages ? Array.from(allowedPages) : null,
     allowedResources: override ? Array.from(override.allowedResources) : null,
     allowedFeatures: override ? override.allowedFeatures : null,
     canAccessComisiones: canAccessPageForUser(user, 'comisiones.html'),
     canAccessAdministration: canAccessAdministrationForUser(user),
+    canAccessComprobantesLab: canAccessComprobantesLabForUser(user),
     canAccessLeadsBdd: canAccessPageForUser(user, 'leads-bdd.html'),
     canAccessMarketing: canAccessPageForUser(user, 'marketing.html'),
+    canAccessPdi: canAccessPdiForUser(user),
     canEditKpiClosersRules: canAccessFeatureForUser(user, 'kpi_closers_rules', { method: 'POST' }),
     canEditAgendaBonusRules: canAccessFeatureForUser(user, 'agenda_bonus_rules', { method: 'POST' }),
     canEditAgendaCalendar: canAccessFeatureForUser(user, 'agenda_calendar_assignments', { method: 'POST' }),
@@ -569,8 +667,10 @@ function getUserAccessSummary(user) {
       canGenerateCloserAiReport: canGenerateCloserAiReportForUser(user),
       canManageUsers: canManageUsersForUser(user)
     },
-    homePath: getUserAccessOverride(user)?.homePath || null,
-    pages: Object.keys(PAGE_ROLE_ACCESS).filter((pageName) => canAccessPageForUser(user, pageName)),
+    homePath: canonicalHomePath(getUserAccessOverride(user)?.homePath || null),
+    pages: Object.keys(PAGE_ROLE_ACCESS)
+      .filter((pageName) => pageName !== 'index.html')
+      .filter((pageName) => canAccessPageForUser(user, pageName)),
     resources: Object.keys(RESOURCE_ROLE_ACCESS).filter((resourceName) => canAccessResourceForUser(user, resourceName))
   };
 }
@@ -582,9 +682,13 @@ module.exports = {
   MARKETING_ONLY_EMAILS,
   RESTRICTED_COMMERCIAL_EMAILS,
   CSM_ONLY_EMAILS,
+  COMPROBANTES_LAB_ALLOWED_EMAILS,
+  PDI_ALLOWED_EMAILS,
   USER_ACCESS_OVERRIDES,
   canAccessCommissionsForUser,
   canAccessAdministrationForUser,
+  canAccessComprobantesLabForUser,
+  canAccessPdiForUser,
   getUserAccessOverride,
   isMarketingOnlyUser,
   isRestrictedCommercialUser,

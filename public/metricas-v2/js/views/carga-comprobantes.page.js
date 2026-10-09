@@ -7,8 +7,6 @@
   const MAX_TOTAL_FILE_BYTES = 30 * 1024 * 1024;
   const ALLOWED_FILE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'pdf']);
   const ALLOWED_FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
-  const SUBMISSION_PROGRESS_TICK_MS = 200;
-  const SUBMISSION_PROGRESS_MAX_PENDING = 92;
   const SUBMISSION_LONG_WAIT_ROTATION_MS = 5500;
 
   const state = {
@@ -354,19 +352,6 @@
     showValidationPopup(errors);
   }
 
-  function readFileAsBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = String(reader.result || '');
-        const base64 = result.includes(',') ? result.split(',')[1] : result;
-        resolve(base64);
-      };
-      reader.onerror = () => reject(new Error(`No pude leer el archivo ${file?.name || ''}`.trim()));
-      reader.readAsDataURL(file);
-    });
-  }
-
   function getAllAttachments() {
     const activeChequeCount = getChequeCount();
     return [
@@ -378,20 +363,17 @@
     ];
   }
 
-  async function serializeAttachments() {
+  function attachmentMetadata() {
     const files = getAllAttachments();
     const fileErrors = validateAttachmentFiles(files);
     if (fileErrors.length) {
       throw new Error(fileErrors.join(' '));
     }
-    return Promise.all(
-      files.map(async (file) => ({
-        name: file.name,
-        type: file.type || 'application/octet-stream',
-        size: Number(file.size || 0),
-        base64: await readFileAsBase64(file)
-      }))
-    );
+    return files.map((file) => ({
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      size: Number(file.size || 0)
+    }));
   }
 
   function setLoading(isLoading, message = '') {
@@ -410,6 +392,7 @@
   }
 
   function invalidatePreview() {
+    state.previewRevision = (state.previewRevision || 0) + 1;
     state.previewPayload = null;
     state.submissionKey = null;
     refs.previewSection.hidden = true;
@@ -511,86 +494,12 @@
     }
   }
 
-  function submissionProgressStages(operationCount) {
-    const count = Math.max(1, Number(operationCount) || 1);
-    const plural = count === 1 ? 'pago' : 'pagos';
-    const recordPlural = count === 1 ? 'registro' : 'registros';
-    return [
-      {
-        afterMs: 0,
-        progress: 8,
-        title: `Preparando ${count} ${plural}`,
-        message: 'Organizando los datos y archivos antes de enviarlos.',
-        step: 'Preparación'
-      },
-      {
-        afterMs: 700,
-        progress: 20,
-        title: 'Validando la carga',
-        message: 'Revisando importes, fechas y comprobantes adjuntos.',
-        step: 'Validación'
-      },
-      {
-        afterMs: 1800,
-        progress: 36,
-        title: 'Enviando los comprobantes',
-        message: 'Subiendo los archivos de forma segura. Puede tomar unos segundos.',
-        step: 'Envío de archivos'
-      },
-      {
-        afterMs: 3400,
-        progress: 54,
-        title: `Guardando ${count} ${recordPlural}`,
-        message: 'Los pagos se están guardando en la base de datos.',
-        step: 'Guardado de registros'
-      },
-      {
-        afterMs: 5400,
-        progress: 70,
-        title: 'Vinculando la información',
-        message: 'Relacionando pagos, fechas, venta y cobranzas.',
-        step: 'Relaciones'
-      },
-      {
-        afterMs: 7800,
-        progress: 84,
-        title: 'Verificando la carga',
-        message: `Confirmando que ${count === 1 ? 'el registro quede completo' : `los ${count} registros queden completos`}.`,
-        step: 'Verificación'
-      },
-      {
-        afterMs: 11000,
-        progress: SUBMISSION_PROGRESS_MAX_PENDING,
-        title: count === 1 ? 'El comprobante sigue procesándose' : `Los ${count} pagos siguen procesándose`,
-        message: 'La carga continúa activa y segura. No cierres ni recargues esta ventana.',
-        step: 'Procesamiento prolongado',
-        longWaitMessages: [
-          {
-            title: count === 1 ? 'El comprobante sigue procesándose' : `Los ${count} pagos siguen procesándose`,
-            message: 'La carga continúa activa y segura. No cierres ni recargues esta ventana.',
-            step: 'Procesamiento prolongado'
-          },
-          {
-            title: 'Seguimos guardando la información',
-            message: 'Cuando hay varios archivos, cada registro puede necesitar unos segundos adicionales.',
-            step: 'Guardado en curso'
-          },
-          {
-            title: 'La carga sigue activa',
-            message: 'Estamos esperando la confirmación final del servidor. Podés dejar esta ventana abierta.',
-            step: 'Esperando confirmación'
-          }
-        ]
-      }
-    ];
-  }
-
   function renderSubmissionProgress({ value, title, message, step }) {
     const progress = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
     state.submissionProgressValue = progress;
     if (refs.creatingTitle && title) refs.creatingTitle.textContent = title;
     if (refs.creatingMessage && message) refs.creatingMessage.textContent = message;
-    if (refs.creatingStep && step) refs.creatingStep.textContent = `Progreso estimado · ${step}`;
+    if (refs.creatingStep && step) refs.creatingStep.textContent = step;
     if (refs.creatingPercent) refs.creatingPercent.textContent = `${progress}%`;
     if (refs.creatingProgressFill) refs.creatingProgressFill.style.width = `${progress}%`;
     if (refs.creatingProgressBar) refs.creatingProgressBar.setAttribute('aria-valuenow', String(progress));
@@ -619,68 +528,23 @@
     }
   }
 
-  function updateSubmissionProgressFromElapsed() {
-    const stages = state.submissionProgressStages;
-    if (!stages.length || !state.submissionProgressStartedAt) return;
-
-    const elapsed = Date.now() - state.submissionProgressStartedAt;
-    let stageIndex = 0;
-    for (let index = 1; index < stages.length; index += 1) {
-      if (elapsed < stages[index].afterMs) break;
-      stageIndex = index;
-    }
-
-    const stage = stages[stageIndex];
-    const nextStage = stages[stageIndex + 1];
-    let progress = stage.progress;
-    if (nextStage) {
-      const duration = Math.max(1, nextStage.afterMs - stage.afterMs);
-      const ratio = Math.max(0, Math.min(1, (elapsed - stage.afterMs) / duration));
-      progress += (nextStage.progress - stage.progress - 2) * ratio;
-    }
-    progress = Math.min(SUBMISSION_PROGRESS_MAX_PENDING, Math.max(state.submissionProgressValue, progress));
-
-    let displayedStage = stage;
-    let longWaitIndex = -1;
-    if (Array.isArray(stage.longWaitMessages) && stage.longWaitMessages.length) {
-      longWaitIndex = Math.floor(
-        Math.max(0, elapsed - stage.afterMs) / SUBMISSION_LONG_WAIT_ROTATION_MS
-      ) % stage.longWaitMessages.length;
-      displayedStage = { ...stage, ...stage.longWaitMessages[longWaitIndex] };
-    }
-
-    const stageChanged = stageIndex !== state.submissionProgressStageIndex
-      || longWaitIndex !== state.submissionProgressLongWaitIndex;
-    state.submissionProgressStageIndex = stageIndex;
-    state.submissionProgressLongWaitIndex = longWaitIndex;
-    renderSubmissionProgress({
-      value: progress,
-      title: stageChanged ? displayedStage.title : '',
-      message: stageChanged ? displayedStage.message : '',
-      step: stageChanged ? displayedStage.step : ''
-    });
-    refs.submitStatus.textContent = displayedStage.title;
+  function updateRealProgress(event) {
+    const messages={validating:['Validando los datos','Revisando cliente, venta e importes.'],uploading:['Subiendo archivos',`${event.completed||0} de ${event.total||0} archivos guardados.`],saving:['Guardando el comprobante','Actualizando los registros y saldos en una transacción.']};
+    const [title,message]=messages[event.stage]||['Procesando la carga','Esperando confirmación del servidor.'];
+    renderSubmissionProgress({value:0,title,message,step:event.stage==='uploading'?'Archivos':'Procesamiento'});
+    refs.creatingPercent.textContent=event.stage==='uploading'?`${event.completed||0}/${event.total||0}`:'';
+    refs.creatingProgressBar.removeAttribute('aria-valuenow');
+    refs.creatingProgressBar.setAttribute('aria-label',title);
+    refs.creatingProgressFill.style.width=event.stage==='uploading'&&event.total?`${event.completed/event.total*100}%`:'35%';
   }
 
-  function startSubmissionProgress(operationCount) {
-    stopSubmissionProgress({ reset: true });
-    const count = Math.max(1, Number(operationCount) || 1);
-    state.submissionProgressStages = submissionProgressStages(count);
-    state.submissionProgressStartedAt = Date.now();
-    state.submissionProgressStageIndex = -1;
-    state.submissionProgressLongWaitIndex = -1;
-    if (refs.creatingKicker) refs.creatingKicker.textContent = 'Carga en curso';
-    if (refs.creatingPatience) {
-      refs.creatingPatience.textContent = count === 1
-        ? 'No cierres esta ventana mientras se guarda el comprobante y su archivo.'
-        : `Tené paciencia: al cargar ${count} pagos, cada registro y archivo se guarda por separado. No cierres ni recargues esta ventana.`;
-    }
+  function startSubmissionProgress() {
+    clearSubmissionProgressTimer();
+    if(refs.creatingKicker)refs.creatingKicker.textContent='Carga en curso';
+    if(refs.creatingPatience)refs.creatingPatience.textContent='No cierres esta ventana. Confirmaremos cuando el comprobante y sus archivos estén guardados.';
     setCreatingPopup(true);
-    updateSubmissionProgressFromElapsed();
-    state.submissionProgressTimer = window.setInterval(
-      updateSubmissionProgressFromElapsed,
-      SUBMISSION_PROGRESS_TICK_MS
-    );
+    renderSubmissionProgress({value:0,title:'Enviando la carga',message:'Transfiriendo los datos y archivos al servidor.',step:'Envío'});
+    refs.creatingPercent.textContent='';refs.creatingProgressBar.removeAttribute('aria-valuenow');refs.creatingProgressFill.style.width='25%';
   }
 
   function completeSubmissionProgress(createdCount) {
@@ -795,6 +659,17 @@
 
   function updateStepFlow() {
     const stepState = getStepState();
+
+    const activeStep = !stepState.clientReady ? 0
+      : !(stepState.baseReady && (!stepState.isVenta || stepState.ventaReady)
+        && stepState.relationReady && stepState.cashReady && stepState.chequeReady) ? 1
+      : !stepState.attachmentReady ? 2 : 3;
+    document.querySelectorAll('[data-carga-step]').forEach((item) => {
+      const index = Number(item.dataset.cargaStep);
+      item.classList.toggle('is-done', index < activeStep);
+      if (index === activeStep) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+    });
 
     setSectionVisibility(refs.baseSection, stepState.clientReady);
     setSectionVisibility(refs.ventaFields, stepState.baseReady && (stepState.isVenta || stepState.isDevolucion));
@@ -1182,7 +1057,7 @@
     }
 
     if ((isCobranza || isDevolucion) && !refs.latestSaleId.value) {
-      renderLatestSaleSummary(null, 'Pegá el Notion ID de la venta para traer la referencia.');
+      renderLatestSaleSummary(null, 'Pegá el ID de la venta para traer la referencia.');
     }
 
     syncAutomaticDates();
@@ -1325,7 +1200,11 @@
       if (payload.tipo === 'Venta') rows.push(['Cantidad de pagos', payload.cantidadPagos || '-']);
     }
 
-    if (payload.latestSaleId) {
+    if(payload.financialPreview){
+      const f=payload.financialPreview;
+      rows.push(['Saldo actual (USD)',formatCurrency(f.balanceBefore)],['Saldo después de registrar, pendiente (USD)',formatCurrency(f.balanceAfterPending)],['Saldo si se concilia este pago (USD)',formatCurrency(f.balanceAfterConciliation)],['IVA descontado (ARS)',formatCurrency(f.ivaArs,'ARS')],['Costo del medio (ARS)',formatCurrency(f.feesArs,'ARS')],['Neto para comisión al conciliar (ARS)',formatCurrency(f.netArs,'ARS')],['Estado inicial','No conciliado · pendiente de validación']);
+    }
+    if (payload.latestSaleId && payload.tipo !== 'Venta') {
       rows.push(['Venta relacionada', payload.latestSaleId]);
     }
 
@@ -1365,7 +1244,7 @@
     refs.previewAlerts.className = `carga-preview-alerts ${warnings.length ? 'has-warnings' : ''}`;
     refs.previewAlerts.innerHTML = warnings.length
       ? `<strong>Revisá esto antes de confirmar</strong><ul>${warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>`
-      : `<strong>Todo listo.</strong><p>No vi inconsistencias obvias en la carga previa.</p><p>Esta confirmación va a crear ${operationCount} ${operationCount === 1 ? 'registro' : 'registros'} en Notion.</p>`;
+      : `<strong>Todo listo.</strong><p>No vi inconsistencias obvias en la carga previa.</p><p>Esta confirmación va a crear ${operationCount} ${operationCount === 1 ? 'registro' : 'registros'}.</p>`;
 
     refs.previewGrid.innerHTML = previewRowsFromPayload(payload)
       .map(([label, value]) => `
@@ -1440,7 +1319,7 @@
       : '';
 
     const openButton = mainRecord?.url
-      ? `<a class="metricas-primary-button carga-success-link" href="${escapeHtml(mainRecord.url)}" target="_blank" rel="noreferrer">Abrir en Notion</a>`
+      ? `<a class="metricas-primary-button carga-success-link" href="${escapeHtml(mainRecord.url)}" target="_blank" rel="noreferrer">Abrir registro</a>`
       : '';
 
     popup.innerHTML = `
@@ -1491,14 +1370,18 @@
       );
       refs.responsableVenta.disabled = !response.bootstrap.canSelectResponsibleVenta;
       refs.responsableVenta.value = response.bootstrap.responsibleVentaDefault || '';
-      refs.productsSourceText.textContent = response.bootstrap.productsSource === 'notion'
-        ? 'Catálogo cargado desde Notion.'
-        : 'Catálogo de respaldo armado con productos históricos mientras Notion no responde.';
+      refs.productsSourceText.textContent = response.bootstrap.localRealTest
+        ? 'Catálogo auditado para pruebas de carga directa.'
+        : response.bootstrap.productsSource === 'supabase'
+        ? 'Catálogo cargado desde Supabase.'
+        : response.bootstrap.productsSource === 'notion'
+          ? 'Catálogo cargado desde el sistema actual.'
+          : 'Catálogo de respaldo cargado con productos históricos.';
 
       syncAutomaticDates();
       updateVisibility();
       renderAttachments();
-      setLoading(false, 'Formulario listo para probar.');
+      setLoading(false, 'Listo para cargar un comprobante.');
       refs.form.hidden = false;
       updateStepFlow();
       invalidatePreview();
@@ -1586,7 +1469,7 @@
     if (!saleId) {
       invalidateRelatedSaleLookup();
       state.relatedSale = null;
-      renderLatestSaleSummary(null, 'Pegá el Notion ID de la venta para traer la referencia.');
+      renderLatestSaleSummary(null, 'Pegá el ID de la venta para traer la referencia.');
       syncAutomaticDates();
       updateStepFlow();
       invalidatePreview();
@@ -1682,7 +1565,7 @@
   }
 
   async function buildPayload() {
-    const attachmentFiles = await serializeAttachments();
+    const attachmentFiles = attachmentMetadata();
     const usesRelatedSaleDate = refs.tipo.value === 'Cobranza' || refs.tipo.value === 'Devolución';
     const clubSale = isClubSale();
     return {
@@ -1722,6 +1605,7 @@
     if (state.isSubmitting) return;
     refs.submitBtn.disabled = true;
     refs.submitStatus.textContent = 'Preparando la revisión...';
+    const previewRevision = state.previewRevision || 0;
     try {
       const payload = await buildPayload();
       const warnings = buildPreviewWarnings(payload);
@@ -1733,6 +1617,12 @@
       }
       state.previewPayload = payload;
       state.submissionKey = payload.submissionKey;
+      const review=await api.previewComprobanteFinancials(payload);
+      if (previewRevision !== (state.previewRevision || 0)) {
+        refs.submitStatus.textContent = 'Cambiaste datos. Volvé a revisar el comprobante.';
+        return;
+      }
+      payload.financialPreview=review.financialPreview;
       renderPreview(payload);
       refs.submitStatus.textContent = 'Revisá el detalle y confirmá si está todo bien.';
     } catch (error) {
@@ -1766,9 +1656,9 @@
       const operationCount = countDraftOperations(payload);
       startSubmissionProgress(operationCount);
       progressStarted = true;
-      const response = await api.createComprobanteManual(payload);
+      const response = await api.createComprobanteManual(payload, getAllAttachments(), updateRealProgress);
       completeSubmissionProgress(response.created.length);
-      await waitForUi(450);
+
       setCreatingPopup(false);
       refs.submitStatus.textContent = `Comprobante creado. Registros generados: ${response.created.length}.`;
       showSuccessPopup(response);
@@ -1840,7 +1730,7 @@
     invalidateRelatedSaleLookup();
     state.relatedSale = null;
     syncAutomaticDates();
-    renderLatestSaleSummary(null, 'Presioná Buscar venta para validar el Notion ID.');
+    renderLatestSaleSummary(null, 'Presioná Buscar venta para validar el ID.');
   });
   refs.latestSaleId?.addEventListener('blur', lookupRelatedSaleFromInput);
   refs.clientName?.addEventListener('input', updateIdentificador);

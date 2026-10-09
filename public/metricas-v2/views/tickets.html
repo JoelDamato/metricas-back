@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Central de tickets | Scalo</title>
+  <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1">
+  <link rel="stylesheet" href="/css/tickets.css?v=20261007-client-priority-1">
+</head>
+<body class="ranking-page tickets-page premium-navy-background">
+<main class="container">
+  <header class="tickets-header"><div><a href="/dashboard.html">← Dashboard</a><p class="ticket-eyebrow">SOPORTE · SCALO</p><h1>Central de tickets</h1><p>Consultá las tareas actuales o abrí una nueva solicitud.</p></div><button id="openTicketDialog" class="ticket-primary" type="button">+ Abrir ticket</button></header>
+  <div class="tickets-layout">
+    <section class="ticket-panel"><div class="ticket-list-heading"><div><h2>Tareas actuales</h2><p id="ticketCount">Conectando con Notion…</p></div><button id="refreshTickets" type="button">Actualizar</button></div>
+      <div class="ticket-client-selector"><label for="clientFilter">Cliente<select id="clientFilter"><option value="matias-randazzo">Matías Randazzo</option><option value="accelerator">Acelerator</option></select></label><p>Ordenados por prioridad · las más urgentes primero</p></div>
+      <div class="ticket-toolbar"><label class="ticket-search" for="searchTickets"><span class="sr-only">Buscar tareas</span><input id="searchTickets" type="search" placeholder="Buscar tareas…"></label><button id="toggleTicketFilters" type="button" aria-expanded="false" aria-controls="ticketFilters">Filtros</button></div><div id="ticketFilters" class="ticket-filters" hidden><label for="statusFilter">Estado<select id="statusFilter"><option value="">Todos los estados</option><option>Pendiente</option><option>Bloqueando</option><option>Revisar</option><option>Abierto</option><option>En progreso</option></select></label><label for="areaFilter">Área<select id="areaFilter"><option value="">Todas las áreas</option><option>Sistemas</option><option value="Csm">CSM</option><option>Admin</option><option>Comercial</option><option>Marketing</option><option>Otros</option></select></label></div>
+      <p id="listMessage" role="status" aria-live="polite"></p><div id="ticketList"></div><button id="loadMoreTickets" type="button" hidden>Mostrar más</button>
+    </section>
+  </div>
+</main>
+    <dialog id="newTicketDialog" aria-labelledby="newTicketTitle"><div class="ticket-dialog-header"><h2 id="newTicketTitle">Abrir un ticket</h2><button id="closeTicketDialog" type="button" aria-label="Cerrar formulario">✕</button></div><p>Contanos qué necesitás y sumá una captura si ayuda a explicarlo.</p>
+      <form id="ticketForm">
+        <label for="ticketClient">Cliente</label><select id="ticketClient"><option value="matias-randazzo">Matías Randazzo</option><option value="accelerator">Acelerator</option></select>
+        <label for="ticketArea">Área</label><select id="ticketArea"><option>Sistemas</option><option value="Csm">CSM</option><option>Admin</option><option>Comercial</option><option>Marketing</option><option>Otros</option></select>
+        <label for="subject">Asunto</label><input id="subject" name="subject" required maxlength="160" placeholder="¿Con qué necesitás ayuda?">
+        <label for="detail">Detalle</label><textarea id="detail" name="detail" required maxlength="10000" rows="5" placeholder="Describí qué pasó, dónde y qué necesitás resolver."></textarea>
+        <label for="image">Imagen <span>(opcional)</span></label><input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="imageHelp"><small id="imageHelp">PNG, JPG o WebP · hasta 5 MB</small>
+        <img id="imagePreview" alt="Vista previa de la imagen adjunta" hidden><button id="removeImage" type="button" hidden>Quitar imagen</button>
+        <p class="ticket-note">Todos los usuarios de la plataforma podrán ver el ticket y su imagen.</p>
+        <button id="submitTicket" class="ticket-primary" type="submit">Crear ticket</button>
+        <p id="formMessage" role="status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+<script src="/js/auth-shell.js?v=20261009-release-1"></script>
+<script src="/js/views/tickets.page.js?v=20261007-client-priority-1"></script>
+</body></html>

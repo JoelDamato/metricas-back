@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cuadro CSM | Métricas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/csm-module-durations.css?v=20261006-1" />
+</head>
+  <body class="ranking-page csm-page csm-section-page" data-csm-page="cuadro">
+    <main class="container">
+      <div class="nav"><a id="csmSectionBack" href="/metricas.html">Volver a métricas CSM</a></div>
+      <section class="ranking-hero">
+        <span class="csm-section-page-kicker">Cuadro CSM</span>
+        <h1 id="csmPageTitle">Cargando cuadro…</h1>
+        <p id="csmPageDescription">La tabla conserva el período seleccionado en el panel anterior.</p>
+      </section>
+
+      <section id="csmFilterBar" class="ranking-actions csm-filter-bar" hidden>
+        <label>Año <select id="csmYear"></select></label>
+        <label>Mes <select id="csmMonth"></select></label>
+        <button id="reload" type="button">Aplicar</button>
+      </section>
+
+      <section id="csmPageLoading" class="csm-page-loading" role="status" aria-live="polite" aria-busy="true">
+        <div class="csm-page-loading-mark" aria-hidden="true"><span>MR</span></div>
+        <div class="csm-page-loading-copy">
+          <span>Central de Métricas</span>
+          <h2>Preparando la información…</h2>
+          <p id="csmPageLoadingMessage">Cargando métricas, gráficos y desgloses del período.</p>
+        </div>
+        <div class="csm-page-loading-skeleton" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </div>
+      </section>
+
+      <p id="status" hidden></p>
+      <section id="kpiContainer" class="cards" hidden></section>
+      <section id="tableContainer" hidden></section>
+      <section class="chart-panel" hidden>
+        <h3 id="chartTitle"></h3><p id="chartDescription"></p><canvas id="csmChart"></canvas>
+      </section>
+      <section id="detailContainer" class="csm-detail-grid" hidden></section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <script src="/js/api/http.js"></script>
+    <script src="/js/api/metricas.api.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/csm-module-durations.js?v=20261006-1"></script>
+    <script src="/js/views/csm.page.js?v=20260924-csm-modules-7"></script>
+  </body>
+</html>

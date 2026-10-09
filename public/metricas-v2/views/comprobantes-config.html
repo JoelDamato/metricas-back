@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Configuración de carga de comprobantes | Administración</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+  </head>
+  <body class="ranking-page dashboard-home-page premium-navy-background comprobantes-lab-page">
+    <main class="container comprobantes-lab-shell">
+      <div class="nav"><a href="/views/administracion.html">← Volver a Administración</a></div>
+
+      <section class="ranking-hero dashboard-hero comprobantes-lab-hero">
+        <span class="comprobantes-lab-eyebrow">Privado · Mati y Nadia</span>
+        <h1>Configuración de carga de comprobantes</h1>
+        <p>Habilitá productos y medios de pago generales. Configurá el IVA y el costo de cada medio para calcular las comisiones sobre el importe neto.</p>
+      </section>
+
+      <section id="comprobantesLabSafety" class="comprobantes-lab-safety is-loading" aria-live="polite">
+        <strong>Cargando configuración…</strong>
+      </section>
+
+      <section class="card comprobantes-lab-card">
+        <h2>Cálculos globales</h2>
+        <div id="comprobantesLabRules" class="comprobantes-lab-form"></div>
+        <button id="comprobantesLabSave" type="button" class="btn primary">Guardar configuración</button>
+        <p id="comprobantesLabSaveHint" class="muted"></p>
+      </section>
+
+      <section class="card comprobantes-lab-card comprobantes-lab-table-card">
+        <header>
+          <div><span class="comprobantes-lab-eyebrow">Catálogo</span><h2>Productos</h2></div>
+          <div class="comprobantes-lab-header-actions">
+            <span id="comprobantesLabProductsCount" class="chip"></span>
+            <button id="comprobantesLabAddProduct" type="button" class="btn">+ Producto</button>
+          </div>
+        </header>
+        <p class="comprobantes-lab-catalog-note">Los productos usados en comprobantes históricos se desactivan: no se borran ni rompen relaciones anteriores.</p>
+        <div class="table-wrap"><table class="comprobantes-lab-table"><thead><tr><th>Activo</th><th>Producto</th><th>Precios Club</th><th>Código</th><th>Acción</th></tr></thead><tbody id="comprobantesLabProducts"></tbody></table></div>
+      </section>
+
+      <section class="card comprobantes-lab-card comprobantes-lab-table-card">
+        <header>
+          <div><span class="comprobantes-lab-eyebrow">Catálogo</span><h2>Medios de pago generales</h2></div>
+          <div class="comprobantes-lab-header-actions">
+            <span id="comprobantesLabPaymentsCount" class="chip"></span>
+            <input id="comprobantesLabPaymentSearch" class="comprobantes-lab-filter" type="search" placeholder="Buscar medio…" aria-label="Buscar medio de pago" />
+            <select id="comprobantesLabPaymentStatus" class="comprobantes-lab-filter" aria-label="Filtrar medios de pago">
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Históricos</option>
+              <option value="unnamed">Sin nombre original</option>
+            </select>
+            <button id="comprobantesLabExportConfig" type="button" class="btn">Exportar respaldo</button>
+            <label class="btn" for="comprobantesLabImportConfig">Importar respaldo</label>
+            <input id="comprobantesLabImportConfig" type="file" accept="application/json,.json" hidden />
+            <button id="comprobantesLabAddPayment" type="button" class="btn">+ Medio de pago</button>
+          </div>
+        </header>
+        <p class="comprobantes-lab-catalog-note">Estos medios están disponibles para todos los productos. IVA y costo del medio se expresan como tasa: 0,21 equivale a 21%. Los importes descontados se restan del cobro antes de aplicar el porcentaje del vendedor. Podés importar/exportar toda la configuración en JSON; importar sólo prepara los cambios hasta presionar Guardar.</p>
+        <div class="table-wrap"><table class="comprobantes-lab-table"><thead><tr><th>Activo</th><th>Medio</th><th>Tipo</th><th>IVA</th><th>Costo del medio</th><th>Saldo inicial</th><th>Dato solicitado</th><th>Acción</th></tr></thead><tbody id="comprobantesLabPayments"></tbody></table></div>
+      </section>
+
+      <section class="card comprobantes-lab-card comprobantes-lab-table-card">
+        <header>
+          <div>
+            <span class="comprobantes-lab-eyebrow">Equipo comercial</span>
+            <h2>Responsables de venta</h2>
+            <p>Cada comprobante directo conserva el ID estable y el nombre visible del responsable.</p>
+          </div>
+          <div class="comprobantes-lab-header-actions">
+            <span id="comprobantesLabResponsibleCount" class="chip"></span>
+            <button id="comprobantesLabAddResponsible" type="button" class="btn">+ Responsable</button>
+          </div>
+        </header>
+        <div class="table-wrap"><table class="comprobantes-lab-table"><thead><tr><th>Activo</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Código</th><th>Acción</th></tr></thead><tbody id="comprobantesLabResponsible"></tbody></table></div>
+      </section>
+    </main>
+    <script src="/js/api/http.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/comprobantes-config.page.js?v=20261002-config-5"></script>
+  </body>
+</html>

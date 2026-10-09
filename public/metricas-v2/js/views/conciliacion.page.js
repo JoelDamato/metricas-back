@@ -7,6 +7,7 @@
     baseFilteredRows: [],
     filteredRows: [],
     statusFilter: 'all',
+    dataSource: 'notion_sync',
     savingIds: new Set()
   };
 
@@ -21,7 +22,8 @@
     month: document.getElementById('conciliacionMonth'),
     club: document.getElementById('conciliacionClubFilter'),
     search: document.getElementById('conciliacionSearch'),
-    reload: document.getElementById('reloadConciliacion')
+    reload: document.getElementById('reloadConciliacion'),
+    writeSourceChip: document.getElementById('conciliacionWriteSourceChip')
   };
 
   function escapeHtml(value) {
@@ -142,6 +144,7 @@
       if (!query) return true;
       return [
         row.cliente_format,
+        row.mail,
         row.ghlid,
         row.producto_format,
         row.responsable_venta,
@@ -202,6 +205,8 @@
           <thead>
             <tr>
               <th>Cliente</th>
+              <th>DNI / CUIT</th>
+              <th>Mail comprador</th>
               <th>Responsable</th>
               <th>Tipo</th>
               <th>Producto</th>
@@ -210,7 +215,9 @@
               <th>Facturación USD</th>
               <th>Cash USD</th>
               <th>Cash AR</th>
+              <th>TC (ARS / USD)</th>
               <th>Estado actual</th>
+              <th>Nota para el closer</th>
               <th>Cambiar estado</th>
               <th>Origen</th>
             </tr>
@@ -222,6 +229,8 @@
               return `
                 <tr data-conciliacion-row="${escapeHtml(row.id)}">
                   <td>${renderContact(row)}</td>
+                  <td>${escapeHtml(row.dni_cuit || 'Sin informar')}</td>
+                  <td>${row.mail ? `<a href="mailto:${escapeHtml(row.mail)}">${escapeHtml(row.mail)}</a>` : '—'}</td>
                   <td>${escapeHtml(row.responsable_venta || row.creado_por || '—')}</td>
                   <td>${escapeHtml(row.tipo || '—')}</td>
                   <td>${escapeHtml(row.producto_format || '—')}</td>
@@ -230,8 +239,14 @@
                   <td>${row.facturacion ? escapeHtml(formatCurrency(row.facturacion)) : '—'}</td>
                   <td>${resolveCashUsd(row) ? escapeHtml(formatCurrency(resolveCashUsd(row))) : '—'}</td>
                   <td>${resolveCashAr(row) ? escapeHtml(formatCurrency(resolveCashAr(row), 'ARS')) : '—'}</td>
-                  <td>${stateBadge(currentState)}</td>
+                  <td>${parseNumber(row.tc) > 0 ? escapeHtml(new Intl.NumberFormat('es-AR', { maximumFractionDigits: 6 }).format(parseNumber(row.tc))) : 'Sin informar'}</td>
+                  <td>${stateBadge(currentState)}${row.motivo_rebote ? `<p style="white-space:pre-wrap;max-width:280px">${escapeHtml(row.motivo_rebote)}</p>` : ''}</td>
                   <td>
+                    <label for="note-${escapeHtml(row.id)}">Visible para el closer</label>
+                      <textarea id="note-${escapeHtml(row.id)}" data-note="${escapeHtml(row.id)}" maxlength="4000" rows="3" style="min-width:230px;width:100%">${escapeHtml(row.nota_conciliacion || '')}</textarea>
+                      <button type="button" class="metricas-primary-button" data-save-note="${escapeHtml(row.id)}">Guardar nota</button>
+                      ${row.nota_conciliacion_autor ? `<small>${escapeHtml(row.nota_conciliacion_autor)}</small>` : ''}
+                  </td><td>
                     <div class="conciliacion-state-control">
                       <select data-state-select="${escapeHtml(row.id)}" data-original-state="${currentState}" ${saving ? 'disabled' : ''}>
                         ${stateOptions(currentState)}
@@ -239,7 +254,9 @@
                       <button type="button" class="metricas-primary-button" data-save-state="${escapeHtml(row.id)}" disabled>${saving ? 'Guardando...' : 'Guardar'}</button>
                     </div>
                   </td>
-                  <td><a class="conciliacion-notion-link" href="https://www.notion.so/${escapeHtml(String(row.id || '').replace(/-/g, ''))}" target="_blank" rel="noreferrer">Abrir en Notion</a></td>
+                  <td>${row.source_system === 'supabase_direct'
+                    ? '<span class="conciliacion-state-badge">Supabase directo</span>'
+                    : `<a class="conciliacion-notion-link" href="https://www.notion.so/${escapeHtml(String(row.id || '').replace(/-/g, ''))}" target="_blank" rel="noreferrer">Abrir origen</a>`}</td>
                 </tr>
               `;
             }).join('')}
@@ -272,6 +289,12 @@
     try {
       const response = await api.fetchReconciliationComprobantes();
       state.rows = Array.isArray(response.rows) ? response.rows : [];
+      state.dataSource = response.dataSource || 'notion_sync';
+      if (refs.writeSourceChip) {
+        refs.writeSourceChip.textContent = state.dataSource === 'supabase_direct'
+          ? 'Cambios directos en Supabase'
+          : 'Destino: sistema actual';
+      }
       populateResponsibleFilter();
       renderAll();
     } catch (error) {
@@ -289,11 +312,17 @@
     const originalState = select?.dataset.originalState;
     if (!select || !nextState || nextState === originalState || state.savingIds.has(id)) return;
 
+    let reason = '';
+    if (nextState === 'bounced') {
+      reason = window.prompt('Motivo del rebote (lo verá el closer, hasta 1000 caracteres):', '')?.trim();
+      if (reason == null) return;
+      if (!reason || reason.length > 1000) {setStatus('Indicá un motivo de entre 1 y 1000 caracteres.', 'error');return;}
+    }
     state.savingIds.add(id);
     renderTable();
-    setStatus(`Actualizando como ${stateLabel(nextState)} en Notion y Supabase...`, 'loading');
+    setStatus(`Actualizando como ${stateLabel(nextState)}...`, 'loading');
     try {
-      const response = await api.updateReconciliationComprobante(id, nextState);
+      const response = await api.updateReconciliationComprobante(id, nextState, reason);
       state.rows = state.rows.map((row) => (
         row.id === id ? { ...row, ...(response.row || {}) } : row
       ));
@@ -324,6 +353,15 @@
     if (button) button.disabled = select.value === select.dataset.originalState;
   });
   refs.table?.addEventListener('click', (event) => {
+    const noteButton=event.target.closest('[data-save-note]');
+    if(noteButton){
+      const id=noteButton.dataset.saveNote,row=state.rows.find(row=>row.id===id),textarea=refs.table.querySelector(`[data-note="${CSS.escape(id)}"]`);
+      noteButton.disabled=true;
+      fetch(`/api/metricas/comprobantes-reconciliation/${encodeURIComponent(id)}/note`,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:textarea.value,revision:row.nota_conciliacion_revision||0})})
+        .then(async response=>{const data=await response.json();if(!response.ok)throw Error(data.message||'No pude guardar la nota');Object.assign(row,data.row);setStatus(data.message,'');})
+        .catch(error=>setStatus(error.message,'error')).finally(()=>{noteButton.disabled=false;});
+      return;
+    }
     const button = event.target.closest('[data-save-state]');
     if (button) saveState(button.dataset.saveState);
   });

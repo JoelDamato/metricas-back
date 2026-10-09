@@ -1,6 +1,6 @@
 const PAGE_OPTIONS = [
   { value: 'dashboard.html', label: 'Dashboard' },
-  { value: 'index.html', label: 'Central de metricas' },
+  { value: 'metricas.html', label: 'Central de métricas' },
   { value: 'ranking.html', label: 'Ranking closers' },
   { value: 'agendas-totales.html', label: 'Agendas totales' },
   { value: 'agendas-ultimo-origen.html', label: 'Agendas por ultimo origen' },
@@ -23,11 +23,13 @@ const PAGE_OPTIONS = [
   { value: 'comprobantes.html', label: 'Portada de comprobantes' },
   { value: 'carga-comprobantes.html', label: 'Carga de comprobantes' },
   { value: 'mis-comprobantes.html', label: 'Mis comprobantes' },
+  { value: 'area-comercial.html', label: 'Área comercial personal' },
   { value: 'herramientas.html', label: 'Herramientas' },
   { value: 'generador-params.html', label: 'Generador de params' },
   { value: 'estado-contacto-comisiones.html', label: 'Estado de contacto comisiones' },
   { value: 'csm-tiempo.html', label: 'CSM por tiempo' },
   { value: 'csm-situacion.html', label: 'CSM por situacion' },
+  { value: 'csm-cuadro.html', label: 'Cuadros individuales CSM' },
   { value: 'csm-renovaciones.html', label: 'Renovaciones' },
   { value: 'view.html', label: 'Vista interna' }
 ];
@@ -61,7 +63,7 @@ const SPECIAL_ACCESS_OPTIONS = [
 
 const HOME_PATH_OPTIONS = [
   { value: '', label: 'Sin inicio forzado' },
-  { value: '/index.html', label: 'Central' },
+  { value: '/metricas.html', label: 'Central' },
   { value: '/dashboard.html', label: 'Dashboard' },
   { value: '/views/marketing.html', label: 'Marketing' },
   { value: '/views/setting.html', label: 'Setting' },
@@ -104,10 +106,12 @@ function setActiveTab(tab) {
 }
 
 function normalizeUserAccessConfig(user = {}) {
+  const homePath = user.access_config?.homePath || user.permissions?.homePath || '';
+  const allowedPages = user.access_config?.allowedPages || user.permissions?.allowedPages || [];
   return {
     useCustomAccess: user.access_config?.useCustomAccess === true || Array.isArray(user.permissions?.allowedPages),
-    homePath: user.access_config?.homePath || user.permissions?.homePath || '',
-    allowedPages: user.access_config?.allowedPages || user.permissions?.allowedPages || [],
+    homePath: homePath === '/index.html' ? '/metricas.html' : homePath,
+    allowedPages: [...new Set(allowedPages.map((pageName) => pageName === 'index.html' ? 'metricas.html' : pageName))],
     allowedResources: user.access_config?.allowedResources || user.permissions?.allowedResources || [],
     marketingOnly: user.access_config?.marketingOnly === true || user.permissions?.accessFlags?.marketingOnly === true,
     restrictedCommercial: user.access_config?.restrictedCommercial === true || user.permissions?.accessFlags?.restrictedCommercial === true,

@@ -29,10 +29,21 @@ const CSM_EVENT_DATE_FIELDS = [
 const CSM_SESSION_DEFINITIONS = [
   { key: 'diagnosis', label: 'Diagnóstico', field: 'f_diagnostico' },
   { key: 'costs_1', label: 'Costos 1', field: 'f_costos_1' },
-  { key: 'costs_2', label: 'Costos 2', field: 'f_costos_2' },
   { key: 'economic', label: 'Económica', field: 'f_eerr_economico' },
   { key: 'financial', label: 'Financiera', field: 'f_eerr_financiero' },
   { key: 'cashflow', label: 'Cashflow', field: 'f_cashflow' }
+];
+const CSM_MODULE_TRAFFIC_DEFINITIONS = [
+  { key: 'm1', tab: 'M1', label: 'Planificación y gestión del tiempo', field: 'modulo_1', yellowDays: 7, redDays: 14 },
+  { key: 'm2', tab: 'M2', label: 'Estructura de costos y precios', field: 'modulo_2', yellowDays: 14, redDays: 21 },
+  { key: 'm3', tab: 'M3', label: 'Estado de Resultados Económicos', field: 'modulo_3', yellowDays: 14, redDays: 21 },
+  { key: 'm4', tab: 'M4', label: 'EERR – Análisis', field: 'modulo_4', yellowDays: 7, redDays: 14 },
+  { key: 'm5', tab: 'M5', label: 'Presupuesto Económico', field: 'modulo_5', yellowDays: null, redDays: null },
+  { key: 'm6', tab: 'M6', label: 'Estado de Resultados Financieros', field: 'modulo_6', yellowDays: 14, redDays: 21 },
+  { key: 'm7', tab: 'M7', label: 'A puro Cashflow', field: 'modulo_7', yellowDays: 14, redDays: 21 },
+  { key: 'p1', tab: 'P1', label: 'Material libre · PRIMA', field: 'modulo_8', yellowDays: null, redDays: null },
+  { key: 'p2', tab: 'P2', label: 'Material libre · Grabaciones', field: 'modulo_9', yellowDays: null, redDays: null },
+  { key: 'p3', tab: 'P3', label: 'Material libre · Pilares del Negocio', field: 'modulo_10', yellowDays: null, redDays: null }
 ];
 
 function formatInteger(value) {
@@ -121,6 +132,65 @@ function calendarDaysUntil(date, today = new Date()) {
   return Math.round((target.getTime() - current.getTime()) / 86400000);
 }
 
+function calendarDaySpan(start, end) {
+  const startDay = parseDateAsLocalDay(start);
+  const endDay = parseDateAsLocalDay(end);
+  if (!startDay || !endDay) return null;
+  const days = Math.round((endDay.getTime() - startDay.getTime()) / 86400000);
+  return days >= 0 ? days + 1 : null;
+}
+
+function getCurrentModuleField(row) {
+  return [...CSM_MODULE_TRAFFIC_DEFINITIONS]
+    .reverse()
+    .find((definition) => Boolean(row?.[definition.field]))?.field || '';
+}
+
+function buildModuleTraffic(rows, today = new Date()) {
+  const todayDay = startOfLocalDay(today) || new Date();
+  return CSM_MODULE_TRAFFIC_DEFINITIONS.map((definition) => {
+    const hasTrafficLight = Number.isFinite(definition.yellowDays) && Number.isFinite(definition.redDays);
+    const clients = dedupeClientRows(rows)
+      .map((row) => {
+        if (getCurrentModuleField(row) !== definition.field) return null;
+        const startValue = row?.[definition.field] || '';
+        if (!startValue) return null;
+
+        const days = calendarDaySpan(startValue, todayDay);
+        if (days === null) return null;
+
+        let status = 'excluded';
+        if (hasTrafficLight) {
+          if (days >= definition.redDays) status = 'red';
+          else if (days >= definition.yellowDays) status = 'yellow';
+          else status = 'on-track';
+        }
+
+        return {
+          nombre: row?.nombre || 'Sin nombre',
+          ghlid: row?.ghlid || '',
+          startDate: toDateOnly(startValue),
+          days,
+          status,
+          completed: false
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => right.days - left.days || left.nombre.localeCompare(right.nombre, 'es'));
+
+    return {
+      ...definition,
+      sourceRows: rows,
+      hasTrafficLight,
+      clients,
+      yellow: clients.filter((client) => client.status === 'yellow'),
+      red: clients.filter((client) => client.status === 'red'),
+      onTrack: clients.filter((client) => client.status === 'on-track'),
+      completed: clients.filter((client) => client.completed)
+    };
+  });
+}
+
 function getDefaultRenewalRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -188,9 +258,11 @@ function setupCsmPeriodFilters(rows) {
 }
 
 function getCsmPeriodFilters() {
+  const params = new URLSearchParams(window.location.search);
+  const defaults = getDefaultCsmPeriod();
   return {
-    year: document.getElementById('csmYear')?.value || getDefaultCsmPeriod().year,
-    month: document.getElementById('csmMonth')?.value || getDefaultCsmPeriod().month
+    year: document.getElementById('csmYear')?.value || params.get('anio') || defaults.year,
+    month: document.getElementById('csmMonth')?.value || params.get('mes') || defaults.month
   };
 }
 
@@ -387,6 +459,14 @@ function resolveRenewalCloser(row, closerLookup) {
 function isAbandonmentActivity(row) {
   const abandono = normalizeText(row?.abandono);
   return abandono.includes('abandono');
+}
+
+function isPausedActivity(row) {
+  return normalizeText(row?.pausa) === 'en pausa';
+}
+
+function isInCurrentModuleCircuit(row) {
+  return Boolean(row?.isActive) && !isPausedActivity(row) && !isAbandonmentActivity(row);
 }
 
 function hasText(value) {
@@ -755,8 +835,10 @@ function collectDayDiffs(rows, getStart, getEnd) {
 
 function renderKpiCards(metrics, kpiKeys, infoMap) {
   const wrap = document.getElementById('kpiContainer');
+  if (!wrap) return;
   const selected = metrics.filter((metric) => kpiKeys.includes(metric.key));
 
+  wrap.hidden = false;
   wrap.innerHTML = selected.map((metric) => `
     <article class="card metric-card" data-info-key="${escapeHtml(metric.key)}" role="button" tabindex="0">
       <h4>${escapeHtml(metric.label)}</h4>
@@ -769,6 +851,8 @@ function renderKpiCards(metrics, kpiKeys, infoMap) {
 
 function renderMetricsTable(metrics, infoMap) {
   const container = document.getElementById('tableContainer');
+  if (!container) return;
+  container.hidden = false;
   container.innerHTML = `
     <div class="table-wrap csm-table-wrap">
       <table class="csm-table">
@@ -799,6 +883,9 @@ function renderMetricsTable(metrics, infoMap) {
 
 function renderSections(sections, infoMap = {}) {
   const container = document.getElementById('detailContainer');
+  if (!container) return;
+  container.hidden = false;
+  container.classList.remove('csm-section-directory');
   const hasModuleCards = (sections || []).some((section) => section.layout === 'half');
   const sectionMarkup = (sections || []).map((section) => `
     <section
@@ -815,9 +902,12 @@ function renderSections(sections, infoMap = {}) {
         </thead>
         <tbody>
           ${section.rows.length ? section.rows.map((row) => `
-            <tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>
+            <tr>${row.map((cell) => `<td>${renderDetailCell(cell)}</td>`).join('')}</tr>
           `).join('') : '<tr><td colspan="' + section.columns.length + '">Sin base suficiente.</td></tr>'}
         </tbody>
+        ${Array.isArray(section.totalRow) ? `
+          <tfoot><tr>${section.totalRow.map((cell, index) => `<th${index === 0 ? ' scope="row"' : ''}>${renderDetailCell(cell)}</th>`).join('')}</tr></tfoot>
+        ` : ''}
       </table>
     </section>
   `).join('');
@@ -834,10 +924,488 @@ function renderSections(sections, infoMap = {}) {
   attachMetricInfo(container, infoMap);
 }
 
+function sectionKey(section, index = 0) {
+  if (section?.key) return section.key;
+  return normalizeText(section?.title)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || `cuadro-${index + 1}`;
+}
+
+function resetCsmResultContainers() {
+  const kpiContainer = document.getElementById('kpiContainer');
+  const tableContainer = document.getElementById('tableContainer');
+  const detailContainer = document.getElementById('detailContainer');
+  const chartPanel = document.getElementById('csmChart')?.closest('.chart-panel');
+
+  if (kpiContainer) {
+    kpiContainer.hidden = true;
+    kpiContainer.innerHTML = '';
+  }
+  if (tableContainer) {
+    tableContainer.hidden = true;
+    tableContainer.innerHTML = '';
+  }
+  if (detailContainer) {
+    detailContainer.hidden = true;
+    detailContainer.innerHTML = '';
+    detailContainer.classList.remove('csm-section-directory');
+  }
+  if (chartPanel) chartPanel.hidden = true;
+  if (csmChart) {
+    csmChart.destroy();
+    csmChart = null;
+  }
+}
+
+function setCsmPageLoading(isLoading, message = '', options = {}) {
+  const loading = document.getElementById('csmPageLoading');
+  const loadingMessage = document.getElementById('csmPageLoadingMessage');
+  const filterBar = document.getElementById('csmFilterBar');
+  const status = document.getElementById('status');
+  if (!loading) return;
+
+  loading.hidden = !isLoading;
+  loading.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+  if (loadingMessage && message) loadingMessage.textContent = message;
+  if (filterBar) filterBar.hidden = isLoading || Boolean(options.hideFilters);
+  if (status) status.hidden = isLoading || Boolean(options.hideStatus);
+}
+
+const CSM_DIRECTORY_GROUPS = {
+  tiempo: [
+    {
+      key: 'diagnosticos',
+      title: 'Diagnósticos',
+      description: 'Realizados, tiempos de llegada, clasificación hasta o después de 7 días y pendientes.',
+      metricKeys: ['diagnosis_total', 'diagnosis_under_7', 'diagnosis_over_7', 'pending_diagnosis', 'pay_to_diagnosis'],
+      chart: {
+        source: 'metrics',
+        title: 'Diagnósticos del período',
+        description: 'Realizados según plazo, casos sin clasificación e ingresos todavía pendientes.',
+        keys: ['diagnosis_under_7', 'diagnosis_over_7', 'pending_diagnosis']
+      }
+    },
+    {
+      key: 'sesiones',
+      title: 'Sesiones realizadas',
+      description: 'Diagnóstico, Costos, Económica, Financiera y Cashflow según la fecha real de cada sesión.',
+      metricPrefixes: ['session_'],
+      sectionKeys: ['sesiones-realizadas'],
+      chart: { source: 'page' }
+    },
+    {
+      key: 'modulos',
+      title: 'Módulos',
+      description: 'Seguimiento de ingresos desde 2026. Excluye renovaciones, personalizados, sin acceso, pausas y abandonos.'
+    },
+    {
+      key: 'tiempos-recorrido',
+      title: 'Tiempos del recorrido',
+      description: 'Tiempo hasta onboarding y días transcurridos entre las distintas sesiones.',
+      metricKeys: ['pay_to_onboarding'],
+      sectionKeys: ['dias-entre-sesiones'],
+      chart: {
+        source: 'section',
+        sectionKey: 'dias-entre-sesiones',
+        title: 'Días promedio entre sesiones',
+        description: 'Promedio de días transcurridos entre cada etapa consecutiva.',
+        labelIndex: 0,
+        valueIndex: 1
+      }
+    },
+    {
+      key: 'personas',
+      title: 'Desglose por persona',
+      description: 'Detalle individual de las sesiones realizadas durante el período elegido.',
+      sectionKeys: ['desglose-persona'],
+      chart: {
+        source: 'section',
+        sectionKey: 'desglose-persona',
+        title: 'Sesiones por persona',
+        description: 'Personas con mayor cantidad de sesiones registradas durante el período.',
+        labelIndex: 0,
+        valueIndex: -1,
+        limit: 12
+      }
+    },
+    {
+      key: 'cobertura-avance',
+      title: 'Cobertura y avance',
+      description: 'Calidad de carga de fechas y avance de los clientes por los módulos.',
+      sectionKeys: ['cobertura-fechas', 'avance-modulos'],
+      chart: {
+        source: 'section',
+        sectionKey: 'cobertura-fechas',
+        title: 'Cobertura de fechas',
+        description: 'Porcentaje de clientes con la fecha de cada hito correctamente cargada.',
+        labelIndex: 0,
+        valueIndex: 3
+      }
+    }
+  ],
+  situacion: [
+    {
+      key: 'estado-actual',
+      title: 'Estado actual de clientes',
+      description: 'Clientes únicos, activos, sin acceso, sin información y registros a revisar.',
+      metricKeys: ['total_clients', 'active_support', 'inactive_support', 'unknown_support', 'identity_quality'],
+      sectionKeys: ['desglose-persona'],
+      chart: {
+        source: 'metrics',
+        title: 'Estado actual de acceso',
+        description: 'Distribución actual entre clientes activos, sin acceso y con acceso sin informar.',
+        keys: ['active_support', 'inactive_support', 'unknown_support']
+      }
+    },
+    {
+      key: 'ingresos',
+      title: 'Ingresos de clientes',
+      description: 'Nuevos ingresos, evolución mensual y distribución por año de ingreso.',
+      metricKeys: ['new_entries'],
+      sectionKeys: ['nuevos-ingresos-mes', 'clientes-anio-ingreso'],
+      chart: { source: 'page' }
+    },
+    {
+      key: 'salud-resultados',
+      title: 'Salud y resultados',
+      description: 'Engagement, abandonos, casos de éxito, primeros resultados, alertas y devoluciones.',
+      metricKeys: ['abandonments', 'avg_days_to_abandon', 'engagement', 'success_cases', 'nightmare_clients', 'first_result_clients', 'insatisfied_clients', 'refund_requests', 'refunds_completed'],
+      chart: {
+        source: 'metrics',
+        title: 'Salud y resultados del programa',
+        description: 'Volumen de clientes por indicador de salud, avance y alertas.',
+        keys: ['engagement', 'success_cases', 'first_result_clients', 'abandonments', 'nightmare_clients', 'insatisfied_clients', 'refund_requests', 'refunds_completed']
+      }
+    },
+    {
+      key: 'nps',
+      title: 'NPS y recomendaciones',
+      description: 'NPS promedio por unidad y porcentaje de clientes que recomiendan el programa.',
+      metricKeys: ['nps_by_unit', 'recommendations_pct'],
+      sectionTitles: ['NPS Promedio por Unidad'],
+      chart: {
+        source: 'section',
+        sectionTitle: 'NPS Promedio por Unidad',
+        title: 'NPS promedio por unidad',
+        description: 'Evolución del promedio NPS disponible en cada unidad.',
+        labelIndex: 0,
+        valueIndex: 1
+      }
+    },
+    {
+      key: 'segmentacion',
+      title: 'Segmentación por rubro',
+      description: 'Distribución de clientes y resultados según rubro o modelo de negocio.',
+      sectionKeys: ['clientes-rubro'],
+      sectionTitles: ['Modelos de Negocio'],
+      chart: {
+        source: 'section',
+        sectionKey: 'clientes-rubro',
+        title: 'Clientes por rubro',
+        description: 'Cantidad de clientes únicos por rubro o modelo de negocio.',
+        labelIndex: 0,
+        valueIndex: 1,
+        limit: 12
+      }
+    },
+    {
+      key: 'sesiones',
+      title: 'Sesiones del período',
+      description: 'Sesiones mensuales, acumulado anual y total histórico por tipo de sesión.',
+      sectionKeys: ['sesiones-periodo'],
+      chart: {
+        source: 'section',
+        sectionKey: 'sesiones-periodo',
+        title: 'Sesiones realizadas en el período',
+        description: 'Cantidad mensual registrada por cada tipo de sesión.',
+        labelIndex: 0,
+        valueIndex: 1
+      }
+    }
+  ]
+};
+
+function getCsmDirectoryGroups(pageKey) {
+  return CSM_DIRECTORY_GROUPS[pageKey] || [];
+}
+
+function getGroupMetrics(page, group) {
+  const metrics = page.tableMetrics || page.metrics || [];
+  const exactKeys = new Set(group.metricKeys || []);
+  return metrics.filter((metric) => (
+    exactKeys.has(metric.key)
+    || (group.metricPrefixes || []).some((prefix) => metric.key.startsWith(prefix))
+  ));
+}
+
+function getGroupSections(page, group) {
+  const exactKeys = new Set(group.sectionKeys || []);
+  const exactTitles = new Set(group.sectionTitles || []);
+  return (page.sections || []).filter((section, index) => (
+    exactKeys.has(sectionKey(section, index)) || exactTitles.has(section.title)
+  ));
+}
+
+function parseCsmChartNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const text = String(value ?? '').trim();
+  const match = text.match(/-?\d[\d.]*(?:,\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0].replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function csmChartLabel(value) {
+  if (value && typeof value === 'object') return String(value.label || value.value || 'Sin nombre');
+  return String(value ?? 'Sin nombre');
+}
+
+function buildCsmGroupChart(page, group, selectedMetrics = []) {
+  const chart = group?.chart;
+  if (!chart) return null;
+  if (chart.source === 'page') return page.chart || null;
+
+  const palette = [
+    'rgba(37, 99, 235, 0.76)',
+    'rgba(14, 165, 233, 0.76)',
+    'rgba(16, 185, 129, 0.76)',
+    'rgba(139, 92, 246, 0.76)',
+    'rgba(245, 158, 11, 0.76)',
+    'rgba(239, 68, 68, 0.76)',
+    'rgba(236, 72, 153, 0.76)',
+    'rgba(6, 182, 212, 0.76)'
+  ];
+  let points = [];
+
+  if (chart.source === 'metrics') {
+    const sourceMetrics = selectedMetrics.length ? selectedMetrics : (page.metrics || []);
+    const keys = new Set(chart.keys || []);
+    points = sourceMetrics
+      .filter((metric) => !keys.size || keys.has(metric.key))
+      .map((metric) => ({ label: metric.label, value: parseCsmChartNumber(metric.value) }))
+      .filter((point) => point.value !== null);
+  } else if (chart.source === 'section') {
+    const section = (page.sections || []).find((candidate, index) => (
+      (chart.sectionKey && sectionKey(candidate, index) === chart.sectionKey)
+      || (chart.sectionTitle && candidate.title === chart.sectionTitle)
+    ));
+    points = (section?.rows || [])
+      .map((row) => {
+        const valueIndex = chart.valueIndex < 0 ? row.length + chart.valueIndex : chart.valueIndex;
+        return {
+          label: csmChartLabel(row[chart.labelIndex || 0]),
+          value: parseCsmChartNumber(row[valueIndex])
+        };
+      })
+      .filter((point) => point.value !== null);
+    if (chart.limit && points.length > chart.limit) {
+      points = points.sort((a, b) => b.value - a.value).slice(0, chart.limit);
+    }
+  }
+
+  if (!points.length) points = [{ label: 'Sin datos', value: 0 }];
+  return {
+    title: chart.title || group.title,
+    description: chart.description || group.description,
+    labels: points.map((point) => point.label),
+    datasets: [{
+      label: chart.datasetLabel || 'Valor',
+      data: points.map((point) => point.value),
+      backgroundColor: points.map((_, index) => palette[index % palette.length]),
+      borderColor: points.map((_, index) => palette[index % palette.length].replace('0.76', '1')),
+      borderWidth: 1,
+      borderRadius: 8
+    }],
+    showLegend: false
+  };
+}
+
+function renderCsmDirectory(pageKey, filters) {
+  const container = document.getElementById('detailContainer');
+  if (!container) return;
+  const baseParams = {
+    panel: pageKey,
+    anio: filters.year || '',
+    mes: filters.month || ''
+  };
+  const cards = getCsmDirectoryGroups(pageKey).map((group, index) => {
+    const params = new URLSearchParams({
+      ...baseParams,
+      vista: 'grupo',
+      grupo: group.key
+    });
+    return `
+      <a class="csm-section-card" href="/views/csm-cuadro.html?${params.toString()}">
+        <span class="csm-section-card-kicker">Área ${index + 1}</span>
+        <h3>${escapeHtml(group.title)}</h3>
+        <p>${escapeHtml(group.description)}</p>
+        <strong>Ver métricas <span aria-hidden="true">→</span></strong>
+      </a>
+    `;
+  });
+
+  container.hidden = false;
+  container.classList.add('csm-section-directory');
+  container.innerHTML = cards.join('');
+}
+
+function renderModuleTrafficClient(client, tone) {
+  const contactUrl = window.metricasGhl?.buildContactUrl?.(client.ghlid || '');
+  const ghlLink = contactUrl
+    ? `<a class="csm-module-ghl-link" href="${escapeHtml(contactUrl)}" target="_blank" rel="noopener noreferrer">Abrir en GHL <span aria-hidden="true">↗</span></a>`
+    : '<span class="csm-module-ghl-link is-disabled">Sin vínculo GHL</span>';
+  return `
+    <article class="csm-module-client csm-module-client-${escapeHtml(tone)}">
+      <div class="csm-module-client-main">
+        <strong>${renderDetailCell(createContactCell(client.nombre, client.ghlid))}</strong>
+        <span>En curso</span>
+        ${ghlLink}
+      </div>
+      <div class="csm-module-client-days">${formatInteger(client.days)} <small>días</small></div>
+      <div class="csm-module-client-dates">
+        <span>Inicio <b>${escapeHtml(formatDate(client.startDate))}</b></span>
+        <span>Hasta hoy <b>—</b></span>
+      </div>
+    </article>
+  `;
+}
+
+function renderModuleTrafficPanel(module) {
+  if (!module) return '<div class="report-empty">No hay información de módulos disponible.</div>';
+
+  const thresholdMarkup = module.hasTrafficLight
+    ? `
+      <div class="csm-module-thresholds">
+        <span class="is-on-track">En término: <b>${formatInteger(module.onTrack.length)}</b></span>
+        <span class="is-yellow">Amarillo desde <b>${formatInteger(module.yellowDays)} días</b></span>
+        <span class="is-red">Rojo desde <b>${formatInteger(module.redDays)} días</b></span>
+      </div>
+    `
+    : '<div class="csm-module-outside-badge">Fuera del semáforo · acceso libre / no obligatorio</div>';
+
+  if (!module.hasTrafficLight) {
+    return `
+      <div class="csm-module-panel-head">
+        <div><span>${escapeHtml(module.tab)}</span><h3>${escapeHtml(module.label)}</h3></div>
+        ${thresholdMarkup}
+      </div>
+      <div class="csm-module-neutral-list">
+        ${module.clients.length
+          ? module.clients.map((client) => renderModuleTrafficClient(client, 'neutral')).join('')
+          : '<div class="report-empty">No hay clientes con inicio registrado para este módulo.</div>'}
+      </div>
+    `;
+  }
+
+  const alertColumn = (tone, title, rows) => `
+    <section class="csm-module-alert-column is-${tone}">
+      <header><span class="csm-module-alert-dot" aria-hidden="true"></span><h4>${title}</h4><b>${formatInteger(rows.length)}</b></header>
+      <div class="csm-module-alert-list">
+        ${rows.length
+          ? rows.map((client) => renderModuleTrafficClient(client, tone)).join('')
+          : `<div class="csm-module-alert-empty">Sin clientes en ${title.toLowerCase()}.</div>`}
+      </div>
+    </section>
+  `;
+
+  return `
+    <div class="csm-module-panel-head">
+      <div><span>${escapeHtml(module.tab)}</span><h3>${escapeHtml(module.label)}</h3></div>
+      ${thresholdMarkup}
+    </div>
+    <div class="csm-module-alert-grid">
+      ${alertColumn('yellow', 'Amarillo', module.yellow)}
+      ${alertColumn('red', 'Rojo', module.red)}
+    </div>
+  `;
+}
+
+function renderModuleTraffic(modules) {
+  const container = document.getElementById('detailContainer');
+  if (!container) return;
+  if (window.csmModuleDurations && modules?.[0]?.sourceRows) {
+    container.hidden = false;
+    container.classList.add('csm-module-durations');
+    container.classList.remove('csm-section-directory');
+    return window.csmModuleDurations.render(container, modules[0].sourceRows);
+  }
+  const availableModules = Array.isArray(modules) ? modules : [];
+  const initialKey = availableModules.find((module) => module.red.length || module.yellow.length)?.key
+    || availableModules[0]?.key
+    || '';
+
+  container.hidden = false;
+  container.classList.remove('csm-section-directory');
+  container.innerHTML = `
+    <section class="csm-module-traffic">
+      <div class="csm-module-traffic-head">
+        <div>
+          <span>Seguimiento operativo</span>
+          <h3>Foto actual por módulo</h3>
+          <p>Muestra el módulo actual según el último campo de módulo cargado. Los días se cuentan desde esa misma fecha; al cargar el módulo siguiente, el cliente pasa automáticamente a la pestaña siguiente. Sin acceso y En Pausa no se contabilizan.</p>
+        </div>
+        <div class="csm-module-traffic-legend" aria-label="Referencias del semáforo">
+          <span class="is-yellow"><i></i> Amarillo</span>
+          <span class="is-red"><i></i> Rojo</span>
+        </div>
+      </div>
+      <div class="csm-module-tabs" role="tablist" aria-label="Módulos del programa">
+        ${availableModules.map((module) => `
+          <button
+            type="button"
+            role="tab"
+            aria-selected="${module.key === initialKey ? 'true' : 'false'}"
+            class="csm-module-tab${module.key === initialKey ? ' is-active' : ''}${module.hasTrafficLight ? '' : ' is-outside'}"
+            data-csm-module-tab="${escapeHtml(module.key)}"
+          >
+            <b>${escapeHtml(module.tab)}</b>
+            ${module.hasTrafficLight ? `<span>${formatInteger(module.yellow.length + module.red.length)} alertas</span>` : '<span>Libre</span>'}
+          </button>
+        `).join('')}
+      </div>
+      <div id="csmModuleTrafficPanel" class="csm-module-panel" role="tabpanel">
+        ${renderModuleTrafficPanel(availableModules.find((module) => module.key === initialKey))}
+      </div>
+    </section>
+  `;
+
+  container.querySelectorAll('[data-csm-module-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const selected = availableModules.find((module) => module.key === button.dataset.csmModuleTab);
+      container.querySelectorAll('[data-csm-module-tab]').forEach((candidate) => {
+        const active = candidate === button;
+        candidate.classList.toggle('is-active', active);
+        candidate.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      const panel = document.getElementById('csmModuleTrafficPanel');
+      if (panel) panel.innerHTML = renderModuleTrafficPanel(selected);
+    });
+  });
+}
+
+function renderPeopleFollowup(source) {
+ const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');
+ const rows=dedupeClientRows(source);let query='',session='',status='all';
+ target.innerHTML=`<div class="csm-duration-head"><div><h2>Sesiones por cliente</h2><p>Historial completo de sesiones. Buscá una persona o filtrá por una sesión realizada o pendiente.</p></div></div><div class="csm-followup-tools"><label>Cliente<input type="search" data-person-query placeholder="Nombre del cliente"></label><label>Sesión<select data-person-session><option value="">Todas</option>${CSM_SESSION_DEFINITIONS.map(s=>`<option value="${s.field}">${escapeHtml(s.label)}</option>`).join('')}</select></label><label>Estado<select data-person-status><option value="all">Todos</option><option value="done">Realizada</option><option value="pending">Pendiente</option></select></label></div><div data-person-table></div>`;
+ function update(){const selected=session?[CSM_SESSION_DEFINITIONS.find(s=>s.field===session)]:CSM_SESSION_DEFINITIONS;const filtered=rows.filter(r=>String(r.nombre||'').toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es'))).filter(r=>status==='all'||(status==='done'?selected.every(s=>parseDate(r[s.field])):selected.some(s=>!parseDate(r[s.field])))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));target.querySelector('[data-person-table]').innerHTML=`<p>${filtered.length} clientes</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th>${CSM_SESSION_DEFINITIONS.map(s=>`<th>${escapeHtml(s.label)}</th>`).join('')}</tr></thead><tbody>${filtered.map(r=>`<tr><td>${r.ghlid?`<a target="_blank" rel="noopener noreferrer" href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}">${escapeHtml(r.nombre||'Sin nombre')} ↗</a>`:escapeHtml(r.nombre||'Sin nombre')}</td>${CSM_SESSION_DEFINITIONS.map(s=>`<td><span class="csm-duration-tone ${parseDate(r[s.field])?'green':'yellow'}">${parseDate(r[s.field])?formatDate(r[s.field]):'Pendiente'}</span></td>`).join('')}</tr>`).join('')||'<tr><td colspan="6">Sin clientes con esos filtros</td></tr>'}</tbody></table></div>`;}
+ target.querySelector('[data-person-query]').oninput=e=>{query=e.target.value;update();};target.querySelector('[data-person-session]').onchange=e=>{session=e.target.value;update();};target.querySelector('[data-person-status]').onchange=e=>{status=e.target.value;update();};update();
+}
+async function renderBusinessSegments(source) {
+ const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');target.innerHTML='<p>Cargando segmentos…</p>';
+ try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json(),byId=new Map(profiles.map(p=>[p.ghlid,p]));const rows=dedupeClientRows(source).map(r=>({...r,rubro:byId.get(r.ghlid)?.rubro||'Sin rubro informado',modelo:r.modelo_negocio||'Sin modelo informado'}));let dimension='modelo',selected='',query='';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
+ function update(){const counts=new Map();rows.forEach(r=>counts.set(r[dimension],(counts.get(r[dimension])||0)+1));target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([label,count])=>`<button type="button" data-segment="${escapeHtml(label)}" aria-pressed="${selected===label}"><strong>${escapeHtml(label)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=rows.filter(r=>(!selected||r[dimension]===selected)&&String(r.nombre||'').toLowerCase().includes(query.toLowerCase()));target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected||'Todos los segmentos')}</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th></tr></thead><tbody>${filtered.map(r=>`<tr><td><a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid||'')}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a></td><td>${escapeHtml(r.modelo)}</td><td>${escapeHtml(r.rubro)}</td></tr>`).join('')}</tbody></table></div>`;}
+ target.querySelector('[data-segment-dimension]').onchange=e=>{dimension=e.target.value;selected='';update();};target.querySelector('[data-segment-search]').oninput=e=>{query=e.target.value;update();};update();
+ }catch(e){target.textContent=e.message;}
+}
+
 function renderChart(config, infoMap = {}) {
   const canvas = document.getElementById('csmChart');
   const panel = canvas?.closest('.chart-panel');
   if (!canvas || typeof Chart === 'undefined' || !config) return;
+
+  if (panel) panel.hidden = false;
 
   document.getElementById('chartTitle').textContent = config.title;
   document.getElementById('chartDescription').textContent = config.description;
@@ -1239,10 +1807,13 @@ function buildTimePageByEvent(cohortRows, context = {}) {
   const periodLabel = describeCsmPeriod(filters);
   const activeCohortRows = dedupeClientRows(cohortRows)
     .filter((row) => row.isActive && !isAbandonmentActivity(row));
+  const currentModuleRows = dedupeClientRows(allRows).filter(isInCurrentModuleCircuit);
+  const moduleTraffic = buildModuleTraffic(currentModuleRows);
+  if (moduleTraffic[0]) moduleTraffic[0].sourceRows = allRows;
   const diagnosisEventRows = filterRowsByDatePeriod(allRows, 'f_diagnostico', filters);
   const diagnosisDetails = diagnosisEventRows.map((row) => {
-    const elapsedDays = daysBetween(row.payReferenceDate, row.diagnosisDate);
-    let bucket = 'Sin fecha de ingreso';
+    const elapsedDays = daysBetween(row.onboardingDate, row.diagnosisDate);
+    let bucket = 'Sin fecha de onboarding';
     if (elapsedDays !== null && Number.isFinite(elapsedDays)) {
       if (elapsedDays < 0) bucket = 'Fecha inconsistente';
       else bucket = elapsedDays <= 7 ? 'Hasta 7 días' : 'Más de 7 días';
@@ -1252,9 +1823,9 @@ function buildTimePageByEvent(cohortRows, context = {}) {
   const diagnosisUnder7Rows = diagnosisDetails.filter((item) => item.bucket === 'Hasta 7 días');
   const diagnosisOver7Rows = diagnosisDetails.filter((item) => item.bucket === 'Más de 7 días');
   const diagnosisUnclassifiedRows = diagnosisDetails.filter((item) => !['Hasta 7 días', 'Más de 7 días'].includes(item.bucket));
-  const pendingDiagnosisRows = activeCohortRows
+  const pendingDiagnosisRows = dedupeClientRows(filterRowsByDatePeriod(allRows, 'f_onboarding', filters)).filter(row => row.isActive && !isAbandonmentActivity(row))
     .filter((row) => !row.diagnosisDate)
-    .map((row) => ({ row, elapsedDays: daysBetween(row.payReferenceDate, new Date()) }))
+    .map((row) => ({ row, elapsedDays: daysBetween(row.onboardingDate, new Date()) }))
     .sort((a, b) => Number(b.elapsedDays || 0) - Number(a.elapsedDays || 0));
 
   const onboardingEventRows = filterRowsByDatePeriod(allRows, 'f_onboarding', filters);
@@ -1305,7 +1876,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
     createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
     item.bucket,
     item.elapsedDays !== null && Number.isFinite(item.elapsedDays) ? formatDays(item.elapsedDays) : '-',
-    formatDate(item.row.f_pago_con_acceso || item.row.f_acceso),
+    formatDate(item.row.f_onboarding),
     formatDate(item.row.f_diagnostico)
   ]);
   const sessionMetrics = sessionStats.map((session) => buildMetricRow({
@@ -1319,7 +1890,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
     detailRows: session.periodRows.map((row) => [
       createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
       formatDate(row[session.field]),
-      row.isActive ? 'Activo' : row.supportStatus === 'inactive' ? 'Sin acceso' : 'Sin dato',
+      row.isActive ? 'Activo' : row.supportStatus === 'inactive' ? 'Sin acceso' : 'Acceso sin informar',
       createGhlLinkCell(row.ghlid || '')
     ])
   }));
@@ -1332,7 +1903,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(diagnosisEventRows.length)} fechas "f_diagnostico" en ${periodLabel}`,
       fieldsLabel: '"f_diagnostico"',
       logic: 'Cuenta diagnósticos por la fecha real de la sesión. Esta base debe coincidir con el total mensual.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde ingreso', 'Ingreso', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisDetails)
     }),
     buildMetricRow({
@@ -1340,9 +1911,9 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       label: 'Diagnósticos realizados hasta 7 días',
       value: formatInteger(diagnosisUnder7Rows.length),
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
-      fieldsLabel: '"f_pago_con_acceso" o "f_acceso" → "f_diagnostico"',
-      logic: 'Cuenta sesiones realizadas en el período cuya diferencia desde el ingreso es de 0 a 7 días inclusive.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde ingreso', 'Ingreso', 'Diagnóstico'],
+      fieldsLabel: '"f_onboarding" → "f_diagnostico"',
+      logic: 'Cuenta sesiones realizadas en el período cuya diferencia desde el video de onboarding es de 0 a 7 días inclusive.',
+      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisUnder7Rows)
     }),
     buildMetricRow({
@@ -1350,9 +1921,9 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       label: 'Diagnósticos realizados después de 7 días',
       value: formatInteger(diagnosisOver7Rows.length),
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
-      fieldsLabel: '"f_pago_con_acceso" o "f_acceso" → "f_diagnostico"',
+      fieldsLabel: '"f_onboarding" → "f_diagnostico"',
       logic: 'Cuenta solo sesiones efectivamente realizadas en el período que demoraron más de 7 días.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde ingreso', 'Ingreso', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisOver7Rows)
     }),
     buildMetricRow({
@@ -1362,20 +1933,20 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
       fieldsLabel: '"f_pago_con_acceso", "f_acceso", "f_diagnostico"',
       logic: 'Expone diagnósticos que no se pueden clasificar por falta de ingreso o por fechas inconsistentes.',
-      detailColumns: ['Cliente', 'Motivo', 'Tiempo desde ingreso', 'Ingreso', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'Motivo', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisUnclassifiedRows)
     }),
     buildMetricRow({
       key: 'pending_diagnosis',
-      label: 'Ingresos activos del período sin diagnóstico',
+      label: 'Vieron onboarding en el período y faltan diagnóstico',
       value: formatInteger(pendingDiagnosisRows.length),
-      base: `${formatInteger(activeCohortRows.length)} clientes activos ingresados en ${periodLabel}`,
-      fieldsLabel: '"acceso"="Acceso", "f_pago_con_acceso", "f_diagnostico"',
-      logic: 'Métrica de cohorte: ingresos activos del período seleccionado que aún no tienen fecha de diagnóstico.',
-      detailColumns: ['Cliente', 'Ingreso', 'Días transcurridos', 'GHL'],
+      base: `${formatInteger(dedupeClientRows(filterRowsByDatePeriod(allRows, 'f_onboarding', filters)).filter(row => row.isActive && !isAbandonmentActivity(row)).length)} clientes activos con onboarding en ${periodLabel}`,
+      fieldsLabel: '"acceso"="Acceso", "f_onboarding", "f_diagnostico"',
+      logic: 'Métrica de cohorte: clientes activos que vieron onboarding en el período seleccionado que aún no tienen fecha de diagnóstico.',
+      detailColumns: ['Cliente', 'Onboarding', 'Días transcurridos', 'GHL'],
       detailRows: pendingDiagnosisRows.map((item) => [
         createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
-        formatDate(item.row.f_pago_con_acceso),
+        formatDate(item.row.f_onboarding),
         item.elapsedDays !== null && Number.isFinite(item.elapsedDays) ? formatDays(item.elapsedDays) : '-',
         createGhlLinkCell(item.row.ghlid || '')
       ])
@@ -1397,30 +1968,65 @@ function buildTimePageByEvent(cohortRows, context = {}) {
     }),
     buildMetricRow({
       key: 'pay_to_diagnosis',
-      label: 'Tiempo promedio de ingreso a diagnóstico',
+      label: 'Tiempo promedio de onboarding a diagnóstico',
       value: formatDays(average(payToDiagnosisRows.map((item) => item.elapsedDays))),
-      base: `${formatInteger(payToDiagnosisRows.length)} diagnósticos de ${periodLabel} con ingreso válido`,
-      fieldsLabel: '"f_pago_con_acceso" o "f_acceso" → "f_diagnostico"',
+      base: `${formatInteger(payToDiagnosisRows.length)} diagnósticos de ${periodLabel} con onboarding válido`,
+      fieldsLabel: '"f_onboarding" → "f_diagnostico"',
       logic: 'Promedio con fechas reales, ubicando el evento por "f_diagnostico".'
     }),
     ...sessionMetrics
   ];
 
   const uniqueTotal = dedupeClientRows(allRows).length;
+  const peopleBreakdown = dedupeClientRows(allRows)
+    .map((row) => {
+      const counts = CSM_SESSION_DEFINITIONS.map((session) => (
+        filterRowsByDatePeriod([row], session.field, filters).length
+      ));
+      return { row, counts, total: counts.reduce((sum, count) => sum + count, 0) };
+    })
+    .filter((item) => item.total > 0 || filterRowsByDatePeriod([item.row], 'f_pago_con_acceso', filters).length > 0)
+    .sort((a, b) => b.total - a.total || String(a.row.nombre || '').localeCompare(String(b.row.nombre || ''), 'es'));
   const sections = [
     {
+      key: 'desglose-persona',
+      title: 'Desglose por persona',
+      description: `Sesiones de cada cliente ubicadas por la fecha real de cada hito en ${periodLabel}.`,
+      columns: ['Persona', 'Estado', ...CSM_SESSION_DEFINITIONS.map((session) => session.label), 'Total sesiones'],
+      rows: peopleBreakdown.map((item) => [
+        createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
+        item.row.isActive ? 'Activo' : item.row.supportStatus === 'inactive' ? 'Sin acceso' : 'Acceso sin informar',
+        ...item.counts.map(formatInteger),
+        formatInteger(item.total)
+      ]),
+      totalRow: [
+        `TOTAL · ${formatInteger(peopleBreakdown.length)} personas`,
+        '',
+        ...CSM_SESSION_DEFINITIONS.map((_, index) => formatInteger(peopleBreakdown.reduce((sum, item) => sum + item.counts[index], 0))),
+        formatInteger(peopleBreakdown.reduce((sum, item) => sum + item.total, 0))
+      ]
+    },
+    {
+      key: 'sesiones-realizadas',
       title: 'Sesiones realizadas',
       description: `Cada sesión se cuenta por su propia fecha. Período seleccionado: ${periodLabel}.`,
-      columns: ['Sesión', 'Período', `Año ${filters.year}`, 'Histórico', 'Campo'],
+      columns: ['Sesión', 'Período', `Año ${filters.year}`, 'Histórico'],
       rows: sessionStats.map((session) => [
         session.label,
         formatInteger(session.periodRows.length),
         formatInteger(session.yearRows.length),
-        formatInteger(session.totalRows.length),
-        session.field
-      ])
+        formatInteger(session.totalRows.length)
+      ]),
+      totalRow: [
+        'TOTAL',
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.periodRows.length, 0)),
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.yearRows.length, 0)),
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.totalRows.length, 0)),
+        ''
+      ]
     },
     {
+      key: 'dias-entre-sesiones',
       title: 'Días entre sesiones',
       description: 'La sesión final del tramo cae en el período seleccionado y ambas fechas deben estar cargadas en orden válido.',
       columns: ['Tramo', 'Promedio', 'Base válida', 'Sesiones finales', 'Cobertura'],
@@ -1430,18 +2036,39 @@ function buildTimePageByEvent(cohortRows, context = {}) {
         formatInteger(interval.details.length),
         formatInteger(interval.completed),
         formatPercent(safeDiv(interval.details.length * 100, interval.completed))
-      ])
+      ]),
+      totalRow: [
+        'TOTAL',
+        formatDays(average(intervalStats.flatMap((interval) => interval.details.map((item) => item.value)))),
+        formatInteger(intervalStats.reduce((sum, interval) => sum + interval.details.length, 0)),
+        formatInteger(intervalStats.reduce((sum, interval) => sum + interval.completed, 0)),
+        formatPercent(safeDiv(
+          intervalStats.reduce((sum, interval) => sum + interval.details.length, 0) * 100,
+          intervalStats.reduce((sum, interval) => sum + interval.completed, 0)
+        ))
+      ]
     },
     {
+      key: 'cobertura-fechas',
       title: 'Cobertura de fechas',
       description: 'Distingue un cero real de una métrica incompleta por falta de carga.',
       columns: ['Hito', 'Clientes con fecha', 'Clientes únicos', 'Cobertura'],
       rows: CSM_SESSION_DEFINITIONS.map((session) => {
         const uniqueWithDate = dedupeClientRows(allRows.filter((row) => parseDate(row[session.field]))).length;
         return [session.label, formatInteger(uniqueWithDate), formatInteger(uniqueTotal), formatPercent(safeDiv(uniqueWithDate * 100, uniqueTotal))];
-      })
+      }),
+      totalRow: [
+        'TOTAL FECHAS',
+        formatInteger(CSM_SESSION_DEFINITIONS.reduce((sum, session) => sum + dedupeClientRows(allRows.filter((row) => parseDate(row[session.field]))).length, 0)),
+        formatInteger(uniqueTotal),
+        formatPercent(safeDiv(
+          CSM_SESSION_DEFINITIONS.reduce((sum, session) => sum + dedupeClientRows(allRows.filter((row) => parseDate(row[session.field]))).length, 0) * 100,
+          uniqueTotal * CSM_SESSION_DEFINITIONS.length
+        ))
+      ]
     },
     {
+      key: 'avance-modulos',
       title: 'Avance por módulos de los ingresos seleccionados',
       description: 'Lectura de cohorte separada de las sesiones realizadas en el mismo período.',
       columns: ['Unidad', 'Promedio días', 'Clientes', '% cohorte activa'],
@@ -1450,25 +2077,27 @@ function buildTimePageByEvent(cohortRows, context = {}) {
         formatDays(row.avgDays),
         formatInteger(row.completed),
         formatPercent(safeDiv(row.completed * 100, activeCohortRows.length))
-      ])
+      ]),
+      totalRow: [
+        'TOTAL UNIDADES',
+        '',
+        formatInteger(unitStats.reduce((sum, row) => sum + row.completed, 0)),
+        formatPercent(safeDiv(unitStats.reduce((sum, row) => sum + row.completed, 0) * 100, activeCohortRows.length * unitStats.length))
+      ]
     }
   ];
 
   return {
     metrics,
-    kpiKeys: ['diagnosis_total', 'diagnosis_under_7', 'diagnosis_over_7', 'diagnosis_unclassified', 'pending_diagnosis'],
+    moduleTraffic,
+    moduleTrafficBaseCount: currentModuleRows.length,
+    kpiKeys: ['diagnosis_total', 'diagnosis_under_7', 'diagnosis_over_7', 'pending_diagnosis'],
     chart: {
-      title: 'Sesiones realizadas en el período',
+      type: 'line',
+      title: 'Evolución mensual de sesiones',
       description: `Conteo por fecha real de cada sesión en ${periodLabel}.`,
-      labels: sessionStats.map((session) => session.label),
-      datasets: [{
-        label: 'Sesiones',
-        data: sessionStats.map((session) => session.periodRows.length),
-        backgroundColor: 'rgba(20, 101, 192, 0.72)',
-        borderColor: 'rgba(20, 101, 192, 1)',
-        borderWidth: 1,
-        borderRadius: 8
-      }]
+      labels: MONTH_FILTER_OPTIONS.slice(1).map(m=>m.label),
+      datasets: sessionStats.map((session,i)=>({label:session.label,data:MONTH_FILTER_OPTIONS.slice(1).map(m=>filterRowsByDatePeriod(allRows,session.field,{year:filters.year,month:m.value}).length),borderColor:['#249df2','#1eb99a','#ab83e8','#e5a535','#ef6f91'][i],backgroundColor:'transparent',tension:.25,pointRadius:4}))
     },
     sections
   };
@@ -1732,13 +2361,29 @@ function buildSituationPage(rows, context = {}) {
         row.unit,
         row.average === null ? 'Sin base' : formatDecimal(row.average, 1),
         formatInteger(row.answers)
-      ])
+      ]),
+      totalRow: [
+        'TOTAL',
+        allNpsValues.length ? formatDecimal(average(allNpsValues), 1) : 'Sin base',
+        formatInteger(allNpsValues.length)
+      ]
     },
     {
       title: 'Modelos de Negocio',
       description: 'Desglose del periodo seleccionado por segmento normalizado a partir de "modelo_negocio".',
       columns: ['Modelo', 'Cantidad programa', '% abandonos', 'Cantidad exito', '% caso exito', 'Tiempo a primer resultado', 'Insatisfechos', 'NPS', 'Renovaciones'],
-      rows: modelBuckets
+      rows: modelBuckets,
+      totalRow: [
+        'TOTAL',
+        formatInteger(rows.length),
+        formatPercent(safeDiv(rows.filter((row) => row.abandonDate).length * 100, rows.length)),
+        formatInteger(successRows.length),
+        formatPercent(safeDiv(successRows.length * 100, rows.length)),
+        formatDays(average(collectDayDiffs(rows, (row) => row.onboardingDate, (row) => row.firstResultDate))),
+        formatInteger(insatisfactionRows.length),
+        allNpsValues.length ? formatDecimal(average(allNpsValues), 1) : 'Sin base',
+        formatInteger(rows.filter((row) => row.renewalCompletedDate).length)
+      ]
     }
   ];
 
@@ -1798,7 +2443,7 @@ function buildSituationPageAudited(cohortRows, context = {}) {
   const supportDetailRows = uniqueRows
     .map((row) => [
       createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
-      row.isActive ? 'Activo' : row.supportStatus === 'inactive' ? 'Sin acceso' : 'Sin dato',
+      row.isActive ? 'Activo' : row.supportStatus === 'inactive' ? 'Sin acceso' : 'Acceso sin informar',
       row.acceso || '-',
       formatDate(row.f_pago_con_acceso),
       row.modelRaw || getRawModelLabel(row.modelo_negocio),
@@ -1897,13 +2542,13 @@ function buildSituationPageAudited(cohortRows, context = {}) {
     }),
     buildMetricRow({
       key: 'unknown_support',
-      label: 'Clientes sin estado de acceso',
+      label: 'Clientes con acceso sin informar',
       value: formatCountWithPercent(unknownRows.length, uniqueRows.length),
       base: `${formatInteger(uniqueRows.length)} clientes únicos actuales`,
       fieldsLabel: '"acceso"',
       logic: 'Separa los valores vacíos o distintos de "Acceso" y "Sin acceso" para no convertir falta de datos en inactividad.',
       detailColumns: ['Cliente', 'Estado', 'Valor acceso', 'Ingreso', 'Rubro', 'GHL'],
-      detailRows: supportDetailRows.filter((row) => row[1] === 'Sin dato')
+      detailRows: supportDetailRows.filter((row) => row[1] === 'Acceso sin informar')
     }),
     buildMetricRow({
       key: 'new_entries',
@@ -1929,9 +2574,35 @@ function buildSituationPageAudited(cohortRows, context = {}) {
   const preservedSections = basePage.sections.filter((section) => !['Clientes por Año', 'Clientes por Rubro'].includes(section.title));
   const sections = [
     {
+      key: 'desglose-persona',
+      title: 'Desglose por persona',
+      description: `Estado actual y sesiones reales de cada cliente en ${periodLabel}.`,
+      columns: ['Persona', 'Estado de acceso', 'Ingreso', 'Rubro', 'Sesiones del período'],
+      rows: uniqueRows.map((row) => {
+        const sessionCount = CSM_SESSION_DEFINITIONS.reduce((sum, session) => (
+          sum + filterRowsByDatePeriod([row], session.field, filters).length
+        ), 0);
+        return [
+          createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
+          row.isActive ? 'Activo' : row.supportStatus === 'inactive' ? 'Sin acceso' : 'Acceso sin informar',
+          formatDate(row.f_pago_con_acceso),
+          row.modelRaw || getRawModelLabel(row.modelo_negocio),
+          formatInteger(sessionCount)
+        ];
+      }),
+      totalRow: [
+        `TOTAL · ${formatInteger(uniqueRows.length)} personas`,
+        `${formatInteger(activeRows.length)} activos · ${formatInteger(inactiveRows.length)} sin acceso · ${formatInteger(unknownRows.length)} sin informar`,
+        '',
+        '',
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.periodCount, 0))
+      ]
+    },
+    {
+      key: 'nuevos-ingresos-mes',
       title: 'Nuevos ingresos por mes',
       description: `Clientes únicos por "f_pago_con_acceso" durante ${filters.year}. El estado es la foto actual de "acceso".`,
-      columns: ['Mes', 'Clientes únicos', 'Filas', 'Variación mensual', 'Activos hoy', 'Sin acceso hoy', 'Sin dato'],
+      columns: ['Mes', 'Clientes únicos', 'Filas', 'Variación mensual', 'Activos hoy', 'Sin acceso hoy', 'Acceso sin informar'],
       rows: monthlyEntries.map((month) => [
         month.label,
         formatInteger(month.count),
@@ -1940,31 +2611,66 @@ function buildSituationPageAudited(cohortRows, context = {}) {
         formatInteger(month.active),
         formatInteger(month.inactive),
         formatInteger(month.unknown)
-      ])
+      ]),
+      totalRow: [
+        `TOTAL ${filters.year}`,
+        formatInteger(monthlyEntries.reduce((sum, month) => sum + month.count, 0)),
+        formatInteger(monthlyEntries.reduce((sum, month) => sum + month.registrations, 0)),
+        '',
+        formatInteger(monthlyEntries.reduce((sum, month) => sum + month.active, 0)),
+        formatInteger(monthlyEntries.reduce((sum, month) => sum + month.inactive, 0)),
+        formatInteger(monthlyEntries.reduce((sum, month) => sum + month.unknown, 0))
+      ]
     },
     {
+      key: 'clientes-anio-ingreso',
       title: 'Clientes por año de ingreso',
       description: 'Clientes únicos por fecha de pago con acceso. Activos e inactivos reflejan el estado actual, no el que tenían en ese año.',
-      columns: ['Año', 'Clientes únicos', 'Filas', 'Activos hoy', 'Sin acceso hoy', 'Sin dato'],
-      rows: yearRows
+      columns: ['Año', 'Clientes únicos', 'Filas', 'Activos hoy', 'Sin acceso hoy', 'Acceso sin informar'],
+      rows: yearRows,
+      totalRow: [
+        'TOTAL',
+        formatInteger(uniqueRows.length),
+        formatInteger(allRows.length),
+        formatInteger(activeRows.length),
+        formatInteger(inactiveRows.length),
+        formatInteger(unknownRows.length)
+      ]
     },
     {
+      key: 'clientes-rubro',
       title: 'Clientes por rubro',
       description: 'Foto actual de clientes únicos usando el valor original de "modelo_negocio".',
-      columns: ['Rubro', 'Clientes', 'Activos', 'Sin acceso', 'Sin dato', '% activos'],
-      rows: rubroRows
+      columns: ['Rubro', 'Clientes', 'Activos', 'Sin acceso', 'Acceso sin informar', '% activos'],
+      rows: rubroRows,
+      totalRow: [
+        'TOTAL',
+        formatInteger(uniqueRows.length),
+        formatInteger(activeRows.length),
+        formatInteger(inactiveRows.length),
+        formatInteger(unknownRows.length),
+        formatPercent(safeDiv(activeRows.length * 100, uniqueRows.length))
+      ]
     },
     {
+      key: 'sesiones-periodo',
       title: 'Sesiones mensuales y acumulado anual',
       description: `Cada sesión se cuenta por su propia fecha en ${periodLabel}; el acumulado usa todo ${filters.year}.`,
-      columns: ['Sesión', 'Período', `Año ${filters.year}`, 'Histórico', 'Campo'],
+      columns: ['Sesión', 'Período', `Año ${filters.year}`, 'Histórico'],
       rows: sessionStats.map((session) => [
         session.label,
         formatInteger(session.periodCount),
         formatInteger(session.annualCount),
         formatInteger(session.totalCount),
         session.field
-      ])
+      ]),
+      totalRow: [
+        'TOTAL',
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.periodCount, 0)),
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.annualCount, 0)),
+        formatInteger(sessionStats.reduce((sum, session) => sum + session.totalCount, 0)),
+        ''
+      ]
     },
     ...preservedSections
   ];
@@ -2332,18 +3038,53 @@ async function ensureMetricasApi() {
 }
 
 async function initCsmPage() {
-  const pageKey = document.body.dataset.csmPage;
+  const renderedPageKey = document.body.dataset.csmPage;
+  const routeParams = new URLSearchParams(window.location.search);
+  const pageKey = renderedPageKey === 'cuadro' ? routeParams.get('panel') : renderedPageKey;
   const builder = PAGE_BUILDERS[pageKey];
 
   if (!builder) return;
   const status = document.getElementById('status');
 
+  if (renderedPageKey !== 'cuadro' && pageKey !== 'renovaciones') {
+    const filters = getCsmPeriodFilters();
+    resetCsmResultContainers();
+    renderCsmDirectory(pageKey, filters);
+    if (status) status.textContent = '';
+    return;
+  }
+
   if (pageKey === 'renovaciones') {
     setupRenewalFilters();
   }
 
+  let requestedGroup = null;
+  if (renderedPageKey === 'cuadro' && routeParams.get('vista') === 'grupo') {
+    requestedGroup = getCsmDirectoryGroups(pageKey).find((group) => group.key === routeParams.get('grupo')) || null;
+    const title = document.getElementById('csmPageTitle');
+    const description = document.getElementById('csmPageDescription');
+    if (requestedGroup && title) title.textContent = requestedGroup.title;
+    if (requestedGroup && description) description.textContent = requestedGroup.description;
+  }
+  const isModuleSnapshotView = renderedPageKey === 'cuadro' && requestedGroup?.key === 'modulos';
+
   async function loadPage() {
     status.textContent = 'Cargando metricas de CSM...';
+    if (renderedPageKey === 'cuadro') {
+      resetCsmResultContainers();
+      setCsmPageLoading(
+        true,
+        requestedGroup
+          ? (isModuleSnapshotView
+            ? 'Cargando la foto actual de clientes por módulo.'
+            : `Cargando ${requestedGroup.title.toLowerCase()} y sus desgloses del período.`)
+          : 'Cargando métricas, gráficos y desgloses del período.',
+        {
+          hideFilters: isModuleSnapshotView,
+          hideStatus: isModuleSnapshotView
+        }
+      );
+    }
 
     try {
       const api = await ensureMetricasApi();
@@ -2387,30 +3128,124 @@ async function initCsmPage() {
         filters
       });
       const infoMap = Object.fromEntries(page.metrics.map((metric) => [metric.key, metric.info]));
+      resetCsmResultContainers();
 
-      renderKpiCards(page.metrics, page.kpiKeys, infoMap);
-      renderChart(page.chart, infoMap);
-      renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
-      renderSections(page.sections, infoMap);
+      if (renderedPageKey === 'cuadro') {
+        const viewType = routeParams.get('vista') || (routeParams.has('cuadro') ? 'cuadro' : 'metrica');
+        const title = document.getElementById('csmPageTitle');
+        const description = document.getElementById('csmPageDescription');
+        const backLink = document.getElementById('csmSectionBack');
+        if (backLink) backLink.href = `/views/csm-${pageKey}.html?anio=${encodeURIComponent(filters.year || '')}&mes=${encodeURIComponent(filters.month || '')}`;
+
+        if (viewType === 'grupo') {
+          const selectedKey = routeParams.get('grupo');
+          const selectedGroup = getCsmDirectoryGroups(pageKey).find((group) => group.key === selectedKey);
+          if (!selectedGroup) throw new Error('El grupo solicitado no existe. Volvé al panel de CSM y elegilo nuevamente.');
+          const selectedMetrics = getGroupMetrics(page, selectedGroup);
+          const selectedSections = getGroupSections(page, selectedGroup);
+          if (title) title.textContent = selectedGroup.title;
+          if (description) description.textContent = selectedGroup.description;
+          if (selectedMetrics.length && selectedGroup.key !== 'tiempos-recorrido') {
+            renderKpiCards(selectedMetrics, selectedMetrics.map((metric) => metric.key), infoMap);
+            if (!['diagnosticos','sesiones','tiempos-recorrido'].includes(selectedGroup.key)) renderMetricsTable(selectedMetrics, infoMap);
+          }
+          const groupChart = ['tiempos-recorrido','personas','diagnosticos','segmentacion'].includes(selectedGroup.key) ? null : buildCsmGroupChart(page, selectedGroup, selectedMetrics);
+          if (groupChart) renderChart(groupChart, infoMap);
+          if (selectedGroup.key === 'diagnosticos') {
+            const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');
+            const value=key=>parseCsmChartNumber(page.metrics.find(m=>m.key===key)?.value)||0;
+            const total=value('diagnosis_total'),under=value('diagnosis_under_7'),over=value('diagnosis_over_7'),missing=value('diagnosis_unclassified');
+            target.innerHTML=`<h2>Del onboarding al diagnóstico</h2><p>Sesiones realizadas en el período. Hasta 7 días incluye el día 7.</p><div class="csm-diagnosis-progress" aria-label="${under} hasta 7 días, ${over} después de 7 días"><span style="flex:${under||0.001}">${under} hasta 7 días</span><span style="flex:${over||0.001}">${over} después de 7 días</span></div><p>${total} diagnósticos en total.${missing?' '+missing+' no se pueden medir porque falta onboarding o las fechas son inconsistentes.':''} Abrí una tarjeta para ver el detalle de clientes.</p>`;
+          } else if (selectedGroup.key === 'modulos') {
+            renderModuleTraffic(page.moduleTraffic);
+          } else if (selectedGroup.key === 'tiempos-recorrido') {
+            const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');window.csmModuleDurations.render(target,enrichedRows,{mode:'sessions'});
+          } else if (selectedGroup.key === 'personas') {
+            renderPeopleFollowup(enrichedRows);
+          } else if (selectedGroup.key === 'segmentacion') {
+            renderBusinessSegments(enrichedRows);
+          } else if (selectedSections.length) {
+            renderSections(selectedSections, infoMap);
+          }
+        } else if (viewType === 'metrica') {
+          const metrics = page.tableMetrics || page.metrics || [];
+          const selectedKey = routeParams.get('metrica') || metrics[0]?.key;
+          const selectedMetric = metrics.find((metric) => metric.key === selectedKey);
+          if (!selectedMetric) throw new Error('La métrica solicitada no existe. Volvé al panel de CSM y elegila nuevamente.');
+          if (title) title.textContent = selectedMetric.label;
+          if (description) description.textContent = selectedMetric.note || selectedMetric.base || '';
+          renderKpiCards([selectedMetric], [selectedMetric.key], infoMap);
+          renderMetricsTable([selectedMetric], infoMap);
+          if (selectedMetric.info?.detailColumns?.length) {
+            renderSections([{
+              title: `Desglose · ${selectedMetric.label}`,
+              description: selectedMetric.info.base || '',
+              columns: selectedMetric.info.detailColumns,
+              rows: selectedMetric.info.detailRows || []
+            }], infoMap);
+          }
+        } else if (viewType === 'grafico') {
+          if (!page.chart) throw new Error('El gráfico solicitado no existe. Volvé al panel de CSM y elegilo nuevamente.');
+          if (title) title.textContent = page.chart.title;
+          if (description) description.textContent = page.chart.description || '';
+          renderChart(page.chart, infoMap);
+        } else {
+          const selectedKey = routeParams.get('cuadro') || sectionKey(page.sections?.[0], 0);
+          const selectedSection = (page.sections || []).find((section, index) => sectionKey(section, index) === selectedKey);
+          if (!selectedSection) throw new Error('El cuadro solicitado no existe. Volvé al panel de CSM y elegilo nuevamente.');
+          if (title) title.textContent = selectedSection.title;
+          if (description) description.textContent = selectedSection.description || '';
+          renderSections([selectedSection], infoMap);
+        }
+      } else {
+        if (pageKey === 'renovaciones') {
+          renderKpiCards(page.metrics, page.kpiKeys, infoMap);
+          renderChart(page.chart, infoMap);
+          renderMetricsTable(page.tableMetrics || page.metrics, infoMap);
+          renderSections(page.sections, infoMap);
+        } else {
+          renderCsmDirectory(pageKey, filters);
+        }
+      }
 
       if (pageKey === 'renovaciones') {
         const params = new URLSearchParams(window.location.search);
         params.set('desde', filters.from || '');
         params.set('hasta', filters.to || '');
+        if (renderedPageKey === 'cuadro') {
+          params.set('panel', pageKey);
+          params.set('cuadro', routeParams.get('cuadro') || sectionKey(page.sections?.[0], 0));
+        }
         window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
         status.textContent = `Base actual: ${formatInteger(rows.length)} registros de "csm" | rango monetario ${filters.from || 'sin desde'} a ${filters.to || 'sin hasta'}. Facturacion, pendiente y cantidad usan fecha de venta; cash usa fecha de acreditacion.`;
       } else {
         const params = new URLSearchParams(window.location.search);
-        params.set('anio', filters.year || '');
-        params.set('mes', filters.month || '');
+        if (isModuleSnapshotView) {
+          params.delete('anio');
+          params.delete('mes');
+        } else {
+          params.set('anio', filters.year || '');
+          params.set('mes', filters.month || '');
+        }
         window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-        status.textContent = `Período: ${describeCsmPeriod(filters)}. Nuevos ingresos: ${formatInteger(rows.length)} filas por "f_pago_con_acceso". Las sesiones se cuentan por la fecha real de cada hito sobre ${formatInteger(enrichedRows.length)} filas de "csm".`;
+        status.textContent = isModuleSnapshotView
+          ? ''
+          : (renderedPageKey === 'cuadro'
+            ? `Período: ${describeCsmPeriod(filters)}. La vista usa la fecha real de cada hito sobre ${formatInteger(enrichedRows.length)} filas de "csm".`
+            : `Elegí una métrica, un gráfico o una tabla para consultar ${describeCsmPeriod(filters)}.`);
+      }
+      if (renderedPageKey === 'cuadro') {
+        setCsmPageLoading(false, '', {
+          hideFilters: isModuleSnapshotView,
+          hideStatus: isModuleSnapshotView
+        });
       }
     } catch (error) {
       document.getElementById('kpiContainer').innerHTML = '';
       document.getElementById('tableContainer').innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No se pudieron cargar las metricas de CSM.</div></div>';
       document.getElementById('detailContainer').innerHTML = '';
       status.textContent = error.message || 'No se pudieron cargar las metricas de CSM.';
+      if (renderedPageKey === 'cuadro') setCsmPageLoading(false);
     }
   }
 
@@ -2433,9 +3268,13 @@ if (typeof window !== 'undefined') {
     filterRowsByDatePeriod,
     dedupeClientRows,
     getSupportStatus,
+    isInCurrentModuleCircuit,
     buildMonthlyEntryStats,
+    buildModuleTraffic,
     buildTimePageByEvent,
-    buildSituationPageAudited
+    buildSituationPageAudited,
+    getCsmDirectoryGroups,
+    buildCsmGroupChart
   };
 }
 

@@ -7,12 +7,22 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'public/metricas-v2/views/conciliacion.html'), 'utf8');
 const script = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/conciliacion.page.js'), 'utf8');
+const service = fs.readFileSync(path.join(root, 'modules/metricasv2/services/comprobantes-reconciliation.service.js'), 'utf8');
 
 test('Conciliación ofrece un único selector de mes de acreditación', () => {
   assert.match(html, /id="conciliacionMonth" type="month"/);
   assert.doesNotMatch(html, /conciliacionDateFrom|conciliacionDateTo/);
   assert.match(script, /refs\.month\.value = currentMonthValue\(\)/);
   assert.match(script, /rowMonth\(row\) !== month/);
+});
+
+test('Conciliación solicita y muestra el mail del comprador', () => {
+  assert.match(service, /'mail'/);
+  assert.match(script, /<th>Mail comprador<\/th>/);
+  assert.match(script, /mailto:/);
+  assert.match(script, /row\.mail/);
+  assert.match(html, /Cliente, mail, GHL, producto o responsable/);
+  assert.match(html, /shared-note-1/);
 });
 
 test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
@@ -65,7 +75,7 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
     window: {
       metricasApi: {
         fetchReconciliationComprobantes: async () => ({ rows: [
-          { id: 'current', cliente_format: 'Mes actual', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
+          { id: 'current', cliente_format: 'Mes actual', mail: 'comprador@example.com', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
           { id: 'other', cliente_format: 'Mes anterior', f_acreditacion: `${otherMonth}-15`, estado: null }
         ] })
       }
@@ -78,6 +88,7 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
 
   assert.equal(elements.conciliacionMonth.value, currentMonth);
   assert.match(elements.conciliacionTable.innerHTML, /Mes actual/);
+  assert.match(elements.conciliacionTable.innerHTML, /comprador@example\.com/);
   assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes anterior/);
 
   elements.conciliacionMonth.value = otherMonth;

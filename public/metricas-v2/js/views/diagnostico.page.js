@@ -88,7 +88,7 @@
     $('#createConfirm').hidden = true;
     if (!client) return;
     $('#createSelectionName').textContent = client.name;
-    $('#createSelectionMeta').textContent = `${client.businessName || 'Sin modelo de negocio'} · GHL ${client.ghlId}`;
+    $('#createSelectionMeta').textContent = `${client.businessName || 'Sin modelo de negocio'} · Rubro: ${client.rubro || 'Sin informar'} · GHL ${client.ghlId}`;
   }
 
   function showWorkflow(mode) {
@@ -246,7 +246,7 @@
     current.data = core.normalizeData(current.data, current.csmName);
     $('#editor').hidden = false;
     $('#editingClientName').textContent = current.clientName || 'Cliente sin nombre';
-    $('#editingClientMeta').textContent = `${current.businessName || 'Sin modelo de negocio'} · GHL ${current.clientGhlId}`;
+    $('#editingClientMeta').textContent = `${current.businessName || 'Sin modelo de negocio'} · Rubro: ${current.rubro || 'Sin informar'} · GHL ${current.clientGhlId}`;
     $('#publicLink').textContent = publicLink();
     const tabLabels = { inicial: ['Inicial', 'Antes de empezar'], medio: ['Medio', 'Unidades 2, 3 y 4'], final: ['Final', 'Unidades 6 y 7'], rumbo: ['Carta de Rumbo', 'Comparativo'] };
     $('#tabs').innerHTML = [...core.STAGES, 'rumbo'].map((stage) => `<button class="btn tab ${activeStage === stage ? 'active' : ''}" data-tab="${stage}" type="button">${tabLabels[stage][0]}<small>${tabLabels[stage][1]}</small></button>`).join('');

@@ -7,67 +7,79 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
   </head>
-  <body class="ranking-page dashboard-home-page">
-    <main class="container">
-      <section class="ranking-hero dashboard-hero">
-        <h1>Dashboard</h1>
+  <body class="ranking-page dashboard-home-page dashboard-personal-page premium-navy-background">
+    <div id="dashboardWelcomeLoader" class="dashboard-welcome-loader" role="status" aria-live="polite" aria-label="Preparando tu panel">
+      <div class="dashboard-welcome-loader-backdrop"></div>
+      <section class="dashboard-welcome-loader-card" aria-labelledby="dashboardWelcomeLoaderTitle">
+        <div class="dashboard-welcome-loader-mark" aria-hidden="true"><span>M</span><b>R</b></div>
+        <span class="dashboard-welcome-loader-kicker">Tu espacio personalizado</span>
+        <h2 id="dashboardWelcomeLoaderTitle">Bienvenido a tu panel.</h2>
+        <p id="dashboardWelcomeLoaderMessage">Estamos cargando tus métricas, comprobantes y accesos.</p>
+        <button id="dashboardWelcomeSound" class="dashboard-welcome-sound" type="button">
+          <span aria-hidden="true">🔊</span>
+          <b>Escuchar bienvenida</b>
+        </button>
+        <div class="dashboard-welcome-loader-progress" aria-hidden="true"><span></span></div>
+        <small>Preparando la información más reciente…</small>
+      </section>
+    </div>
+
+    <main class="container dashboard-personal-layout">
+      <section class="dashboard-personal-hero">
+        <div>
+          <span id="dashboardWelcome">Tu panel personalizado</span>
+          <h1 id="dashboardGreeting">Bienvenido</h1>
+          <p id="dashboardHeadlineSummary" class="dashboard-headline-summary">Estamos preparando el resumen de tu mes.</p>
+        </div>
       </section>
 
-      <section class="cards central-cards dashboard-home-cards">
-        <a class="card dashboard-home-card-metricas" href="/index.html" data-roles="total,comercial,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge">Interno</span>
-          <h3>Central de Métricas</h3>
-          <p>Entrá a los tableros operativos, vistas comerciales y paneles de seguimiento.</p>
-        </a>
+      <section id="dashboardKpis" class="dashboard-personal-kpis" aria-live="polite"></section>
 
-        <a class="card dashboard-home-card-contacto" href="/contacto-estado/" data-roles="total,comercial,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge dashboard-home-badge-secondary">Cliente</span>
-          <h3>Estado de Contacto</h3>
-          <p>Buscá o abrí una ficha por "GHL ID" para ver estado, mail, teléfono, facturación y cash collected.</p>
-        </a>
+      <section class="dashboard-personal-main-grid">
+        <article class="dashboard-personal-panel dashboard-ranking-panel">
+          <div class="dashboard-personal-panel-head">
+            <div>
+              <span id="dashboardPerformanceEyebrow">Rendimiento comercial</span>
+              <h2 id="dashboardPerformanceTitle">Ventas del ranking</h2>
+              <p id="dashboardRankingDescription">Resultados del mes actual por closer.</p>
+            </div>
+            <a id="dashboardPerformanceLink" href="/views/ranking.html" data-dashboard-page="ranking.html">Ver ranking completo <span aria-hidden="true">→</span></a>
+          </div>
+          <div id="dashboardRankingTable" class="dashboard-ranking-table-wrap"></div>
+        </article>
 
-        <a class="card dashboard-home-card-alertas" href="/views/alertas-operativas.html" data-roles="total,comercial,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge dashboard-home-badge-warning">Atención</span>
-          <h3>Alertas Operativas</h3>
-          <p>Clientes, closers y comprobantes que requieren seguimiento o revisión hoy.</p>
-        </a>
+        <aside class="dashboard-personal-panel dashboard-alerts-panel">
+          <div class="dashboard-personal-panel-head">
+            <div><span>Atención</span><h2>Alertas operativas</h2></div>
+            <a href="/views/alertas-operativas.html" data-dashboard-page="alertas-operativas.html">Ver todas <span aria-hidden="true">→</span></a>
+          </div>
+          <div id="dashboardAlerts" class="dashboard-alert-list"></div>
+        </aside>
+      </section>
 
-        <a class="card dashboard-home-card-contacto" href="/views/diagnostico.html" data-roles="total,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge dashboard-home-badge-secondary">CSM</span>
-          <h3>Diagnóstico</h3>
-          <p>Seleccioná un cliente de CSM, completá su carta de rumbo y compartile su link privado.</p>
-        </a>
+      <section id="dashboardMonthlyInsight" class="dashboard-monthly-insight" aria-live="polite">
+        <span class="dashboard-monthly-insight-icon" aria-hidden="true">✦</span>
+        <div>
+          <span>Lectura del mes</span>
+          <h2 id="dashboardInsightTitle">Resumen del período</h2>
+          <p id="dashboardInsightText">Analizando la información disponible…</p>
+        </div>
+      </section>
 
-        <a class="card card-soon dashboard-home-card-comprobantes" href="/views/comprobantes.html" data-roles="total,comercial,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge">En construcción</span>
-          <h3>Comprobantes</h3>
-          <p>Entrá a la carga manual o revisá únicamente los comprobantes subidos por tu usuario.</p>
-        </a>
-
-        <a class="card dashboard-home-card-metricas" href="/views/herramientas.html" data-roles="total,comercial,csm">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge dashboard-home-badge-secondary">Interno</span>
-          <h3>Herramientas</h3>
-          <p>Utilidades rápidas para armar links, guardar presets y resolver tareas puntuales.</p>
-        </a>
-
-        <a class="card dashboard-home-card-administracion" href="/views/administracion.html" data-requires-permission="administracion">
-          <div class="dashboard-home-visual" aria-hidden="true"></div>
-          <span class="dashboard-home-badge">Privado</span>
-          <h3>Administración</h3>
-          <p>Herramientas administrativas reservadas para Mati y Nadia.</p>
-        </a>
+      <section class="dashboard-quick-section">
+        <div class="dashboard-section-title">
+          <div><span>Tu espacio</span><h2>Navegación</h2></div>
+          <p>Accesos principales que no se repiten dentro de la Central.</p>
+        </div>
+        <div id="dashboardQuickLinks" class="dashboard-quick-grid"></div>
       </section>
     </main>
 
     <script src="/js/api/http.js"></script>
-    <script src="/js/auth-shell.js"></script>
+    <script src="/js/api/metricas.api.js"></script>
+    <script src="/js/auth-shell.js?v=20261009-release-1"></script>
+    <script src="/js/views/dashboard.page.js?v=20261008-area-net-1"></script>
   </body>
 </html>

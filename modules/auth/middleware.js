@@ -24,7 +24,7 @@ function isPublicMetricasPath(reqPath) {
 }
 
 function resolvePageName(reqPath) {
-  if (reqPath === '/' || reqPath === '' || reqPath === '/metricas') return 'index.html';
+  if (reqPath === '/' || reqPath === '' || reqPath === '/metricas') return 'metricas.html';
   return path.basename(reqPath);
 }
 
@@ -43,7 +43,7 @@ async function metricasPageGuard(req, res, next) {
 
     const pageName = resolvePageName(req.path);
     if (!access.canAccessPageForUser(req.authUser, pageName)) {
-      if (pageName === 'index.html' && !access.isMarketingOnlyUser(req.authUser)) {
+      if (['index.html', 'metricas.html'].includes(pageName) && !access.isMarketingOnlyUser(req.authUser)) {
         return next();
       }
       return res.redirect('/unauthorized.html');
@@ -174,9 +174,41 @@ async function metricasApiGuard(req, res, next) {
       return next();
     }
 
+    if (reqPath === '/commercial-area') {
+      if (!access.canAccessFeatureForUser(req.authUser, 'commercial_area', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para el área comercial personal' });
+      }
+      return next();
+    }
+
+    if (reqPath === '/pdi' || reqPath.startsWith('/pdi/')) {
+      if (!access.canAccessFeatureForUser(req.authUser, 'pdi', { method: req.method })) {
+        return res.status(403).json({ ok: false, message: 'Solo Mati y Leo pueden acceder a PDI' });
+      }
+      return next();
+    }
+
+    if (reqPath === '/commissions/dashboard' || reqPath === '/commissions/person' || reqPath.startsWith('/commissions/config')) {
+      if (!access.canAccessCommissionsForUser(req.authUser)) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para el panel general de comisiones' });
+      }
+      return next();
+    }
+
     if (reqPath === '/diagnosticos' || reqPath.startsWith('/diagnosticos/')) {
       if (!['total', 'csm'].includes(req.authUser?.role)) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para usar Diagnósticos CSM' });
+      }
+      return next();
+    }
+
+    if (reqPath === '/comprobantes-direct/preview') {
+      if (!access.canAccessPageForUser(req.authUser, 'carga-comprobantes.html')) return res.status(403).json({ok:false,message:'Sin permiso para cargar comprobantes'});
+      return next();
+    }
+    if (reqPath === '/comprobantes-direct' || reqPath.startsWith('/comprobantes-direct/')) {
+      if (!access.canAccessComprobantesLabForUser(req.authUser)) {
+        return res.status(403).json({ ok: false, message: 'Sin permiso para el laboratorio Supabase de comprobantes' });
       }
       return next();
     }

@@ -7,6 +7,8 @@ const LIST_COLUMNS = [
   'id',
   'cliente_format',
   'ghlid',
+  'mail',
+  'dni_cuit',
   'tipo',
   'producto_format',
   'medios_de_pago_format',
@@ -21,11 +23,17 @@ const LIST_COLUMNS = [
   'cash_collected_ars',
   'tc',
   'estado',
+  'motivo_rebote',
+  'nota_conciliacion',
+  'nota_conciliacion_revision',
+  'nota_conciliacion_autor',
+  'nota_conciliacion_fecha',
   'rebotar_pago',
   'creado_por',
   'responsable_venta',
   'setter',
-  'info_comprobantes'
+  'info_comprobantes',
+  'source_system'
 ].join(',');
 
 const RECONCILIATION_STATES = {
@@ -42,28 +50,12 @@ function requiredSupabaseEnv() {
   }
 }
 
-function requiredNotionEnv() {
-  if (!env.notionApiKey) {
-    const error = new Error('Falta NOTION_API_KEY para actualizar conciliación');
-    error.statusCode = 500;
-    throw error;
-  }
-}
-
 function supabaseHeaders(extra = {}) {
   return {
     apikey: env.supabaseKey,
     Authorization: `Bearer ${env.supabaseKey}`,
     'Content-Type': 'application/json',
     ...extra
-  };
-}
-
-function notionHeaders() {
-  return {
-    Authorization: `Bearer ${env.notionApiKey}`,
-    'Notion-Version': '2022-06-28',
-    'Content-Type': 'application/json'
   };
 }
 
@@ -131,17 +123,24 @@ async function listAllComprobantes() {
   requiredSupabaseEnv();
   const rows = [];
   let lastId = '';
+  let listColumns = LIST_COLUMNS;
 
   while (rows.length < MAX_ROWS) {
-    const response = await axios.get(`${env.supabaseUrl}/rest/v1/comprobantes`, {
+    const fetchPage = () => axios.get(`${env.supabaseUrl}/rest/v1/comprobantes`, {
       headers: supabaseHeaders(),
       params: {
-        select: LIST_COLUMNS,
+        select: listColumns,
         order: 'id.asc',
         limit: PAGE_SIZE,
         ...(lastId ? { id: `gt.${lastId}` } : {})
       }
     });
+    let response;
+    try { response = await fetchPage(); } catch (error) {
+      if (!listColumns.includes('source_system') || !String(error.response?.data?.message || '').includes('source_system')) throw error;
+      listColumns = listColumns.split(',').filter((column) => column !== 'source_system').join(',');
+      response = await fetchPage();
+    }
 
     const chunk = Array.isArray(response.data) ? response.data : [];
     rows.push(...chunk);
@@ -162,6 +161,7 @@ async function listAllComprobantes() {
     throw error;
   }
 
+  for (const row of rows) if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) row.source_system = 'supabase_direct';
   sortRowsNewestFirst(rows);
   return {
     rows,
@@ -174,7 +174,7 @@ async function findComprobante(id) {
   const response = await axios.get(`${env.supabaseUrl}/rest/v1/comprobantes`, {
     headers: supabaseHeaders(),
     params: {
-      select: LIST_COLUMNS,
+      select: LIST_COLUMNS.split(',').filter(column => column !== 'source_system').join(','),
       id: `eq.${id}`,
       limit: 1
     }
@@ -190,32 +190,16 @@ async function findComprobante(id) {
 
 async function updateComprobanteState(rawId, rawState) {
   requiredSupabaseEnv();
-  requiredNotionEnv();
   const id = normalizeUuid(rawId);
   const state = normalizeReconciliationState(rawState);
   const previous = await findComprobante(id);
-  const notionStatus = RECONCILIATION_STATES[state];
-
-  await axios.patch(
-    `https://api.notion.com/v1/pages/${id}`,
-    {
-      properties: {
-        Estado: {
-          select: notionStatus ? { name: notionStatus } : null
-        }
-      }
-    },
-    {
-      headers: notionHeaders(),
-      timeout: 30000
-    }
-  );
+  const status = RECONCILIATION_STATES[state];
 
   const response = await axios.patch(
     `${env.supabaseUrl}/rest/v1/comprobantes`,
     {
-      estado: notionStatus,
-      rebotar_pago: false
+      estado: status,
+      rebotar_pago: state === 'bounced'
     },
     {
       headers: supabaseHeaders({ Prefer: 'return=representation' }),
@@ -223,21 +207,36 @@ async function updateComprobanteState(rawId, rawState) {
     }
   );
 
-  const updated = response.data?.[0] || {
-    ...previous,
-    estado: notionStatus,
-    rebotar_pago: false
-  };
+  const updated = response.data?.[0];
+  if (!updated) {
+    const error = new Error('El comprobante ya no existe; recargá la conciliación.');
+    error.statusCode = 409;
+    throw error;
+  }
 
   return {
     row: updated,
     previousState: reconciliationStateFromRow(previous),
     state,
-    message: `Comprobante marcado como ${notionStatus || 'No conciliado'}`
+    message: `Comprobante marcado como ${status || 'No conciliado'}`
   };
 }
 
+async function saveReconciliationNote(rawId, input, user) {
+  requiredSupabaseEnv();
+  const id=normalizeUuid(rawId),note=input?.note,revision=input?.revision;
+  if(typeof note!=='string'||note.length>4000||!Number.isInteger(revision)||revision<0){
+    const error=new Error('La nota debe tener hasta 4000 caracteres y una revisión válida');error.statusCode=400;throw error;
+  }
+  const response=await axios.post(`${env.supabaseUrl}/rest/v1/rpc/metricas_reconciliation_note`,{
+    p_id:id,p_note:note.trim(),p_revision:revision,p_author:user.nombre||user.email
+  },{headers:supabaseHeaders(),timeout:15000});
+  if(response.data?.conflict||!response.data?.row){const error=new Error('La nota cambió o el comprobante ya no existe. Recargá antes de guardar.');error.statusCode=409;throw error;}
+  return {row:response.data.row,message:'Nota guardada. El closer puede verla en Mis comprobantes.'};
+}
+
 module.exports = {
+  saveReconciliationNote,
   listAllComprobantes,
   updateComprobanteState,
   _test: {

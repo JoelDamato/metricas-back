@@ -30,6 +30,7 @@
     editor: document.getElementById('misComprobantesEditor'),
     editorBody: document.getElementById('misComprobantesEditorBody')
   };
+  const initialParams = new URLSearchParams(window.location?.search || '');
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -96,8 +97,11 @@
 
   function ensureDefaultMonth() {
     if (!refs.month) return;
-    if (!refs.month.value) {
-      refs.month.value = toMonthValue();
+    const requestedMonth = String(initialParams.get('mes') || '').trim();
+    if (/^\d{4}-\d{2}$/.test(requestedMonth)) refs.month.value = requestedMonth;
+    else if (!refs.month.value) refs.month.value = toMonthValue();
+    if (refs.clubFilter && ['all', 'exclude', 'only'].includes(initialParams.get('club'))) {
+      refs.clubFilter.value = initialParams.get('club');
     }
   }
 
@@ -221,6 +225,17 @@
     `;
   }
 
+  function renderRowActions(row) {
+    const actions = [];
+    if (row.source_system === 'supabase_direct') {
+      actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-files-comprobante="${escapeHtml(row.id)}">Adjuntos</button>`);
+    }
+    if (row.canManage === true) {
+      actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">Editar / borrar</button>`);
+    }
+    return actions.length ? actions.join(' ') : '<span class="mis-comprobantes-readonly">—</span>';
+  }
+
   function renderTable() {
     if (!state.filteredRows.length) {
       refs.table.innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No encontré comprobantes para ese filtro.</div></div>';
@@ -258,11 +273,9 @@
                 <td>${escapeHtml(row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-')}</td>
                 <td>${escapeHtml(resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-')}</td>
                 <td>${escapeHtml(resolveCashAr(row) ? formatCurrency(resolveCashAr(row), 'ARS') : '-')}</td>
-                <td>${escapeHtml(row.estado || 'Sin estado')}</td>
+                <td>${escapeHtml(row.estado || 'No conciliado')}${row.nota_conciliacion ? `<p style="white-space:pre-wrap;max-width:280px"><strong>Nota de conciliación:</strong> ${escapeHtml(row.nota_conciliacion)}${row.nota_conciliacion_autor ? `<br><small>${escapeHtml(row.nota_conciliacion_autor)}</small>` : ''}</p>` : ''}${isBouncedRow(row) ? `<p style="white-space:pre-wrap;max-width:280px"><strong>Motivo:</strong> ${escapeHtml(row.motivo_rebote || 'Sin motivo registrado')}</p>` : ''}</td>
                 <td>${escapeHtml(row.ghlid || '-')}</td>
-                <td>${row.canManage === true
-                  ? `<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">Editar / borrar</button>`
-                  : '<span class="mis-comprobantes-readonly">—</span>'}</td>
+                <td>${renderRowActions(row)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -277,6 +290,7 @@
   }
 
   function renderEditor(comprobante) {
+    const isBounced = isBouncedRow(comprobante);
     const isVenta = comprobante.tipo === 'Venta';
     const isDevolucion = comprobante.tipo === 'Devolución';
     const paymentOptions = [...new Set([comprobante.medioPago, ...(comprobante.mediosDePagoOptions || [])].filter(Boolean))];
@@ -297,8 +311,10 @@
         <span><strong>Responsable:</strong> ${escapeHtml(comprobante.responsibleName || '—')}</span>
         <span><strong>Tipo:</strong> ${escapeHtml(comprobante.tipo || '—')}</span>
       </div>
+      ${isBounced ? `<p class="mis-comprobantes-editor-note" style="white-space:pre-wrap"><strong>Motivo del rebote:</strong> ${escapeHtml(comprobante.motivoRebote || 'Sin motivo registrado')}<br>Al guardar, volverá a quedar pendiente de conciliación.</p>` : ''}
       <p class="mis-comprobantes-editor-note">Cliente, GHL, responsable, venta relacionada, adjuntos y los demás cheques no se modifican desde acá.</p>
       <form id="misComprobantesEditorForm" class="mis-comprobantes-editor-form" data-comprobante-id="${escapeHtml(comprobante.id)}">
+        ${isBounced ? '<input type="hidden" name="resubmit" value="true" />' : ''}
         <div class="carga-grid carga-grid--three">
           ${isVenta ? `<label class="carga-field"><span>Fecha de venta</span><input name="fechaVenta" type="date" value="${escapeHtml(comprobante.fechaVenta)}" required /></label>` : ''}
           <label class="carga-field"><span>Fecha de acreditación</span><input name="fechaAcreditacion" type="date" value="${escapeHtml(comprobante.fechaAcreditacion)}" required /></label>
@@ -315,7 +331,7 @@
         <div class="mis-comprobantes-editor-actions">
           <button type="button" class="metricas-secondary-button" data-editor-action="close">Cancelar</button>
           <button type="button" class="mis-comprobantes-delete-button" data-editor-action="delete">Eliminar comprobante</button>
-          <button type="submit" class="metricas-primary-button">Guardar cambios</button>
+          <button type="submit" class="metricas-primary-button">${isBounced ? 'Guardar y reenviar a conciliación' : 'Guardar cambios'}</button>
         </div>
       </form>
     `;
@@ -341,6 +357,9 @@
         producto_format: updated.productName || row.producto_format,
         facturacion: updated.facturacionUsd ?? row.facturacion,
         cantidad_de_pagos: updated.cantidadPagos || row.cantidad_de_pagos,
+        estado: updated.estado,
+        rebotar_pago: updated.rebotar_pago,
+        motivo_rebote: updated.motivo_rebote,
         info_comprobantes: updated.infoComprobantes
       };
     });
@@ -359,13 +378,42 @@
     }
   }
 
+  async function openFiles(id) {
+    try {
+      refs.status.hidden = false;
+      refs.status.querySelector('span').textContent = 'Preparando adjuntos seguros...';
+      const response = await api.fetchComprobanteFiles(id);
+      const files = Array.isArray(response.files) ? response.files : [];
+      refs.editorBody.innerHTML = `
+        <div class="mis-comprobantes-editor-head">
+          <div>
+            <span class="carga-creating-kicker">Archivos en Supabase</span>
+            <h2 id="misComprobantesEditorTitle">Adjuntos del comprobante</h2>
+            <p>Los enlaces privados vencen automáticamente.</p>
+          </div>
+          <button type="button" class="mis-comprobantes-editor-close" data-editor-action="close" aria-label="Cerrar">×</button>
+        </div>
+        <div class="mis-comprobantes-editor-context">
+          ${files.length
+            ? files.map((file) => `<a class="metricas-secondary-button" href="${escapeHtml(file.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(file.name || 'Abrir archivo')}</a>`).join('')
+            : '<p>No hay adjuntos guardados para este comprobante.</p>'}
+        </div>
+      `;
+      refs.editor.hidden = false;
+      refs.status.hidden = true;
+    } catch (error) {
+      refs.status.hidden = false;
+      refs.status.querySelector('span').textContent = error.message || 'No pude cargar los adjuntos.';
+    }
+  }
+
   async function submitEditor(form) {
     const id = form.dataset.comprobanteId;
     const status = document.getElementById('misComprobantesEditorStatus');
     const submit = form.querySelector('[type="submit"]');
     const payload = Object.fromEntries(new FormData(form).entries());
     submit.disabled = true;
-    status.textContent = 'Guardando cambios en Notion...';
+    status.textContent = 'Guardando cambios...';
     try {
       const response = await api.updateEditableComprobante(id, payload);
       updateLocalRow(id, response.updated || {});
@@ -380,9 +428,9 @@
 
   async function deleteFromEditor(form) {
     const id = form.dataset.comprobanteId;
-    if (!window.confirm('¿Eliminar este comprobante? Esta acción lo archivará en Notion.')) return;
+    if (!window.confirm('¿Eliminar este comprobante? Esta acción no se puede deshacer.')) return;
     const status = document.getElementById('misComprobantesEditorStatus');
-    status.textContent = 'Archivando comprobante...';
+    status.textContent = 'Eliminando comprobante...';
     try {
       const response = await api.deleteEditableComprobante(id);
       state.rows = state.rows.filter((row) => row.id !== id);
@@ -466,8 +514,10 @@
   refs.clubFilter?.addEventListener('change', renderAll);
   refs.search?.addEventListener('input', renderAll);
   refs.table?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-edit-comprobante]');
-    if (button) openEditor(button.dataset.editComprobante);
+    const editButton = event.target.closest('[data-edit-comprobante]');
+    if (editButton) openEditor(editButton.dataset.editComprobante);
+    const filesButton = event.target.closest('[data-files-comprobante]');
+    if (filesButton) openFiles(filesButton.dataset.filesComprobante);
   });
   refs.editor?.addEventListener('click', (event) => {
     if (event.target === refs.editor || event.target.closest('[data-editor-action="close"]')) closeEditor();

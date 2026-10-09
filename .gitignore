@@ -56,3 +56,10 @@ output/
 tmp/pdfs/
 scripts/arca_issue_*.js
 scripts/generate_arca_invoice_pdf.py
+
+# Shared ticket storage (use a persistent volume in production)
+data/tickets/
+
+# Private local investigations and exports
+tmp/
+personal/

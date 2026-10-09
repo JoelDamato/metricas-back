@@ -12,6 +12,7 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TOTAL_ATTACHMENT_BYTES = 30 * 1024 * 1024;
 const NOTION_REQUEST_TIMEOUT_MS = 30 * 1000;
 const NOTION_UPLOAD_TIMEOUT_MS = 60 * 1000;
+let comprobantesSourceSystemAvailable = null;
 const ACCEPTED_ATTACHMENT_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -286,6 +287,13 @@ function canEditComprobanteStatus(row = {}) {
 }
 
 function canManageOwnComprobante(row = {}, user = {}) {
+  if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) {
+    try {
+      const actor=JSON.parse(String(row.info_comprobantes).split('\nTEST_METADATA=').pop()).actorEmail;
+      if (actor) return String(actor).trim().toLowerCase() === String(user.email || '').trim().toLowerCase()
+        && canEditComprobanteStatus(row);
+    } catch { /* Use historical ownership rules for older records. */ }
+  }
   const uploader = normalizeText(
     extractComprobanteUploader(row.info_comprobantes)
     || resolveComprobanteResponsibleVentaOnly(row)
@@ -2410,10 +2418,13 @@ async function listMyComprobantes(user, options = {}) {
   const pageSize = Math.min(Math.max(Number(options.limit || 500), 1), 1000);
   const rows = [];
   let offset = 0;
+  const legacySelect = 'nota_conciliacion,nota_conciliacion_autor,nota_conciliacion_fecha,motivo_rebote,id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,rebotar_pago,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes';
 
   while (true) {
     const params = {
-      select: 'id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,rebotar_pago,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes',
+      select: comprobantesSourceSystemAvailable === false
+        ? legacySelect
+        : `${legacySelect},source_system`,
       order: 'fecha_creado.desc.nullslast,created_at.desc.nullslast',
       limit: pageSize,
       offset
@@ -2421,8 +2432,11 @@ async function listMyComprobantes(user, options = {}) {
 
     if (!allowAll) {
       const visibilityFilters = [
-        ...(responsibleName ? [`responsable_venta.eq.${responsibleName}`] : []),
-        ...setterNames.map((name) => `setter.eq.${name}`)
+        // Notion person/formula values can arrive with different casing in
+        // Supabase (for example "nahuel iasci"). Keep the database filter as
+        // an exact name match, but make it case-insensitive.
+        ...(responsibleName ? [`responsable_venta.ilike.${responsibleName}`] : []),
+        ...setterNames.map((name) => `setter.ilike.${name}`)
       ];
       if (visibilityFilters.length === 1) {
         const [column, operator, value] = visibilityFilters[0].split('.');
@@ -2432,7 +2446,21 @@ async function listMyComprobantes(user, options = {}) {
       }
     }
 
-    const response = await supabaseRequest('comprobantes', params);
+    let response;
+    try {
+      response = await supabaseRequest('comprobantes', params);
+      if (comprobantesSourceSystemAvailable === null) {
+        comprobantesSourceSystemAvailable = true;
+      }
+    } catch (error) {
+      const supabaseError = JSON.stringify(error.response?.data || error.message || '').toLowerCase();
+      if (!supabaseError.includes('source_system')) throw error;
+      comprobantesSourceSystemAvailable = false;
+      response = await supabaseRequest('comprobantes', {
+        ...params,
+        select: legacySelect
+      });
+    }
 
     const chunk = response.data || [];
     rows.push(...chunk);
@@ -2446,6 +2474,7 @@ async function listMyComprobantes(user, options = {}) {
     : responsibleName;
   const normalizedSelectedResponsible = normalizeText(selectedResponsible);
   const resolvedRows = rows.flatMap((row) => {
+    if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) row.source_system = 'supabase_direct';
     const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {
       return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible
@@ -2484,6 +2513,8 @@ module.exports = {
   updateEditableComprobante,
   deleteEditableComprobante,
   listMyComprobantes,
+  getResponsibleNameForUser: standardizeResponsibleVenta,
+  getComprobantesSetterNames,
   _test: {
     isChequePaymentMethod,
     isNotionPaymentMethodActive,

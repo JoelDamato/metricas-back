@@ -1,7 +1,9 @@
+const {commissionAreaForUser} = require('./commission-area-identity');
 const axios = require('axios');
 const env = require('../config/env');
 const supabaseService = require('./supabase.service');
 const { buildMarketingLeadByGhlId } = require('./marketing-origin.service');
+const comprobantesLoaderService = require('./comprobantes-loader.service');
 
 const DEFAULT_CONFIG = {
   version: 1,
@@ -323,7 +325,7 @@ function isMissingColumnError(error) {
 }
 
 async function fetchComprobantesRowsForCommissions() {
-  const baseSelect = 'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen_actual,primer_origen,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,conciliacion_financiera,conciliacion_financiera_2,conciliar';
+  const baseSelect = 'id,tipo,producto_format,cliente,cliente_format,creado_por,responsable_venta,responsable_actual,info_comprobantes,setter,ghlid,origen_actual,primer_origen,medios_de_pago,medios_de_pago_format,f_acreditacion,f_venta,cash_collected,cash_collected_ar,cash_collected_ars,cash_collected_total,facturacion,facturacion_ars,monto_pesos,neto_club,iva,comisiones,cobranza_relacionada,venta_relacionada,porcentaje_venta_vieja,verificacion_comisiones,tc,cheque,estado,rebotar_pago,conciliacion_financiera,conciliacion_financiera_2,conciliar';
   const selectAttempts = [
     baseSelect.replace(
       'f_venta,cash_collected',
@@ -677,6 +679,8 @@ function computeClubNetBreakdown(grossArs) {
     return {
       grossArs: 0,
       ivaArs: 0,
+      iibbArs: 0,
+      paymentFeesArs: 0,
       externalCommissionsArs: 0,
       netArs: 0
     };
@@ -692,14 +696,20 @@ function computeClubNetBreakdown(grossArs) {
   return {
     grossArs: safeGross,
     ivaArs,
+    iibbArs,
+    paymentFeesArs: acrediArs,
     externalCommissionsArs,
     netArs
   };
 }
 
+function usesStoredPaymentDeductions(row) {
+  return row.source_system === 'supabase_direct' || /^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''));
+}
+
 function computeCommissionBaseArs(row) {
   const grossArs = resolveGrossTotalArs(row);
-  if (isClubProduct(row.producto_format)) {
+  if (isClubProduct(row.producto_format) && !usesStoredPaymentDeductions(row)) {
     return computeClubNetBreakdown(grossArs).netArs;
   }
   const ivaArs = safeNumber(row.iva_ars);
@@ -784,7 +794,11 @@ function buildSettersMonthMap(setterRows, monthKey, liveAgendaCountMap = new Map
 function normalizeComprobanteRows(rows = []) {
   return rows.map((row) => {
     const grossArs = resolveGrossTotalArs(row);
-    const clubBreakdown = isClubProduct(row.producto_format) ? computeClubNetBreakdown(grossArs) : null;
+    const clubBreakdown = isClubProduct(row.producto_format) && !usesStoredPaymentDeductions(row) ? computeClubNetBreakdown(grossArs) : null;
+    const ivaArs = clubBreakdown?.ivaArs > 0 ? clubBreakdown.ivaArs : safeNumber(row.iva_ars ?? row.iva);
+    const externalCommissionsArs = clubBreakdown?.externalCommissionsArs > 0
+      ? clubBreakdown.externalCommissionsArs
+      : safeNumber(row.comisiones_ars ?? row.comisiones);
 
     return {
       ...row,
@@ -829,8 +843,11 @@ function normalizeComprobanteRows(rows = []) {
       f_venta_only: parseDateOnly(row.f_venta),
       cash_base: selectCashBase(row),
       club_base: selectClubBase(row),
-      iva_ars: clubBreakdown?.ivaArs > 0 ? clubBreakdown.ivaArs : safeNumber(row.iva_ars ?? row.iva),
-      external_commissions_ars: clubBreakdown?.externalCommissionsArs > 0 ? clubBreakdown.externalCommissionsArs : safeNumber(row.comisiones_ars ?? row.comisiones),
+      gross_ars: grossArs,
+      iva_ars: ivaArs,
+      iibb_ars: safeNumber(clubBreakdown?.iibbArs),
+      payment_fees_ars: clubBreakdown ? safeNumber(clubBreakdown.paymentFeesArs) : externalCommissionsArs,
+      external_commissions_ars: externalCommissionsArs,
       commission_base_ars: 0,
       verified_for_commissions: isVerifiedForCommissions(row.verificacion_comisiones)
     };
@@ -1064,16 +1081,41 @@ function resolveCloserMegCommission(row, context) {
 }
 
 function buildDetailFinancials(row) {
+  const ivaArs = safeNumber(row.iva_ars);
+  const iibbArs = safeNumber(row.iibb_ars);
+  const paymentFeesArs = safeNumber(row.payment_fees_ars);
   return {
-    ivaArs: safeNumber(row.iva_ars),
+    grossArs: safeNumber(row.gross_ars),
+    ivaArs,
+    iibbArs,
+    paymentFeesArs,
     externalCommissionsArs: safeNumber(row.external_commissions_ars),
+    totalDeductionsArs: ivaArs + iibbArs + paymentFeesArs,
     netTotalArs: safeNumber(row.commission_base_ars)
+  };
+}
+
+// Cada venta Club ocupa un puesto en la escalera mensual de Nahuel; las transferencias
+// pagan siempre 40%, independientemente del tramo y de escalas guardadas.
+function resolveNahuelClubRule(row, saleNumber) {
+  if (isTransferPayment(row.medios_de_pago)) {
+    return {
+      pct: 0.4,
+      sourceRule: 'Transferencia Club Nahuel fija',
+      sourceRuleNote: `40% sobre el valor comisionable. Venta Club #${saleNumber} del mes: cuenta para la escalera y conserva el 40%.`
+    };
+  }
+  const pct = saleNumber >= 16 ? 0.65 : saleNumber >= 11 ? 0.6 : saleNumber >= 6 ? 0.55 : 0.5;
+  return {
+    pct,
+    sourceRule: 'Escala por venta Club Nahuel',
+    sourceRuleNote: `Venta Club #${saleNumber} del mes: ${Math.round(pct * 100)}% sobre el valor comisionable.`
   };
 }
 
 function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
-  const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey));
+  const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase()));
   const activeRows = config.global.includeOnlyVerified
     ? monthRows.filter((row) => row.verified_for_commissions)
     : monthRows;
@@ -1087,6 +1129,14 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const areaMap = buildAreaMap(config);
   const roleMap = buildRoleMap(config);
   const details = [];
+  const nahuelClubSequence = new Map();
+  activeRows
+    .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
+    .filter((row) => isNahuelSetter(row.setter) || isNahuelSetter(row.responsable_venta || row.creado_por))
+    .sort(compareRowsByArrival)
+    .forEach((row) => {
+      if (!nahuelClubSequence.has(row.id)) nahuelClubSequence.set(row.id, nahuelClubSequence.size + 1);
+    });
   const closerMegCache = new Map();
   const bonusTc = resolveMonthBonusTc(activeRows);
 
@@ -1103,7 +1153,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
         const sequentialCount = Number(closerClubSequenceMap.get(sequenceKey) || 0);
-        const clubPaymentRule = resolveClubPaymentRule(
+        const clubPaymentRule = isNahuelSetter(closerName) ? resolveNahuelClubRule(row, nahuelClubSequence.get(row.id)) : resolveClubPaymentRule(
           row,
           config,
           pickScalePct(config.clubScale, sequentialCount, config.global.defaultCloserPct)
@@ -1151,7 +1201,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
             sourceRuleNote: clubPaymentRule.sourceRuleNote || `Venta Club #${sequentialCount || 1} del mes para ${closerName}.`,
             counters: {
               agendas: 0,
-              clubSalesSequential: sequentialCount
+              clubSalesSequential: isNahuelSetter(closerName) ? nahuelClubSequence.get(row.id) : sequentialCount
             }
           });
         }
@@ -1213,11 +1263,65 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     }
 
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
-    if (isClub) return;
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
     const area = getAreaForPerson(areaMap, setterName, 'Comercial');
+
+    if (isClub && type === 'venta' && isNahuelSetter(setterName)) {
+      if (isNahuelSetter(closerName)) return;
+
+      const clubPaymentRule = resolveNahuelClubRule(row, nahuelClubSequence.get(row.id));
+      const baseAmount = row.commission_base_ars;
+      if (baseAmount <= 0 || clubPaymentRule.pct <= 0) return;
+
+      details.push({
+        id: `${row.id}:setter`,
+        transactionId: row.id,
+        date: row.f_venta_only || row.f_acreditacion_only || '',
+        dateTime: row.f_venta_raw || row.f_venta_only || row.f_acreditacion_raw || row.f_acreditacion_only || '',
+        acreditacionDate: row.f_acreditacion_only || '',
+        acreditacionDateTime: row.f_acreditacion_raw || row.f_acreditacion_only || '',
+        ventaDateTime: row.f_venta_raw || row.f_venta_only || '',
+        area,
+        person: setterName,
+        role: 'Setter',
+        category: 'Club',
+        tipo: row.tipo || 'Venta',
+        product: row.producto_format || 'Club',
+        clientName: row.cliente_format || '',
+        ghlid: row.ghlid || '',
+        setter: setterName,
+        closer: closerName,
+        origin: row.origen_actual || '',
+        firstOrigin: row.primer_origen || '',
+        paymentMethod: row.medios_de_pago || '',
+        tc: row.tc,
+        cheque: row.cheque,
+        conciliado: row.conciliado || '',
+        status: row.estado || '',
+        facturacionUsd: row.facturacion,
+        facturacionArs: row.facturacion_display_ars,
+        cashUsd: row.cash_usd,
+        cashArs: row.cash_collected_ars,
+        ...buildDetailFinancials(row),
+        baseAmount,
+        commissionPct: clubPaymentRule.pct,
+        commissionAmount: baseAmount * clubPaymentRule.pct,
+        bonusUsd: 0,
+        bonusArs: 0,
+        isBonus: false,
+        sourceRule: clubPaymentRule.sourceRule || 'Escala Club setter',
+        sourceRuleNote: clubPaymentRule.sourceRuleNote,
+        counters: {
+          agendas: setterAgendas,
+          clubSalesSequential: nahuelClubSequence.get(row.id)
+        }
+      });
+      return;
+    }
+
+    if (isClub) return;
 
     if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row, setterName)) {
       return;
@@ -1340,8 +1444,12 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
       facturacionArs: 0,
       cashUsd: 0,
       cashArs: 0,
+      grossArs: 0,
       ivaArs: 0,
+      iibbArs: 0,
+      paymentFeesArs: 0,
       externalCommissionsArs: 0,
+      totalDeductionsArs: 0,
       netTotalArs: 0,
       baseAmount: 0,
       commissionPct: 0,
@@ -1432,6 +1540,7 @@ function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) 
     if (!['venta', 'cobranza'].includes(type)) return;
     if (!matchesMonth(row.f_acreditacion_only, monthKey)) return;
     if (config.global.includeOnlyVerified && !row.verified_for_commissions) return;
+    if (normalizeText(row.estado) !== 'conciliado' || ['true','1'].includes(String(row.rebotar_pago || '').toLowerCase())) return;
     if (row.commission_base_ars <= 0) return;
     uniqueRows.set(row.id, row);
   });
@@ -1456,6 +1565,41 @@ function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) 
     total: gain,
     transactionCount: rows.length
   };
+}
+
+function uniqueTransactions(details) {
+  return [...new Map(details.filter(d => !d.isBonus).map(d => [d.transactionId, d])).values()];
+}
+
+function buildAreaCommissionData(details, marketingArea, sourceRows = [], monthKey, config) {
+  const commercial = uniqueTransactions(details.filter(d => d.role === 'Setter' && d.category === 'MEG'));
+  const sourceById = new Map(sourceRows.map(row=>[String(row.id),row]));
+  const csm = commercial.filter(detail => {
+    const row=sourceById.get(String(detail.transactionId));
+    const related=sourceById.get(String(row?.venta_relacionada || row?.cobranza_relacionada || ''));
+    return ![detail.product,row?.producto_format,related?.producto_format].some(product=>normalizeText(product).includes('consultor'));
+  });
+  const marketing = normalizeComprobanteRows(sourceRows).filter(row =>
+    ['venta','cobranza'].includes(normalizeText(row.tipo)) && matchesMonth(row.f_acreditacion_only, monthKey)
+    && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase())
+    && (!config.global.includeOnlyVerified || row.verified_for_commissions) && row.commission_base_ars > 0
+  ).map(row => ({transactionId:row.id, tipo:row.tipo, product:row.producto_format, category:isClubProduct(row.producto_format)?'Club':'MEG',
+    clientName:row.cliente_format, ghlid:row.ghlid, tc:row.tc, paymentMethod:row.medios_de_pago,
+    acreditacionDate:row.f_acreditacion_only, facturacionUsd:row.facturacion, facturacionArs:row.facturacion_display_ars,
+    cashUsd:row.cash_usd, cashArs:row.cash_collected_ars, ...buildDetailFinancials(row)}));
+  const groups = {Comercial:commercial, CSM:csm, Marketing:uniqueTransactions(marketing)};
+  return Object.entries(groups).map(([label,rows]) => {
+    const percentage=label==='Marketing'?0.05:0.04;
+    const netRows=rows.map(row=>personalNetFinancials(row));
+    const cc=netRows.reduce((sum,row)=>sum+safeNumber(row.cashArs),0);
+    const sales=netRows.filter(row=>normalizeText(row.tipo)==='venta');
+    return {label,percentage,cc,gain:cc*percentage,gainFinal:cc*percentage,total:cc*percentage,
+      ventasMeg:sales.filter(row=>row.category!=='Club').length,ventasClub:sales.filter(row=>row.category==='Club').length,
+      facturacion:sales.reduce((sum,row)=>sum+safeNumber(row.facturacionArs),0),transactionCount:rows.length,
+      details:netRows.map(row=>({...row,id:`${row.transactionId}:area:${label}`,area:label,role:'Área',person:label,
+        baseAmount:row.cashArs,commissionPct:percentage,commissionAmount:row.cashArs*percentage,
+        sourceRule:`Comisión del área ${label}`,isBonus:false,counters:{}}))};
+  });
 }
 
 async function getCommissionConfig(monthKey) {
@@ -1534,7 +1678,7 @@ async function lockCommissionMonth(monthKey, user) {
   };
 }
 
-async function buildCommissionDashboard(monthKey) {
+async function buildCommissionDashboard(monthKey, options = {}) {
   const safeMonth = normalizeMonthKey(monthKey);
   const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows] = await Promise.all([
     getCommissionConfig(safeMonth),
@@ -1560,14 +1704,17 @@ async function buildCommissionDashboard(monthKey) {
     config,
     comprobantesRows
   });
-  return {
+  const result = {
     month: safeMonth,
     locked,
     config,
     ...summary,
     marketingArea,
-    details
+    areaCommissions: buildAreaCommissionData(details, marketingArea, comprobantesRows, safeMonth, config),
+    details: details.map(detail => { const net=personalNetFinancials(detail); return {...detail, cashArs:net.cashArs, cashUsd:net.cashUsd, grossCashArs:net.grossCashArs, grossCashUsd:net.grossCashUsd}; })
   };
+  if (options.includeSourceRows === true) result.sourceComprobantesRows = comprobantesRows;
+  return result;
 }
 
 async function getCommissionPersonDetail(monthKey, person) {
@@ -1591,6 +1738,126 @@ async function getCommissionPersonDetail(monthKey, person) {
   };
 }
 
+// Personal reports expose net amounts; retain gross amounts for the audit breakdown.
+function personalNetFinancials(detail) {
+  if (detail.isBonus) return detail;
+  const grossCashArs = safeNumber(detail.grossArs ?? detail.cashArs);
+  const deductionsArs = safeNumber(detail.totalDeductionsArs
+    ?? (safeNumber(detail.ivaArs) + safeNumber(detail.iibbArs)
+      + safeNumber(detail.paymentFeesArs ?? detail.externalCommissionsArs)));
+  const netCashArs = Math.max(0, safeNumber(detail.netTotalArs ?? (grossCashArs - deductionsArs)));
+  const tc = safeNumber(detail.tc) || (safeNumber(detail.grossCashUsd ?? detail.cashUsd) > 0 ? grossCashArs / safeNumber(detail.grossCashUsd ?? detail.cashUsd) : 0);
+  const deductionsUsd = tc > 0 ? deductionsArs / tc : 0;
+  return {
+    ...detail,
+    grossCashUsd: safeNumber(detail.grossCashUsd ?? detail.cashUsd),
+    grossCashArs,
+    grossFacturacionUsd: safeNumber(detail.facturacionUsd),
+    cashArs: netCashArs,
+    cashUsd: tc > 0 ? netCashArs / tc : Math.max(0, safeNumber(detail.cashUsd) - deductionsUsd),
+    facturacionUsd: Math.max(0, safeNumber(detail.facturacionUsd) - deductionsUsd)
+  };
+}
+
+function buildPersonalCommercialArea(dashboard, user = {}) {
+  const responsibleName = comprobantesLoaderService.getResponsibleNameForUser(user);
+  const setterNames = comprobantesLoaderService.getComprobantesSetterNames(user);
+  const identities = [...new Set([responsibleName, ...setterNames].map((value) => titleCaseName(value)).filter(Boolean))];
+  const normalizedIdentities = new Set(identities.map(normalizeText));
+  const details = (dashboard.details || []).filter((detail) => normalizedIdentities.has(normalizeText(detail.person))).map(personalNetFinancials);
+  const personal = summarizeDetails(details);
+  const transactionDetails = [...new Map(details
+    .filter((detail) => !detail.isBonus)
+    .map((detail, index) => [detail.transactionId || `line-${index}`, detail])).values()];
+  const cashUsd = transactionDetails.reduce((sum, detail) => sum + safeNumber(detail.cashUsd), 0);
+  const cashArs = transactionDetails.reduce((sum, detail) => sum + safeNumber(detail.cashArs), 0);
+  const ivaArs = transactionDetails.reduce((sum, detail) => sum + safeNumber(detail.ivaArs), 0);
+  const iibbArs = transactionDetails.reduce((sum, detail) => sum + safeNumber(detail.iibbArs), 0);
+  const paymentFeesArs = transactionDetails.reduce((sum, detail) => sum + safeNumber(detail.paymentFeesArs ?? detail.externalCommissionsArs), 0);
+  const totalDeductionsArs = ivaArs + iibbArs + paymentFeesArs;
+  const salesDetails = transactionDetails.filter((detail) => normalizeText(detail.tipo) === 'venta');
+  const facturacionUsd = salesDetails.reduce((sum, detail) => sum + safeNumber(detail.facturacionUsd), 0);
+  const clubSales = salesDetails.filter((detail) => detail.category === 'Club').length;
+  const agendas = personal.people.reduce((max, person) => Math.max(max, safeNumber(person.agendas)), 0);
+
+  return {
+    month: dashboard.month,
+    locked: dashboard.locked,
+    person: responsibleName || String(user?.nombre || user?.email || '').trim(),
+    identities,
+    summary: {
+      ...personal.summary,
+      cashUsd,
+      cashArs,
+      ivaArs,
+      iibbArs,
+      paymentFeesArs,
+      totalDeductionsArs,
+      facturacionUsd,
+      salesCount: salesDetails.length,
+      clubSales,
+      agendas
+    },
+    people: personal.people,
+    details
+  };
+}
+
+function buildPersonalClubMonthly(comprobantesRows, user = {}, year, includeOnlyVerified = true) {
+  const responsibleName = comprobantesLoaderService.getResponsibleNameForUser(user);
+  const setterNames = comprobantesLoaderService.getComprobantesSetterNames(user);
+  const identities = new Set(
+    [responsibleName, ...setterNames]
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+  );
+  const safeYear = Number(year);
+  const uniqueRows = new Map();
+
+  normalizeComprobanteRows(comprobantesRows).forEach((row) => {
+    if (!row.id || uniqueRows.has(row.id)) return;
+    if (normalizeText(row.tipo) !== 'venta' || !isClubProduct(row.producto_format)) return;
+    if (includeOnlyVerified && !row.verified_for_commissions) return;
+    if (!identities.has(normalizeText(row.responsable_venta)) && !identities.has(normalizeText(row.setter))) return;
+    if (Number(String(row.f_acreditacion_only || '').slice(0, 4)) !== safeYear) return;
+    uniqueRows.set(row.id, row);
+  });
+
+  const totals = Array.from({ length: 12 }, (_, index) => ({
+    year: safeYear,
+    month: index + 1,
+    sales: 0
+  }));
+  uniqueRows.forEach((row) => {
+    const month = Number(String(row.f_acreditacion_only || '').slice(5, 7));
+    if (month >= 1 && month <= 12) totals[month - 1].sales += 1;
+  });
+  return totals;
+}
+
+async function getMyCommercialArea(monthKey, user) {
+  const dashboard = await buildCommissionDashboard(monthKey, { includeSourceRows: true });
+  const area=commissionAreaForUser(user);
+  if(area){
+    const selected=dashboard.areaCommissions.find(row=>row.label===area);
+    const details=selected.details;
+    return {month:dashboard.month,locked:dashboard.locked,person:user.nombre||area,commissionArea:area,details,people:[],
+      summary:{totalCommission:selected.gain,totalBase:selected.cc,cashArs:selected.cc,
+        cashUsd:details.reduce((sum,row)=>sum+safeNumber(row.cashUsd),0),
+        facturacionUsd:details.filter(row=>normalizeText(row.tipo)==='venta').reduce((sum,row)=>sum+safeNumber(row.facturacionUsd),0),
+        totalDeductionsArs:details.reduce((sum,row)=>sum+safeNumber(row.totalDeductionsArs),0),
+        transactionCount:selected.transactionCount,salesCount:selected.ventasMeg+selected.ventasClub,clubSales:selected.ventasClub}};
+  }
+  const personal = buildPersonalCommercialArea(dashboard, user);
+  personal.clubMonthly = buildPersonalClubMonthly(
+    dashboard.sourceComprobantesRows,
+    user,
+    Number(String(dashboard.month).slice(0, 4)),
+    dashboard.config?.global?.includeOnlyVerified !== false
+  );
+  return personal;
+}
+
 module.exports = {
   DEFAULT_CONFIG,
   normalizeConfig,
@@ -1600,12 +1867,17 @@ module.exports = {
   lockCommissionMonth,
   buildCommissionDashboard,
   getCommissionPersonDetail,
+  getMyCommercialArea,
   _test: {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,
     qualifiesForSettingTransaction,
     enrichComprobanteOrigins,
     buildTransactionDetails,
-    buildMarketingAreaSummary
+    computeClubNetBreakdown,
+    buildMarketingAreaSummary,
+    buildAreaCommissionData,
+    buildPersonalCommercialArea,
+    buildPersonalClubMonthly
   }
 };
