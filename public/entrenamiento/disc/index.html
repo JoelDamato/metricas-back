@@ -74,7 +74,7 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
   <div class="discbar" aria-hidden="true"><span style="background:var(--d)"></span><span style="background:var(--i)"></span><span style="background:var(--s)"></span><span style="background:var(--c)"></span></div>
   <p class="kicker">Perfil de comportamiento</p>
   <h1>Test DISC</h1>
-  <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos. Desde que empezás tenés un máximo de 30 minutos; al terminar el tiempo se guarda como incompleto.</p>
+  <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos. Desde que empezás tenés un máximo de 30 minutos; al terminar el tiempo se borran las respuestas y el test vuelve a empezar.</p>
   <div class="card stack">
     <label class="f" for="nombre">Nombre y apellido
       <input id="nombre" maxlength="150" type="text" autocomplete="name" required>
@@ -177,19 +177,25 @@ function show(id){ ["v-intro","v-quiz","v-result"].forEach(v=>$(v).hidden = v!==
 
 const DRAFT_KEY='disc-attempt-v1';let serverOffset=0,saving=false,queued=false;
 function persist(){try{localStorage.setItem(DRAFT_KEY,JSON.stringify(st));}catch{}}
-async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.message||'No se pudo guardar.');if(result.serverNow)serverOffset=Date.parse(result.serverNow)-Date.now();if(result.deadlineAt)st.deadlineAt=result.deadlineAt;return result;}
-function incomplete(result){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Test incompleto';$('r-name').textContent=st.nombre+' · '+st.email;$('r-bars').textContent='Se guardaron '+(result.answers||st.ans).filter(Boolean).length+' de 30 respuestas.';$('r-prof').textContent='El tiempo asignado terminó. Leo podrá revisar las respuestas alcanzadas.';$('copy').hidden=true;$('retry').hidden=true;$('r-send').textContent='Guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';}
-async function autosave(){if(saving){queued=true;return;}saving=true;try{const result=await api({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision});if(result.completionStatus==='incomplete')incomplete(result);else if($('save-status'))$('save-status').textContent='Respuestas guardadas.';}catch(e){$('save-status').textContent='Sin confirmar guardado. Reintentando…';}finally{saving=false;if(queued){queued=false;autosave();}}}
-function tick(){if(!st.deadlineAt||st.closed)return;const seconds=Math.max(0,Math.ceil((Date.parse(st.deadlineAt)-Date.now()-serverOffset)/1000));$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds===0){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Guardando respuestas';$('r-name').textContent=st.nombre;$('r-bars').textContent='El test se cerró al cumplirse la hora.';$('copy').hidden=true;send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,finish:true});}}
+async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.message||'No se pudo guardar.');if(result.serverNow)serverOffset=Date.parse(result.serverNow)-Date.now();if(result.deadlineAt&&Number(result.generation||0)>=Number(st.generation||0))st.deadlineAt=result.deadlineAt;return result;}
+function restartAttempt(result){
+ if(Number(result.generation||0)<Number(st.generation||0))return;
+ Object.assign(st,{i:0,ans:result.answers||Array(Q.length).fill(null),order:Q.map(()=>shuffle(['D','I','S','C'])),revision:result.revision||0,generation:result.generation||0,startedAt:result.startedAt,deadlineAt:result.deadlineAt,closed:false});
+ persist();$('r-bars').textContent='';$('r-prof').textContent='';$('copy').hidden=false;show('v-quiz');render();tick();$('save-status').textContent='Se agotó el tiempo anterior. Empezás de cero con 30 minutos.';
+}
+function needsRestart(result){return Number(result.generation||0)>Number(st.generation||0);}
+
+async function autosave(){if(saving){queued=true;return;}saving=true;try{const result=await api({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0});if(needsRestart(result))restartAttempt(result);else if($('save-status'))$('save-status').textContent='Respuestas guardadas.';}catch(e){$('save-status').textContent='Sin confirmar guardado. Reintentando…';}finally{saving=false;if(queued){queued=false;autosave();}}}
+function tick(){if(!st.deadlineAt||st.closed)return;const seconds=Math.max(0,Math.ceil((Date.parse(st.deadlineAt)-Date.now()-serverOffset)/1000));$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds===0){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Reiniciando test';$('r-name').textContent=st.nombre;$('r-bars').textContent='Las respuestas se descartan y volvés a empezar con 30 minutos.';$('copy').hidden=true;send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0,finish:true});}}
 setInterval(tick,500);setInterval(()=>{if(st.submissionKey&&!st.closed)autosave();},10000);
 $("start").addEventListener("click",async()=>{
  const n=$("nombre").value.trim();if(n.length<2||!$('email').checkValidity()){$('intro-err').hidden=false;return;}
  $('start').disabled=true;
  try{const response=await fetch(CONFIG.ENDPOINT+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n,email:$('email').value.trim()})});const result=await response.json();if(!response.ok)throw Error(result.message);
- Object.assign(st,{nombre:n,email:$('email').value.trim().toLowerCase(),submissionKey:result.attemptKey,startedAt:result.startedAt,deadlineAt:result.deadlineAt,revision:0,closed:false});serverOffset=Date.parse(result.serverNow)-Date.now();st.order=Q.map(()=>shuffle(['D','I','S','C']));persist();show('v-quiz');render();tick();
+ Object.assign(st,{nombre:n,email:$('email').value.trim().toLowerCase(),submissionKey:result.attemptKey,startedAt:result.startedAt,deadlineAt:result.deadlineAt,revision:0,generation:0,closed:false});serverOffset=Date.parse(result.serverNow)-Date.now();st.order=Q.map(()=>shuffle(['D','I','S','C']));persist();show('v-quiz');render();tick();
  }catch(e){$('intro-err').textContent=e.message;$('intro-err').hidden=false;}finally{$('start').disabled=false;}
 });
-async function resume(){let draft;try{draft=JSON.parse(localStorage.getItem(DRAFT_KEY));}catch{}if(!draft?.submissionKey)return;Object.assign(st,draft);try{const result=await api({submissionKey:st.submissionKey});if(result.completionStatus==='incomplete'){incomplete(result);return;}if(result.finalized){st.closed=true;st.ans=result.answers;finish(false);$('r-send').textContent='Resultado guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';return;}st.closed=false;st.deadlineAt=result.deadlineAt;if(result.revision>=st.revision){st.ans=result.answers;st.revision=result.revision;}show('v-quiz');render();tick();autosave();}catch(e){$('intro-err').textContent='No se pudo retomar el test. Recargá para reintentar; el reloj sigue corriendo.';$('intro-err').hidden=false;$('start').disabled=true;}}
+async function resume(){let draft;try{draft=JSON.parse(localStorage.getItem(DRAFT_KEY));}catch{}if(!draft?.submissionKey)return;Object.assign(st,draft);try{const result=await api({submissionKey:st.submissionKey,generation:st.generation||0});if(needsRestart(result)){restartAttempt(result);return;}if(result.finalized){st.closed=true;st.ans=result.answers;finish(false);$('r-send').textContent='Resultado guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';return;}st.closed=false;st.deadlineAt=result.deadlineAt;if(result.revision>=st.revision){st.ans=result.answers;st.revision=result.revision;}show('v-quiz');render();tick();autosave();}catch(e){$('intro-err').textContent='No se pudo retomar el test. Recargá para reintentar; el reloj sigue corriendo.';$('intro-err').hidden=false;$('start').disabled=true;}}
 resume();
 
 function render(){
@@ -269,7 +275,7 @@ function finish(submit=true){
     $("wa").href="https://wa.me/"+CONFIG.WHATSAPP+"?text="+encodeURIComponent(txt);
     $("wa").hidden=false;
   }
-  if(submit)send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,finish:true});
+  if(submit)send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0,finish:true});
   $("bar").style.width="100%";
   show("v-result");
 }
@@ -282,7 +288,7 @@ async function send(data){
     const response=await fetch(CONFIG.ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
     const result=await response.json();
     if(!response.ok){el.textContent=result.message||"No se pudo guardar el test.";$("retry").hidden=response.status===409;return;}
-    if(result.completionStatus==='incomplete'){incomplete(result);return;}
+    if(needsRestart(result)){restartAttempt(result);return;}
     st.closed=true;persist();
     el.textContent="Resultado guardado el "+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+" (hora Argentina).";
   }catch{el.textContent="No se pudo confirmar el envío. Reintentá sin cerrar esta pantalla.";$("retry").hidden=false;}

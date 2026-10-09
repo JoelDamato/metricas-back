@@ -3,8 +3,8 @@ const env=require('../metricasv2/config/env');
 const canRead=user=>['leonardoalaniz19@gmail.com','matirandazzo@gmail.com'].includes(String(user?.email||'').trim().toLowerCase());
 async function db(params,method='get',data){return (await axios({url:env.supabaseUrl+'/rest/v1/training_disc_submissions',method,params,data,headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey,Prefer:'return=representation'},timeout:20000})).data;}
 async function attemptDb(params,method='get',data){return (await axios({url:env.supabaseUrl+'/rest/v1/training_disc_attempts',method,params,data,headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey,Prefer:'return=representation'},timeout:20000})).data;}
-async function saveAttempt(key,answers=null,revision=0,finish=false){return (await axios.post(env.supabaseUrl+'/rest/v1/rpc/disc_attempt_save',{p_key:key,p_answers:answers,p_revision:revision,p_finish:finish},{headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey},timeout:20000})).data;}
-async function finalizeExpired(){const rows=await attemptDb({finalized:'eq.false',deadline_at:'lte.'+new Date().toISOString(),select:'attempt_key',limit:100});for(const row of rows)await saveAttempt(row.attempt_key);}
+async function saveAttempt(key,answers=null,revision=0,finish=false,generation=0){return (await axios.post(env.supabaseUrl+'/rest/v1/rpc/disc_attempt_save',{p_key:key,p_answers:answers,p_revision:revision,p_finish:finish,p_generation:generation},{headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey},timeout:20000})).data;}
+
 function validate(body={}){
  const nombre=String(body.nombre||'').trim(),email=String(body.email||'').trim().toLowerCase(),answers=body.respuestas;
  if(nombre.length<2||nombre.length>150||email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error('Ingresá nombre y email válidos.');
@@ -17,7 +17,6 @@ function validate(body={}){
 }
 function publicRouter(request=db,attemptStore=attemptDb,save=saveAttempt){
  const router=express.Router(),limits=new Map();
- if(request===db){const timer=setInterval(()=>finalizeExpired().catch(()=>{}),30000);timer.unref();}
  router.use((req,res,next)=>{res.set('Cache-Control','no-store');next();});
  router.post('/disc/start',async(req,res)=>{
   const now=Date.now();for(const [k,v] of limits)if(v.until<now)limits.delete(k);
@@ -34,12 +33,12 @@ function publicRouter(request=db,attemptStore=attemptDb,save=saveAttempt){
  router.post('/disc',async(req,res)=>{
   const key=req.body?.submissionKey;
   if(!/^[0-9a-f-]{36}$/i.test(key||''))return res.status(400).json({message:'Iniciá el test para activar el reloj.'});
-  try{const result=await save(key,req.body.respuestas??null,Math.max(0,Math.min(100000,parseInt(req.body.revision,10)||0)),req.body.finish===true);res.json({ok:true,...result});}
+  try{const result=await save(key,req.body.respuestas??null,Math.max(0,Math.min(100000,parseInt(req.body.revision,10)||0)),req.body.finish===true,Math.max(0,parseInt(req.body.generation,10)||0));res.json({ok:true,...result});}
   catch(e){res.status(e.response?.status===400?400:503).json({message:e.response?.status===400?'No se pudo validar el intento o las respuestas.':'No se pudo guardar. Reintentá sin cerrar esta pantalla.'});}
  });return router;
 }
 function privateRouter(request=db){
  const router=express.Router();router.use((req,res,next)=>{res.set('Cache-Control','no-store');if(!req.authUser)return res.status(401).json({message:'Sesión requerida'});if(!canRead(req.authUser))return res.status(403).json({message:'Sin acceso al Centro de entrenamiento'});next();});
- router.get('/',async(req,res)=>{try{if(request===db)await finalizeExpired();const offset=Math.max(0,parseInt(req.query.offset,10)||0);const rows=await request({select:'id,nombre,email,percentages,predominant,submitted_at,test_version,answers,started_at,completion_status',order:'submitted_at.desc,id.desc',limit:51,offset});res.json({rows:rows.slice(0,50),hasMore:rows.length>50});}catch{res.status(503).json({message:'No se pudieron cargar los resultados. Volvé a intentar.'});}});return router;
+ router.get('/',async(req,res)=>{try{const offset=Math.max(0,parseInt(req.query.offset,10)||0);const rows=await request({completion_status:'eq.completed',select:'id,nombre,email,percentages,predominant,submitted_at,test_version,answers,started_at,completion_status',order:'submitted_at.desc,id.desc',limit:51,offset});res.json({rows:rows.slice(0,50),hasMore:rows.length>50});}catch{res.status(503).json({message:'No se pudieron cargar los resultados. Volvé a intentar.'});}});return router;
 }
 module.exports={publicRouter,privateRouter,validate,canRead};
