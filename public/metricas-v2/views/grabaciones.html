@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
     <link rel="stylesheet" href="/css/pdi.css?v=20260924-pdi-1" />
-  <link rel="stylesheet" href="/css/recordings.css?v=20261008-top-1"></head>
+  <link rel="stylesheet" href="/css/recordings.css?v=20261009-call-filters-1"></head>
   <body class="ranking-page workspace-brand-page premium-navy-background">
     <main class="container workspace-brand-layout">
       <section class="workspace-brand-hero">
@@ -23,12 +23,19 @@
 
       <section class="recordings-library">
         <div class="recording-tabs" role="group" aria-label="Lista de grabaciones"><button type="button" data-tab="all" aria-pressed="true">Todas</button><button type="button" data-tab="top" aria-pressed="false">★ Top</button></div>
-        <label for="recordingSearch">Buscar por cliente</label><input id="recordingSearch" type="search" placeholder="Nombre del cliente…">
+        <div class="recording-filters">
+          <label>Buscar por cliente<input id="recordingSearch" type="search" placeholder="Nombre del cliente…"></label>
+          <label>Closer<select id="recordingCloser"><option value="">Todos los closers</option></select></label>
+          <label>Desde<input id="recordingFrom" type="date"></label>
+          <label>Hasta<input id="recordingTo" type="date"></label>
+        </div>
+        <button id="recordingClear" type="button">Limpiar filtros</button>
+        <p class="recording-metadata">Fecha y closer registrados en GHL para el contacto. Primero las llamadas más recientes.</p>
         <p id="recordingStatus" role="status" aria-live="polite">Cargando grabaciones…</p>
         <div id="recordingList"></div><button id="recordingMore" hidden>Mostrar más</button>
       </section>
     </main>
 
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-  <script src="/js/views/recordings.page.js?v=20261008-top-1"></script></body>
+  <script src="/js/views/recordings.page.js?v=20261009-call-filters-1"></script></body>
 </html>

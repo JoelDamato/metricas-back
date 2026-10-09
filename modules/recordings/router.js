@@ -7,6 +7,12 @@ const headers = () => ({apikey:env.supabaseKey, Authorization:`Bearer ${env.supa
 async function db(table, params={}, method='get', data) {
   return (await axios({url:`${env.supabaseUrl}/rest/v1/${table}`,method,params,data,headers:headers(),timeout:30000})).data;
 }
+function callDate(value) {
+  const text=typeof value==='string'?value.trim():'';
+  if(!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(text))return null;
+  const day=text.slice(0,10),date=new Date(day+'T00:00:00Z');
+  return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===day?day:null;
+}
 function extractRecordings(rows) {
   const results = new Map();
   for (const row of rows) {
@@ -15,10 +21,10 @@ function extractRecordings(rows) {
       const url = match[0].replace(/[.,;!?)\]}]+$/, '');
       try { const parsed=new URL(url); if(!['https:','http:'].includes(parsed.protocol)||parsed.username||parsed.password)continue; } catch { continue; }
       const id=createHash('sha256').update(`${row.ghlid}\n${url}`).digest('hex');
-      results.set(id,{id,ghlid:row.ghlid,name:row.name||'Cliente sin nombre',url});
+      results.set(id,{id,ghlid:row.ghlid,name:row.name||'Cliente sin nombre',url,closer:String(row.closer||'').trim(),callDate:callDate(row.call_date)});
     }
   }
-  return [...results.values()].sort((a,b)=>a.name.localeCompare(b.name,'es')||a.id.localeCompare(b.id));
+  return [...results.values()].sort((a,b)=>(b.callDate||'').localeCompare(a.callDate||'')||a.name.localeCompare(b.name,'es')||a.id.localeCompare(b.id));
 }
 const canCurate = user => ['leonardoalaniz19@gmail.com','matirandazzo@gmail.com'].includes(String(user?.email || '').trim().toLowerCase());
 function createRouter(request=db) {
@@ -26,7 +32,7 @@ function createRouter(request=db) {
   async function library() {
     if(cached&&Date.now()<expires)return cached;
     const rows=[];
-    for(let offset=0;;offset+=250){const batch=await request('recording_sources',{select:'ghlid,name,recordings',recordings:'not.is.null',order:'ghlid',limit:250,offset});rows.push(...batch);if(batch.length<250)break;}
+    for(let offset=0;;offset+=250){const batch=await request('recording_sources',{select:'ghlid,name,recordings,closer,call_date',recordings:'not.is.null',order:'ghlid',limit:250,offset});rows.push(...batch);if(batch.length<250)break;}
     cached=extractRecordings(rows);expires=Date.now()+60000;return cached;
   }
   router.use((req,res,next)=>{if(!req.authUser)return res.status(401).json({message:'Sesión requerida'});if(!access.canAccessPageForUser(req.authUser,'grabaciones.html'))return res.status(403).json({message:'Sin acceso a grabaciones'});res.set('Cache-Control','no-store');next();});

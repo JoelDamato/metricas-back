@@ -11,3 +11,24 @@ test('only Leo and Mati curate the shared Top list',async()=>{
  const db=async(table,p,method='get',data)=>{if(table==='recording_sources')return sources;if(method==='post'){top=[{...data,selected_at:new Date().toISOString()}];return top;}if(method==='delete'){top=[];return [];}return top;};
  const app=express();app.use(express.json());app.use((req,res,next)=>{req.authUser={email:req.headers['x-user'],nombre:'Usuario',role:'total'};next();});app.use(createRouter(db));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));try{const base=`http://127.0.0.1:${server.address().port}`,call=(email,selected)=>fetch(`${base}/${id}/top`,{method:'PUT',headers:{'Content-Type':'application/json','x-user':email},body:JSON.stringify({selected})});assert.equal((await call('otro@example.com',true)).status,403);assert.equal((await call('leonardoalaniz19@gmail.com',true)).status,200);const list=await (await fetch(base,{headers:{'x-user':'otro@example.com'}})).json();assert.equal(list.canCurate,false);assert(list.recordings[0].top);assert.equal((await call('matirandazzo@gmail.com',false)).status,200);assert.equal(top.length,0);}finally{await new Promise(r=>server.close(r));}
 });
+test('call dates remain calendar dates, reject invalid values and preserve comment identity',()=>{
+ const source={ghlid:'a',name:'Ana',recordings:'https://example.com/video'};
+ const original=extractRecordings([source])[0];
+ const row=extractRecordings([{...source,closer:' Carlos Tu ',call_date:'2026-10-09'}])[0];
+ assert.equal(row.id,original.id);assert.equal(row.closer,'Carlos Tu');assert.equal(row.callDate,'2026-10-09');
+ for(const call_date of ['2026-02-30','09/10/2026','',null])assert.equal(extractRecordings([{...source,call_date}])[0].callDate,null);
+ assert.equal(extractRecordings([{...source,call_date:'2026-10-09T00:00:00Z'}])[0].callDate,'2026-10-09');
+ const rows=extractRecordings([{...source,ghlid:'old',call_date:'2026-01-01'},{...source,ghlid:'new',call_date:'2026-10-09'},source]);
+ assert.deepEqual(rows.map(r=>r.ghlid),['new','old','a']);
+});
+test('GHL recording metadata is backfilled and stays synchronized without changing recording IDs',async()=>{
+ const {PGlite}=require('@electric-sql/pglite'),fs=require('fs');const db=new PGlite();
+ try{
+  await db.exec("create role anon;create role authenticated;create role service_role;create table csm_ghl_contacts(ghlid text,fields jsonb);insert into csm_ghl_contacts values('a','{\"full_name\":\"Ana\",\"Closer\":\"Carlos Tu\",\"Fecha de llamada\":\"2026-10-09\",\"Grabacion de llamadas\":\"https://example.com/video\"}');");
+  await db.exec(fs.readFileSync('supabase/migrations/20261008121000_recording_sources.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261009153000_recording_call_metadata.sql','utf8'));
+  let row=(await db.query('select * from recording_sources')).rows[0];assert.equal(row.call_date,'2026-10-09');assert.equal(row.closer,'Carlos Tu');
+  await db.exec(`update csm_ghl_contacts set fields=fields || '{"Fecha de llamada":"2026-10-10"}'::jsonb;`);
+  row=(await db.query('select * from recording_sources')).rows[0];assert.equal(row.call_date,'2026-10-10');assert.equal(row.closer,'Carlos Tu');
+ }finally{await db.close();}
+});

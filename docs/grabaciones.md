@@ -13,3 +13,5 @@ Verificación: `node --test test/recordings.test.js`. El cambio de aplicación q
 ## Top
 
 Solapas Todas y Top. La selección es compartida y persiste en `recording_top` (migración `20261008123000_recording_top.sql`). Sólo `leonardoalaniz19@gmail.com` y `matirandazzo@gmail.com` pueden agregar o quitar, validado en servidor. Todos los usuarios con acceso a Grabaciones pueden consultar Top y sus comentarios, que siguen vinculados al mismo enlace. Agregar una grabación ya seleccionada no reemplaza su autor original.
+
+La biblioteca muestra `Closer` y `Fecha de llamada` de GHL, ordena primero las fechas recientes y permite combinar cliente, closer y rango de fechas (ambos extremos incluidos). Los filtros también aplican a Top. Las fechas ausentes o inválidas aparecen como “Sin fecha informada” y no entran en un rango seleccionado. La fecha corresponde al contacto en GHL; si contiene varios enlaces no se infieren fechas individuales para cada video. Los IDs de grabación permanecen iguales para conservar comentarios y Top.
