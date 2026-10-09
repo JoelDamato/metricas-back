@@ -25,8 +25,9 @@ test('base de datos impide duplicados y lecturas anónimas',async()=>{
 test('reloj servidor cierra incompletos, conserva respuestas y rechaza cambios tardíos',async()=>{
  const {PGlite}=require('@electric-sql/pglite'),fs=require('fs');const db=new PGlite();try{
  await db.exec('create role anon;create role authenticated;create role service_role;');
- for(const file of ['20261010010000_training_disc.sql','20261010020000_disc_timer.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+ for(const file of ['20261010010000_training_disc.sql','20261010020000_disc_timer.sql','20261010023000_disc_thirty_minutes.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
  const key=payload.submissionKey;await db.query('insert into training_disc_attempts(attempt_key,email,nombre) values($1,$2,$3)',[key,'timer@example.com','Test reloj']);
+ const duration=await db.query('select extract(epoch from (deadline_at-started_at)) as seconds from training_disc_attempts where attempt_key=$1',[key]);assert.equal(Number(duration.rows[0].seconds),1800);
  const answers=Array(30).fill(null);answers[0]='D';
  const save=async(a,revision,finish=false)=>(await db.query('select disc_attempt_save($1,$2,$3,$4) as result',[key,a===null?null:JSON.stringify(a),revision,finish])).rows[0].result;
  await save(answers,2);const stale=await save(Array(30).fill(null),1);assert.equal(stale.answers[0],'D');
