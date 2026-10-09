@@ -42,3 +42,5 @@
 @media(max-width:1000px){.marketing-refresh .marketing-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.marketing-refresh .marketing-editors{grid-template-columns:1fr}.marketing-refresh .marketing-kpi{padding:17px}.marketing-refresh .marketing-actions{display:grid;grid-template-columns:1fr 1fr}.marketing-refresh .marketing-actions label{min-width:0}.marketing-refresh main input,.marketing-refresh main select{width:100%}}
 @media(prefers-reduced-motion:reduce){.marketing-refresh main[aria-busy=true] #status::before{animation:none}}
+.marketing-refresh main .marketing-sort-trigger {background:transparent;border:0;padding:0;color:inherit;border-radius:0;font-size:inherit}
+.marketing-refresh main .marketing-sort-trigger.active {color:#8fbdff}

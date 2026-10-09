@@ -1646,7 +1646,7 @@ function renderAgendaBreakdown(rows, filters) {
 async function loadOrigins() {
   const response = await window.http.getJson('/api/metricas/marketing/origins');
   const selected = document.getElementById('origen').value;
-  setOriginOptions(response.origins || []);
+  setOriginOptions([...new Set((response.origins || []).map(normalizeOriginGroup))].sort((a,b)=>a.localeCompare(b)));
   document.getElementById('origen').value = selected;
 }
 
