@@ -8,7 +8,7 @@ const directService = require('../modules/metricasv2/services/comprobantes-direc
 const loaderService = require('../modules/metricasv2/services/comprobantes-loader.service');
 
 const pgliteEntry = process.env.PGLITE_PACKAGE_PATH
-  || '/tmp/comprobantes-pglite/node_modules/@electric-sql/pglite/dist/index.cjs';
+  || '@electric-sql/pglite';
 
 if (!fs.existsSync(pgliteEntry)) {
   throw new Error(`No encontré PGlite en ${pgliteEntry}. Instalalo fuera del proyecto y definí PGLITE_PACKAGE_PATH.`);

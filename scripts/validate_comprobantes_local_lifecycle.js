@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 process.env.COMPROBANTES_LOCAL_DIRECT='1';delete process.env.COMPROBANTES_LOCAL_REAL_TEST;
 process.env.SUPABASE_URL='https://local-benchmark.supabase.co';process.env.SUPABASE_SERVICE_ROLE_KEY='local-only';process.env.SUPABASE_ACCESS_TOKEN='local-only';
 const audit=fs.mkdtempSync(path.join(os.tmpdir(),'comprobantes-lifecycle-'));process.env.COMPROBANTES_LOCAL_AUDIT_DIR=audit;
-const {PGlite}=require(process.env.PGLITE_PACKAGE_PATH||'/tmp/comprobantes-pglite/node_modules/@electric-sql/pglite/dist/index.cjs');
+const {PGlite}=require(process.env.PGLITE_PACKAGE_PATH||'@electric-sql/pglite');
 const axios=require('axios'),local=require('../modules/metricasv2/services/comprobantes-local-test.service'),direct=require('../modules/metricasv2/services/comprobantes-direct.service');
 const schema=require('../test/fixtures/comprobantes-existing-schema.json');
 const user={email:'matirandazzo@gmail.com',nombre:'Mati Randazzo'};

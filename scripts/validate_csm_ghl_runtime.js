@@ -1,5 +1,5 @@
 const fs=require('fs'),assert=require('node:assert/strict'),crypto=require('crypto');
-const {PGlite}=require(process.env.PGLITE_PACKAGE_PATH||'/tmp/comprobantes-pglite/node_modules/@electric-sql/pglite/dist/index.cjs');
+const {PGlite}=require(process.env.PGLITE_PACKAGE_PATH||'@electric-sql/pglite');
 const {mapGhlCsm}=require('../modules/csm/ghl-csm-mapper');
 (async()=>{const db=new PGlite();try{
  const schema=require('../test/fixtures/csm-existing-schema.json');await db.exec(`create role anon;create role authenticated;create role service_role;create table leads_raw(id text,ghlid text);create table csm(${schema.map(c=>`"${c.column_name}" ${c.data_type}${c.column_name==='id'?' primary key':''}${c.column_default?' default '+c.column_default:''}`).join(',')});`);
