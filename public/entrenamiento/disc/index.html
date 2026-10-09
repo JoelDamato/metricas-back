@@ -74,7 +74,7 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
   <div class="discbar" aria-hidden="true"><span style="background:var(--d)"></span><span style="background:var(--i)"></span><span style="background:var(--s)"></span><span style="background:var(--c)"></span></div>
   <p class="kicker">Perfil de comportamiento</p>
   <h1>Test DISC</h1>
-  <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos.</p>
+  <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos. Desde que empezás tenés un máximo de 60 minutos; al terminar el tiempo se guarda como incompleto.</p>
   <div class="card stack">
     <label class="f" for="nombre">Nombre y apellido
       <input id="nombre" maxlength="150" type="text" autocomplete="name" required>
@@ -89,6 +89,7 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
 </section>
 
 <section id="v-quiz" class="stack" hidden>
+  <div class="card" style="position:sticky;top:8px;z-index:2;padding:12px 18px"><strong>Tiempo restante: <span id="timer" role="timer">60:00</span></strong><p id="save-status" class="note">Las respuestas se guardan automáticamente.</p></div>
   <div class="progress"><span id="count">1 de 30</span><div class="track"><i id="bar" style="width:0%"></i></div></div>
   <p id="part" class="kicker"></p>
   <h2 id="q"></h2>
@@ -174,13 +175,22 @@ const st = { nombre:"", email:"", i:0, ans:Array(Q.length).fill(null), order:[] 
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 function show(id){ ["v-intro","v-quiz","v-result"].forEach(v=>$(v).hidden = v!==id); window.scrollTo(0,0); }
 
-$("start").addEventListener("click",()=>{
-  const n=$("nombre").value.trim();
-  if(n.length<2 || !$("email").checkValidity()){ $("intro-err").hidden=false; $("nombre").focus(); return; }
-  st.nombre=n; st.email=$("email").value.trim().toLowerCase(); st.submissionKey=crypto.randomUUID();
-  st.order = Q.map(()=>shuffle(["D","I","S","C"]));
-  show("v-quiz"); render();
+const DRAFT_KEY='disc-attempt-v1';let serverOffset=0,saving=false,queued=false;
+function persist(){try{localStorage.setItem(DRAFT_KEY,JSON.stringify(st));}catch{}}
+async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.message||'No se pudo guardar.');if(result.serverNow)serverOffset=Date.parse(result.serverNow)-Date.now();return result;}
+function incomplete(result){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Test incompleto';$('r-name').textContent=st.nombre+' · '+st.email;$('r-bars').textContent='Se guardaron '+(result.answers||st.ans).filter(Boolean).length+' de 30 respuestas.';$('r-prof').textContent='El plazo de una hora terminó. Leo podrá revisar las respuestas alcanzadas.';$('copy').hidden=true;$('retry').hidden=true;$('r-send').textContent='Guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';}
+async function autosave(){if(saving){queued=true;return;}saving=true;try{const result=await api({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision});if(result.completionStatus==='incomplete')incomplete(result);else if($('save-status'))$('save-status').textContent='Respuestas guardadas.';}catch(e){$('save-status').textContent='Sin confirmar guardado. Reintentando…';}finally{saving=false;if(queued){queued=false;autosave();}}}
+function tick(){if(!st.deadlineAt||st.closed)return;const seconds=Math.max(0,Math.ceil((Date.parse(st.deadlineAt)-Date.now()-serverOffset)/1000));$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds===0){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Guardando respuestas';$('r-name').textContent=st.nombre;$('r-bars').textContent='El test se cerró al cumplirse la hora.';$('copy').hidden=true;send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,finish:true});}}
+setInterval(tick,500);setInterval(()=>{if(st.submissionKey&&!st.closed)autosave();},10000);
+$("start").addEventListener("click",async()=>{
+ const n=$("nombre").value.trim();if(n.length<2||!$('email').checkValidity()){$('intro-err').hidden=false;return;}
+ $('start').disabled=true;
+ try{const response=await fetch(CONFIG.ENDPOINT+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n,email:$('email').value.trim()})});const result=await response.json();if(!response.ok)throw Error(result.message);
+ Object.assign(st,{nombre:n,email:$('email').value.trim().toLowerCase(),submissionKey:result.attemptKey,startedAt:result.startedAt,deadlineAt:result.deadlineAt,revision:0,closed:false});serverOffset=Date.parse(result.serverNow)-Date.now();st.order=Q.map(()=>shuffle(['D','I','S','C']));persist();show('v-quiz');render();tick();
+ }catch(e){$('intro-err').textContent=e.message;$('intro-err').hidden=false;}finally{$('start').disabled=false;}
 });
+async function resume(){let draft;try{draft=JSON.parse(localStorage.getItem(DRAFT_KEY));}catch{}if(!draft?.submissionKey)return;Object.assign(st,draft);try{const result=await api({submissionKey:st.submissionKey});if(result.completionStatus==='incomplete'){incomplete(result);return;}if(result.finalized){st.closed=true;st.ans=result.answers;finish(false);$('r-send').textContent='Resultado guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';return;}st.closed=false;st.deadlineAt=result.deadlineAt;if(result.revision>=st.revision){st.ans=result.answers;st.revision=result.revision;}show('v-quiz');render();tick();autosave();}catch(e){$('intro-err').textContent='No se pudo retomar el test. Recargá para reintentar; el reloj sigue corriendo.';$('intro-err').hidden=false;$('start').disabled=true;}}
+resume();
 
 function render(){
   const [text,opts]=Q[st.i];
@@ -195,7 +205,7 @@ function render(){
     const d=document.createElement("span"); d.className="dot"; d.setAttribute("aria-hidden","true");
     const s=document.createElement("span"); s.textContent=opts[k];
     b.append(d,s);
-    b.addEventListener("click",()=>{ st.ans[st.i]=k; render(); });
+    b.addEventListener("click",()=>{ if(st.closed)return; st.ans[st.i]=k; st.revision++; persist(); render(); autosave(); });
     box.append(b);
   });
   $("back").disabled = st.i===0;
@@ -214,7 +224,8 @@ function score(){
   return {c,p};
 }
 
-function finish(){
+function finish(submit=true){
+  st.closed=true;persist();
   const {c,p}=score();
   const ranked=Object.keys(c).sort((a,b)=>c[b]-c[a]);
   const top=ranked.filter(k=>c[k]===c[ranked[0]]);
@@ -258,7 +269,7 @@ function finish(){
     $("wa").href="https://wa.me/"+CONFIG.WHATSAPP+"?text="+encodeURIComponent(txt);
     $("wa").hidden=false;
   }
-  send({nombre:st.nombre,email:st.email,submissionKey:st.submissionKey,porcentajes:p,conteo:c,predominante:top,respuestas:st.ans});
+  if(submit)send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,finish:true});
   $("bar").style.width="100%";
   show("v-result");
 }
@@ -271,6 +282,8 @@ async function send(data){
     const response=await fetch(CONFIG.ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
     const result=await response.json();
     if(!response.ok){el.textContent=result.message||"No se pudo guardar el test.";$("retry").hidden=response.status===409;return;}
+    if(result.completionStatus==='incomplete'){incomplete(result);return;}
+    st.closed=true;persist();
     el.textContent="Resultado guardado el "+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+" (hora Argentina).";
   }catch{el.textContent="No se pudo confirmar el envío. Reintentá sin cerrar esta pantalla.";$("retry").hidden=false;}
 }
