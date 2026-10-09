@@ -655,7 +655,7 @@ function setDefaultDates() {
 function setOriginOptions(origins) {
   const select = document.getElementById('origen');
   select.innerHTML = ['<option value="">Todos</option>', '<option value="VSL + rt">VSL + rt</option>']
-    .concat(origins.filter(origin=>origin!=='VSL + rt').map((origin) => `<option value="${escapeHtml(origin)}">${escapeHtml(origin)}</option>`))
+    .concat(origins.filter(origin=>origin!=='VSL + rt' && !window.marketingCohort.isClientSession(origin)).map((origin) => `<option value="${escapeHtml(origin)}">${escapeHtml(origin)}</option>`))
     .join('');
 }
 
@@ -802,6 +802,7 @@ function attachMarketingSortHandlers(container, sectionKey, renderFn) {
 
 function isMarketingLeadInSelectedOrigin(row, filters) {
   const currentOrigin = getMarketingLeadOrigin(row);
+  if(window.marketingCohort.isClientSession(currentOrigin))return false;
   if(filters.origen==='VSL + rt')return window.marketingCohort.matches(row,filters.origen);
   return Boolean(currentOrigin) && (!filters.origen || normalizeOriginGroup(currentOrigin) === filters.origen);
 }

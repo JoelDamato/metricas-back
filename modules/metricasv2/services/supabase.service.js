@@ -1,6 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
 const requestData = require('./request-data-cache');
+const {isClientSession} = require('../../../public/metricas-v2/js/marketing-cohort');
 const env = require('../config/env');
 const csmCheckpoints = require('./csm-checkpoints.service');
 
@@ -2060,6 +2061,7 @@ function normalizeMarketingOriginGroup(value) {
 
 function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
   const currentOrigin = resolveMarketingOrigin(row, leadByGhlId);
+  if (require('../../../public/metricas-v2/js/marketing-cohort').isClientSession(currentOrigin)) return false;
   if (selectedOrigin === 'VSL + rt') {
     const linked = leadByGhlId.get(String(row.ghlid || row.ghl_id || '').trim().toLowerCase());
     return require('../../../public/metricas-v2/js/marketing-cohort').matches({origen_actual:currentOrigin,primer_origen:linked ? linked.primer_origen : row.primer_origen},selectedOrigin);
@@ -2227,7 +2229,7 @@ async function getMarketingInvestment({ from, to, origen }) {
       });
     }
 
-    const rows = withCreditLineBalanceFallback(response.data || []);
+    const rows = withCreditLineBalanceFallback(response.data || []).filter(row=>!isClientSession(row.origen));
 
     if (!rows.length) {
       return {
@@ -3208,7 +3210,7 @@ let marketingOriginsCache=null;
 async function getMarketingOrigins(){
   if(marketingOriginsCache && marketingOriginsCache.until>Date.now())return marketingOriginsCache.value;
   const {data}=await axios.post(`${env.supabaseUrl}/rest/v1/rpc/marketing_origin_options`,{}, {headers:buildHeaders(),timeout:30000});
-  const value={origins:[...new Set((data||[]).map(row=>normalizeMarketingOriginGroup(row.origen_actual)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))};
+  const value={origins:[...new Set((data||[]).filter(row=>!isClientSession(row.origen_actual)).map(row=>normalizeMarketingOriginGroup(row.origen_actual)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))};
   marketingOriginsCache={value,until:Date.now()+60000};return value;
 }
 async function getMarketingDashboard(filters){
@@ -3224,7 +3226,7 @@ async function getMarketingDashboard(filters){
     ]);
     const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
     const slim=records=>records.map(row=>Object.fromEntries(columns.map(key=>[key,row[key]??null])));
-    return {rows,investment,aov,ventas,cash,campaigns,leads:slim(leads),traceability:slim(traceability)};
+    return {rows:rows.filter(row=>!isClientSession(row.origen)),investment,aov,ventas,cash,campaigns,leads:slim(leads.filter(row=>!isClientSession(row.origen_actual))),traceability:slim(traceability.filter(row=>!isClientSession(row.origen_actual)))};
   });
 }
 

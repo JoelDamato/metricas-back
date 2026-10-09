@@ -19,3 +19,14 @@ test('CSV incluye toda la cohorte, identificadores, filtros y protege fórmulas'
  const csv=cohort.csv(rows,{from:'2026-10-01',to:'2026-10-09',origen:cohort.combined});
  assert.equal(csv.split('\r\n').length,76);assert(csv.startsWith('\uFEFF'));assert(csv.includes('ghl74'));assert(csv.includes('"\'=1+1"'));assert(csv.includes('"\'+541123456789"'));assert(csv.includes('Cliente; ""ñ""'));assert(csv.includes('VSL + rt'));assert(csv.includes('"Primer origen"'));
 });
+test('sesiones de clientas quedan fuera incluso en Todos y con acentos o URL encoding',()=>{
+ for(const origen of ['Sesión de Onboarding',' sesion de apoyo','SESIÓN FINANCIERA','Sesi%C3%B3n%20de%20Costos']){
+  assert.equal(cohort.isClientSession(origen),true);
+  assert.equal(cohort.matches({origen_actual:origen},''),false);
+ }
+ for(const origen of ['VSL','RT','Postulación MEG - VSL'])assert.equal(cohort.isClientSession(origen),false);
+ const source=fs.readFileSync('modules/metricasv2/services/supabase.service.js','utf8');
+ const matches=vm.runInNewContext('('+source.match(/function matchesCurrentMarketingOrigin\([\s\S]*?\n}/)[0]+')',{resolveMarketingOrigin,require:()=>cohort});
+ const linked=buildMarketingLeadByGhlId([{ghlid:'abc',origen_actual:'Sesión de apoyo'}]);
+ assert.equal(matches({ghlid:'abc'},linked,''),false);
+});
