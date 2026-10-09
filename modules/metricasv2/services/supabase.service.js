@@ -1,5 +1,6 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const requestData = require('./request-data-cache');
 const env = require('../config/env');
 const csmCheckpoints = require('./csm-checkpoints.service');
 
@@ -2067,7 +2068,10 @@ function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
   return !selectedOrigin || normalizeMarketingOriginGroup(currentOrigin) === selectedOrigin;
 }
 
-async function listMarketingOriginLeadsForRows(rows = []) {
+function listMarketingOriginLeadsForRows(rows = []) {
+  return requestData.once('origins:'+JSON.stringify([...new Set(rows.map(row=>row.ghlid||row.ghl_id))].sort()),()=>loadMarketingOriginLeadsForRows(rows));
+}
+async function loadMarketingOriginLeadsForRows(rows = []) {
   const ghlIds = [...new Set((rows || [])
     .map((row) => String(row?.ghlid || row?.ghl_id || '').trim())
     .filter((value) => /^[a-zA-Z0-9_-]+$/.test(value)))];
@@ -2512,7 +2516,10 @@ async function deleteMarketingInvestmentRecord(payload) {
   }
 }
 
-async function listAllRows(resourceName, options = {}) {
+function listAllRows(resourceName, options = {}) {
+  return requestData.once(JSON.stringify([resourceName,options]),()=>loadAllRows(resourceName,options));
+}
+async function loadAllRows(resourceName, options = {}) {
   const limit = Math.min(Number(options.limit || 1000), 1000);
   let offset = Number(options.offset || 0);
   const rows = [];
@@ -3197,7 +3204,33 @@ async function saveCloserTeamReport(params = {}, reportPayload = {}, user) {
   }
 }
 
+let marketingOriginsCache=null;
+async function getMarketingOrigins(){
+  if(marketingOriginsCache && marketingOriginsCache.until>Date.now())return marketingOriginsCache.value;
+  const {data}=await axios.post(`${env.supabaseUrl}/rest/v1/rpc/marketing_origin_options`,{}, {headers:buildHeaders(),timeout:30000});
+  const value={origins:[...new Set((data||[]).map(row=>normalizeMarketingOriginGroup(row.origen_actual)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))};
+  marketingOriginsCache={value,until:Date.now()+60000};return value;
+}
+async function getMarketingDashboard(filters){
+  validateDateRange(filters.from,filters.to);
+  return requestData.run(async()=>{
+    const {from,to,origen}=filters;
+    const agendaOptions={limit:1000,from,to,dateField:'fecha_agenda',orderBy:'fecha_agenda',orderDir:'desc'};
+    const [rows,investment,aov,ventas,cash,campaigns,leads,traceability]=await Promise.all([
+      origen==='VSL + rt'?[]:listAllRows('kpi_marketing_diario',{limit:1000,from,to,dateField:'fecha',...(origen?{eqFilters:{origen}}:{})}),
+      getMarketingInvestment(filters),getMarketingAovDia1(filters),getMarketingVentasTotales(filters),getMarketingCashCollectedAgenda(filters),getMarketingCampaignTotals(filters),
+      listAllRows('leads_raw',agendaOptions),
+      listAllRows('leads_raw',{limit:1000,from,to,dateField:'created_time'})
+    ]);
+    const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
+    const slim=records=>records.map(row=>Object.fromEntries(columns.map(key=>[key,row[key]??null])));
+    return {rows,investment,aov,ventas,cash,campaigns,leads:slim(leads),traceability:slim(traceability)};
+  });
+}
+
 module.exports = {
+  getMarketingOrigins,
+  getMarketingDashboard,
   listResources,
   listRows,
   getKpiCloserRules,

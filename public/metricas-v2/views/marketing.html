@@ -8,13 +8,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+  <link rel="stylesheet" href="/css/marketing.css?v=20261009-refresh-1" />
   </head>
-  <body class="ranking-page marketing-page">
+  <body class="ranking-page marketing-page marketing-refresh premium-navy-background">
     <main class="container">
       <div class="nav"><a href="/metricas.html">Volver al listado</a></div>
       <section class="ranking-hero">
-        <h1>Totales MKT</h1>
-        <p>KPIs de marketing con inversión editable, filtros por fecha y origen.</p>
+        <span class="marketing-eyebrow">CENTRAL MR · RESULTADOS</span><h1>Marketing</h1>
+        <p>Tu inversión, tus agendas y sus resultados. Todo en un mismo lugar.</p>
       </section>
 
       <div class="actions ranking-actions marketing-actions">
@@ -30,10 +31,13 @@
           Origen
           <select id="origen"></select>
         </label>
-        <button id="reload">Buscar</button>
+        <button id="reload">Actualizar</button>
       </div>
 
+      <p id="status" role="status" aria-live="polite"></p>
+      <section id="marketingOverview" class="marketing-overview" aria-label="Resumen de marketing"></section>
       <section id="agendaBreakdown" class="card" aria-label="Detalle de leads agendados"></section>
+      <details class="marketing-management"><summary>Gestionar inversión y línea de crédito</summary><div class="marketing-editors">
       <section class="marketing-editor card">
         <div>
           <h3>Inversión realizada</h3>
@@ -64,7 +68,8 @@
         </div>
       </section>
 
-      <p id="status"></p>
+
+      </div></details>
       <section id="creditBalanceSummary"></section>
       <section id="marketingContainer" class="marketing-grid"></section>
       <section id="campaignTotalsContainer"></section>
@@ -84,6 +89,6 @@
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
     <script src="/js/marketing-cohort.js?v=20261009-vsl-rt-1"></script>
-    <script src="/js/views/marketing.page.js?v=20261009-vsl-rt-1"></script>
+    <script src="/js/views/marketing.page.js?v=20261009-refresh-1"></script>
   </body>
 </html>

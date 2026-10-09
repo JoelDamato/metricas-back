@@ -1543,6 +1543,13 @@ function renderTraceabilityTable(rows) {
 
 function renderDashboard(rows, investment, extras = {}) {
   const container = document.getElementById('marketingContainer');
+  const summary = computeMetrics(rows || [], investment, extras);
+  document.getElementById('marketingOverview').innerHTML = [
+    ['Agendas', formatInteger(summary.agendas), 'En el período seleccionado'],
+    ['Aplicables', formatInteger(summary.aplican), 'Agendas que califican'],
+    ['Inversión', formatCurrency(summary.inversionRealizada), 'Total del filtro'],
+    ['Cash collected', formatCurrency(summary.cashCollected), 'Cobrado de las agendas']
+  ].map(([label,value,caption])=>`<article class="marketing-kpi"><small>${label}</small><strong>${value}</strong><span>${caption}</span></article>`).join('');
 
   if (!(rows || []).length) {
     container.innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No hay datos para el rango seleccionado.</div></div>';
@@ -1637,20 +1644,10 @@ function renderAgendaBreakdown(rows, filters) {
 }
 
 async function loadOrigins() {
-  const response = await window.metricasApi.fetchAllRows('leads_raw', {
-    limit: 1000,
-    select: 'origen_actual',
-    orderBy: 'origen_actual',
-    orderDir: 'asc'
-  });
-
-  const origins = [...new Set((response.rows || [])
-    .map((row) => String(row.origen_actual || '').trim())
-    .filter(Boolean)
-    .map(normalizeOriginGroup)
-    .filter(Boolean))].sort((a, b) => a.localeCompare(b));
-
-  setOriginOptions(origins);
+  const response = await window.http.getJson('/api/metricas/marketing/origins');
+  const selected = document.getElementById('origen').value;
+  setOriginOptions(response.origins || []);
+  document.getElementById('origen').value = selected;
 }
 
 let marketingLoadVersion = 0;
@@ -1662,46 +1659,22 @@ async function loadDashboard() {
   if (!filters.from || !filters.to || filters.from > filters.to) {
     document.getElementById('agendaBreakdown').textContent='Seleccioná un rango de fechas válido.';
     hideLoading();
+    document.querySelector('main').setAttribute('aria-busy','false');
+    document.getElementById('marketingOverview').innerHTML = '';
     status.textContent = 'Seleccioná un rango de fechas válido.';
     return;
   }
 
   document.getElementById('agendaBreakdown').textContent='Cargando detalle de agendas…';
-  showLoading('Cargando KPI Marketing...');
-  status.textContent = 'Consultando Supabase...';
+  hideLoading();
+  document.querySelector('main').setAttribute('aria-busy','true');
+  status.textContent = 'Actualizando métricas…';
 
   try {
-    const rowOptions = {
-      limit: 1000,
-      from: filters.from,
-      to: filters.to,
-      dateField: 'fecha'
-    };
-
-    if (filters.origen) {
-      rowOptions.eq_origen = filters.origen;
-    }
-
-    const [rowsResponse, investmentResponse, aovDia1Response, ventasTotalesResponse, cashCollectedResponse, campaignTotalsResponse, leadsResponse, traceabilityResponse] = await Promise.all([
-      filters.origen === 'VSL + rt' ? Promise.resolve({rows:[]}) : window.metricasApi.fetchAllRows('kpi_marketing_diario', rowOptions),
-      window.metricasApi.fetchMarketingInvestment(filters),
-      window.metricasApi.fetchMarketingAovDia1(filters),
-      window.metricasApi.fetchMarketingVentasTotales(filters),
-      window.metricasApi.fetchMarketingCashCollectedAgenda(filters),
-      window.metricasApi.fetchMarketingCampaignTotals(filters),
-      window.metricasApi.fetchAllRows('leads_raw', {
-        limit: 1000,
-        from: filters.from,
-        to: filters.to,
-        dateField: 'fecha_agenda'
-      }),
-      window.metricasApi.fetchAllRows('leads_raw', {
-        limit: 1000,
-        from: filters.from,
-        to: filters.to,
-        dateField: 'created_time'
-      })
-    ]);
+    const snapshot = await window.http.getJson('/api/metricas/marketing/dashboard?' + new URLSearchParams(filters));
+    const rowsResponse = {rows:snapshot.rows}, investmentResponse = {investment:snapshot.investment};
+    const aovDia1Response = snapshot.aov, ventasTotalesResponse = snapshot.ventas, cashCollectedResponse = snapshot.cash;
+    const campaignTotalsResponse = {rows:snapshot.campaigns}, leadsResponse = {rows:snapshot.leads}, traceabilityResponse = {rows:snapshot.traceability};
 
     if(loadVersion !== marketingLoadVersion)return;
     let rows = rowsResponse.rows || [];
@@ -1733,6 +1706,7 @@ async function loadDashboard() {
   } catch (error) {
     if(loadVersion !== marketingLoadVersion)return;
     status.textContent = error.message;
+    document.getElementById('marketingOverview').innerHTML = '';
     document.getElementById('agendaBreakdown').textContent='No se pudo cargar el detalle de agendas.';
     document.getElementById('creditBalanceSummary').innerHTML = '';
     document.getElementById('marketingContainer').innerHTML = '<div class="table-wrap marketing-panel"><div class="report-empty">No se pudo cargar el KPI de marketing.</div></div>';
@@ -1741,7 +1715,7 @@ async function loadDashboard() {
     document.getElementById('qualityMetricsContainer').innerHTML = '';
     document.getElementById('traceabilityContainer').innerHTML = '';
   } finally {
-    if(loadVersion === marketingLoadVersion)hideLoading();
+    if(loadVersion === marketingLoadVersion){hideLoading();document.querySelector('main').setAttribute('aria-busy','false');}
   }
 }
 
@@ -1813,8 +1787,7 @@ async function init() {
   ensureMarketingViewStyles();
   bindMarketingCollapseFallback();
   setDefaultDates();
-  await loadOrigins();
-  await loadDashboard();
+  setOriginOptions([]);
 
   document.getElementById('reload').addEventListener('click', loadDashboard);
   ['desde','hasta','origen'].forEach(id=>document.getElementById(id).addEventListener('change',loadDashboard));
@@ -1828,6 +1801,7 @@ async function init() {
     event.preventDefault();
     openInvestmentHistoryPopup();
   });
+  await Promise.all([loadDashboard(),loadOrigins().catch(()=>{ document.getElementById('status').textContent += ' No se pudieron cargar los orígenes. Recargá para reintentar.'; })]);
 }
 
 init();

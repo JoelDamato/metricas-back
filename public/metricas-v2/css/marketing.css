@@ -1,0 +1,44 @@
+.marketing-page.marketing-refresh {background:#071220;color:#eaf2ff;font-family:'DM Sans',sans-serif}
+.marketing-refresh main.container {max-width:1560px;padding:28px clamp(16px,3vw,44px) 60px}
+.marketing-refresh .ranking-hero {padding:28px 0 22px;background:none;border:0;box-shadow:none;text-align:left}
+.marketing-refresh .ranking-hero h1 {font-family:'Space Grotesk',sans-serif;font-size:clamp(32px,4vw,48px);letter-spacing:-1.5px;margin:8px 0;color:#f3f7ff}
+.marketing-refresh .ranking-hero p,.marketing-refresh main p {color:#9eafc8}
+.marketing-refresh .marketing-eyebrow {color:#6faaff;font-size:11px;letter-spacing:2px;font-weight:700}
+.marketing-refresh .marketing-actions {padding:18px;border:1px solid #253c59;border-radius:18px;background:#0d1d31;gap:14px;align-items:end}
+.marketing-refresh main label {color:#b7c8e0;font-size:12px;font-weight:700}
+.marketing-refresh main input,.marketing-refresh main select {color-scheme:dark;background:#091627;color:#edf4ff;border:1px solid #304662;border-radius:10px;min-height:42px}
+.marketing-refresh main button:not(.metric-info-trigger) {background:linear-gradient(130deg,#3183ff,#2554ce);color:white;border:1px solid #4c87ec;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer}
+.marketing-refresh main button:disabled {opacity:.45;cursor:default}
+.marketing-refresh main a {color:#80b6ff}
+.marketing-refresh #status {font-size:12px;min-height:18px;margin:14px 2px}
+.marketing-refresh main[aria-busy=true] #status::before {content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ba1ff;margin-right:8px;animation:mkt-pulse 1s ease-in-out infinite alternate}
+.marketing-refresh .marketing-overview {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 24px}
+.marketing-refresh .marketing-kpi {padding:24px;border-radius:20px;border:1px solid #294567;background:radial-gradient(ellipse at top right,#153f70,transparent 80%),#0d1d31;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 28px #0002}
+.marketing-refresh .marketing-kpi small {color:#bbcee7;font-size:13px;font-weight:700}
+.marketing-refresh .marketing-kpi strong {font-family:'Space Grotesk',sans-serif;font-size:clamp(23px,2.2vw,34px);letter-spacing:-1px;color:#fff;font-variant-numeric:tabular-nums}
+.marketing-refresh .marketing-kpi span {font-size:11px;color:#91a9c8}
+.marketing-refresh main .card,.marketing-refresh main .marketing-panel,.marketing-refresh main .ads-collapse,.marketing-refresh main .table-wrap {background:#0d1c2e;border:1px solid #253c59;border-radius:16px;color:#eaf2ff;box-shadow:none}
+.marketing-refresh main .card {padding:22px}
+.marketing-refresh #agendaBreakdown {margin-bottom:22px}
+.marketing-refresh #agendaBreakdown h2 {font-family:'Space Grotesk',sans-serif;font-size:21px;margin:0 0 8px;color:#eef5ff}
+.marketing-refresh #agendaBreakdown p {font-size:12px;margin:6px 0}
+.marketing-refresh #agendaBreakdown>.table-wrap {max-height:340px;overflow:auto;margin-top:18px}
+.marketing-refresh main table {background:transparent;color:#dce8f8;font-size:12px}
+.marketing-refresh main table th,.marketing-refresh main table td {background:transparent;border-color:#23364d;padding:13px 14px;color:#dce8f8}
+.marketing-refresh main table thead th {position:sticky;top:0;background:#162a43;color:#99b9df;z-index:1;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.marketing-refresh main table tbody tr:nth-child(even) {background:#102238}
+.marketing-refresh main table tbody tr:hover {background:#17314c}
+.marketing-refresh main .metric-info-trigger.metric-label {color:#b8cce5;background:transparent}
+.marketing-refresh main .marketing-panel-head,.marketing-refresh main .ads-collapse>summary {background:#13263f;color:#eaf2ff;border-color:#253c59;padding:18px}
+.marketing-refresh main h3 {color:#eaf2ff;font-family:'Space Grotesk',sans-serif}
+.marketing-refresh .marketing-management {border:1px solid #253c59;border-radius:16px;margin-bottom:24px;background:#0c1a2c}
+.marketing-refresh .marketing-management>summary {padding:18px 22px;color:#acc5e7;cursor:pointer;font-weight:700;font-size:13px}
+.marketing-refresh .marketing-editors {display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 16px 16px}
+.marketing-refresh .marketing-editor {display:flex;flex-direction:column;align-items:stretch;margin:0}
+.marketing-refresh .marketing-editor p {font-size:12px}
+.marketing-refresh .marketing-grid {gap:20px}
+.marketing-refresh main .report-empty {color:#9eb4d2;padding:24px}
+@keyframes mkt-pulse {to {opacity:.25}}
+@media(max-width:1000px){.marketing-refresh .marketing-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.marketing-refresh .marketing-editors{grid-template-columns:1fr}.marketing-refresh .marketing-kpi{padding:17px}.marketing-refresh .marketing-actions{display:grid;grid-template-columns:1fr 1fr}.marketing-refresh .marketing-actions label{min-width:0}.marketing-refresh main input,.marketing-refresh main select{width:100%}}
+@media(prefers-reduced-motion:reduce){.marketing-refresh main[aria-busy=true] #status::before{animation:none}}

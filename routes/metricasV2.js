@@ -60,6 +60,8 @@ router.post('/reportes/premio', controller.saveReportesPremioConfig);
 router.get('/reportes/comentarios', controller.listReportComments);
 router.post('/reportes/comentarios', controller.createReportComment);
 router.patch('/reportes/comentarios/:id/read', controller.markReportCommentRead);
+router.get('/marketing/origins',async(req,res,next)=>{try{res.set('Cache-Control','no-store').json(await require('../modules/metricasv2/services/supabase.service').getMarketingOrigins());}catch(error){next(error);}});
+router.get('/marketing/dashboard',async(req,res,next)=>{try{res.set('Cache-Control','no-store').json(await require('../modules/metricasv2/services/supabase.service').getMarketingDashboard({from:req.query.from,to:req.query.to,origen:req.query.origen||''}));}catch(error){next(error);}});
 router.get('/marketing/inversion', controller.getMarketingInvestment);
 router.post('/marketing/inversion', controller.saveMarketingInvestment);
 router.get('/marketing/inversiones', controller.listMarketingInvestments);

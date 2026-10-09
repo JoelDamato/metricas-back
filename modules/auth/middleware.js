@@ -156,6 +156,7 @@ async function metricasApiGuard(req, res, next) {
     }
 
     if (
+      reqPath === '/marketing/dashboard' || reqPath === '/marketing/origins' ||
       reqPath === '/marketing/aov-dia-1' ||
       reqPath === '/marketing/ventas-totales' ||
       reqPath === '/marketing/cash-collected-agenda' ||

@@ -7,3 +7,11 @@ Se aplica a agendas, aplicables, reuniones, anuncios, calidad, trazabilidad y a 
 El detalle aparece arriba y corresponde a los registros con fecha de agenda en el rango y origen actual válido que cuenta el KPI existente, sin alterar su criterio por el estado Agendó. Se conserva una fila por registro de la base y se incluye su ID para detectar posibles duplicados al validar. La tabla muestra 50 filas y permite ampliar; el CSV UTF-8 descarga todas, con GHL ID/link, datos de contacto, fecha, estado, ambos orígenes, closer, setter y campos de campaña. Incluye también los filtros usados. Protege celdas que podrían interpretarse como fórmulas.
 
 Los cambios de fecha/origen actualizan el panel. Las respuestas de consultas anteriores no pueden reemplazar la selección más reciente ni su archivo descargable.
+
+## Carga y diseño (9 de octubre)
+El panel obtiene el resumen completo mediante `GET /api/metricas/marketing/dashboard`.
+Las consultas iguales comparten promesas únicamente dentro de esa solicitud; no se
+cachean los importes entre usuarios o actualizaciones. `marketing/origins` usa la
+función SQL `marketing_origin_options`, restringida a service_role, y conserva sólo
+el catálogo de orígenes durante 60 segundos. Los filtros y la exportación usan la
+misma respuesta; una respuesta anterior no puede reemplazar un filtro más reciente.
