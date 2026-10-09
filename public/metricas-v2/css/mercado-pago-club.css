@@ -57,15 +57,15 @@ td small { display: block; color: #8793a4; margin-top: 4px; max-width: 300px; }
 .records-table.compact th:nth-child(1) { width: 3%; }
 .records-table.compact th:nth-child(2) { width: 7%; }
 .records-table.compact th:nth-child(3) { width: 6%; }
-.records-table.compact th:nth-child(4) { width: 17%; }
-.records-table.compact th:nth-child(5) { width: 10%; }
-.records-table.compact th:nth-child(6) { width: 9%; }
-.records-table.compact th:nth-child(7) { width: 15%; }
-.records-table.compact th:nth-child(8) { width: 6%; }
+.records-table.compact th:nth-child(5) { width: 17%; }
+.records-table.compact th:nth-child(6) { width: 10%; }
+.records-table.compact th:nth-child(7) { width: 9%; }
+.records-table.compact th:nth-child(8) { width: 15%; }
 .records-table.compact th:nth-child(9) { width: 6%; }
-.records-table.compact th:nth-child(10) { width: 8%; }
-.records-table.compact th:nth-child(11) { width: 6%; }
-.records-table.compact th:nth-child(12) { width: 7%; }
+.records-table.compact th:nth-child(10) { width: 6%; }
+.records-table.compact th:nth-child(11) { width: 8%; }
+.records-table.compact th:nth-child(12) { width: 6%; }
+.records-table.compact th:nth-child(13) { width: 7%; }
 .records-table.compact .row-actions { min-width: 0; }
 .records-table.compact .row-actions button { width: 100%; padding: 6px 7px; font-size: 10px; white-space: normal; }
 .records-table.compact .workflow-state { padding: 4px 7px; font-size: 10px; }
@@ -83,3 +83,5 @@ td small { display: block; color: #8793a4; margin-top: 4px; max-width: 300px; }
 .empty { padding: 50px 20px; text-align: center; color: #78879b; }
 @media (max-width: 850px) { .mp-hero { align-items: stretch; flex-direction: column; }.summary { grid-template-columns: repeat(2, 1fr); }.workflow-bar { align-items: stretch; flex-direction: column; }.workflow-tabs, .workflow-actions { flex-wrap: wrap; } }
 @media (max-width: 520px) { .mp-shell { width: min(100% - 22px, 1420px); }.mp-hero { padding: 22px; }.summary { grid-template-columns: 1fr; } }
+
+.records-table.compact th:nth-child(4){width:5%}.workflow-state.excluded{background:#394354;color:#e0e8f2}

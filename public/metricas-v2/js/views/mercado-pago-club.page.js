@@ -8,6 +8,7 @@ const emptyNode = document.querySelector('#empty');
 const recordsTableNode = document.querySelector('#recordsTable');
 const selectedCountNode = document.querySelector('#selectedCount');
 const reconcileButton = document.querySelector('#reconcileSelected');
+const billingSelectionButton = document.querySelector('#billingSelection');
 const invoiceButton = document.querySelector('#invoiceSelected');
 const exportInvoicedButton = document.querySelector('#exportInvoiced');
 const selectAllNode = document.querySelector('#selectAll');
@@ -77,6 +78,7 @@ function recipientDataButton(row) {
 }
 
 function renderRowActions(row) {
+  if (row.workflowStatus === 'excluded') return 'Seleccioná para devolver a Conciliadas';
   if (row.workflowStatus === 'reconciled' && row.kind !== 'manual') {
     return `<button class="unreconcile-button" type="button" data-unreconcile-key="${escapeHtml(recordKey(row))}">Quitar conciliación</button>${recipientDataButton(row)}`;
   }
@@ -100,6 +102,9 @@ function updateSelectionUi() {
   selectedCountNode.textContent = `${selected.length} seleccionada${selected.length === 1 ? '' : 's'}`;
   reconcileButton.hidden = activeWorkflow !== 'pending';
   reconcileButton.disabled = activeWorkflow !== 'pending' || !selected.length;
+  billingSelectionButton.hidden = !['reconciled','excluded'].includes(activeWorkflow);
+  billingSelectionButton.disabled = billingSelectionButton.hidden || !selected.length;
+  billingSelectionButton.textContent = activeWorkflow === 'excluded' ? 'Volver a Conciliadas' : 'Mover a No facturar';
   invoiceButton.hidden = activeWorkflow !== 'reconciled';
   invoiceButton.disabled = activeWorkflow !== 'reconciled' || !selected.length;
   exportInvoicedButton.hidden = activeWorkflow !== 'invoiced';
@@ -370,10 +375,11 @@ function renderRecords() {
       <td><input class="record-check" type="checkbox" data-key="${escapeHtml(recordKey(row))}" ${selectedKeys.has(recordKey(row)) ? 'checked' : ''} /></td>
       <td>${formatDate(row.date)}</td>
       <td><span class="type ${escapeHtml(row.kind)}">${row.kind === 'subscription' ? 'Suscripción' : row.kind === 'manual' ? 'Manual' : 'Pago'}</span></td>
+      <td><strong>${escapeHtml(row.arcaInvoiceType || proposedInvoiceType(row).replace('Factura ', ''))}</strong>${!row.arcaInvoiceType && !row.requestedInvoiceType && ![1,5,6].includes(Number(row.vatConditionId)) ? '<small>Por confirmar</small>' : ''}</td>
       <td><strong>${escapeHtml(row.arcaDescription || row.description)}</strong><small>${escapeHtml(row.externalReference || '')}</small>${row.arcaTaxTreatment ? `<small>${escapeHtml(row.arcaTaxTreatment)}</small>` : ''}${['invoiced', 'credit_notes'].includes(row.workflowStatus) ? `<a class="invoice-link" href="/api/metricas/mercado-pago/club/invoice/${encodeURIComponent(row.kind)}/${encodeURIComponent(row.id)}?format=pdf" target="_blank" rel="noopener">Ver factura</a>` : ''}</td>
       <td>${escapeHtml(row.payer || '—')}</td>
       <td class="${hasValidFiscalIdentification(row) ? '' : 'fiscal-data-missing'}"><strong>${escapeHtml(row.identificationNumber || '—')}</strong><small>${escapeHtml(row.identificationType || 'No informado')}</small>${hasValidFiscalIdentification(row) ? '' : '<span>Completar antes de facturar</span>'}</td>
-      <td><span class="workflow-state ${escapeHtml(row.workflowStatus)}">${row.workflowStatus === 'reconciled' ? 'Conciliada' : row.workflowStatus === 'invoiced' ? `Factura ${escapeHtml(row.arcaInvoiceType || '—')}` : row.workflowStatus === 'credit_notes' ? `Nota de Crédito ${escapeHtml(row.creditNoteType || '—')}` : 'Pendiente'}</span><small>${row.workflowStatus === 'reconciled' ? formatDate(row.reconciledAt) : row.workflowStatus === 'invoiced' ? `${escapeHtml(row.arcaInvoiceNumber || '')} · ${escapeHtml(row.arcaVatCondition || '')} · CAE ${escapeHtml(row.arcaCae || '')}` : row.workflowStatus === 'credit_notes' ? `${escapeHtml(row.creditNoteNumber || '')} · CAE ${escapeHtml(row.creditNoteCae || '')}` : ''}</small></td>
+      <td><span class="workflow-state ${escapeHtml(row.workflowStatus)}">${row.workflowStatus === 'excluded' ? 'No facturar' : row.workflowStatus === 'reconciled' ? 'Conciliada' : row.workflowStatus === 'invoiced' ? `Factura ${escapeHtml(row.arcaInvoiceType || '—')}` : row.workflowStatus === 'credit_notes' ? `Nota de Crédito ${escapeHtml(row.creditNoteType || '—')}` : 'Pendiente'}</span><small>${row.workflowStatus === 'reconciled' ? formatDate(row.reconciledAt) : row.workflowStatus === 'invoiced' ? `${escapeHtml(row.arcaInvoiceNumber || '')} · ${escapeHtml(row.arcaVatCondition || '')} · CAE ${escapeHtml(row.arcaCae || '')}` : row.workflowStatus === 'credit_notes' ? `${escapeHtml(row.creditNoteNumber || '')} · CAE ${escapeHtml(row.creditNoteCae || '')}` : ''}</small></td>
       <td><span class="state ${escapeHtml(row.status)}">${escapeHtml(mercadoPagoStatusLabel(row))}</span></td>
       <td>${escapeHtml(row.paymentMethod || '—')}</td>
       <td class="amount">${formatMoney(row.amount, row.currency)}</td>
@@ -393,7 +399,7 @@ function render(data) {
     <article><span>Total aprobado</span><strong>${formatMoney(totals.approvedAmount || 0)}</strong></article>`;
 
   allRecords = data.records || [];
-  ['pending', 'reconciled', 'invoiced', 'credit_notes'].forEach((status) => {
+  ['pending', 'reconciled', 'invoiced', 'credit_notes', 'excluded'].forEach((status) => {
     const node = document.querySelector(`[data-count="${status}"]`);
     const suppliedCount = status === 'pending'
       ? (activeWorkflow === 'pending' ? allRecords.filter((row) => row.workflowStatus === status).length : null)
@@ -529,6 +535,20 @@ reconcileButton.addEventListener('click', async () => {
     statusNode.textContent = error.message;
     updateSelectionUi();
   }
+});
+
+billingSelectionButton.addEventListener('click', async () => {
+  const keys=visibleRecords().filter(row=>selectedKeys.has(recordKey(row))).map(({kind,id})=>({kind,id}));
+  if(!keys.length || !['reconciled','excluded'].includes(activeWorkflow))return;
+  const excluded=activeWorkflow==='reconciled';
+  billingSelectionButton.disabled=true;
+  try{
+    const response=await fetch('/api/metricas/mercado-pago/club/billing-selection',{
+      method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({keys,excluded})
+    });
+    const data=await response.json();if(!response.ok)throw Error(data.message||'No se pudo mover la selección');
+    await loadRecords();statusNode.textContent=`${data.updated} registros ${excluded?'movidos a No facturar':'devueltos a Conciliadas'}`;
+  }catch(error){statusNode.textContent=error.message;updateSelectionUi();}
 });
 
 invoiceButton.addEventListener('click', async () => {

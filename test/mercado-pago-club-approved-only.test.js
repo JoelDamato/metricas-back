@@ -129,5 +129,5 @@ test('la facturación abre la previsualización directamente sin exigir formular
   assert.doesNotMatch(pageScript, /Completá los datos fiscales .* antes de facturar/);
   assert.match(pageScript, /approved: 'Aprobado'/);
   assert.match(pageScript, /Sin DNI\/CUIT/);
-  assert.match(pageHtml, /direct-invoice-1/);
+  assert.match(pageHtml, /billing-selection-1/);
 });

@@ -74,6 +74,10 @@ router.patch('/mercado-pago/club/manual/:id', controller.updateManualInvoiceReco
 router.delete('/mercado-pago/club/manual/:id', controller.deleteManualInvoiceRecord);
 router.patch('/mercado-pago/club/recipient/:kind/:id', controller.updateMercadoPagoClubRecipient);
 router.post('/mercado-pago/club/reconcile', controller.reconcileMercadoPagoClubRecords);
+router.post('/mercado-pago/club/billing-selection', async (req,res,next) => {
+  try {res.json({ok:true,...await require('../modules/metricasv2/services/mercado-pago.service').setBillingSelection(req.body?.keys,req.body?.excluded,req.authUser)});}
+  catch(error){next(error);}
+});
 router.post('/mercado-pago/club/unreconcile', controller.unreconcileMercadoPagoClubRecord);
 router.post('/mercado-pago/club/invoice-preview', controller.previewMercadoPagoClubInvoices);
 router.post('/mercado-pago/club/invoice', controller.invoiceMercadoPagoClubRecords);

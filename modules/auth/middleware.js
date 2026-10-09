@@ -227,7 +227,7 @@ async function metricasApiGuard(req, res, next) {
       return next();
     }
 
-    if (reqPath === '/mercado-pago/club' || reqPath === '/mercado-pago/club/workflow' || reqPath === '/mercado-pago/club/manual' || reqPath.startsWith('/mercado-pago/club/manual/') || reqPath === '/mercado-pago/club/reconcile' || reqPath === '/mercado-pago/club/unreconcile' || reqPath === '/mercado-pago/club/invoice-preview' || reqPath === '/mercado-pago/club/invoice' || reqPath === '/mercado-pago/club/credit-note' || reqPath.startsWith('/mercado-pago/club/invoice/')) {
+    if (reqPath === '/mercado-pago/club' || reqPath === '/mercado-pago/club/workflow' || reqPath === '/mercado-pago/club/manual' || reqPath.startsWith('/mercado-pago/club/manual/') || reqPath === '/mercado-pago/club/reconcile' || reqPath === '/mercado-pago/club/unreconcile' || reqPath === '/mercado-pago/club/billing-selection' || reqPath === '/mercado-pago/club/invoice-preview' || reqPath === '/mercado-pago/club/invoice' || reqPath === '/mercado-pago/club/credit-note' || reqPath.startsWith('/mercado-pago/club/invoice/')) {
       if (!access.canAccessAdministrationForUser(req.authUser)) {
         return res.status(403).json({ ok: false, message: 'Sin permiso para Administración' });
       }

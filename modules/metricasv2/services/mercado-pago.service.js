@@ -111,7 +111,7 @@ async function getWorkflowRows() {
 
 async function getStoredWorkflowRecords(month, requestedStatus) {
   const bounds = monthBounds(month);
-  if (!['reconciled', 'invoiced', 'credit_notes'].includes(requestedStatus)) {
+  if (!['reconciled', 'invoiced', 'credit_notes', 'excluded'].includes(requestedStatus)) {
     const error = new Error('Estado de workflow inválido');
     error.statusCode = 400;
     throw error;
@@ -155,6 +155,7 @@ async function getStoredWorkflowRecords(month, requestedStatus) {
       approvedAmount: records.filter((row) => row.status === 'approved').reduce((sum, row) => sum + Number(row.amount || 0), 0)
     },
     workflowCounts: {
+      excluded: monthRows.filter((row) => row.status === 'excluded').length,
       reconciled: monthRows.filter((row) => row.status === 'reconciled' && isBillableClubRecord(row.record_snapshot || {})).length,
       invoiced: monthRows.filter((row) => row.status === 'invoiced').length,
       credit_notes: monthRows.filter((row) => Boolean(row.arca_credit_note_cae)).length
@@ -274,6 +275,22 @@ async function reconcileRecords(records, user) {
   });
   const updated = Number(response.data || 0);
   return { updated, skipped: body.length - updated };
+}
+
+async function setBillingSelection(keys, excluded, user) {
+  if (typeof excluded !== 'boolean' || !Array.isArray(keys) || !keys.length || keys.length > 500
+    || keys.some(key => !['payment','subscription','manual'].includes(key?.kind) || typeof key.id !== 'string' || !key.id.trim())) {
+    throw Object.assign(new Error('Selección inválida'), {statusCode:400});
+  }
+  try {
+    const {data} = await axios.post(`${env.supabaseUrl}/rest/v1/rpc/set_mp_billing_selection`, {
+      p_keys: keys.map(({kind,id})=>({kind,id})), p_excluded:excluded, p_actor:String(user?.email||'').toLowerCase()
+    }, {headers:supabaseHeaders()});
+    return {updated:Number(data||0)};
+  } catch(error) {
+    if(error.response?.data?.code==='40001')throw Object.assign(new Error(error.response.data.message),{statusCode:409});
+    throw error;
+  }
 }
 
 async function unreconcileRecord(key) {
@@ -655,6 +672,11 @@ async function getClubRecords(month) {
     return {
       month,
       records,
+      workflowCounts: Object.fromEntries(['reconciled','excluded','invoiced','credit_notes'].map(status => [status,
+        workflowRows.filter(row => dateInMonth(row.record_snapshot?.date || row.record_snapshot?.createdAt, bounds)
+          && (status === 'credit_notes' ? Boolean(row.arca_credit_note_cae) : row.status === status)
+          && (status !== 'reconciled' || isBillableClubRecord(row.record_snapshot || {}))).length
+      ])),
       totals: {
         records: records.length,
         payments: paymentRows.length,
@@ -673,4 +695,4 @@ async function getClubRecords(month) {
   }
 }
 
-module.exports = { getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, updateInvoiceRecipient, validateRecipientFields, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote, paymentIdentification, isBillableClubRecord };
+module.exports = { setBillingSelection, getClubRecords, getStoredWorkflowRecords, createManualInvoiceRecord, updateManualInvoiceRecord, deleteManualInvoiceRecord, updateInvoiceRecipient, validateRecipientFields, reconcileRecords, unreconcileRecord, previewInvoiceRecords, invoiceRecords, getInvoiceRecord, issueCreditNote, paymentIdentification, isBillableClubRecord };
