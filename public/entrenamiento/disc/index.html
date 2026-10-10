@@ -63,13 +63,25 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
 </head>
 <body>
 <main>
+<div id="participantActions" class="stack" hidden style="margin-bottom:24px">
+  <p id="currentParticipant" class="note"></p>
+  <button id="newParticipant" class="btn ghost" type="button">Usar otro nombre y correo</button>
+</div>
 
 <section id="v-intro" class="stack">
   <div class="discbar" aria-hidden="true"><span style="background:var(--d)"></span><span style="background:var(--i)"></span><span style="background:var(--s)"></span><span style="background:var(--c)"></span></div>
   <p class="kicker">Perfil de comportamiento</p>
   <h1>Test DISC</h1>
   <p>Son 30 preguntas sobre cómo actuás en el trabajo. Elegí en cada una la opción que más se parece a lo que hacés de verdad, no a lo que te gustaría hacer. No hay respuestas buenas ni malas. Te lleva unos 8 minutos. Desde que empezás tenés un máximo de 30 minutos; al terminar el tiempo se borran las respuestas y el test vuelve a empezar.</p>
-  <div class="card stack">
+  <div id="savedAttempt" class="card stack" hidden>
+    <h2>Hay un test guardado en este navegador</h2>
+    <p id="savedParticipant" class="note"></p>
+    <p class="note">Podés retomarlo o empezar con otro nombre y correo. El reloj del intento iniciado sigue corriendo.</p>
+    <button id="continueAttempt" class="btn" type="button">Continuar test guardado</button>
+    <button id="anotherParticipant" class="btn ghost" type="button">Usar otro nombre y correo</button>
+    <p id="resumeError" class="err" role="status"></p>
+  </div>
+  <div id="introFields" class="card stack">
     <label class="f" for="nombre">Nombre y apellido
       <input id="nombre" maxlength="150" type="text" autocomplete="name" required>
     </label>
@@ -168,11 +180,11 @@ const $ = id => document.getElementById(id);
 const st = { nombre:"", email:"", i:0, ans:Array(Q.length).fill(null), order:[] };
 
 function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-function show(id){ ["v-intro","v-quiz","v-result"].forEach(v=>$(v).hidden = v!==id); window.scrollTo(0,0); }
+function show(id){ ["v-intro","v-quiz","v-result"].forEach(v=>$(v).hidden = v!==id);$('participantActions').hidden=id==='v-intro';$('currentParticipant').textContent=[st.nombre,st.email].filter(Boolean).join(' · ');window.scrollTo(0,0); }
 
 const DRAFT_KEY='disc-attempt-v1';let serverOffset=0,saving=false,queued=false;
 function persist(){try{localStorage.setItem(DRAFT_KEY,JSON.stringify(st));}catch{}}
-async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.message||'No se pudo guardar.');if(result.serverNow)serverOffset=Date.parse(result.serverNow)-Date.now();if(result.deadlineAt&&Number(result.generation||0)>=Number(st.generation||0))st.deadlineAt=result.deadlineAt;return result;}
+async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok){const error=Error(result.message||'No se pudo guardar.');error.status=response.status;throw error;}if(result.serverNow)serverOffset=Date.parse(result.serverNow)-Date.now();if(result.deadlineAt&&Number(result.generation||0)>=Number(st.generation||0))st.deadlineAt=result.deadlineAt;return result;}
 function restartAttempt(result){
  if(Number(result.generation||0)<Number(st.generation||0))return;
  Object.assign(st,{i:0,ans:result.answers||Array(Q.length).fill(null),order:Q.map(()=>shuffle(['D','I','S','C'])),revision:result.revision||0,generation:result.generation||0,startedAt:result.startedAt,deadlineAt:result.deadlineAt,closed:false});
@@ -187,11 +199,45 @@ $("start").addEventListener("click",async()=>{
  const n=$("nombre").value.trim();if(n.length<2||!$('email').checkValidity()){$('intro-err').hidden=false;return;}
  $('start').disabled=true;
  try{const response=await fetch(CONFIG.ENDPOINT+'/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n,email:$('email').value.trim()})});const result=await response.json();if(!response.ok)throw Error(result.message);
- Object.assign(st,{nombre:n,email:$('email').value.trim().toLowerCase(),submissionKey:result.attemptKey,startedAt:result.startedAt,deadlineAt:result.deadlineAt,revision:0,generation:0,closed:false});serverOffset=Date.parse(result.serverNow)-Date.now();st.order=Q.map(()=>shuffle(['D','I','S','C']));persist();show('v-quiz');render();tick();
+ Object.assign(st,{i:0,ans:Array(Q.length).fill(null),nombre:n,email:$('email').value.trim().toLowerCase(),submissionKey:result.attemptKey,startedAt:result.startedAt,deadlineAt:result.deadlineAt,revision:0,generation:0,closed:false});serverOffset=Date.parse(result.serverNow)-Date.now();st.order=Q.map(()=>shuffle(['D','I','S','C']));persist();show('v-quiz');render();tick();
  }catch(e){$('intro-err').textContent=e.message;$('intro-err').hidden=false;}finally{$('start').disabled=false;}
 });
-async function resume(){let draft;try{draft=JSON.parse(localStorage.getItem(DRAFT_KEY));}catch{}if(!draft?.submissionKey)return;Object.assign(st,draft);try{const result=await api({submissionKey:st.submissionKey,generation:st.generation||0});if(needsRestart(result)){restartAttempt(result);return;}if(result.finalized){st.closed=true;st.ans=result.answers;finish(false);$('r-send').textContent='Resultado guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';return;}st.closed=false;st.deadlineAt=result.deadlineAt;if(result.revision>=st.revision){st.ans=result.answers;st.revision=result.revision;}show('v-quiz');render();tick();autosave();}catch(e){$('intro-err').textContent='No se pudo retomar el test. Recargá para reintentar; el reloj sigue corriendo.';$('intro-err').hidden=false;$('start').disabled=true;}}
-resume();
+let savedDraft=null;
+function offerSavedAttempt(){
+ try{savedDraft=JSON.parse(localStorage.getItem(DRAFT_KEY));}catch{}
+ if(!savedDraft?.submissionKey)return;
+ $('introFields').hidden=true;$('savedAttempt').hidden=false;
+ $('savedParticipant').textContent=[savedDraft.nombre,savedDraft.email].filter(Boolean).join(' · ');
+ $('continueAttempt').textContent=savedDraft.closed?'Ver test guardado':'Continuar test guardado';
+}
+function otherParticipant(){
+ try{localStorage.removeItem(DRAFT_KEY);}catch{}
+ // Reload creates a fresh state and prevents an old in-flight save from
+ // replacing the name, timer or answers of the next participant.
+ $('nombre').value='';$('email').value='';window.location.reload();
+}
+$('newParticipant').addEventListener('click',otherParticipant);
+$('anotherParticipant').addEventListener('click',otherParticipant);
+$('continueAttempt').addEventListener('click',resume);
+async function resume(){
+ if(!savedDraft?.submissionKey)return;
+ $('continueAttempt').disabled=true;$('resumeError').textContent='';
+ Object.assign(st,savedDraft,{closed:true});
+ st.order=Q.map((_,i)=>Array.isArray(st.order?.[i])&&new Set(st.order[i]).size===4&&st.order[i].every(k=>['D','I','S','C'].includes(k))?st.order[i]:shuffle(['D','I','S','C']));
+ st.i=Math.max(0,Math.min(Q.length-1,Number(st.i)||0));
+ try{
+  const result=await api({submissionKey:st.submissionKey,generation:st.generation||0});
+  if(needsRestart(result)){restartAttempt(result);return;}
+  if(result.finalized){st.closed=true;st.ans=result.answers;finish(false);$('r-send').textContent='Resultado guardado el '+new Date(result.submittedAt).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})+' (hora Argentina).';return;}
+  st.closed=false;st.deadlineAt=result.deadlineAt;
+  if(result.revision>=st.revision){st.ans=result.answers;st.revision=result.revision;}
+  show('v-quiz');render();tick();autosave();
+ }catch(e){
+  if(e.status===404){try{localStorage.removeItem(DRAFT_KEY);}catch{}savedDraft=null;delete st.submissionKey;$('savedAttempt').hidden=true;$('introFields').hidden=false;$('intro-err').textContent=e.message;$('intro-err').hidden=false;}
+  else $('resumeError').textContent='No se pudo retomar el test. Podés reintentar o usar otro nombre y correo.';
+ }finally{$('continueAttempt').disabled=false;}
+}
+offerSavedAttempt();
 
 function render(){
   const [text,opts]=Q[st.i];

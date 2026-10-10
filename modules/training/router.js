@@ -4,6 +4,7 @@ const canRead=user=>['leonardoalaniz19@gmail.com','matirandazzo@gmail.com'].incl
 async function db(params,method='get',data){return (await axios({url:env.supabaseUrl+'/rest/v1/training_disc_submissions',method,params,data,headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey,Prefer:'return=representation'},timeout:20000})).data;}
 async function attemptDb(params,method='get',data){return (await axios({url:env.supabaseUrl+'/rest/v1/training_disc_attempts',method,params,data,headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey,Prefer:'return=representation'},timeout:20000})).data;}
 async function saveAttempt(key,answers=null,revision=0,finish=false,generation=0){return (await axios.post(env.supabaseUrl+'/rest/v1/rpc/disc_attempt_save',{p_key:key,p_answers:answers,p_revision:revision,p_finish:finish,p_generation:generation},{headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey},timeout:20000})).data;}
+async function deleteSubmission(id){return (await axios.post(env.supabaseUrl+'/rest/v1/rpc/disc_delete_submission',{p_id:id},{headers:{apikey:env.supabaseKey,Authorization:'Bearer '+env.supabaseKey},timeout:20000})).data;}
 
 function validate(body={}){
  const nombre=String(body.nombre||'').trim(),email=String(body.email||'').trim().toLowerCase(),answers=body.respuestas;
@@ -34,11 +35,16 @@ function publicRouter(request=db,attemptStore=attemptDb,save=saveAttempt){
   const key=req.body?.submissionKey;
   if(!/^[0-9a-f-]{36}$/i.test(key||''))return res.status(400).json({message:'Iniciá el test para activar el reloj.'});
   try{const result=await save(key,req.body.respuestas??null,Math.max(0,Math.min(100000,parseInt(req.body.revision,10)||0)),req.body.finish===true,Math.max(0,parseInt(req.body.generation,10)||0));res.json({ok:true,...result});}
-  catch(e){res.status(e.response?.status===400?400:503).json({message:e.response?.status===400?'No se pudo validar el intento o las respuestas.':'No se pudo guardar. Reintentá sin cerrar esta pantalla.'});}
+  catch(e){if(e.response?.data?.message==='Intento no encontrado')return res.status(404).json({message:'Este intento ya no está disponible. Podés iniciar un test nuevo.'});res.status(e.response?.status===400?400:503).json({message:e.response?.status===400?'No se pudo validar el intento o las respuestas.':'No se pudo guardar. Reintentá sin cerrar esta pantalla.'});}
  });return router;
 }
-function privateRouter(request=db){
+function privateRouter(request=db,remove=deleteSubmission){
  const router=express.Router();router.use((req,res,next)=>{res.set('Cache-Control','no-store');if(!req.authUser)return res.status(401).json({message:'Sesión requerida'});if(!canRead(req.authUser))return res.status(403).json({message:'Sin acceso al Centro de entrenamiento'});next();});
- router.get('/',async(req,res)=>{try{const offset=Math.max(0,parseInt(req.query.offset,10)||0);const rows=await request({completion_status:'eq.completed',select:'id,nombre,email,percentages,predominant,submitted_at,test_version,answers,started_at,completion_status',order:'submitted_at.desc,id.desc',limit:51,offset});res.json({rows:rows.slice(0,50),hasMore:rows.length>50});}catch{res.status(503).json({message:'No se pudieron cargar los resultados. Volvé a intentar.'});}});return router;
+ router.get('/',async(req,res)=>{try{const offset=Math.max(0,parseInt(req.query.offset,10)||0);const rows=await request({completion_status:'eq.completed',select:'id,nombre,email,percentages,predominant,submitted_at,test_version,answers,started_at,completion_status',order:'submitted_at.desc,id.desc',limit:51,offset});res.json({rows:rows.slice(0,50),hasMore:rows.length>50});}catch{res.status(503).json({message:'No se pudieron cargar los resultados. Volvé a intentar.'});}});
+ router.delete('/:id',async(req,res)=>{
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id))return res.status(400).json({message:'Identificador de test inválido.'});
+  try{const result=await remove(req.params.id);res.json({ok:true,...result});}
+  catch{res.status(503).json({message:'No se pudo confirmar la eliminación. Reintentá.'});}
+ });return router;
 }
 module.exports={publicRouter,privateRouter,validate,canRead};
