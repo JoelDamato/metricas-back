@@ -20,3 +20,12 @@ test('contacto sin datos en ninguna tabla no genera una ficha vacía',async()=>{
  const get=axios.get;const oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY;process.env.SUPABASE_URL='https://example.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test';axios.get=async()=>({data:[]});
  try{assert.equal(await controller._test.fetchContactByGhlId('missing'),null);}finally{axios.get=get;if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
 });
+test('la ficha usa el histórico explícito sin inventar comprobantes ni duplicar totales del lead',async()=>{
+ const get=axios.get;const oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ process.env.SUPABASE_URL='https://example.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test';
+ axios.get=async(url,{params})=>{
+  if(url.endsWith('/leads_raw')){assert(params.select.includes('extra'));return {data:[{id:'lead',ghlid:'client',nombre:'Histórico',facturacion_total:3475,cash_collected_total:3475,extra:{ghl_receipts_managed:true,ghl_opening_balance:{facturacion:1500,cash_collected:1500}}}]};}
+  return {data:url.endsWith('/comprobantes')?[{id:'receipt',tipo:'Venta',estado:'Conciliado',facturacion:1975,cash_collected:1975}]:[]};
+ };
+ try{const c=await controller._test.fetchContactByGhlId('client');assert.equal(c.facturacionTotal,3475);assert.equal(c.cashCollectedTotal,3475);assert.equal(c.receiptTotals.saldo,0);assert.equal(c.comprobantes.length,1);assert.equal(c.historicalOpeningBalance.facturacion,1500);}finally{axios.get=get;if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
+});

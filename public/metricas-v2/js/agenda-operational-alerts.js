@@ -222,6 +222,7 @@
     });
 
     (options.cashRows || []).forEach((row) => {
+      if (normalizeText(row?.estado) !== 'conciliado' || ['true','1'].includes(String(row?.rebotar_pago).toLowerCase())) return;
       if (normalizeText(row?.producto_format).includes('club')) return;
       const cashType = normalizeText(row?.tipo);
       if (cashType && !['venta', 'cobranza'].includes(cashType)) return;

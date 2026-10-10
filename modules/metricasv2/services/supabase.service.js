@@ -2637,6 +2637,7 @@ function getMarketingCampaignTotal(acc, campaign) {
 }
 
 function getNetCashCollected(row) {
+  if (String(row?.estado || '').trim().toLowerCase() !== 'conciliado' || ['true','1'].includes(String(row?.rebotar_pago).toLowerCase())) return 0;
   return Number(row?.cash_collected_neto ?? row?.cash_collected ?? 0);
 }
 

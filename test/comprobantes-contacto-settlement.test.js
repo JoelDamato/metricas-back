@@ -22,3 +22,13 @@ test('saldo del cliente descuenta IVA con el TC del comprobante pero no comision
  const historical=totals([{tipo:'Venta',facturacion:1000,cash_collected:1210,cash_ar:1210000,iva:210000,estado:'Conciliado'}]);assert.equal(historical.saldo,0);
  const pending=totals([{tipo:'Venta',facturacion:1000,cash_collected:1210,iva:210000,tc:1000,estado:'No conciliado'}]);assert.equal(pending.cobrado,0);assert.equal(pending.pendiente,1000);assert.equal(pending.saldo,1000);
 });
+test('histórico preservado se suma una sola vez; pendientes y rebotes no alteran el saldo inicial',()=>{
+ const {openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
+ const opening=openingBalance({ghl_opening_balance:{facturacion:1500,cash_collected:1500}});
+ const rows=[{tipo:'Venta',facturacion:1975,cash_collected:1975,estado:'Conciliado'},{tipo:'Cobranza',cash_collected:100,estado:null}];
+ assert.deepEqual(totals(rows,opening),{facturacion:3475,cobrado:3475,pendiente:100,rebotado:0,saldo:0});
+ assert.equal(totals(rows,opening).facturacion,3475);
+ assert.deepEqual(totals([],opening),{facturacion:1500,cobrado:1500,pendiente:0,rebotado:0,saldo:0});
+ assert.equal(openingBalance({}),null);
+ assert.throws(()=>openingBalance({ghl_opening_balance:{facturacion:100,cash_collected:200}}));
+});

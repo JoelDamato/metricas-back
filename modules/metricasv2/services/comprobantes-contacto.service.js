@@ -31,5 +31,12 @@ function cashWithoutIva(row) {
  if(!tc)throw Error('Un comprobante tiene IVA pero no un tipo de cambio válido para calcular el saldo sin IVA.');
  return Math.max(0,cash-iva/tc);
 }
-function totals(rows){const result={facturacion:0,cobrado:0,pendiente:0,rebotado:0};for(const r of rows){const refunded=/^Devoluci[oó]n$/i.test(r.tipo),sign=refunded?-1:1;const bounced=String(r.estado).toLowerCase()==='rebotado'||String(r.rebotar_pago)==='true';const effective=!bounced&&String(r.estado).toLowerCase()==='conciliado';if(r.tipo==='Venta')result.facturacion+=Number(r.facturacion||0);else if(refunded&&effective)result.facturacion-=Number(r.facturacion||0);result[bounced?'rebotado':effective?'cobrado':'pendiente']+=sign*cashWithoutIva(r);}for(const key of Object.keys(result))result[key]=Math.round((result[key]+Number.EPSILON)*100)/100;result.saldo=Math.round((result.facturacion-result.cobrado)*100)/100;return result;}
-module.exports={listContactReceipts,totals,cashWithoutIva};
+function openingBalance(extra) {
+ const opening=extra?.ghl_opening_balance;
+ if (!opening || typeof opening!=='object') return null;
+ const facturacion=Number(opening.facturacion),cash_collected=Number(opening.cash_collected);
+ if (!Number.isFinite(facturacion)||!Number.isFinite(cash_collected)||facturacion<0||cash_collected<0||cash_collected>facturacion) throw Error('El saldo histórico del cliente requiere revisión.');
+ return {facturacion,cash_collected};
+}
+function totals(rows,opening=null){const result={facturacion:opening?.facturacion||0,cobrado:opening?.cash_collected||0,pendiente:0,rebotado:0};for(const r of rows){const refunded=/^Devoluci[oó]n$/i.test(r.tipo),sign=refunded?-1:1;const bounced=String(r.estado).toLowerCase()==='rebotado'||String(r.rebotar_pago)==='true';const effective=!bounced&&String(r.estado).toLowerCase()==='conciliado';if(r.tipo==='Venta')result.facturacion+=Number(r.facturacion||0);else if(refunded&&effective)result.facturacion-=Number(r.facturacion||0);result[bounced?'rebotado':effective?'cobrado':'pendiente']+=sign*cashWithoutIva(r);}for(const key of Object.keys(result))result[key]=Math.round((result[key]+Number.EPSILON)*100)/100;result.saldo=Math.round((result.facturacion-result.cobrado)*100)/100;return result;}
+module.exports={listContactReceipts,totals,cashWithoutIva,openingBalance};

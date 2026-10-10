@@ -1,5 +1,5 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
-const {listContactReceipts,totals}=require('../modules/metricasv2/services/comprobantes-contacto.service');
+const {listContactReceipts,totals,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 
@@ -63,7 +63,7 @@ function mapLead(row, ghlId) {
 }
 
 function getRowScore(row) {
-  let score = 0;
+  let score = row.extra?.ghl_receipts_managed ? 10 : 0;
   if (row.facturacion_total !== null && row.facturacion_total !== undefined) score += 2;
   if (row.cash_collected_total !== null && row.cash_collected_total !== undefined) score += 2;
   if (row.etapa && row.etapa !== 'Sin agenda') score += 1;
@@ -79,7 +79,7 @@ async function fetchContactByGhlId(ghlId) {
       for(let offset=0;;offset+=500){
         const {data}=await axios.get(`${supabaseUrl}/rest/v1/leads_raw`, {
           headers:buildHeaders(), timeout:30000,
-          params:{select:'id,ghlid,nombre,mail,telefono,etapa,facturacion_total,cash_collected_total,setter,closer',ghlid:`eq.${ghlId}`,order:'id.asc',limit:500,offset}
+          params:{select:'id,ghlid,nombre,mail,telefono,etapa,facturacion_total,cash_collected_total,setter,closer,extra',ghlid:`eq.${ghlId}`,order:'id.asc',limit:500,offset}
         });
         result.push(...data);if(data.length<500)return result;
       }
@@ -108,7 +108,9 @@ async function fetchContactByGhlId(ghlId) {
   if(!row)row={nombre:csmRow?.nombre||latestComprobante?.cliente_format||'Sin nombre',mail:csmRow?.mail||latestComprobante?.mail,telefono:csmRow?.telefono||latestComprobante?.telefono,closer:csmRow?.closer,etapa:csmRow?'Cliente CSM':'Con comprobantes'};
 
   const contact = mapLead(row, ghlId);
-  const receiptTotals=totals(comprobantesRows);
+  const historicalOpeningBalance=openingBalance(row.extra);
+  const receiptTotals=totals(comprobantesRows,historicalOpeningBalance);
+  contact.historicalOpeningBalance=historicalOpeningBalance;
   contact.comprobantes=comprobantesRows;
   contact.receiptTotals=receiptTotals;
   contact.facturacionTotal=receiptTotals.facturacion;

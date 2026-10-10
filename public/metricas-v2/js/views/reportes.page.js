@@ -23,7 +23,7 @@ const REPORTES_BLOCK_INFO = {
     title: 'Cash Collected Diario',
     viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Lee "comprobantes" por "f_acreditacion" y agrupa por closer sumando "cash_collected". El CCC suma ese mismo campo solo en comprobantes con estado "Conciliado". El "% CC" muestra qué porcentaje del CCC total del rango aporta cada closer. La fila "Premio" toma el porcentaje configurable sobre el CCC total y lo reparte según esa participación.'
+    logic: 'Lee "comprobantes" por "f_acreditacion" y agrupa por closer sumando "cash_collected". CC y CCC incluyen sólo comprobantes conciliados y sin rebote. El "% CC" muestra qué porcentaje del CCC total del rango aporta cada closer. La fila "Premio" toma el porcentaje configurable sobre el CCC total y lo reparte según esa participación.'
   },
   Comprobantes: {
     title: 'Comprobantes',
@@ -73,13 +73,13 @@ const REPORTES_METRIC_INFO = {
     title: 'Cash Collected Diario · CC USD',
     viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Suma "cash_collected" en "comprobantes", agrupado por closer dentro del rango de "f_acreditacion".'
+    logic: 'Suma el cash neto de IVA de comprobantes conciliados y sin rebote, agrupado por closer dentro del rango de acreditación.'
   },
   'Cash Collected Diario|CC ARS': {
     title: 'Cash Collected Diario · CC ARS',
     viewLabel: '"comprobantes"',
     dateLabel: '"fecha_acreditacion"',
-    logic: 'Suma "cash_collected_ars" en "comprobantes", agrupado por closer.'
+    logic: 'Suma el cash en ARS neto de IVA de comprobantes conciliados y sin rebote, agrupado por closer.'
   },
   'Cash Collected Diario|CCC': {
     title: 'Cash Collected Diario · CCC',
@@ -632,11 +632,11 @@ async function fetchCashRows(range) {
     from: range.from,
     to: range.to,
     dateField: 'f_acreditacion',
-    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected_neto_ars,cash_collected,cash_collected_ars,estado'
+    select: 'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected_neto_ars,cash_collected,cash_collected_ars,estado,rebotar_pago'
   });
 
   return (response.rows || [])
-    .filter((row) => !normalizeText(row.producto_format).includes('club'))
+    .filter((row) => !normalizeText(row.producto_format).includes('club') && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago).toLowerCase()))
     .map((row) => {
       const effectiveCash = Number(row.cash_collected_neto ?? row.cash_collected ?? 0);
       const normalizedState = normalizeText(row.estado);

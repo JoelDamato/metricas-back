@@ -1442,7 +1442,7 @@ async function loadRealCashByAcreditacion(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado,rebotar_pago'
   });
 
   const closerMap=new Map(closers.map((closer)=>[normalizeText(closer.name),closer]));
@@ -1454,7 +1454,7 @@ async function loadRealCashByAcreditacion(year,month){
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
       cash_collected: effectiveCash,
-      cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
+      cash_collected_conciliado: normalizedState==='conciliado'&&!['true','1'].includes(String(row.rebotar_pago).toLowerCase())?effectiveCash:0
     };
     if(!isEligibleCashRow(cashRow)) return;
     const closerName=getResponsibleCloser(row);
@@ -1491,7 +1491,7 @@ async function loadMonthlyBaseCategories(year,month){
     orderBy:'f_acreditacion',
     orderDir:'asc',
     limit:1000,
-    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
+    select:'responsable_venta,creado_por,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado,rebotar_pago'
   });
 
   const totalsByCloser=new Map();
@@ -1502,7 +1502,7 @@ async function loadMonthlyBaseCategories(year,month){
     const cashRow={
       fecha_acreditacion: row?.f_acreditacion,
       cash_collected: effectiveCash,
-      cash_collected_conciliado: normalizedState==='conciliado'?effectiveCash:0
+      cash_collected_conciliado: normalizedState==='conciliado'&&!['true','1'].includes(String(row.rebotar_pago).toLowerCase())?effectiveCash:0
     };
     if(!isEligibleCashRow(cashRow)) return;
     const closerName=getResponsibleCloser(row);
@@ -2738,7 +2738,7 @@ async function loadAgendaOperationalAlerts(){
         orderBy:'f_acreditacion',
         orderDir:'asc',
         limit:1000,
-        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,tipo,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado'
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,tipo,producto_format,f_acreditacion,cash_collected_neto,cash_collected,estado,rebotar_pago'
       }),
       window.metricasApi.fetchAllRows('comprobantes',{
         from:`${year}-${String(month).padStart(2,'0')}-01`,
@@ -2747,7 +2747,7 @@ async function loadAgendaOperationalAlerts(){
         orderBy:'fecha_de_agendamiento',
         orderDir:'desc',
         limit:1000,
-        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,fecha_de_agendamiento,f_venta,tipo,producto_format,facturacion,cash_collected_neto,cash_collected,estado'
+        select:'id,cliente,cliente_format,ghlid,responsable_venta,creado_por,fecha_de_agendamiento,f_venta,tipo,producto_format,facturacion,cash_collected_neto,cash_collected,estado,rebotar_pago'
       }),
       window.metricasApi.fetchAgendaBonusRules({anio:year,mes:month})
     ]);

@@ -2728,7 +2728,7 @@ function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
   });
 
   const facturacionRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
-  const cashRows = renewalCashRows.filter((row) => isDateInRange(row.f_acreditacion, filters));
+  const cashRows = renewalCashRows.filter((row) => isDateInRange(row.f_acreditacion, filters) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago).toLowerCase()));
   const pendingRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
   const countRows = renewalSales.filter((row) => isDateInRange(row.f_venta, filters));
 
@@ -2743,7 +2743,7 @@ function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
       const netTotal = Number(row.cash_collected_neto_total ?? row.cash_collected_total ?? 0);
       const cashCollected = netTotal > 0
         ? netTotal
-        : Number(row.cash_collected_neto ?? row.cash_collected ?? 0);
+        : (normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago).toLowerCase()) ? Number(row.cash_collected_neto ?? row.cash_collected ?? 0) : 0);
       return sum + Math.max(facturacion - cashCollected, 0);
     }, 0),
     cantidad: countRows.length
@@ -2765,7 +2765,7 @@ function buildRenewalFinancialMetrics(comprobanteRows, filters = {}) {
       label: 'Cash collected de renovaciones',
       value: formatCurrency(totals.cashCollected),
       base: `${formatInteger(cashRows.length)} acreditaciones de ventas de renovacion dentro del rango`,
-      note: 'Base comprobantes. Sumo acreditaciones reales de ventas y cobranzas ligadas a renovaciones.',
+      note: 'Sumo sólo pagos conciliados, sin rebotes, de ventas y cobranzas ligadas a renovaciones.',
       dateLabel: '"f_acreditacion"',
       fieldsLabel: '"tipo", "producto_format", "cash_collected_total", "cash_collected", "f_acreditacion"',
       logic: 'Suma "cash_collected" de comprobantes acreditados dentro del rango. Entra la venta de renovación y también cualquier cobranza vinculada por "ghlid" a una venta cuyo "producto_format" contiene "renovac".'
