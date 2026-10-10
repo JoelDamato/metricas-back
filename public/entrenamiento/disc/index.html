@@ -6,6 +6,7 @@
 <title>Test DISC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="/entrenamiento/disc/results.css?v=20261010-bars-1">
 <style>
 /* Layout: una columna centrada, una pregunta por pantalla. Colores DISC como único acento. */
 :root{
@@ -55,15 +56,8 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
 .opt[aria-pressed="true"] .dot{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
 .note{font-size:.9rem;color:var(--muted)}
 .err{color:var(--d);font-size:.9rem}
-.bars{display:flex;flex-direction:column;gap:14px}
-.bar{display:grid;grid-template-columns:110px 1fr 56px;gap:12px;align-items:center;font-variant-numeric:tabular-nums}
-.bar b{font-family:var(--display)}
-.bar .t{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
-.bar .t i{display:block;height:100%;border-radius:7px}
-.bar span:last-child{text-align:right}
 .prof{border-left:4px solid var(--accent);padding-left:14px}
 .prof ul{margin:8px 0 0;padding-left:20px}
-@media (max-width:420px){.bar{grid-template-columns:90px 1fr 48px}}
 @media (prefers-reduced-motion:reduce){.track i{transition:none}}
 </style>
 </head>
@@ -104,7 +98,7 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
   <p class="kicker">Tu resultado</p>
   <h1 id="r-title"></h1>
   <p id="r-name" class="note"></p>
-  <div class="card bars" id="r-bars"></div>
+  <div class="card" id="r-bars" aria-label="Distribución del perfil DISC"></div>
   <div class="prof stack" id="r-prof"></div>
   <p id="r-send" class="note" role="status" aria-live="polite"></p><button id="retry" class="btn" type="button" hidden>Reintentar envío</button>
   <div class="row">
@@ -115,6 +109,7 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
 </section>
 
 </main>
+<script src="/entrenamiento/disc/results.js?v=20261010-bars-1"></script>
 <script>
 /* ===== CONFIGURACIÓN =====
    ENDPOINT: URL que recibe el resultado por POST en JSON (Google Apps Script, Supabase, Zapier, etc.). Vacío = no envía.
@@ -226,7 +221,7 @@ $("next").addEventListener("click",()=>{
 
 function score(){
   const c={D:0,I:0,S:0,C:0}; st.ans.forEach(k=>c[k]++);
-  const p={}; for(const k in c) p[k]=Math.round(c[k]/Q.length*1000)/10;
+  const p=DiscResults.percentages(st.ans);
   return {c,p};
 }
 
@@ -239,15 +234,7 @@ function finish(submit=true){
   $("r-title").textContent = "Perfil predominante: " + top.map(k=>DIM[k].name).join(" y ");
   $("r-name").textContent = st.nombre + (st.email ? " · "+st.email : "");
 
-  const bars=$("r-bars"); bars.textContent="";
-  ["D","I","S","C"].forEach(k=>{
-    const row=document.createElement("div"); row.className="bar";
-    row.innerHTML='<b></b><div class="t"><i></i></div><span></span>';
-    row.querySelector("b").textContent=DIM[k].name;
-    const i=row.querySelector("i"); i.style.width=p[k]+"%"; i.style.background=DIM[k].color;
-    row.querySelector("span").textContent=p[k].toLocaleString("es-AR")+"%";
-    bars.append(row);
-  });
+  $("r-bars").innerHTML=DiscResults.markup(p);
 
   const prof=$("r-prof"); prof.textContent="";
   top.forEach(k=>{
