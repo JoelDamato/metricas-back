@@ -1,0 +1,13 @@
+:is(.comisiones-page,.commercial-area-page) select{color-scheme:dark;appearance:none;min-height:44px;box-sizing:border-box;border:1px solid #436181!important;border-radius:10px!important;color:#edf4ff!important;background-color:#0b1c31!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bcd5f5' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 12px center!important;padding:10px 38px 10px 12px!important;line-height:1.4;font:inherit;box-shadow:none!important}
+:is(.comisiones-page,.commercial-area-page) select option{background:#102239;color:#edf4ff}
+.comisiones-page .button-secondary{background:#17324f!important;color:#d4e6ff!important;border:1px solid #41678e!important;box-shadow:none!important;min-height:42px;border-radius:10px}
+.comisiones-page .comisiones-tab{background:transparent!important;color:#bcd2ed!important;border:1px solid transparent;box-shadow:none!important}
+.comisiones-page .comisiones-tab.is-active{background:#224e84!important;border-color:#527fb5;color:#fff!important}
+:is(.comisiones-page,.commercial-area-page) select:disabled{opacity:.55;cursor:not-allowed}
+:is(.comisiones-page,.commercial-area-page) :is(button,select):focus-visible{outline:2px solid #92c1ff;outline-offset:3px}
+.comisiones-page .comisiones-subnav{background:#102038!important;border:1px solid #304d70!important;box-shadow:none!important}
+.comisiones-page .comisiones-hero-actions{background:#10243d!important;border:1px solid #345477!important;box-shadow:none!important}
+.comisiones-page .comisiones-hero-field{color:#bbd1ee!important}
+.comisiones-page .comisiones-hero-field input{color-scheme:dark;background:#0b1c31!important;color:#edf4ff!important;border:1px solid #436181!important;min-height:44px;box-sizing:border-box}
+#settlementRoot .settlement-controls{align-items:end;gap:14px;margin:18px 0}
+#settlementRoot .settlement-controls button{height:44px;align-self:end}

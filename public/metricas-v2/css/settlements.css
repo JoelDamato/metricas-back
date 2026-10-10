@@ -3,10 +3,27 @@
 #settlementRoot p{color:#b8c9dd;line-height:1.5}
 #settlementRoot table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
 #settlementRoot th,#settlementRoot td{padding:12px;text-align:left;border-bottom:1px solid #304969}
-#settlementRoot tbody tr:last-child th,#settlementRoot tbody tr:last-child td{font-weight:600}
+#settlementRoot .settlement-totals tbody tr:last-child th,#settlementRoot .settlement-totals tbody tr:last-child td{font-weight:600}
 #settlementRoot label{display:grid;gap:7px;font-size:13px}
 #settlementRoot input,#settlementRoot select{box-sizing:border-box;max-width:100%;padding:10px;background:#0b192c;border:1px solid #496282;border-radius:8px;color:#e4edfb;font:inherit}
 #settlementRoot button{padding:10px 16px;border:1px solid #4a79be;border-radius:9px;background:#224c82;color:white;cursor:pointer;font:inherit}
 #settlementRoot button:disabled{opacity:.5;cursor:wait}
 #settlementRoot :focus-visible{outline:2px solid #9ec8ff;outline-offset:3px}
 #settlementRoot small{font-size:11px;color:#9fb7d1;margin-top:5px}
+/* Keep controls and table cells readable regardless of inherited theme rules. */
+#settlementRoot{color-scheme:dark}
+#settlementRoot table th,#settlementRoot table td{background:#122942!important;color:#e4edfb!important}
+#settlementRoot label{color:#bcd0e8!important;line-height:1.4;min-width:0}
+#settlementRoot input,#settlementRoot select{min-height:44px;border-radius:10px;margin:0;color:#edf4ff!important;background-color:#0b1c31!important;border:1px solid #496282!important;box-shadow:none!important}
+#settlementRoot select{padding-right:38px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bcd5f5' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+#settlementRoot option{background:#102239;color:#edf4ff}
+#settlementRoot button{margin:0;min-height:44px;padding:11px 16px;border-radius:10px;border:1px solid #4b7fbd;background:linear-gradient(130deg,#285fad,#214879);color:#fff;line-height:1.3;box-shadow:none;font-size:14px}
+#settlementRoot button:hover:not(:disabled){border-color:#8dbaff;filter:brightness(1.1)}
+#settlementRoot input:disabled{opacity:.55;cursor:not-allowed}
+#settlementRoot [data-person]{width:min(100%,360px)}
+#settlementRoot form[data-form]{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px!important;padding:20px;border:1px solid #304969;border-radius:14px;background:#102239}
+#settlementRoot form[data-form] input,#settlementRoot form[data-form] select{width:100%}
+#settlementRoot form[data-form] button{justify-self:start}
+#settlementRoot .settlement-totals tr:last-child th,#settlementRoot .settlement-totals tr:last-child td{background:#1c3d68!important;font-weight:700}
+@media(max-width:800px){#settlementRoot form[data-form]{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){#settlementRoot form[data-form]{grid-template-columns:minmax(0,1fr);padding:14px}#settlementRoot [data-person]{width:100%}}
