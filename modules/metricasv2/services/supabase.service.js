@@ -3222,6 +3222,7 @@ async function getMarketingDashboard(filters){
 }
 
 module.exports = {
+  listAllRows,
   getMarketingOrigins,
   getMarketingDashboard,
   listResources,

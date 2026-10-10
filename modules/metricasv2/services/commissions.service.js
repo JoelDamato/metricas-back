@@ -1,3 +1,4 @@
+const settlements = require('../../settlements/service');
 const {commissionAreaForUser} = require('./commission-area-identity');
 const axios = require('axios');
 const env = require('../config/env');
@@ -1680,17 +1681,18 @@ async function lockCommissionMonth(monthKey, user) {
 
 async function buildCommissionDashboard(monthKey, options = {}) {
   const safeMonth = normalizeMonthKey(monthKey);
-  const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows] = await Promise.all([
+  const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows, movementRows] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchComprobantesRowsForCommissions(),
     fetchAllRows('setters', {
       select: 'anio,mes,setter,agendo,venta_club'
     }),
-    fetchAgendaRowsForCommissions(safeMonth)
+    fetchAgendaRowsForCommissions(safeMonth),
+    settlements.list(safeMonth)
   ]);
   const originLeadRows = await fetchOriginLeadRowsForComprobantes(rawComprobantesRows);
   const comprobantesRows = enrichComprobanteOrigins(rawComprobantesRows, originLeadRows);
-  const details = buildTransactionDetails({
+  const calculatedDetails = buildTransactionDetails({
     monthKey: safeMonth,
     config,
     comprobantesRows,
@@ -1698,6 +1700,7 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     agendaRows
   });
 
+  const details = [...calculatedDetails.filter(d=>!d.isBonus),...settlements.approvedBonusDetails(movementRows)];
   const summary = summarizeDetails(details);
   const marketingArea = buildMarketingAreaSummary({
     monthKey: safeMonth,
@@ -1710,6 +1713,8 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     config,
     ...summary,
     marketingArea,
+    bonusCandidates: calculatedDetails.filter(d=>d.isBonus),
+    movementRows,
     areaCommissions: buildAreaCommissionData(details, marketingArea, comprobantesRows, safeMonth, config),
     details: details.map(detail => { const net=personalNetFinancials(detail); return {...detail, cashArs:net.cashArs, cashUsd:net.cashUsd, grossCashArs:net.grossCashArs, grossCashUsd:net.grossCashUsd}; })
   };
@@ -1838,7 +1843,7 @@ function buildPersonalClubMonthly(comprobantesRows, user = {}, year, includeOnly
 function buildMarketingCloserPersonalArea(dashboard, user) {
   const personal = buildPersonalCommercialArea(dashboard, user);
   const eligible = row => row.category !== 'Club' && !isClubProduct(row.product);
-  const closerDetails = personal.details.filter(row => row.role === 'Closer' && eligible(row));
+  const closerDetails = personal.details.filter(row => row.role === 'Closer' && !row.isBonus && eligible(row));
   const areaDetails = (dashboard.areaCommissions.find(row => row.label === 'Marketing')?.details || []).filter(eligible);
   const details = [...closerDetails, ...areaDetails];
   const transactions = uniqueTransactions(details);
@@ -1862,8 +1867,7 @@ function buildMarketingCloserPersonalArea(dashboard, user) {
   };
 }
 
-async function getMyCommercialArea(monthKey, user) {
-  const dashboard = await buildCommissionDashboard(monthKey, { includeSourceRows: true });
+function buildUserCommercialArea(dashboard, user) {
   if (String(user?.email || '').trim().toLowerCase() === 'walteralegre56@gmail.com') return buildMarketingCloserPersonalArea(dashboard, user);
   const area=commissionAreaForUser(user);
   if(area){
@@ -1886,6 +1890,13 @@ async function getMyCommercialArea(monthKey, user) {
   return personal;
 }
 
+async function getMyCommercialArea(monthKey,user){
+ const dashboard=await buildCommissionDashboard(monthKey,{includeSourceRows:true});
+ const personal=buildUserCommercialArea(dashboard,user);
+ personal.settlement=settlements.calculate(personal,dashboard.movementRows.filter(r=>r.person_email===settlements.email(user)));
+ return personal;
+}
+
 module.exports = {
   DEFAULT_CONFIG,
   normalizeConfig,
@@ -1896,6 +1907,7 @@ module.exports = {
   buildCommissionDashboard,
   getCommissionPersonDetail,
   getMyCommercialArea,
+  buildUserCommercialArea,
   _test: {
     hasCommissionAgendaSignals,
     buildLiveAgendaCountMap,

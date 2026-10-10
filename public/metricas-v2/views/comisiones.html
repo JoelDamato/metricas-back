@@ -8,7 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-  </head>
+    <link rel="stylesheet" href="/css/settlements.css?v=20261010-1">
+</head>
   <body class="ranking-page comisiones-page premium-navy-background">
     <main class="container">
       <section class="ranking-hero comisiones-hero">
@@ -32,6 +33,7 @@
             <button class="comisiones-tab is-active" type="button" role="tab" aria-selected="true" data-tab="overview">Vista general</button>
             <button class="comisiones-tab" type="button" role="tab" aria-selected="false" data-tab="person">Comprobantes</button>
             <button class="comisiones-tab" type="button" role="tab" aria-selected="false" data-tab="agendas">Agendas</button>
+            <button class="comisiones-tab" type="button" role="tab" aria-selected="false" data-tab="settlement">Liquidaciones</button>
             <button class="comisiones-tab" type="button" role="tab" aria-selected="false" data-tab="rules">Configuración</button>
           </div>
         </nav>
@@ -137,6 +139,7 @@
           <div id="commissionAgendaDetails" class="table-wrap comisiones-table-wrap"></div>
         </section>
 
+        <section class="comisiones-panel" data-panel="settlement"><div id="settlementRoot" data-mode="admin" data-month="commissionsMonth"></div></section>
         <section class="comisiones-panel" data-panel="rules">
           <div class="comisiones-rules-toolbar">
             <button id="saveCommissionRules" type="button">Guardar</button>
@@ -265,5 +268,6 @@
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
     <script src="/js/views/comisiones.page.js?v=20261008-area-net-1"></script>
+  <script src="/js/views/settlements.page.js?v=20261010-1"></script>
   </body>
 </html>

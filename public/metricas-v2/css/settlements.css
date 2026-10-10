@@ -1,0 +1,12 @@
+#settlementRoot[hidden],.commercial-area-page [hidden]{display:none!important}
+#settlementRoot h2,#settlementRoot h3,#settlementRoot th{color:#e4edfb}
+#settlementRoot p{color:#b8c9dd;line-height:1.5}
+#settlementRoot table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+#settlementRoot th,#settlementRoot td{padding:12px;text-align:left;border-bottom:1px solid #304969}
+#settlementRoot tbody tr:last-child th,#settlementRoot tbody tr:last-child td{font-weight:600}
+#settlementRoot label{display:grid;gap:7px;font-size:13px}
+#settlementRoot input,#settlementRoot select{box-sizing:border-box;max-width:100%;padding:10px;background:#0b192c;border:1px solid #496282;border-radius:8px;color:#e4edfb;font:inherit}
+#settlementRoot button{padding:10px 16px;border:1px solid #4a79be;border-radius:9px;background:#224c82;color:white;cursor:pointer;font:inherit}
+#settlementRoot button:disabled{opacity:.5;cursor:wait}
+#settlementRoot :focus-visible{outline:2px solid #9ec8ff;outline-offset:3px}
+#settlementRoot small{font-size:11px;color:#9fb7d1;margin-top:5px}

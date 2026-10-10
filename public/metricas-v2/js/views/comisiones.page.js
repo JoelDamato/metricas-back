@@ -2085,5 +2085,6 @@
     loadPage();
   });
 
+  window.addEventListener('settlement-updated', loadPage);
   loadPage();
 })();

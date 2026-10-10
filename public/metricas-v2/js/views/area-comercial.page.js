@@ -125,5 +125,6 @@
 
   document.getElementById('commercialAreaReload')?.addEventListener('click', load);
   monthInput.addEventListener('change', load);
+  window.addEventListener('settlement-updated', load);
   load();
 })();
