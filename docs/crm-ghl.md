@@ -18,7 +18,7 @@ Los campos existentes se normalizan hacia `leads_raw`. Cada evento completo, su 
 
 Etapa, recursos y enlace WhatsApp se calculan internamente. Último producto, fechas de venta, facturación, cobros y deuda usan los comprobantes vinculados en Supabase, incluidos los anteriores al cambio. Sólo los conciliados suman cobro; rebotes y pendientes no. El saldo del cliente descuenta IVA del cash, sin descontarle cargos del medio de pago. Las comisiones conservan su circuito existente.
 
-Se recalcula al recibir GHL o cambiar comprobantes. Un trabajo horario actualiza la antigüedad de deuda (más de 60 días desde el último cobro conciliado). Cuando no hay comprobantes disponibles, se preservan valores históricos en lugar de sustituirlos por ceros. Este circuito no escribe en CSM ni en Notion.
+Se recalcula al recibir GHL o cambiar comprobantes. Un trabajo horario actualiza la antigüedad de deuda (más de 60 días desde el último cobro conciliado). Los importes históricos que no tienen comprobantes individuales se conservan una sola vez como saldo inicial en `extra.ghl_opening_balance`, con el origen y los totales anteriores. No crean ventas ni comisiones. Se agregan a los movimientos posteriores sin duplicarse. Si la diferencia implica un cobro inicial negativo o superior a la facturación inicial, el evento requiere revisión antes de modificar el contacto. Se preservan productos y fechas históricos cuando no hay comprobantes disponibles. Este circuito no escribe en CSM ni en Notion.
 
 ## Operación
 
@@ -27,6 +27,6 @@ Se recalcula al recibir GHL o cambiar comprobantes. Un trabajo horario actualiza
 - `503`: no se pudo confirmar persistencia; el emisor debe reintentar.
 - Configuración opcional: `GHL_LEADS_WEBHOOK_SECRET` exige el mismo valor en `x-webhook-token`.
 
-Instalar `20261010120000_leads_ghl_ingestion.sql` antes de desplegar. Conectar el webhook GHL a `/api/crm`, validar el primer envío y después detener el flujo CRM de Notion. La instalación sola no reemplaza los workflows de GHL. La integración de tickets con Notion es independiente.
+Instalar `20261010120000_leads_ghl_ingestion.sql` y `20261010130000_preserve_crm_opening_balances.sql` antes de desplegar. Conectar el webhook GHL a `/api/crm`, validar el primer envío y después detener el flujo CRM de Notion. La instalación sola no reemplaza los workflows de GHL. La integración de tickets con Notion es independiente.
 
 Validación: pruebas de mapeo, HTTP y PostgreSQL real embebido en `test/leads-ghl-*.test.js`; incluye reintentos, formatos de fecha, valores vacíos, nuevas propiedades, protección de IDs, permisos, financieros y los triggers existentes de comprobantes.
