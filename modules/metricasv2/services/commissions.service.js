@@ -1,3 +1,4 @@
+const {isOwner,buildOwnerOverview}=require('./owner-overview');
 const { validateConfig } = require('./commission-config-validation');
 const settlements = require('../../settlements/service');
 const {commissionAreaForUser} = require('./commission-area-identity');
@@ -1871,6 +1872,7 @@ function buildMarketingCloserPersonalArea(dashboard, user) {
 }
 
 function buildUserCommercialArea(dashboard, user) {
+  if(isOwner(user)) return buildOwnerOverview(dashboard,normalizeComprobanteRows(dashboard.sourceComprobantesRows || []));
   if (String(user?.email || '').trim().toLowerCase() === 'walteralegre56@gmail.com') return buildMarketingCloserPersonalArea(dashboard, user);
   const area=commissionAreaForUser(user);
   if(area){
@@ -1896,7 +1898,7 @@ function buildUserCommercialArea(dashboard, user) {
 async function getMyCommercialArea(monthKey,user){
  const dashboard=await buildCommissionDashboard(monthKey,{includeSourceRows:true});
  const personal=buildUserCommercialArea(dashboard,user);
- personal.settlement=settlements.calculate(personal,dashboard.movementRows.filter(r=>r.person_email===settlements.email(user)));
+ if(!personal.isOwner) personal.settlement=settlements.calculate(personal,dashboard.movementRows.filter(r=>r.person_email===settlements.email(user)));
  return personal;
 }
 

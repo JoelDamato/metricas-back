@@ -1,0 +1,16 @@
+.owner-commercial-page .commercial-area-summary article:last-child{background:linear-gradient(120deg,#254e79,#16354c);border-color:#578fbb}
+.owner-radar-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.owner-radar-summary>div{padding:20px;border:1px solid #5a573d;border-radius:14px;background:#30302955;display:grid;gap:10px}
+.owner-radar-summary>div:last-child{border-color:#67444f;background:#43212f44}
+.owner-radar-summary span{color:#b9cce4;font-size:13px}.owner-radar-summary strong{color:#fff;font-size:25px;font-variant-numeric:tabular-nums}
+.owner-attention-list article{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:20px;padding:18px 0;border-bottom:1px solid #2c4666;color:#e9f2ff}
+.owner-attention-list small,.owner-sales-table small{display:block;color:#a5bad5;line-height:1.5;margin-top:4px;font-size:12px}
+.owner-attention-list a,.owner-sales-table a{color:#9cc9ff}
+.owner-state{display:inline-block;padding:5px 9px;font-size:12px;border:1px solid #5a728d;border-radius:7px;white-space:nowrap;color:#d3e5fc;background:#213e5c}
+.owner-state.pending{color:#ffe1a0;background:#44391e;border-color:#887345}.owner-state.bad{color:#ffbdc7;background:#452635;border-color:#825064}
+.owner-cash-bridge{margin-top:24px;padding:18px;border:1px solid #345474;border-radius:14px;background:#132c45;color:#dceafe}
+.owner-cash-bridge summary{cursor:pointer;font-weight:700}.owner-cash-bridge dl{max-width:760px}.owner-cash-bridge dl>div{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #38516d}.owner-cash-bridge dd{margin:0;white-space:nowrap}.owner-cash-bridge p{color:#aabed8;font-size:13px;line-height:1.6}
+#ownerFilters{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin:18px 0}#ownerFilters label{display:grid;gap:8px;color:#b4cce8;font-size:13px;min-width:0}#ownerFilters input{background:#0b1c31;color:#edf4ff;border:1px solid #436181;border-radius:10px;padding:12px;min-width:0;width:100%;box-sizing:border-box}#ownerResultCount{grid-column:1/-1;color:#abc2df;font-size:13px;margin:0}
+.owner-commercial-page #commercialAreaTable{overflow-x:auto;border:1px solid #304e70;border-radius:12px}
+.owner-sales-table{width:100%;min-width:1000px;border-collapse:collapse;font-size:13px}.owner-sales-table th,.owner-sales-table td{padding:14px!important;text-align:left;line-height:1.5;background:#10263e!important;color:#e2ecfa!important;border-bottom:1px solid #2b4463}.owner-sales-table th{background:#193550!important;color:#b7cfe9!important}
+@media(max-width:720px){.owner-radar-summary{grid-template-columns:1fr}.owner-attention-list article{grid-template-columns:1fr auto;gap:12px}.owner-attention-list article>div{grid-column:1/-1}.owner-attention-list a{grid-column:1/-1}#ownerFilters{grid-template-columns:minmax(0,1fr)}.owner-cash-bridge dl>div{font-size:12px}.owner-commercial-page .commercial-area-summary article:first-child{grid-column:auto}.owner-commercial-page .commercial-area-summary article:last-child{grid-column:1/-1}}

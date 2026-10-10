@@ -290,7 +290,8 @@
   }
 
   function renderQuickLinks(user) {
-    const visible = QUICK_LINKS.filter((item) => (
+    const owner = String(user.email||'').toLowerCase()==='matirandazzo@gmail.com';
+    const visible = QUICK_LINKS.map(item=>owner&&item.page==='area-comercial.html'?{...item,label:'Visión del negocio',description:'Todas las ventas y radar de ingresos.'}:item).filter((item) => (
       canOpen(item, user)
       && (item.page === 'metricas.html' || !CENTRAL_LINKED_PAGES.has(item.page))
     ));
@@ -400,6 +401,11 @@
     if (refs.welcome) refs.welcome.textContent = 'Tu panel personalizado';
     if (refs.greeting) refs.greeting.textContent = `${getGreeting()}, ${firstName}`;
     if (!refs.headlineSummary) return;
+    if (String(user.email||'').toLowerCase()==='matirandazzo@gmail.com') {
+      refs.welcome.textContent='Visión del negocio';
+      refs.headlineSummary.textContent=`La empresa registra ${items[2]?.value || '0'} ventas, ${items[0]?.value || formatUsd(0)} de facturación y ${items[1]?.value || formatUsd(0)} de cash neto conciliado este mes.`;
+      return;
+    }
     if (user.role === 'csm') {
       refs.headlineSummary.textContent = `Este mes registraste ${items[0]?.value || '0'} y ${items[2]?.value || '0'} corresponden a cashflow.`;
       return;
@@ -411,6 +417,10 @@
     if (!refs.insightTitle || !refs.insightText) return;
     const monthName = new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(now);
     refs.insightTitle.textContent = `Resumen de ${monthName}`;
+    if (String(user.email||'').toLowerCase()==='matirandazzo@gmail.com') {
+      refs.insightText.textContent=`El negocio tiene ${items[3]?.value || formatArs(0)} disponibles antes de otros gastos, una vez descontadas las comisiones del equipo. Las acreditaciones pueden incluir cobranzas de ventas anteriores. Revisá el radar de ingresos para priorizar pendientes y rebotes.`;
+      return;
+    }
     if (user.role === 'csm') {
       refs.insightText.textContent = `La actividad del período suma ${items[0]?.value || '0'} sesiones. ${items[1]?.comparison?.text || ''} y cashflow mantiene ${items[2]?.value || '0'} registros con fecha real de sesión.`;
       return;
@@ -525,7 +535,11 @@
     const missingDiagnosis = csmRows.filter((row) => String(row.f_onboarding || '').slice(0, 7) === period.key && !row.f_diagnostico);
     const sessionsThisMonth = ['f_diagnostico', 'f_costos_1', 'f_eerr_economico', 'f_eerr_financiero', 'f_cashflow']
       .reduce((sum, field) => sum + csmRows.filter((row) => String(row[field] || '').slice(0, 7) === period.key).length, 0);
-    const alerts = user.role === 'csm' ? [
+    const alerts = personal?.isOwner ? [
+      {tone:'warning',icon:'◷',title:'Por conciliar',detail:'Comprobantes que todavía no cuentan como cobro',value:personal.summary.pendingCount},
+      {tone:'danger',icon:'!',title:'Comprobantes rebotados',detail:'Revisar y corregir con el equipo',value:personal.summary.bouncedCount},
+      {tone:'info',icon:'↗',title:'Todas las ventas',detail:'Visión completa de la empresa en el mes',value:personal.summary.salesCount}
+    ] : user.role === 'csm' ? [
       { tone: 'danger', icon: '!', title: 'Onboarding del mes sin diagnóstico', detail: 'Vieron el video este mes y aún no tienen sesión', value: missingDiagnosis.length },
       { tone: 'warning', icon: '◷', title: 'Sesiones del mes', detail: 'Según la fecha real de cada hito', value: sessionsThisMonth }
     ] : [
@@ -545,6 +559,13 @@
   }
 
   function commercialKpis(rows, personal, previousRows = [], previousPersonal = null, comparisonAvailable = true) {
+    if (personal?.isOwner) {
+      const s=personal.summary,previous=previousPersonal?.summary || {};
+      return [
+        ['Facturación registrada','facturacionUsd','usd'],['Cash neto conciliado','cashUsd','usd'],['Ventas registradas','salesCount','integer'],['Disponible antes de otros gastos','availableArs','ars']
+      ].map(([label,key,format])=>({icon:'↗',label,value:format==='usd'?formatUsd(s[key]):format==='ars'?formatArs(s[key]):formatInteger(s[key]),numericValue:s[key],format,comparison:buildComparison(s[key],previous[key],{available:comparisonAvailable}),actionLabel:'Ver todas las ventas y el radar de ingresos',href:`/views/area-comercial.html?mes=${encodeURIComponent(period.key)}`}));
+    }
+
     const personalRow = rows.find((row) => normalize(row.closer) === normalize(personal?.person));
     const previousPersonalRow = previousRows.find((row) => normalize(row.closer) === normalize(personal?.person));
     const teamFacturacion = rows.reduce((sum, row) => sum + safeNumber(row.facturacion_total), 0);
@@ -642,7 +663,7 @@
       const value = (index, fallback) => requests[index].status === 'fulfilled' ? requests[index].value : fallback;
       const rankingRows = getRealRankingRows(value(0, { rows: [] }).rows || []);
       const personal = value(1, null);
-      if ((user.role === 'comercial' || areaAccount) && !personal?.summary) throw new Error('No se pudieron cargar tus importes netos. Volvé a intentar.');
+      if ((user.role === 'comercial' || areaAccount || String(user.email||'').toLowerCase()==='matirandazzo@gmail.com') && !personal?.summary) throw new Error('No se pudieron cargar tus importes netos. Volvé a intentar.');
       if (csmAccess && requests[2].status === 'rejected') throw requests[2].reason;
       const csmByClient = new Map();
       for (const row of value(2, { rows: [] }).rows || []) { const key=row.ghlid||row.id,old=csmByClient.get(key);if(!old||String(row.updated_at||'')>String(old.updated_at||'')) csmByClient.set(key,row); }

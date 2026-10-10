@@ -109,13 +109,16 @@
     status.textContent = 'Cargando tu información comercial…';
     try {
       const data = await window.metricasApi.fetchMyCommercialArea(monthInput.value);
+      if(data.isOwner) window.ownerCommercialView.render(data);
+      else {
       document.getElementById('commercialAreaIdentity').textContent = `${data.person || 'Usuario'} · información personal de ${data.month}.`;
       renderSummary(data);
       renderTable(Array.isArray(data.details) ? data.details : [], data.summary || {});
+      }
       const params = new URLSearchParams(window.location.search);
       params.set('mes', monthInput.value);
       window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-      status.textContent = `${data.summary?.transactionCount || 0} comprobantes comisionables y ${data.details?.length || 0} líneas de comisión. La información se muestra solo para tu identidad.`;
+      status.textContent = data.isOwner ? `${data.summary.salesCount} ventas registradas · ${data.summary.transactionCount} comprobantes conciliados. ${data.methodology}` : `${data.summary?.transactionCount || 0} comprobantes comisionables y ${data.details?.length || 0} líneas de comisión. La información se muestra solo para tu identidad.`;
     } catch (error) {
       summary.innerHTML = '';
       table.innerHTML = '<div class="report-empty">No se pudo cargar tu área comercial.</div>';
