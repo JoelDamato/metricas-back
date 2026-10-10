@@ -1,0 +1,38 @@
+#commissionRulesPanel{--rule-border:#2c4565;--rule-muted:#a9bdd6;color:#e8f0ff}
+#commissionRulesPanel .comisiones-rules-toolbar{position:sticky;top:12px;z-index:4;justify-content:space-between;align-items:center;padding:20px 24px;border:1px solid var(--rule-border);border-radius:18px;background:#102038;box-shadow:0 12px 30px #0003}
+#commissionRulesPanel .rules-eyebrow{font-size:11px;letter-spacing:.12em;color:#8ebaff;font-weight:700}
+#commissionRulesPanel h2{margin:6px 0;font-size:24px;color:#f1f6ff}
+#commissionRulesPanel p{margin:4px 0;color:var(--rule-muted);line-height:1.5}
+#commissionRulesPanel .comisiones-lock-state{display:inline-block;margin:18px 0 6px;padding:10px 14px;border:1px solid var(--rule-border);border-radius:10px;color:#bcd2ed;background:#102038}
+#commissionRulesFeedback{min-height:24px;margin:6px 0 18px!important;color:#a4ceff!important}
+#commissionRulesPanel .comisiones-rules-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px}
+#commissionRulesPanel .comisiones-rule-card{padding:22px;background:#101f34;border:1px solid var(--rule-border);box-shadow:none;min-width:0}
+#commissionRulesPanel .rules-global{grid-column:1/-1}
+#commissionRulesPanel h3{color:#edf4ff;font-size:17px}
+#commissionRulesPanel label{color:#bcd0e8;font-size:12px}
+#commissionRulesPanel .rules-help{font-size:13px}
+#commissionRulesPanel .comisiones-scale-row{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px;background:#142840;border:1px solid var(--rule-border);box-shadow:none;border-radius:12px}
+#commissionRulesPanel input:not([type=checkbox]),#commissionRulesPanel select{width:100%;box-sizing:border-box;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid #3a5678;color:#eaf2ff;background:#091a2e;font:inherit}
+#commissionRulesPanel input[type=checkbox]{accent-color:#478fff;width:18px;height:18px}
+#commissionRulesPanel button{font:inherit;font-size:13px;cursor:pointer;border-radius:10px;padding:11px 15px}
+#commissionRulesPanel .button-secondary{color:#b9d6ff;border:1px solid #39577f;background:#193452;box-shadow:none}
+#commissionRulesPanel [data-remove-scale],#commissionRulesPanel [data-remove-area],#commissionRulesPanel [data-remove-override]{color:#ffc2cd;background:transparent;justify-self:end}
+#commissionRulesPanel :disabled{opacity:.55;cursor:not-allowed}
+#commissionRulesPanel :focus-visible{outline:2px solid #8bbdff;outline-offset:3px}
+@media(max-width:1000px){#commissionRulesPanel .comisiones-rules-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){#commissionRulesPanel .comisiones-rules-toolbar{position:static;padding:16px}#commissionRulesPanel .comisiones-scale-row{grid-template-columns:minmax(0,1fr)}#commissionRulesPanel .comisiones-rule-card{padding:16px}}
+#commissionRulesPanel .comisiones-rules-toolbar{position:static}
+.comisiones-page .comisiones-hero{background:linear-gradient(125deg,#142c49,#0d1c30);border:1px solid #2c4565;box-shadow:none}
+.comisiones-page .comisiones-hero h1{color:#edf4ff}
+.comisiones-page .comisiones-hero-copy>p{background:transparent;color:#adc3df}
+.comisiones-page .comisiones-tabs{background:#102038;border:1px solid #2c4565}
+.comisiones-page .comisiones-tab{color:#b9cfe9}
+.comisiones-page .comisiones-tab.is-active{background:#28578f;color:#fff}
+.comisiones-page #commissionsStatus{color:#a9c3e5}
+#commissionRulesPanel .rules-exceptions{grid-column:1/-1}
+#commissionRulesPanel .rules-exceptions summary{cursor:pointer;color:#c5dbf7;font-weight:600}
+#commissionRulesPanel .rules-exceptions li{padding:8px 0;color:#a9bdd6;font-size:13px;line-height:1.5}
+.comisiones-page .container{grid-template-columns:minmax(0,1fr)}
+.comisiones-page .comisiones-shell,.comisiones-page .comisiones-hero,.comisiones-page .comisiones-hero-copy{min-width:0}
+.comisiones-page .comisiones-tabs{flex-wrap:wrap}
+@media(max-width:600px){.comisiones-page .comisiones-hero-actions{box-sizing:border-box;min-width:0;flex-wrap:wrap}.comisiones-page .comisiones-hero-field{min-width:0}.comisiones-page .comisiones-hero h1{font-size:30px}.comisiones-page .comisiones-subnav{position:static}#commissionRulesPanel .comisiones-form-grid{grid-template-columns:minmax(0,1fr)}}

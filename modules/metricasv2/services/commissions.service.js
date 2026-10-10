@@ -1,3 +1,4 @@
+const { validateConfig } = require('./commission-config-validation');
 const settlements = require('../../settlements/service');
 const {commissionAreaForUser} = require('./commission-area-identity');
 const axios = require('axios');
@@ -105,7 +106,7 @@ function normalizeText(value) {
 
 function normalizeMonthKey(value) {
   const monthKey = String(value || '').trim();
-  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) {
     const error = new Error('El mes debe venir en formato YYYY-MM');
     error.statusCode = 400;
     throw error;
@@ -204,7 +205,7 @@ function normalizeScale(scale = [], fallback = [], options = {}) {
     .sort((a, b) => a.min - b.min);
 
   const hasBonus = normalizedRows.some((row) => Number(row.bonusUsd || 0) > 0);
-  if (options.inferAgendaBonus && !hasBonus) {
+  if (options.inferAgendaBonus && !hasBonus && !rows.some(row => row.bonusUsd !== undefined || row.bonus_usd !== undefined)) {
     normalizedRows.forEach((row) => {
       if (row.pct >= 0.07 || row.min >= 51) row.bonusUsd = 250;
       else if (row.pct >= 0.06 || row.min >= 31) row.bonusUsd = 100;
@@ -226,7 +227,7 @@ function normalizeOverrides(overrides = []) {
 }
 
 function normalizePersonAreas(items = []) {
-  const allowed = new Set(['Comercial', 'CSM', 'Administración']);
+  const allowed = new Set(['Comercial', 'CSM', 'Marketing', 'Administración']);
   return (Array.isArray(items) ? items : [])
     .map((row) => ({
       person: titleCaseName(row?.person),
@@ -1623,6 +1624,7 @@ async function getCommissionConfig(monthKey) {
 }
 
 async function saveCommissionConfig(monthKey, patch, user) {
+  validateConfig(patch);
   const current = await getCommissionConfig(monthKey);
   if (current.locked) {
     const error = new Error(`El mes ${monthKey} está bloqueado y no se puede modificar.`);
@@ -1648,6 +1650,7 @@ async function saveCommissionConfig(monthKey, patch, user) {
 }
 
 async function saveDefaultCommissionConfig(patch, user) {
+  validateConfig(patch);
   const defaultRow = await readDefaultConfigRow();
   const base = normalizeConfig(defaultRow?.config || DEFAULT_CONFIG);
   const merged = applyConfigPatch(base, patch);

@@ -1704,21 +1704,23 @@
     });
   }
 
+  const displayPct = value => Number((Number(value || 0) * 100).toFixed(6));
+
   function createScaleRowMarkup(type, index, row) {
     return `
       <div class="comisiones-scale-row" data-scale-type="${escapeHtml(type)}" data-index="${index}">
         <label>
           <span>${type === 'agendaScale' ? 'Desde agendas' : type === 'setterSalesScale' ? 'Desde ventas' : 'Desde'}</span>
-          <input type="number" data-field="min" min="0" step="1" value="${escapeHtml(row.min)}" />
+          <input type="number" data-field="min" min="0" step="1" required value="${escapeHtml(row.min)}" />
         </label>
         <label>
-          <span>Porcentaje</span>
-          <input type="number" data-field="pct" min="0" step="0.001" value="${escapeHtml(row.pct)}" />
+          <span>Porcentaje (%)</span>
+          <input type="number" data-field="pct" min="0" max="100" step="0.001" required value="${escapeHtml(displayPct(row.pct))}" />
         </label>
         ${type === 'agendaScale' ? `
           <label>
             <span>Bono USD</span>
-            <input type="number" data-field="bonusUsd" min="0" step="1" value="${escapeHtml(row.bonusUsd || 0)}" />
+            <input type="number" data-field="bonusUsd" min="0" step="0.01" required value="${escapeHtml(row.bonusUsd || 0)}" />
           </label>
         ` : ''}
         <button type="button" class="button-secondary" data-remove-scale="${escapeHtml(type)}" data-index="${index}">Quitar</button>
@@ -1731,11 +1733,11 @@
       <div class="comisiones-scale-row" data-override-index="${index}">
         <label>
           <span>Persona</span>
-          <input type="text" data-field="person" value="${escapeHtml(row.person || '')}" />
+          <input type="text" required data-field="person" value="${escapeHtml(row.person || '')}" />
         </label>
         <label>
-          <span>Porcentaje</span>
-          <input type="number" data-field="pct" min="0" step="0.001" value="${escapeHtml(row.pct ?? '')}" />
+          <span>Porcentaje (%)</span>
+          <input type="number" data-field="pct" min="0" max="100" step="0.001" required value="${escapeHtml(displayPct(row.pct))}" />
         </label>
         <label class="comisiones-checkbox-inline">
           <input type="checkbox" data-field="enabled" ${row.enabled !== false ? 'checked' : ''} />
@@ -1751,12 +1753,13 @@
       <div class="comisiones-scale-row" data-area-index="${index}">
         <label>
           <span>Persona</span>
-          <input type="text" data-field="person" value="${escapeHtml(row.person || '')}" />
+          <input type="text" required data-field="person" value="${escapeHtml(row.person || '')}" />
         </label>
         <label>
           <span>Área</span>
           <select data-field="area">
             <option value="Comercial" ${row.area === 'Comercial' ? 'selected' : ''}>Comercial</option>
+            <option value="Marketing" ${row.area === 'Marketing' ? 'selected' : ''}>Marketing</option>
             <option value="CSM" ${row.area === 'CSM' ? 'selected' : ''}>CSM</option>
             <option value="Administración" ${row.area === 'Administración' ? 'selected' : ''}>Administración</option>
           </select>
@@ -1774,7 +1777,7 @@
       <div class="comisiones-scale-row comisiones-role-row" data-role-index="${index}">
         <label>
           <span>Persona</span>
-          <select data-field="person">
+          <select data-field="person" disabled>
             ${options}
           </select>
         </label>
@@ -1820,14 +1823,15 @@
     const config = state.rulesDraft;
     if (!config) return;
 
-    document.getElementById('commissionMinimumSetterPct').value = config.global.minimumSetterPct ?? '';
-    document.getElementById('commissionClubTransferPct').value = config.global.clubTransferPct ?? '';
-    document.getElementById('commissionClubMercadoPagoPct').value = config.global.clubMercadoPagoPct ?? '';
-    document.getElementById('commissionDefaultCloserPct').value = config.global.defaultCloserPct ?? '';
-    document.getElementById('commissionPersonalizedCloserPct').value = config.global.personalizedCloserPct ?? '';
-    document.getElementById('commissionVslFirstOriginSetterPct').value = config.global.vslFirstOriginSetterPct ?? '';
+    document.getElementById('commissionMinimumSetterPct').value = displayPct(config.global.minimumSetterPct);
+    document.getElementById('commissionClubTransferPct').value = displayPct(config.global.clubTransferPct);
+    document.getElementById('commissionClubMercadoPagoPct').value = displayPct(config.global.clubMercadoPagoPct);
+    document.getElementById('commissionDefaultCloserPct').value = displayPct(config.global.defaultCloserPct);
+    document.getElementById('commissionPersonalizedCloserPct').value = displayPct(config.global.personalizedCloserPct);
+    document.getElementById('commissionVslFirstOriginSetterPct').value = displayPct(config.global.vslFirstOriginSetterPct);
     document.getElementById('commissionOnlyVerified').checked = config.global.includeOnlyVerified !== false;
     ensureRoleRows(config);
+    document.getElementById('commissionSpecificRules').innerHTML = (config.closerRules || []).filter(r => r.enabled !== false).map(r => `<li>${escapeHtml([r.person || 'Todas las personas', r.product, r.type, r.originIncludes && 'Origen: ' + r.originIncludes, r.firstOriginIncludes && 'Primer origen: ' + r.firstOriginIncludes].filter(Boolean).join(' · '))} — ${displayPct(r.pct)}%</li>`).join('') || '<li>No hay excepciones específicas activas.</li>';
 
     document.getElementById('commissionAgendaScaleRows').innerHTML = (config.agendaScale || [])
       .map((row, index) => createScaleRowMarkup('agendaScale', index, row)).join('');
@@ -1845,15 +1849,17 @@
     const lockNode = document.getElementById('commissionRulesLockState');
     lockNode.textContent = state.configMeta?.locked
       ? `Mes bloqueado: ${getMonthLabel(state.month)}. Las reglas ya no se pueden editar desde el panel.`
-      : `Mes editable: ${getMonthLabel(state.month)}. Si lo bloqueás, queda protegido para no mover históricos.`;
+      : `Mes editable: ${getMonthLabel(state.month)}. Los cambios se guardan sólo en este mes.`;
 
+    document.querySelectorAll('#commissionRulesPanel input, #commissionRulesPanel select, #commissionRulesPanel button').forEach(el => { el.disabled = Boolean(state.configMeta?.locked); });
+    document.querySelectorAll('#commissionRoleRows [data-field="person"]').forEach(el => {el.disabled = true;});
     attachRulesHandlers();
   }
 
   function readScaleRows(containerId) {
     return Array.from(document.querySelectorAll(`#${containerId} .comisiones-scale-row`)).map((row) => ({
       min: Number(row.querySelector('[data-field="min"]').value || 0),
-      pct: Number(row.querySelector('[data-field="pct"]').value || 0),
+      pct: Number(row.querySelector('[data-field="pct"]').value) / 100,
       bonusUsd: Number(row.querySelector('[data-field="bonusUsd"]')?.value || 0)
     })).filter((row) => Number.isFinite(row.min) && Number.isFinite(row.pct));
   }
@@ -1861,34 +1867,36 @@
   function readOverrideRows() {
     return Array.from(document.querySelectorAll('#commissionOverrideRows .comisiones-scale-row')).map((row) => ({
       person: row.querySelector('[data-field="person"]').value.trim(),
-      pct: Number(row.querySelector('[data-field="pct"]').value || 0),
+      pct: Number(row.querySelector('[data-field="pct"]').value) / 100,
       enabled: row.querySelector('[data-field="enabled"]').checked
-    })).filter((row) => row.person);
+    }));
   }
 
   function readAreaRows() {
     return Array.from(document.querySelectorAll('#commissionAreaRows .comisiones-scale-row')).map((row) => ({
       person: row.querySelector('[data-field="person"]').value.trim(),
       area: row.querySelector('[data-field="area"]').value
-    })).filter((row) => row.person);
+    }));
   }
 
   function readRoleRows() {
     return Array.from(document.querySelectorAll('#commissionRoleRows .comisiones-scale-row')).map((row) => ({
       person: row.querySelector('[data-field="person"]').value.trim(),
       role: row.querySelector('[data-field="role"]').value
-    })).filter((row) => row.person);
+    }));
   }
 
   function collectRulesPayload() {
     return {
+      ...state.rulesDraft,
       global: {
-        minimumSetterPct: Number(document.getElementById('commissionMinimumSetterPct').value || 0),
-        clubTransferPct: Number(document.getElementById('commissionClubTransferPct').value || 0),
-        clubMercadoPagoPct: Number(document.getElementById('commissionClubMercadoPagoPct').value || 0),
-        defaultCloserPct: Number(document.getElementById('commissionDefaultCloserPct').value || 0),
-        personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value || 0),
-        vslFirstOriginSetterPct: Number(document.getElementById('commissionVslFirstOriginSetterPct').value || 0),
+        ...state.rulesDraft.global,
+        minimumSetterPct: Number(document.getElementById('commissionMinimumSetterPct').value) / 100,
+        clubTransferPct: Number(document.getElementById('commissionClubTransferPct').value) / 100,
+        clubMercadoPagoPct: Number(document.getElementById('commissionClubMercadoPagoPct').value) / 100,
+        defaultCloserPct: Number(document.getElementById('commissionDefaultCloserPct').value) / 100,
+        personalizedCloserPct: Number(document.getElementById('commissionPersonalizedCloserPct').value) / 100,
+        vslFirstOriginSetterPct: Number(document.getElementById('commissionVslFirstOriginSetterPct').value) / 100,
         includeOnlyVerified: document.getElementById('commissionOnlyVerified').checked
       },
       agendaScale: readScaleRows('commissionAgendaScaleRows'),
@@ -1903,7 +1911,12 @@
   }
 
   async function loadRulesConfig() {
-    const response = await window.metricasApi.fetchCommissionConfig(state.month);
+    state.rulesDraft = null;
+    document.querySelectorAll('#commissionRulesPanel input, #commissionRulesPanel select, #commissionRulesPanel button').forEach(el => el.disabled = true);
+    const requestedMonth = state.month;
+    const response = await window.metricasApi.fetchCommissionConfig(requestedMonth);
+    if (requestedMonth !== state.month) return;
+    document.getElementById('commissionRulesFeedback').textContent = '';
     state.configMeta = response;
     state.rulesDraft = JSON.parse(JSON.stringify(response.config || {}));
     renderRulesEditor();
@@ -1948,7 +1961,9 @@
 
   async function loadDashboard() {
     setStatus(`Cargando comisiones de ${getMonthLabel(state.month)}...`);
-    const response = await window.metricasApi.fetchCommissionsDashboard(state.month);
+    const requestedMonth = state.month;
+    const response = await window.metricasApi.fetchCommissionsDashboard(requestedMonth);
+    if (requestedMonth !== state.month) return;
     state.dashboard = response;
     refreshCommissionViews();
     if (state.rulesDraft) renderRulesEditor();
@@ -1965,6 +1980,11 @@
   }
 
   async function saveRules(mode) {
+    const button = document.getElementById('saveCommissionRules');
+    const feedback = document.getElementById('commissionRulesFeedback');
+    if (!state.rulesDraft || state.configMeta?.locked || button.disabled) return;
+    for (const input of document.querySelectorAll('#commissionRulesPanel input:not(:disabled)')) { if (!input.reportValidity()) return; }
+    button.disabled = true; monthInput.disabled = true; feedback.textContent = 'Guardando…';
     try {
       const config = collectRulesPayload();
       if (mode === 'default') {
@@ -1975,10 +1995,10 @@
         setStatus(`Las reglas de ${getMonthLabel(state.month)} quedaron guardadas.`);
       }
       await loadPage();
+      feedback.textContent = `Cambios guardados para ${getMonthLabel(state.month)}.`;
     } catch (error) {
-      console.error(error);
-      setStatus(error.message || 'No pude guardar las reglas.');
-    }
+      feedback.textContent = error.message || 'No pude guardar las reglas.';
+    } finally { button.disabled = Boolean(state.configMeta?.locked); monthInput.disabled = false; }
   }
 
   document.querySelectorAll('.comisiones-tab').forEach((button) => {
@@ -1986,16 +2006,23 @@
   });
 
   document.getElementById('reloadCommissions').addEventListener('click', loadPage);
+  document.getElementById('commissionRulesPanel').addEventListener('input', () => {
+    if (state.rulesDraft && !state.configMeta?.locked) { state.rulesDraft = collectRulesPayload(); document.getElementById('commissionRulesFeedback').textContent = 'Cambios sin guardar'; }
+  });
+  document.getElementById('addCloserScaleRow').addEventListener('click', () => {
+    state.rulesDraft.setterSalesScale.push({min: Math.max(-1, ...state.rulesDraft.setterSalesScale.map(r => r.min)) + 1, pct: 0});
+    renderRulesEditor();
+  });
   document.getElementById('saveCommissionRules').addEventListener('click', () => saveRules('month'));
   document.getElementById('addAgendaScaleRow').addEventListener('click', () => {
-    state.rulesDraft.agendaScale.push({ min: 0, pct: 0, bonusUsd: 0 });
+    state.rulesDraft.agendaScale.push({ min: Math.max(-1, ...state.rulesDraft.agendaScale.map(r => r.min)) + 1, pct: 0, bonusUsd: 0 });
     renderRulesEditor();
   });
   document.getElementById('commissionSetterSalesScaleRows')?.addEventListener('change', () => {
     state.rulesDraft.setterSalesScale = readScaleRows('commissionSetterSalesScaleRows');
   });
   document.getElementById('addClubScaleRow').addEventListener('click', () => {
-    state.rulesDraft.clubScale.push({ min: 0, pct: 0 });
+    state.rulesDraft.clubScale.push({ min: Math.max(-1, ...state.rulesDraft.clubScale.map(r => r.min)) + 1, pct: 0 });
     renderRulesEditor();
   });
   document.getElementById('addCommissionOverrideRow').addEventListener('click', () => {

@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
     <link rel="stylesheet" href="/css/settlements.css?v=20261010-1">
+<link rel="stylesheet" href="/css/commission-config.css?v=20261010-1">
 </head>
   <body class="ranking-page comisiones-page premium-navy-background">
     <main class="container">
@@ -140,39 +141,40 @@
         </section>
 
         <section class="comisiones-panel" data-panel="settlement"><div id="settlementRoot" data-mode="admin" data-month="commissionsMonth"></div></section>
-        <section class="comisiones-panel" data-panel="rules">
+        <section class="comisiones-panel" data-panel="rules" id="commissionRulesPanel">
           <div class="comisiones-rules-toolbar">
-            <button id="saveCommissionRules" type="button">Guardar</button>
+            <div><span class="rules-eyebrow">ADMINISTRACIÓN · COMISIONES</span><h2>Reglas del mes</h2><p>Los cambios se aplican únicamente al mes seleccionado.</p></div><button id="saveCommissionRules" type="button" disabled>Guardar cambios del mes</button>
           </div>
-          <div id="commissionRulesLockState" class="comisiones-lock-state"></div>
+          <div id="commissionRulesLockState" class="comisiones-lock-state" role="status">Cargando configuración…</div><p id="commissionRulesFeedback" role="status" aria-live="polite"></p>
 
           <div class="comisiones-rules-grid">
-            <section class="card comisiones-rule-card">
-              <h3>Configuración global</h3>
+            <details class="card comisiones-rule-card rules-exceptions"><summary>Excepciones específicas vigentes</summary><p class="rules-help">Estas reglas guardadas por persona, producto u origen tienen prioridad sobre la escalera general.</p><ul id="commissionSpecificRules"></ul></details>
+            <section class="card comisiones-rule-card rules-global">
+              <h3>Porcentajes generales</h3><p class="rules-help">Ingresá porcentajes: por ejemplo, 8 significa 8%. Sólo los comprobantes conciliados generan comisión.</p>
               <div class="comisiones-form-grid">
                 <label>
-                  <span>Mínimo global setter</span>
-                  <input id="commissionMinimumSetterPct" type="number" min="0" step="0.001" />
+                  <span>Mínimo global setter (%)</span>
+                  <input id="commissionMinimumSetterPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label>
                   <span>% fijo transferencias Club</span>
-                  <input id="commissionClubTransferPct" type="number" min="0" step="0.001" />
+                  <input id="commissionClubTransferPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label>
                   <span>% fijo Mercado Pago Club</span>
-                  <input id="commissionClubMercadoPagoPct" type="number" min="0" step="0.001" />
+                  <input id="commissionClubMercadoPagoPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label>
                   <span>% base closer MEG</span>
-                  <input id="commissionDefaultCloserPct" type="number" min="0" step="0.001" />
+                  <input id="commissionDefaultCloserPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label>
                   <span>% fijo Meg personalizado</span>
-                  <input id="commissionPersonalizedCloserPct" type="number" min="0" step="0.001" />
+                  <input id="commissionPersonalizedCloserPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label>
                   <span>% fijo VSL para setter</span>
-                  <input id="commissionVslFirstOriginSetterPct" type="number" min="0" step="0.001" />
+                  <input id="commissionVslFirstOriginSetterPct" type="number" min="0" max="100" step="0.001" required />
                 </label>
                 <label class="comisiones-checkbox">
                   <input id="commissionOnlyVerified" type="checkbox" />
@@ -182,50 +184,18 @@
             </section>
 
             <section class="card comisiones-rule-card">
-              <h3>Esquema VSL y APSET</h3>
-              <div class="comisiones-rule-note">
-                <p><strong>1. Operaciones provenientes de VSL</strong></p>
-                <p>Las operaciones atribuidas al canal VSL comisionan al <strong>4%</strong> sobre el <strong>cash collected efectivamente percibido</strong> de cada operación.</p>
-
-                <p><strong>2. Operaciones provenientes de APSET</strong></p>
-                <p>Las operaciones atribuidas al canal APSET tienen una comisión base del <strong>4,5%</strong> sobre el <strong>cash collected efectivamente percibido</strong>.</p>
-                <p>A partir de ahí, si en el mes se alcanza determinada cantidad de <strong>agendas aplicables APSET</strong>, la comisión escala así:</p>
-                <p>10 agendas aplicables: <strong>4,5%</strong></p>
-                <p>11 a 15 agendas aplicables: <strong>5%</strong></p>
-                <p>16 a 30 agendas aplicables: <strong>5,5%</strong></p>
-                <p>31 a 50 agendas aplicables: <strong>6%</strong> + bono de <strong>USD 100</strong></p>
-                <p>51 agendas aplicables o más: <strong>7%</strong> + bono adicional de <strong>USD 250</strong></p>
-
-                <p><strong>Importante</strong></p>
-                <p>Los bonos por cumplimiento de tramo son <strong>acumulativos</strong>.</p>
-                <p>Si en el mes se alcanzan <strong>51 agendas aplicables o más</strong>, corresponde:</p>
-                <p>bono de <strong>USD 100</strong> del tramo 31 a 50</p>
-                <p>más bono adicional de <strong>USD 250</strong> del tramo 51+</p>
-                <p><strong>Total bono en ese caso: USD 350</strong></p>
-
-                <p><strong>Lógica del esquema</strong></p>
-                <p>VSL mantiene una comisión fija del <strong>4%</strong>.</p>
-                <p>APSET parte de un <strong>4,5%</strong> base y escala según el volumen de agendas aplicables generadas en el mes.</p>
-              </div>
-            </section>
-
-            <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
                 <h3>Escalera setter por agendas APSET / RT</h3>
                 <button id="addAgendaScaleRow" type="button" class="button-secondary">Agregar tramo</button>
               </div>
-              <div id="commissionAgendaScaleRows" class="comisiones-scale-list"></div>
+              <p class="rules-help">El bono USD de cada tramo es adicional y acumulativo. Requiere aprobación de Leo para pasar a liquidaciones.</p><div id="commissionAgendaScaleRows" class="comisiones-scale-list"></div>
             </section>
 
             <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
-                <h3>Escalera closers ventas MEG</h3>
+                <h3>Escalera closers ventas MEG</h3><button id="addCloserScaleRow" type="button" class="button-secondary">Agregar tramo</button>
               </div>
-              <div class="comisiones-rule-note">
-                <p>Los closers de ventas MEG arrancan en <strong>8%</strong>.</p>
-                <p>Al llegar a la <strong>venta 5</strong> del mes pasan a <strong>9%</strong>.</p>
-                <p>Al llegar a la <strong>venta 10</strong> del mes pasan a <strong>10%</strong>.</p>
-              </div>
+              <p class="rules-help">El porcentaje depende del número de venta del mes. Las reglas individuales tienen prioridad.</p>
               <div id="commissionSetterSalesScaleRows" class="comisiones-scale-list"></div>
             </section>
 
@@ -247,7 +217,7 @@
 
             <section class="card comisiones-rule-card">
               <div class="comisiones-rule-head">
-                <h3>Personas que cargan comprobantes</h3>
+                <h3>Rol de comisión por persona</h3>
               </div>
               <div id="commissionRoleRows" class="comisiones-scale-list"></div>
             </section>
@@ -257,7 +227,7 @@
                 <h3>Área por persona</h3>
                 <button id="addCommissionAreaRow" type="button" class="button-secondary">Agregar persona</button>
               </div>
-              <div id="commissionAreaRows" class="comisiones-scale-list"></div>
+              <p class="rules-help">Clasificación de las comisiones. No cambia los permisos de acceso de las cuentas.</p><div id="commissionAreaRows" class="comisiones-scale-list"></div>
             </section>
           </div>
         </section>
@@ -267,7 +237,7 @@
     <script src="/js/api/http.js"></script>
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/comisiones.page.js?v=20261008-area-net-1"></script>
+    <script src="/js/views/comisiones.page.js?v=20261010-config-1"></script>
   <script src="/js/views/settlements.page.js?v=20261010-1"></script>
   </body>
 </html>

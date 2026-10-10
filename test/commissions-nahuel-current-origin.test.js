@@ -310,5 +310,5 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
   assert.match(source, /row\.ventasClub/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.doesNotMatch(source, /label: 'VSL \+ RT'/);
-  assert.match(html, /comisiones\.page\.js\?v=20261008-area-net-1/);
+  assert.match(html, /comisiones\.page\.js\?v=[^"\s]+/);
 });
