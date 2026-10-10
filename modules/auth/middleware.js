@@ -1,6 +1,7 @@
 const path = require('path');
 const access = require('./access');
 const authService = require('./service');
+const { notFound } = require('./page-responses');
 
 function attachAuthUser(req, res, next) {
   req.authUser = authService.getSessionUserFromRequest(req);
@@ -32,6 +33,11 @@ async function metricasPageGuard(req, res, next) {
   try {
     if (isPublicMetricasPath(req.path)) return next();
 
+    // Unknown routes are missing pages, not permission failures. Known pages
+    // continue through the same authentication and per-user authorization.
+    const pageName = resolvePageName(req.path);
+    if (!Object.hasOwn(access.PAGE_ROLE_ACCESS, pageName)) return notFound(req, res);
+
     if (!req.authUser) {
       return res.redirect('/login.html');
     }
@@ -41,7 +47,6 @@ async function metricasPageGuard(req, res, next) {
       return res.redirect('/login.html');
     }
 
-    const pageName = resolvePageName(req.path);
     if (!access.canAccessPageForUser(req.authUser, pageName)) {
       if (['index.html', 'metricas.html'].includes(pageName) && !access.isMarketingOnlyUser(req.authUser)) {
         return next();

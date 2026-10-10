@@ -23,6 +23,7 @@ const metricasV2Routes = require('./routes/metricasV2');
 const metricasV2Controller = require('./modules/metricasv2/controllers/metricas.controller');
 const metricasV2ErrorHandler = require('./modules/metricasv2/errorHandler');
 const authMiddleware = require('./modules/auth/middleware');
+const pageResponses = require('./modules/auth/page-responses');
 
 app.use(authMiddleware.attachAuthUser);
 
@@ -39,8 +40,10 @@ app.get('/favicon.ico', (req, res) => {
   res.redirect('/metricas-assets/favicon-m.svg');
 });
 app.get('/unauthorized.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/metricas-v2/unauthorized.html'));
+  res.status(403).set('Cache-Control', 'no-store').sendFile(path.join(__dirname, 'public/metricas-v2/unauthorized.html'));
 });
+app.get('/404.html', pageResponses.notFound);
+app.get(['/entrenamiento.html', '/entrenamiento', '/entrenamiento/', '/views/entrenamiento'], pageResponses.trainingRedirect);
 app.get('/metricas/login.html', (req, res) => {
   res.redirect('/login.html');
 });
@@ -71,6 +74,7 @@ app.get('/index.html', authMiddleware.metricasPageGuard, (req, res) => {
   res.redirect('/metricas.html');
 });
 app.use(authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
+app.use(pageResponses.notFound);
 app.use(metricasV2ErrorHandler);
 app.use((error, req, res, next) => {
   const statusCode = error.statusCode || 500;

@@ -646,6 +646,11 @@
       const firstName = setLoaderUser(user);
       if (shouldPlayLoginWelcome) speakWelcome({ firstName });
       renderQuickLinks(user);
+      // Navigation only needs the validated session. Slow monthly metrics
+      // must not keep the training link (or other tools) behind the overlay.
+      refs.kpis.innerHTML = '<div class="dashboard-panel-empty" role="status">Cargando indicadores del mes…</div>';
+      refs.ranking.innerHTML = '<div class="dashboard-panel-empty">Cargando resultados…</div>';
+      closeWelcomeLoader();
 
       const rankingItem = QUICK_LINKS.find((item) => item.page === 'ranking.html');
       const rankingAccess = user.role !== 'csm' && canReadResource(user, 'ranking_closers_mensual') && canOpen(rankingItem, user);
