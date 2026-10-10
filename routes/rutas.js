@@ -7,6 +7,7 @@ const webhookController4 = require('../controllers/webhooksheets2.js');
 const webhookController5 = require('../controllers/webhookcsm.js');
 const webhookController6 = require('../controllers/webhookcom.js');
 const webhookDistribuidor = require('../controllers/webhookDistribuidor.js');
+const webhookLeads = require('../controllers/webhookleads');
 const metricasController = require('../modules/metricasv2/controllers/metricas.controller');
 const contactStatusController = require('../controllers/contactStatus');
 const ghlAppointmentDiscordController = require('../controllers/ghlAppointmentDiscord');
@@ -15,6 +16,8 @@ const authMiddleware = require('../modules/auth/middleware');
 /*Sheets*/
 router.post('/webhook3', webhookController3.handleWebhook);
 router.post('/webhookv2', webhookController4.handleWebhook);
+router.get('/crm', webhookLeads.getCapabilities);
+router.post('/crm', webhookLeads.handleWebhook);
 router.get('/csm', webhookController5.getCapabilities);
 router.post('/csm', webhookController5.handleWebhook);
 router.post('/comprobantes', webhookController6.handleWebhook);

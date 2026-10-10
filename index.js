@@ -96,3 +96,14 @@ const receiptCleanupTimer=setInterval(async()=>{
   finally{receiptCleanupRunning=false;}
 },60000);
 receiptCleanupTimer.unref();
+
+// Refresh time-based CRM debt calculations even when no new GHL event arrives.
+let leadAgingRunning = false;
+const leadAgingTimer = setInterval(async () => {
+  if (leadAgingRunning) return;
+  leadAgingRunning = true;
+  try { await require('./modules/leads/ghl-ingestion').refreshAging(); }
+  catch (error) { console.error('[leads aging]', error.response?.status || error.code || 'refresh_failed'); }
+  finally { leadAgingRunning = false; }
+}, 3600000);
+leadAgingTimer.unref();

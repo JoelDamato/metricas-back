@@ -1,0 +1,2737 @@
+{
+  "custom:00oDEFk2GzZCHNOhPDaH": {
+    "label": "¿En qué bloque del EERR van “comisiones de pasarela/billetera” y costos financieros?",
+    "key": "contact.en_que_bloque_del_eerr_van_comisiones_de_pasarela_billetera_y_costos_financieros",
+    "type": "CHECKBOX"
+  },
+  "custom:030lSkpL15VvK1dlqaep": {
+    "label": "De cuanto tiempo se recomienda armar el fondo de emergencia.",
+    "key": "contact.de_cuanto_tiempo_se_recomienda_armar_el_fondo_de_emergencia",
+    "type": "CHECKBOX"
+  },
+  "custom:0BBGB8vWi1pahF2XLO5x": {
+    "label": "¿Qué es el margen de contribución (MC) por unidad?",
+    "key": "contact.que_es_el_margen_de_contribucion_mc_por_unidad",
+    "type": "CHECKBOX"
+  },
+  "custom:0Bpf7By7PHjgh4uWpuzS": {
+    "label": "¿Cuánto hace que me seguís?",
+    "key": "contact.cuanto_hace_que_me_seguis",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:0CBbOTmJHsTYgUASz4ko": {
+    "label": "En el M4, ¿para qué sirven las simulaciones?",
+    "key": "contact.en_el_m_4_para_que_sirven_las_simulaciones",
+    "type": "CHECKBOX"
+  },
+  "custom:0DfZIi3WH7anafhY2FDU": {
+    "label": "Ventana M2-M3",
+    "key": "contact.ventana_m2m3",
+    "type": "NUMERICAL"
+  },
+  "custom:0GqP1PobPFiKyB57ECw3": {
+    "label": "NPS - 3",
+    "key": "contact.nps__3",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:0HdjelOQVlJvkBusV33Q": {
+    "label": "F. inicio renovacion",
+    "key": "contact.f_inicio_renovacion",
+    "type": "DATE"
+  },
+  "custom:0XrY5NYYxVNGzfLM6E9P": {
+    "label": "Coaching",
+    "key": "contact.coaching",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:0dSkP7jvK4jR738afghS": {
+    "label": "Score examen 9",
+    "key": "contact.score_examen_9",
+    "type": "NUMERICAL"
+  },
+  "custom:0hjtUW5o2FzZodVWjJQd": {
+    "label": "Estado de pago",
+    "key": "contact.estado_de_pago",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:0qj713Y1sPNYcY2SH1Cf": {
+    "label": "En términos de sustentabilidad comercial, ¿qué relación entre costo de adquisición por venta (CAC) y lifetime value (LTV) es la correcta?",
+    "key": "contact.en_terminos_de_sustentabilidad_comercial_que_relacion_entre_costo_de_adquisicion_por_venta_cac_y_lifetime_value_ltv_es_la_correcta",
+    "type": "CHECKBOX"
+  },
+  "custom:0x7T07bK9hEPwQmNNwyI": {
+    "label": "Calendario agendado",
+    "key": "contact.calendario_agendado",
+    "type": "TEXT"
+  },
+  "custom:0xMMFgE3NdmYJLrmKAKb": {
+    "label": "Quien llamo",
+    "key": "contact.quien_llamo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:0xbzKxaNJNPvr5xMHmlY": {
+    "label": "¿Qué tan pronto querés resolver los obstáculos que hoy te impiden incrementar tu rentabilidad?",
+    "key": "contact.que_tan_pronto_queres_resolver_los_obstaculos_que_hoy_te_impiden_incrementar_tu_rentabilidad_v3",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:1Abxz5XTt5Fa9R549NZt": {
+    "label": "Producto mas vendido",
+    "key": "contact.producto_mas_vendido",
+    "type": "TEXT"
+  },
+  "custom:1BgIjK4nU2HZQbiHGThk": {
+    "label": "Which of these is a key benefit of working with a career coach?",
+    "key": "contact.which_of_these_is_a_key_benefit_of_working_with_a_career_coach",
+    "type": "CHECKBOX"
+  },
+  "custom:1KCPLLuyCKqd9mgQ693V": {
+    "label": "JsonNotion",
+    "key": "contact.jsonnotion",
+    "type": "LARGE_TEXT"
+  },
+  "custom:1MkLlSoPBqXvtbCI8UrP": {
+    "label": "¿Qué conviene medir por canal para decidir con claridad?",
+    "key": "contact.que_conviene_medir_por_canal_para_decidir_con_claridad",
+    "type": "CHECKBOX"
+  },
+  "custom:1VSDZ7ZMLZ6x2eYDNq0p": {
+    "label": "F Cashflow",
+    "key": "contact.f_cashflow",
+    "type": "DATE"
+  },
+  "custom:1sTcA1BSRDPuNcMFBIxQ": {
+    "label": "¿Dónde se clasifican IIBB (Ingresos Brutos) y tributos similares en el EERR económico?",
+    "key": "contact.donde_se_clasifican_iibb_ingresos_brutos_y_tributos_similares_en_el_eerr_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:25FIJDBUfmWAj8bQVneS": {
+    "label": "L - Etapa Club",
+    "key": "contact.l__etapa_club",
+    "type": "NUMERICAL"
+  },
+  "custom:275LGPQBC8EYEcBBr7nG": {
+    "label": "R - Link Enviado",
+    "key": "contact.r__link_enviado",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:2do4CAvKNcMv8k7MtPxO": {
+    "label": "Mensaje 5",
+    "key": "contact.mensaje_5",
+    "type": "LARGE_TEXT"
+  },
+  "custom:2fQ9N8yiaTnb8apNAR6Z": {
+    "label": "Contrato",
+    "key": "contact.contrato",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:2iRCXBlQlFo2qeP7ZZH6": {
+    "label": "Embudo MEG",
+    "key": "contact.embudo_meg",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:2pob4VzVS2dGs3I3wIKN": {
+    "label": "E.PR2",
+    "key": "contact.epr2",
+    "type": "LARGE_TEXT"
+  },
+  "custom:2psRGSev08EsxVlXBsln": {
+    "label": "F. Inicio MP1",
+    "key": "contact.modulo_8",
+    "type": "DATE"
+  },
+  "custom:2sg2SekJNPo7FQMGrGJS": {
+    "label": "¿Cómo registrás y manejás hoy las finanzas de tu empresa?",
+    "key": "contact.cmo_registrs_y_manejs_hoy_las_finanzas_de_tu_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:3MAmmewLyVBTaVE3jibX": {
+    "label": "Calificacion",
+    "key": "contact.calificacion",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:3MagFWDne8XrSL8W9u6w": {
+    "label": "F. Inicio M2",
+    "key": "contact.modulo_2",
+    "type": "DATE"
+  },
+  "custom:3Q3rfkBfMCr3SNo8oXal": {
+    "label": "Chequeo · link para reprogramar",
+    "key": "contact.chequeo__link_para_reprogramar",
+    "type": "TEXT"
+  },
+  "custom:3RpcAXRmXr6BbWQTNOqW": {
+    "label": "FV - Nivel de facturación mensual(3)",
+    "key": "contact.nivel_de_facturacin_mensual3",
+    "type": "RADIO"
+  },
+  "custom:3Srt1sIDe0np84I54H8v": {
+    "label": "Score Decisor",
+    "key": "contact.score_decisor",
+    "type": "NUMERICAL"
+  },
+  "custom:3XvZxVRCw3EBMBzW2Rt6": {
+    "label": "Localidad",
+    "key": "contact.localidad",
+    "type": "TEXT"
+  },
+  "custom:3kWqY2qX29TsJPbEVyRq": {
+    "label": "Para interpretar bien el EERR financiero mes a mes, el M6 recomienda:",
+    "key": "contact.para_interpretar_bien_el_eerr_financiero_mes_a_mes_el_m_6_recomienda",
+    "type": "CHECKBOX"
+  },
+  "custom:3s2Pvy72ZDbyFdX5ayns": {
+    "label": "F Diagnostico Final",
+    "key": "contact.f_diagnostico_final",
+    "type": "DATE"
+  },
+  "custom:3tEu02rpGjeGo3xHDwjA": {
+    "label": "Fecha NPS - P1",
+    "key": "contact.fecha_nps__p1",
+    "type": "DATE"
+  },
+  "custom:3uqDX7vAoVtGDHzVCqtc": {
+    "label": "Para que esta unidad 6 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_6_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:3vumt6Nypv4qfMLUait2": {
+    "label": "F Traffiker",
+    "key": "contact.f_traffiker",
+    "type": "DATE"
+  },
+  "custom:48GGwEenfZ2R0DLfKELz": {
+    "label": "cuenta",
+    "key": "contact.cuenta",
+    "type": "TEXT"
+  },
+  "custom:4GFlcwikRhAY3M24SpgL": {
+    "label": "Para que esta unidad 4 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_4_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:4IJ8kdmozUVIAop9bfz1": {
+    "label": "M5 - Dias",
+    "key": "contact.m5__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:4Ti312cgCnXeZpZECaSF": {
+    "label": "Score Inversion",
+    "key": "contact.score_inversion",
+    "type": "NUMERICAL"
+  },
+  "custom:4YBCm5u7rdUg6vlmjqkg": {
+    "label": "Recurso IG",
+    "key": "contact.recurso_ig",
+    "type": "LARGE_TEXT"
+  },
+  "custom:4d9RolhqrPQtmOHm3W0T": {
+    "label": "F. Inicio M4",
+    "key": "contact.modulo_4",
+    "type": "DATE"
+  },
+  "custom:4e9isiLsTTq4wrtKFfAo": {
+    "label": "Sistema de gestión financiera",
+    "key": "contact.sistema_de_gestin_financiera",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:4nYRpIYOsSlo5iGOiZuo": {
+    "label": "¿Qué métrica NO pertenece a un CRM orientado a ventas?",
+    "key": "contact.que_metrica_no_pertenece_a_un_crm_orientado_a_ventas",
+    "type": "CHECKBOX"
+  },
+  "custom:4yXDqsVGFHElIt72uPTL": {
+    "label": "FV - (3) ¿Contás con sistema de gestión donde visualices tus ventas? (Excel también cuenta)",
+    "key": "contact.3_conts_con_sistema_de_gestin_donde_visualices_tus_ventas_excel_tambin_cuenta",
+    "type": "RADIO"
+  },
+  "custom:4ztqffaiHCHNrPADkxvO": {
+    "label": "Ultimo Origen",
+    "key": "contact.ultimo_origen",
+    "type": "TEXT"
+  },
+  "custom:5XPFZFoPttG305BHuX4H": {
+    "label": "F. Fin M7",
+    "key": "contact.f_fin_m7",
+    "type": "DATE"
+  },
+  "custom:5b4xFRs7YTeMJJBkgllT": {
+    "label": "Score examen 1",
+    "key": "contact.score_examen_1",
+    "type": "NUMERICAL"
+  },
+  "custom:5dqaq2V2t4TzinjggJXK": {
+    "label": "Cantidad de empleados que tiene tu empresa:",
+    "key": "contact.cantidad_de_empleados_que_tiene_tu_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:5fvgkvqw3SwCZ7a9I8BJ": {
+    "label": " Al finalizar la unidad, ¿cuál es un entregable recomendado?",
+    "key": "contact.al_finalizar_la_unidad_cual_es_un_entregable_recomendado",
+    "type": "CHECKBOX"
+  },
+  "custom:5upv4d9nF42Q56X2jdP1": {
+    "label": "utm_term",
+    "key": "contact.utm_term",
+    "type": "TEXT"
+  },
+  "custom:5varpT9bkNgGDeVQiuXy": {
+    "label": "Comprobantes de pago",
+    "key": "contact.comprobantes_de_pago",
+    "type": "FILE_UPLOAD"
+  },
+  "custom:5xJQ5UvhaOGk1LO1Axgx": {
+    "label": "Precio = 100; costos variables = 60 → CMG = 40 (MC% = 40%). Objetivo: MC% 45%. ¿Cuál cambio individual te acerca más?",
+    "key": "contact.precio_100_costos_variables_60__cmg_40_mc_40_objetivo_mc_45_cual_cambio_individual_te_acerca_mas",
+    "type": "CHECKBOX"
+  },
+  "custom:60mIK8uoirl9qiG57BDv": {
+    "label": "¿Qué pregunta responde el EERR financiero?",
+    "key": "contact.que_pregunta_responde_el_eerr_financiero",
+    "type": "CHECKBOX"
+  },
+  "custom:64ZwEFmxRS0HKMzFmhk4": {
+    "label": "¿Qué decisión está alineada al uso del cashflow para evitar “semanas en rojo”?",
+    "key": "contact.que_decision_esta_alineada_al_uso_del_cashflow_para_evitar_semanas_en_rojo",
+    "type": "CHECKBOX"
+  },
+  "custom:64jdeeCTwKo8h1nSCrCD": {
+    "label": "Form Postulacion",
+    "key": "contact.form_postulacion",
+    "type": "TEXT"
+  },
+  "custom:65AEaY0t9vB3X8YJGPTa": {
+    "label": "Al terminar el M2, el paso recomendado es…",
+    "key": "contact.al_terminar_el_m_2_el_paso_recomendado_es",
+    "type": "CHECKBOX"
+  },
+  "custom:66r3KcEHpN0Q9oHyLffe": {
+    "label": "F.PR4",
+    "key": "contact.fpr4",
+    "type": "DATE"
+  },
+  "custom:6FTGwmNndPVkGrZjXa54": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 2?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_2",
+    "type": "TEXT"
+  },
+  "custom:6Zvt0IOs3YIMugmh4e88": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 5 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_5_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:6caXIviPlq5sSV2pmUsJ": {
+    "label": "Dia 7",
+    "key": "contact.dia_7",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:6pr7EPYZKYpbv21GOZfr": {
+    "label": "F.PR5",
+    "key": "contact.fpr5",
+    "type": "DATE"
+  },
+  "custom:7GgGjJzeL06wGOHY4YG3": {
+    "label": "Instagram, Sitio Web o Nombre de tu negocio",
+    "key": "contact.instagram_sitio_web_o_nombre_de_tu_negocio",
+    "type": "TEXT"
+  },
+  "custom:7Ti9aA7DiNBeB4MJyQyR": {
+    "label": "Meses renovados",
+    "key": "contact.meses_renovados",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:7UDSkA7IU1Gmx1LUvLHd": {
+    "label": "Embudo CLUB",
+    "key": "contact.embudo_club",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:7W15QZcMYTkn5XL1g0wr": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 4?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_4",
+    "type": "TEXT"
+  },
+  "custom:7a8fbCZ02mZu4Q6jqDsA": {
+    "label": "Margen bruto promedio.",
+    "key": "contact.contactmargen_marcacion_promedio_wc6_copy",
+    "type": "TEXT"
+  },
+  "custom:7cNCrHrsVdvpObNQQfN6": {
+    "label": "¿Cuál de estos es un costo variable típico?",
+    "key": "contact.cual_de_estos_es_un_costo_variable_tipico",
+    "type": "CHECKBOX"
+  },
+  "custom:7gG4DJHV5ny01iIhBKjl": {
+    "label": "Nivel de facturación promedio mensual del negocio (En Pesos Argentinos)",
+    "key": "contact.nivel_de_facturacion_promedio_mensual_del_negocio_en_pesos_argentinos",
+    "type": "RADIO"
+  },
+  "custom:7hvQNlK6e3JGPiW1JaJ4": {
+    "label": "Origen actual",
+    "key": "contact.origen_actual",
+    "type": "TEXT"
+  },
+  "custom:7jO2FyFEpmzumyqcw6Rz": {
+    "label": "Score examen 6",
+    "key": "contact.score_examen_6",
+    "type": "NUMERICAL"
+  },
+  "custom:7jgt5JNjq7oiLy1P0oyA": {
+    "label": "EERR Economico",
+    "key": "contact.eerr_economico",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:7q8FhkyC1xuxZnKcOgee": {
+    "label": "Fecha NPS - P2",
+    "key": "contact.fecha_nps__p2",
+    "type": "DATE"
+  },
+  "custom:7sRruP3GYG9npuMnOptS": {
+    "label": "Nuevo Seguidor",
+    "key": "contact.nuevo_seguidor",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:7z8s6lTjLH5gghV79AsQ": {
+    "label": "Margen bruto",
+    "key": "contact.margen_bruto",
+    "type": "NUMERICAL"
+  },
+  "custom:84uc2CY0z0EOgH0lMVNP": {
+    "label": "Según criterio económico (devengado), ¿cuándo se registra una venta?",
+    "key": "contact.segun_criterio_economico_devengado_cuando_se_registra_una_venta",
+    "type": "CHECKBOX"
+  },
+  "custom:89M4Rzmg9lyiCIflY6Dn": {
+    "label": "FV - El Método Acelerador de Ganancias ofrece distintos niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?",
+    "key": "contact.el_metodo_acelerador_de_ganancias_ofrece_distintos_niveles_de_acompanamiento_estas_dispuesto_a_invertir_para_profesionalizar_tus_numeros_e_incrementar_tu_rentabilidad",
+    "type": "RADIO"
+  },
+  "custom:8CW6QSFmJUHDsXeBz4r1": {
+    "label": "F.PR1",
+    "key": "contact.fpr1",
+    "type": "DATE"
+  },
+  "custom:8Iux86zDitRzBlqpszR2": {
+    "label": "Diagnostico inicial",
+    "key": "contact.diagnostico_inicial",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:8JrCpmexml9RVUb91tU1": {
+    "label": "F. abandono",
+    "key": "contact.f_abandono",
+    "type": "DATE"
+  },
+  "custom:8XODSu2crLYWGlYYfVnP": {
+    "label": "Abandono",
+    "key": "contact.abandono",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:8YWCEVO8NMJdXay7OaYa": {
+    "label": "Usuario IG",
+    "key": "contact.usuario_ig",
+    "type": "TEXT"
+  },
+  "custom:8ZoPS3ra7MMXYBOlxcQA": {
+    "label": "Cliente pesadilla",
+    "key": "contact.cliente_pesadilla",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:8aqQlST9Qb5ITkhLzNxE": {
+    "label": "¿Qué diferencia de enfoque sugiere el M3 respecto de “económico vs financiero”?",
+    "key": "contact.que_diferencia_de_enfoque_sugiere_el_m_3_respecto_de_economico_vs_financiero",
+    "type": "CHECKBOX"
+  },
+  "custom:8eyr5zRYlfYJY40pSqWx": {
+    "label": "En caso de decidir trabajar con nosotros, ¿existe alguien más que deba estar presente en la videoconferencia para tomar la decisión?",
+    "key": "contact.en_caso_de_decidir_trabajar_con_nosotros_existe_alguien_ms_que_deba_estar_presente_en_la_videoconferencia_para_tomar_la_decisin",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:8oBT5Xhw1f34YMtZqbT4": {
+    "label": "Yes or No: Do you know what skills are needed for the next step in your career?",
+    "key": "contact.yes_or_no_do_you_know_what_skills_are_needed_for_the_next_step_in_your_career",
+    "type": "RADIO"
+  },
+  "custom:8sD386EIim4vYYrwRMXd": {
+    "label": "utm_content",
+    "key": "contact.utm_content",
+    "type": "TEXT"
+  },
+  "custom:9167n7e0xKMw3xEJMybd": {
+    "label": "Margen de marcacion promedio",
+    "key": "contact.margen_de_marcacion_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:98nFwRmTtHC4XdWjwv4y": {
+    "label": "Fecha NPS - 3",
+    "key": "contact.fecha_nps__3",
+    "type": "DATE"
+  },
+  "custom:9NLZPn3bdEGAcm9LBiYu": {
+    "label": "Costos fijos promedio",
+    "key": "contact.costos_fijos_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:9V2nHYI60Sqr0tSvIUEw": {
+    "label": "¿Podés tomar decisiones en base a simulaciones a partir de tus estados de resultados?",
+    "key": "contact.pods_tomar_decisiones_en_base_a_simulaciones_a_partir_de_tus_estados_de_resultados",
+    "type": "RADIO"
+  },
+  "custom:9WIyQlJUCOHTuAuo1s24": {
+    "label": "Score examen 3",
+    "key": "contact.score_examen_3",
+    "type": "NUMERICAL"
+  },
+  "custom:9eO7Hh3DSYcvNBguSPn6": {
+    "label": "Cuál es tu modelo de negocio?",
+    "key": "contact.cual_es_tu_modelo_de_negocio_survey_regalo_desafio",
+    "type": "RADIO"
+  },
+  "custom:9el3l3QF0S3gmbta6ukA": {
+    "label": "F. Caso de extio",
+    "key": "contact.f_caso_de_extio",
+    "type": "DATE"
+  },
+  "custom:9fSlsEB7UPgRpjlQVcn6": {
+    "label": "Ventana M4-M5",
+    "key": "contact.ventana_m4m5",
+    "type": "NUMERICAL"
+  },
+  "custom:A3mo7mQ1wnEnKzvAG10L": {
+    "label": "Mail de acceso",
+    "key": "contact.mail_de_acceso",
+    "type": "TEXT"
+  },
+  "custom:A8orha0rCOCwfyxEt4XL": {
+    "label": "En el reglamento interno, ¿qué debe quedar claro?",
+    "key": "contact.en_el_reglamento_interno_que_debe_quedar_claro",
+    "type": "CHECKBOX"
+  },
+  "custom:ABITWCP3edJiZ5QAcyHp": {
+    "label": "Matriz Urgente/Importante: si algo es importante pero no urgente, lo correcto es…",
+    "key": "contact.matriz_urgenteimportante_si_algo_es_importante_pero_no_urgente_lo_correcto_es",
+    "type": "RADIO"
+  },
+  "custom:AFLug6kWPYf7dBeZrUUQ": {
+    "label": "Do you feel confident about your current resume and interview skills?",
+    "key": "contact.do_you_feel_confident_about_your_current_resume_and_interview_skills",
+    "type": "RADIO"
+  },
+  "custom:AIb4y35CsostwRzLpX5P": {
+    "label": "Apertura 6 de octubre",
+    "key": "contact.apertura_6_de_octubre",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:AanJxOWkvVkDWgKizcOL": {
+    "label": "Apertura 7 de octubre",
+    "key": "contact.apertura_7_de_octubre",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:AhNaRFKrldPAS6vmDjuG": {
+    "label": "Despedida",
+    "key": "contact.depedida",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Ak1d4AUqNGxrVKIBhF4B": {
+    "label": "Que voy a aprender en las clases?",
+    "key": "contact.que_voy_a_aprender_en_las_clases",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:AmatZ6nolfxsQBPtLKKD": {
+    "label": "Ventana M7-MP1",
+    "key": "contact.ventana_m7mp1",
+    "type": "NUMERICAL"
+  },
+  "custom:Aoj3V4iEuX7Sy0WOQjqq": {
+    "label": "¿Cuál es el beneficio principal de separar ingresos por medio de cobro en el cashflow?",
+    "key": "contact.cual_es_el_beneficio_principal_de_separar_ingresos_por_medio_de_cobro_en_el_cashflow",
+    "type": "CHECKBOX"
+  },
+  "custom:B2B1SZ9M0rOyNVlv8wCw": {
+    "label": "¿Hoy contás con estados de resultados financieros?",
+    "key": "contact.hoy_contas_con_estados_de_resultados_financieros",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:B4rDNCUupaA8hnpcgrqS": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 5?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_5",
+    "type": "TEXT"
+  },
+  "custom:BRcRHkmCt6ugxp5mh0qd": {
+    "label": "NPS - 7",
+    "key": "contact.nps__7",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:BVVpDbyPIGlDLPmQTZ1b": {
+    "label": "¿Que lograste durante el proceso de transitar el MEG?",
+    "key": "contact.que_lograste_durante_el_proceso_de_transitar_el_meg",
+    "type": "LARGE_TEXT"
+  },
+  "custom:BiX6iHiZu0lyxonrKTnp": {
+    "label": "F.PR6",
+    "key": "contact.fpr6",
+    "type": "DATE"
+  },
+  "custom:Boli6UBIPCD9dMPtanOV": {
+    "label": "FV - date",
+    "key": "contact.date",
+    "type": "DATE"
+  },
+  "custom:C4yM38WqPcvISyRbfgzX": {
+    "label": "Fecha esp",
+    "key": "contact.fecha_esp",
+    "type": "TEXT"
+  },
+  "custom:C6tsfrYydjWL2ktJTu0H": {
+    "label": "Nombre de tu empresa",
+    "key": "contact.nombre_de_tu_empresa",
+    "type": "TEXT"
+  },
+  "custom:C95Nl9Sc4QYHUvK1UJw1": {
+    "label": "Si la tasa de cierre promedio de 6 meses fue 14%, te sirve para:",
+    "key": "contact.si_la_tasa_de_cierre_promedio_de_6_meses_fue_14_te_sirve_para",
+    "type": "CHECKBOX"
+  },
+  "custom:CMUmEhsL68sd7HCOyhjv": {
+    "label": "Respaldo periodo M",
+    "key": "contact.respaldo_periodo_m",
+    "type": "NUMERICAL"
+  },
+  "custom:CR89eabE4OdNs54HYzgu": {
+    "label": "¿Contás con proyecciones de disponobilidades futuras a 3 meses?",
+    "key": "contact.contas_con_proyecciones_de_disponobilidades_futuras_a_3_meses",
+    "type": "RADIO"
+  },
+  "custom:Cc7U22P9eF0SPjs3gVRX": {
+    "label": "Punto de equilibrio: ¿qué decisión ayuda a bajarlo",
+    "key": "contact.punto_de_equilibrio_que_decision_ayuda_a_bajarlo",
+    "type": "CHECKBOX"
+  },
+  "custom:DB0hSRC6bwMCqz9ecCse": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 1 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_1_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "TEXT"
+  },
+  "custom:DC17cPmLtcRSKjQufUFa": {
+    "label": "Aplica",
+    "key": "contact.aplica",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:DDyAFGEH6asHzH6Z50tv": {
+    "label": "F. Inicio MP3",
+    "key": "contact.modulo_10",
+    "type": "DATE"
+  },
+  "custom:DEf7mq447KHetp1XaJvn": {
+    "label": "Tenés alta proporción de cobros con tarjeta. Según M6, una acción inicial coherente es…",
+    "key": "contact.tenes_alta_proporcion_de_cobros_con_tarjeta_segun_m_6_una_accion_inicial_coherente_es",
+    "type": "CHECKBOX"
+  },
+  "custom:DGmBOrusVb4hv0raIj72": {
+    "label": "Cliente",
+    "key": "contact.cliente",
+    "type": "CHECKBOX"
+  },
+  "custom:DIrpHKtNWF34C6pjHcSy": {
+    "label": "hodnaskbfksabfksjdbfksdbfsdbfksdkjhkfjgh",
+    "key": "contact.hodnaskbfksabfksjdbfksdbfsdbfksdkjhkfjgh",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:DKxaXQRPf3AdTwIqAXJl": {
+    "label": "¿En tu Excel tenés cargados los datos detallados de tus compras y ventas (producto, precio y forma de pago)?",
+    "key": "contact.en_tu_excel_tens_cargados_los_datos_detallados_de_tus_compras_y_ventas_producto_precio_y_forma_de_pago",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Di4BYKII1WFacDJ4b8D6": {
+    "label": "Fecha envio bonus",
+    "key": "contact.fecha_envio_bonus",
+    "type": "DATE"
+  },
+  "custom:Di9RFeUjieLYwfuRmqur": {
+    "label": "Sub Origen",
+    "key": "contact.sub_origen",
+    "type": "TEXT"
+  },
+  "custom:DioeG8BZoQFYua5ClVDA": {
+    "label": "En el Módulo 1, una “Roca” del día es…",
+    "key": "contact.en_el_modulo_1_una_roca_del_dia_es",
+    "type": "CHECKBOX"
+  },
+  "custom:DqwRXxtVv3guv3MljtX1": {
+    "label": "¿Qué objetivos suelen fijarse al iniciar el presupuesto?",
+    "key": "contact.que_objetivos_suelen_fijarse_al_iniciar_el_presupuesto",
+    "type": "CHECKBOX"
+  },
+  "custom:E0Lsvsy95pzVlGV6Sd6A": {
+    "label": "¿Cuántos empleados tenés actualmente?",
+    "key": "contact.cuantos_empleados_tenes_actualmente",
+    "type": "RADIO"
+  },
+  "custom:E3afHSaf3zG1KUMmot1M": {
+    "label": "Margen bruto promedio",
+    "key": "contact.margen_bruto_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:EAA7ulVA29hb0LeAKQYg": {
+    "label": "Un miembro de nuestro equipo se pondrá en contacto con vos. ¿Podés atender una llamada previa de 10 minutos? La llamada es para conocer tu situación y confirmar si podemos ayudarte.",
+    "key": "contact.un_miembro_de_nuestro_equipo_se_pondr_en_contacto_con_vos_pods_atender_una_llamada_previa_de_10_minutos_la_llamada_es_para_conocer_tu_situacin_y_confirmar_si_podemos_ayudarte",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:EJytbcFiPJA5S1D9Arui": {
+    "label": "Como tratamos el IVA en el estado de resultados económico.",
+    "key": "contact.como_tratamos_el_iva_en_el_estado_de_resultados_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:EOBmtMKD7aVYogeV20p4": {
+    "label": "Tu equipo propone dejar el CRM porque “toma tiempo”. ¿Qué argumento es más sólido?",
+    "key": "contact.tu_equipo_propone_dejar_el_crm_porque_toma_tiempo_que_argumento_es_mas_solido",
+    "type": "CHECKBOX"
+  },
+  "custom:EevOEq45OrYTll94ETfP": {
+    "label": "En el enfoque práctico del MEG, la amortización de equipos se considera…",
+    "key": "contact.en_el_enfoque_practico_del_meg_la_amortizacion_de_equipos_se_considera",
+    "type": "CHECKBOX"
+  },
+  "custom:EiIXMIzUJqRS0E0ibpv3": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 2 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_2_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:EmvkkTyThLCwK5KTGuTr": {
+    "label": "Antes de presupuestar, el M5 pide tener…",
+    "key": "contact.antes_de_presupuestar_el_m_5_pide_tener",
+    "type": "CHECKBOX"
+  },
+  "custom:EyvrlZPEhoAPIiz1YLY7": {
+    "label": "Si al simular ves que el MC% cae por aumento de costos variables, ¿qué decisión está alineada a M5?",
+    "key": "contact.si_al_simular_ves_que_el_mc_cae_por_aumento_de_costos_variables_que_decision_esta_alineada_a_m_5",
+    "type": "CHECKBOX"
+  },
+  "custom:FD8pv4T66jcp4buzxQsU": {
+    "label": "Nombre empresa",
+    "key": "contact.nombre_empresa",
+    "type": "TEXT"
+  },
+  "custom:FFYEKuXKKDzJN6Hcrg2a": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 7 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_7_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:FJ3yBfpq5nj4TcW4RRST": {
+    "label": "Si la contribución por unidad es $25.000 y el costo de adquisición por venta es $10.417, lo más razonable es:",
+    "key": "contact.si_la_contribucion_por_unidad_es_25_000_y_el_costo_de_adquisicion_por_venta_es_10_417_lo_mas_razonable_es",
+    "type": "CHECKBOX"
+  },
+  "custom:FelnwUQh9xsDsOVyJVmh": {
+    "label": "Sesiones de apoyo",
+    "key": "contact.sesiones_de_apoyo",
+    "type": "NUMERICAL"
+  },
+  "custom:FqDwFLCr7d0rYNhN405s": {
+    "label": "E.PR4",
+    "key": "contact.epr4",
+    "type": "LARGE_TEXT"
+  },
+  "custom:FuZaaDSwmS9GAGE6LTYj": {
+    "label": "Do you feel confident negotiating for a higher salary or better benefits?",
+    "key": "contact.do_you_feel_confident_negotiating_for_a_higher_salary_or_better_benefits",
+    "type": "RADIO"
+  },
+  "custom:FvK3n74xtu5GgGmgWFDL": {
+    "label": "Dia 6",
+    "key": "contact.dia_6",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:GKVILWXtvmQp1zF4R72d": {
+    "label": "Para que esta unidad 2 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_2_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:GPK3499E5w0jAGHbxZVe": {
+    "label": "¿Cuál es el objetivo del análisis económico mensual por líneas?",
+    "key": "contact.cual_es_el_objetivo_del_analisis_economico_mensual_por_lineas",
+    "type": "CHECKBOX"
+  },
+  "custom:GUycZPPlQWOcT77w94k5": {
+    "label": "Describí brevemente de qué trata tu negocio.",
+    "key": "contact.describi_brevemente_de_que_trata_tu_negocio",
+    "type": "LARGE_TEXT"
+  },
+  "custom:GvKumaNvyEjik8GHxE03": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 1 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_qu_tan_probable_es_que_recomiendes_la_unidad_1_del_meg_a_otroa_dueoa_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:GxJv5Jd5KTeZKWkErxvd": {
+    "label": "En caso de que podamos ayudarte con nuestro acompañamiento: ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?",
+    "key": "contact.en_caso_de_que_podamos_ayudarte_estas_dispuesto_a_invertir_para_profesionalizar_tus_numeros_e_incrementar_tu_rentabilidad",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:H3WwJDEINaMWdhC7maKK": {
+    "label": "Apertura 9 de octubre",
+    "key": "contact.apertura_9_de_octubre",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:H6efIaFSxVQHrmNQ3gs9": {
+    "label": "Onboarding",
+    "key": "contact.onboarding",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:H8rtz5ZX0UgM7qr2OSCu": {
+    "label": "FV - Si en esta sesión lograrás encontrar lo que estás necesitando para solucionar tus mayores desafíos respecto a tu negocio... ¿Que sería?",
+    "key": "contact.si_en_esta_sesion_lograras_encontrar_lo_que_estas_necesitando_para_solucionar_tus_mayores_desafios_respecto_a_tu_negocio_que_seria",
+    "type": "LARGE_TEXT"
+  },
+  "custom:HDF6OkRWlI6Y2XH8ubgN": {
+    "label": "¿Cómo se estructura el cashflow avanzado en el MEG?",
+    "key": "contact.como_se_estructura_el_cashflow_avanzado_en_el_meg",
+    "type": "CHECKBOX"
+  },
+  "custom:HRY1QM3m5cH8AafhtJt9": {
+    "label": "¿Conocés tu rentabilidad  real con TOTAL CERTEZA?",
+    "key": "contact.conocs_tu_rentabilidad_real_con_total_certeza",
+    "type": "RADIO"
+  },
+  "custom:HTP8KjT22VvYARjCOTot": {
+    "label": "Como se si este desafio me va a servir?",
+    "key": "contact.como_se_si_este_desafio_me_va_a_servir",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:HVh9HOlWiE8eDsE7Jwgf": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 7?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_7",
+    "type": "TEXT"
+  },
+  "custom:HVlBdnBuJAPxOMF2pUrz": {
+    "label": "Dia 8",
+    "key": "contact.dia_8",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:HsXKZk1PK8O7MNkN8DY0": {
+    "label": "¿Cuál es la principal razón para usar CRM en ventas?",
+    "key": "contact.cual_es_la_principal_razon_para_usar_crm_en_ventas",
+    "type": "CHECKBOX"
+  },
+  "custom:Ht41W9ZhS06XwxyFaylI": {
+    "label": "Sub etiquetas - IA",
+    "key": "contact.sub_etiquetas__ia",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:HudixlB035LKc8zS19z7": {
+    "label": "Confirmo",
+    "key": "contact.confirmo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:HwWBKSRq8sBfozloi4sh": {
+    "label": "CE.Evidencia",
+    "key": "contact.ceevidencia",
+    "type": "LARGE_TEXT"
+  },
+  "custom:ICUgfaR7wbTRsung1WP2": {
+    "label": "Score modulo 10",
+    "key": "contact.score_modulo_10",
+    "type": "NUMERICAL"
+  },
+  "custom:IJS5rJZZcefYqS3rbRiu": {
+    "label": "Dias de soporte",
+    "key": "contact.dias_de_soporte",
+    "type": "DATE"
+  },
+  "custom:IRmLnOenYeX28ME19MTa": {
+    "label": "True or False: A career coach can help you create a personalized plan to achieve your career goals.",
+    "key": "contact.true_or_false_a_career_coach_can_help_you_create_a_personalized_plan_to_achieve_your_career_goals",
+    "type": "RADIO"
+  },
+  "custom:InskZIgykkNApwg6tTzf": {
+    "label": "Nivel de facturación mensual",
+    "key": "contact.nivel_de_facturacin_mensual",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:IuPaqt8IxQzjXGpYDlpE": {
+    "label": "FV - ¿Cómo te ves en relación a tu gestión y organización de tu tiempo? (Siendo 1 el día me lleva por delante y no llego con las tareas y 5 cumplo con todo en tiempo y forma, además llego tranquilo al final del día.",
+    "key": "contact.como_te_ves_en_relacion_a_tu_gestion_y_organizacion_de_tu_tiempo_siendo_1_el_dia_me_lleva_por_delante_y_no_llego_con_las_tareas_y_5_cumplo_con_todo_en_tiempo_y_forma_ademas_llego_tranquilo_al_final_del_dia",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:IvaDdnAagZqzPJb147JP": {
+    "label": "¿Qué es un CRM?",
+    "key": "contact.que_es_un_crm",
+    "type": "CHECKBOX"
+  },
+  "custom:IyvdYzFo8JlsBWJYI8hm": {
+    "label": "Es gratis?",
+    "key": "contact.es_gratis",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:J8ShxAKoX1Qn7MnuGHzB": {
+    "label": "Regla 90-90-1 en el MEG: elegí la opción correcta.",
+    "key": "contact.regla_90901_en_el_meg_eleg_la_opcin_correcta",
+    "type": "RADIO"
+  },
+  "custom:JFageJNG8pr6FtfA3ZMo": {
+    "label": "Dia 1",
+    "key": "contact.dia_1",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:JREy2bXY9ougDVFR3l8C": {
+    "label": "F. Fin M6",
+    "key": "contact.f_fin_m6",
+    "type": "DATE"
+  },
+  "custom:JgE0MGY5YgJGVEBUv6c5": {
+    "label": "F Diagnostico Intermedio",
+    "key": "contact.f_diagnostico_intermedio",
+    "type": "DATE"
+  },
+  "custom:JiSUuqJLqjiSNbMotYlh": {
+    "label": "Ventana M6-M7",
+    "key": "contact.ventana_m6m7",
+    "type": "NUMERICAL"
+  },
+  "custom:JoqhVsXjUEQG2O45cRvm": {
+    "label": "Fecha NPS - 2",
+    "key": "contact.fecha_nps__2",
+    "type": "DATE"
+  },
+  "custom:JueJN9x50bktorgu0Sn3": {
+    "label": "E.PR3",
+    "key": "contact.epr3",
+    "type": "LARGE_TEXT"
+  },
+  "custom:K1h4HsqiQjSUdMdoFXaW": {
+    "label": "Link Meet",
+    "key": "contact.link_meet",
+    "type": "TEXT"
+  },
+  "custom:KCWpUkgodOQEYRV4t4jt": {
+    "label": "¿Por qué el presupuesto se considera una herramienta de dirección de la empresa?",
+    "key": "contact.por_que_el_presupuesto_se_considera_una_herramienta_de_direccion_de_la_empresa",
+    "type": "CHECKBOX"
+  },
+  "custom:KPW5YJffV7DMN5Ewgytd": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 3 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_3_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Kgj1tMa3TJ15m50GClEZ": {
+    "label": "E.PR7",
+    "key": "contact.epr7",
+    "type": "LARGE_TEXT"
+  },
+  "custom:Kmx9hWONPQ8dLm1RGGIi": {
+    "label": "Fecha finalizacion",
+    "key": "contact.fecha_finalizacion",
+    "type": "DATE"
+  },
+  "custom:KrrzIrzW9zRh70FBiv3k": {
+    "label": "Fecha Embudo Ai studio",
+    "key": "contact.fecha_embudo_ai_studio",
+    "type": "DATE"
+  },
+  "custom:Kubj04F7QBQ1NnDSwOTG": {
+    "label": "Fecha NPS - 1 ",
+    "key": "contact.fecha_nps__1",
+    "type": "DATE"
+  },
+  "custom:L7KAlAixuWuVHF6BzfTe": {
+    "label": "¿Cómo estabas antes de ingresar al MEG? (Ej: Me pasaba que tenía los números desorganizados, que vendía y no veía la plata, etc)",
+    "key": "contact.como_estabas_antes_de_ingresar_al_meg_ej_me_pasaba_que_tenia_los_numeros_desorganizados_que_vendia_y_no_veia_la_plata_etc",
+    "type": "LARGE_TEXT"
+  },
+  "custom:LDaI6urDxMUkPBy4w8uF": {
+    "label": "Elegí la definición correcta de margen de marcación:",
+    "key": "contact.elegi_la_definicion_correcta_de_margen_de_marcacion",
+    "type": "CHECKBOX"
+  },
+  "custom:LKI5QvHtCMMYTtfh7F6O": {
+    "label": "F. Inicio M6",
+    "key": "contact.modulo_6",
+    "type": "DATE"
+  },
+  "custom:LKodHpcA2YhTRXwCFG0e": {
+    "label": "FV - ¿Viste alguna clase de Matías anteriormente?",
+    "key": "contact.viste_alguna_clase_de_matias_anteriormente",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:LMcZZy5NUi4JIEXmzsuV": {
+    "label": "Mensjae 4",
+    "key": "contact.mensjae_4",
+    "type": "LARGE_TEXT"
+  },
+  "custom:LatAv9YecpA4MpLCuMah": {
+    "label": "Contacto Mati?",
+    "key": "contact.contacto_mati",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:LbsD5wffdCgRh0dZdCAQ": {
+    "label": "Cashflow",
+    "key": "contact.cashflow",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Ll04mLco3JUKsshPOQiH": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 4 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_4_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Lo2wab99byqCaFfb2hnG": {
+    "label": "Dia de la llamada",
+    "key": "contact.dia_de_la_llamada",
+    "type": "TEXT"
+  },
+  "custom:M7opnX9V003byjY4YhKw": {
+    "label": "¿Hoy contás con estados de resultados económicos?",
+    "key": "contact.hoy_contas_con_estados_de_resultados_economicos",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:M9hbplfy7XF16hrcdZQq": {
+    "label": "¿Tenés discriminados tus costos variables unitarios?",
+    "key": "contact.tenes_discriminados_tus_costos_variables_unitarios",
+    "type": "RADIO"
+  },
+  "custom:MBeaHbItStchkKB0MMGF": {
+    "label": "F. acceso",
+    "key": "contact.f_acceso",
+    "type": "DATE"
+  },
+  "custom:MLK5e5k7KMX5NaEuQWLH": {
+    "label": "En realidad ya tengo todo claro!",
+    "key": "contact.en_realidad_ya_tengo_todo_claro",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:MMzBMf2maQzKaN9ewpEo": {
+    "label": "FV - ¿Sos el dueño del negocio o sos gerente/responsable de área?",
+    "key": "contact.sos_el_dueno_del_negocio_o_sos_gerente_responsable_de_area",
+    "type": "RADIO"
+  },
+  "custom:MYMZXOwZdFjnWOvY2ESI": {
+    "label": "Tenés 3 líneas: A (MC% 18), B (MC% 32), C (MC% 45). Si el objetivo mensual es subir el MC total, ¿cuál decisión es más coherente?",
+    "key": "contact.tenes_3_lineas_a_mc_18_b_mc_32_c_mc_45_si_el_objetivo_mensual_es_subir_el_mc_total_cual_decision_es_mas_coherente",
+    "type": "CHECKBOX"
+  },
+  "custom:MhvCo5jdx63xk8zwrWB9": {
+    "label": "M1 - Dias",
+    "key": "contact.m1__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:MtbtRzjCpkJbXhmSOFCj": {
+    "label": "How satisfied are you with your current work-life balance?",
+    "key": "contact.how_satisfied_are_you_with_your_current_work_life_balance",
+    "type": "RADIO"
+  },
+  "custom:Muj3Dj9haKOtDiekLYWy": {
+    "label": "Las clases quedan grabadas?",
+    "key": "contact.las_clases_quedan_grabadas",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:MwaCRryp5jsD9qF564Yn": {
+    "label": "Te vamos a contactar por Whatsapp para conocer mejor los desafíos que transita tu empresa. ¿Podemos contar con tu compromiso para completar el diagnóstico?",
+    "key": "contact.te_vamos_a_contactar_por_whatsapp_para_conocer_mejor_los_desafos_que_transita_tu_empresa_podemos_contar_con_tu_compromiso_para_completar_el_diagnstico",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:NAQ8jLsVbP74sRI2Itex": {
+    "label": "F. Fin MP3",
+    "key": "contact.f_fin_mp3",
+    "type": "DATE"
+  },
+  "custom:NHAsn7iuEnkLHnNtTIBc": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 9 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_9_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:NIuENlyI0QcyDIJxuTLo": {
+    "label": "¿Qué tasa expresa qué porcentaje de leads termina comprando?",
+    "key": "contact.que_tasa_expresa_que_porcentaje_de_leads_termina_comprando",
+    "type": "CHECKBOX"
+  },
+  "custom:NY2onDQKGwko82uSHpg2": {
+    "label": "Ventana MP1-MP2",
+    "key": "contact.ventana_mp1mp2",
+    "type": "NUMERICAL"
+  },
+  "custom:NZP5f4sNYbK4YoPgau79": {
+    "label": "Margen bruto de tu producto mas vendido",
+    "key": "contact.contactmargen_marcacion_promedio_wc6_copy_tst_copy_zgd_copy",
+    "type": "TEXT"
+  },
+  "custom:Nw6IH1XBxeHHlMD7zFSh": {
+    "label": "F. Fin MP2",
+    "key": "contact.f_fin_mp2",
+    "type": "DATE"
+  },
+  "custom:O4aDm5mD3cSNVAqqboEl": {
+    "label": "Soporte",
+    "key": "contact.soporte",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:ObMLXC5M64910gv333gO": {
+    "label": "Traffiker",
+    "key": "contact.traffiker",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:OjYwXc7oafpZRoYIx1By": {
+    "label": "⬇️ Tocá en OK para comenzar",
+    "key": "contact._toca_en_ok_para_comenzar",
+    "type": "RADIO"
+  },
+  "custom:OxZuMT0CoOE6U2Q2C0gD": {
+    "label": "si algo es importante pero no urgente, lo correcto es…",
+    "key": "contact.si_algo_es_importante_pero_no_urgente_lo_correcto_es",
+    "type": "CHECKBOX"
+  },
+  "custom:Oy11NNFPOc4VrkWQqCDk": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 8?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_8",
+    "type": "TEXT"
+  },
+  "custom:P4Lb7jpLlOApHtRY0SsX": {
+    "label": "Soporte activo",
+    "key": "contact.soporte_activo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:P8uDuIXMHkq3JvVO8nwf": {
+    "label": "¿En tu Excel tenés cargados los datos detallados de tus compras y ventas (producto, precio y forma de pago)?",
+    "key": "contact.tenes_datos_completos_en_tu_excel",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:PP2Xc2ISLRKZYeQE5bfm": {
+    "label": "Fecha de inicio estimado",
+    "key": "contact.fecha_de_inicio_estimado",
+    "type": "DATE"
+  },
+  "custom:PPQRFS6xMEibzca7bAzV": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 6 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_6_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:PQIpRbK785ogfxQCb1yI": {
+    "label": "Setter",
+    "key": "contact.setter",
+    "type": "TEXT"
+  },
+  "custom:PTPdxxP6RSSSRRwG5HGO": {
+    "label": "Fecha de agendamiento",
+    "key": "contact.fecha_de_agendamiento",
+    "type": "DATE"
+  },
+  "custom:PZXbLkM5kwZH1myKiwKj": {
+    "label": "Para que esta unidad sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_sea_un_1010_para_vos_qu_falt_o_qu_cambiaras",
+    "type": "TEXT"
+  },
+  "custom:Pa6eQCN2vOMPKZUyABgP": {
+    "label": "Si el “Resumen de movimientos” muestra picos de egresos variables a mitad de mes, ¿qué decisión ayuda a aliviar tensiones de caja futuras?",
+    "key": "contact.si_el_resumen_de_movimientos_muestra_picos_de_egresos_variables_a_mitad_de_mes_que_decision_ayuda_a_aliviar_tensiones_de_caja_futuras",
+    "type": "CHECKBOX"
+  },
+  "custom:PaOdMW8hZ9aCitqEqvYc": {
+    "label": "F Coaching",
+    "key": "contact.f_coaching",
+    "type": "DATE"
+  },
+  "custom:PddCUxnULUR7V2KwinRk": {
+    "label": "¿Cuál es el nivel de facturación promedio mensual en dólares de la empresa?",
+    "key": "contact.cul_es_el_nivel_de_facturacin_promedio_mensual_en_dlares_de_la_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:PlNIkybHIycvKBiANNA3": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 8 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_8_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:PmAknUq2qONdiRtQY21A": {
+    "label": "Algo más que quieras contarme?",
+    "key": "contact.algo_mas_que_quieras_contarme",
+    "type": "LARGE_TEXT"
+  },
+  "custom:PsBxcWZrIwV6IYt1bcmE": {
+    "label": "¿Cómo recomienda el programa abordar los niveles del cashflow?",
+    "key": "contact.como_recomienda_el_programa_abordar_los_niveles_del_cashflow",
+    "type": "CHECKBOX"
+  },
+  "custom:PuoqhLUCtGhciIRArSl7": {
+    "label": "Caso de exito",
+    "key": "contact.caso_de_exito",
+    "type": "DATE"
+  },
+  "custom:PylcHxhWgUtUiRq4PIUz": {
+    "label": "Para que este Pilar de Ventas sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_este_pilar_de_ventas_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:R9x6f7Q4RmjLbsyxDey5": {
+    "label": "¿Qué le dirías a quién está dudando en sumarse al MEG?",
+    "key": "contact.que_le_dirias_a_quien_esta_dudando_en_sumarse_al_meg",
+    "type": "LARGE_TEXT"
+  },
+  "custom:RC5Uhfz2ZhDpTNBTcW37": {
+    "label": "How often do you feel stuck or uncertain about your career decisions?",
+    "key": "contact.how_often_do_you_feel_stuck_or_uncertain_about_your_career_decisions",
+    "type": "RADIO"
+  },
+  "custom:RPoWcPohdEWnxGUfZZRH": {
+    "label": "M4 - Dias",
+    "key": "contact.m4__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:Ra7Wp5n0V0HdDukDH5qk": {
+    "label": "F. Fin M2",
+    "key": "contact.f_fin_m2",
+    "type": "DATE"
+  },
+  "custom:RbT3lh3yjAz55P8JUbgI": {
+    "label": "Capacidad limitada en horas-productivas. Línea X tiene MC por unidad alto pero usa pocas horas; Línea Y tiene MC por unidad similar pero consume el doble de horas. ¿Qué conviene priorizar para maximizar el resultado mensual?",
+    "key": "contact.capacidad_limitada_en_horas_productivas_linea_x_tiene_mc_por_unidad_alto_pero_usa_pocas_horas_linea_y_tiene_mc_por_unidad_similar_pero_consume_el_doble_de_horas_que_conviene_priorizar_para_maximizar_el_resultado_mensual",
+    "type": "CHECKBOX"
+  },
+  "custom:RgygmQecy6WWV4DOX3IS": {
+    "label": "Tipo contrato",
+    "key": "contact.tipo_contrato",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:RiQFFRZIKDl3m282TAiC": {
+    "label": "Primer Origen",
+    "key": "contact.primer_origen",
+    "type": "TEXT"
+  },
+  "custom:RntZseBhokCaVrgPhpIs": {
+    "label": "Margen marcacion promedio",
+    "key": "contact.margen_marcacion_promedio",
+    "type": "TEXT"
+  },
+  "custom:RpaTnhfnkNMOwyoJrKtr": {
+    "label": "Etapa cobranza",
+    "key": "contact.etapa_cobranza",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Rtck5PTUKkxj35SdNWoS": {
+    "label": "Provincia",
+    "key": "contact.provincia",
+    "type": "TEXT"
+  },
+  "custom:RuXy5QwuPVbedTx9Qwjq": {
+    "label": "E.PR6",
+    "key": "contact.epr6",
+    "type": "LARGE_TEXT"
+  },
+  "custom:S4qxz5ayzL49dH7F4fjM": {
+    "label": "Que significa superavit en el mes de análisis.",
+    "key": "contact.que_significa_superavit_en_el_mes_de_analisis",
+    "type": "CHECKBOX"
+  },
+  "custom:SBJ30WpKhfP8WNZuXdWV": {
+    "label": "Final Renovacion",
+    "key": "contact.final_renovacion",
+    "type": "DATE"
+  },
+  "custom:SLJQgJ0M0ZWim66PruNa": {
+    "label": "Seguimiento auto?",
+    "key": "contact.seguimiento_auto",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:SLYHgwvhjEkZlQdrOdX2": {
+    "label": "Cronograma",
+    "key": "contact.cronograma",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:SebPS66dupiCs0c0Am5Q": {
+    "label": "Fecha agenda bonus",
+    "key": "contact.fecha_agenda_bonus",
+    "type": "DATE"
+  },
+  "custom:SgREu85ND905CtSi3RKU": {
+    "label": "F. Fin M1",
+    "key": "contact.f_fin_m1",
+    "type": "DATE"
+  },
+  "custom:SmWsDCbYyaqvOt6slE1I": {
+    "label": "Mensaje enviado + Respuesta",
+    "key": "contact.mensaje_enviado__respuesta",
+    "type": "LARGE_TEXT"
+  },
+  "custom:SpgZug10KY5WTA2caNgX": {
+    "label": "FV - ¿Cuál es tu nivel de facturación mensual promedio en dólares? Esto nos permitirá enviarte herramientas diseñadas específicamente para la etapa en la que se encuentra tu negocio.",
+    "key": "contact.cual_es_tu_nivel_de_facturacion_mensual_promedio_en_dolares_esto_nos_permitira_enviarte_herramientas_disenadas_especificamente_para_la_etapa_en_la_que_se_encuentra_tu_negocio_single_dropdown_si",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Sr8RHgnNJhoPWDwB7AfW": {
+    "label": "¿Tenés claridad de lo que es un Estado de Resultados Económico?",
+    "key": "contact.tens_claridad_de_lo_que_es_un_estado_de_resultados_econmico",
+    "type": "RADIO"
+  },
+  "custom:SvDUEE2PYwzpKyjP1u2A": {
+    "label": "FV - Contame más sobre tu negocio: ¿Que crees que deberías mejorar en tus finanzas para que tu empresa sea más rentable?",
+    "key": "contact.contame_mas_sobre_tu_negocio_que_crees_que_deberias_mejorar_en_tus_finanzas_para_que_tu_empresa_sea_mas_rentable",
+    "type": "LARGE_TEXT"
+  },
+  "custom:SxP7Z0ZmgQwEenNsvof7": {
+    "label": "Estado del cliente",
+    "key": "contact.estado_del_cliente",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:TBrduo1Sy3nsbKoA1SQW": {
+    "label": "Seguimiento Closing",
+    "key": "contact.seguimiento_closing",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:TEecdiMKtIA9topoo02F": {
+    "label": "Ultima respuesta",
+    "key": "contact.ultima_respuesta",
+    "type": "DATE"
+  },
+  "custom:TL6UxUyyYw6ZoJ5HuVob": {
+    "label": "Score Modelo",
+    "key": "contact.score_modelo",
+    "type": "NUMERICAL"
+  },
+  "custom:TZ5A8n1CSBWNwsvSrAHq": {
+    "label": "¿Qué rol cumple el Control de gestión dentro del presupuesto económico?",
+    "key": "contact.que_rol_cumple_el_control_de_gestion_dentro_del_presupuesto_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:TyjpXJT7XwvBRO6zI6KF": {
+    "label": "FV - (5) Un miembro de nuestro equipo se pondrá en contacto con vos por WhatsApp, te comprometés a responder los mensajes? (Si no respondés los mensajes, la llamada se cancelará automaticamente)",
+    "key": "contact.5_un_miembro_de_nuestro_equipo_se_pondr_en_contacto_con_vos_por_whatsapp_te_compromets_a_responder_los_mensajes_si_no_responds_los_mensajes_la_llamada_se_cancelar_automaticamente",
+    "type": "RADIO"
+  },
+  "custom:U5XKVEIo1CdQntiHqvyN": {
+    "label": "Cuit",
+    "key": "contact.cuit",
+    "type": "TEXT"
+  },
+  "custom:UEEQfDnRFOW78au7KUkV": {
+    "label": "¿A quién van apuntadas tus ventas?",
+    "key": "contact.a_quin_van_apuntadas_tus_ventas",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:UGd88cpsHEie6vkcjymt": {
+    "label": "FV - ¿Cuál es tu nivel de facturación promedio mensual en dólares?",
+    "key": "contact.cual_es_tu_nivel_de_facturacion_promedio_mensual_en_dolares",
+    "type": "RADIO"
+  },
+  "custom:UJC1mPKwE7lXfFNFZWpM": {
+    "label": "¿Cuál es tu modelo de negocio?",
+    "key": "contact.cual_es_tu_modelo_de_negocio",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:UQyA0HjXDgp8zkiwA8Cf": {
+    "label": "Grupo",
+    "key": "contact.grupo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:UUdHBPSkSNVo4ZU9BiqR": {
+    "label": "Margen de marcacion promedio",
+    "key": "contact.margen_de_marcacion_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:UXJ3BmN6Wu31bu3f1cC2": {
+    "label": "Tenés la mañana con 2 horas disponibles. Aparecen: 1) mensajes de WhatsApp no urgentes, 2) pedido de cotización para enviar hoy pero sin horario, 3) una reunión “posible” para coordinar, 4) escribir el guión de ventas que define tu oferta (actividad palanca del objetivo semanal). Según el Módulo 1 (Objetivos → Planner → Calendario, 90-90-1 y enfoque 80/20), ¿qué hacés primero y cómo?",
+    "key": "contact.tenes_la_manana_con_2_horas_disponibles_aparecen_1_mensajes_de_whats_app_no_urgentes_2_pedido_de_cotizacion_para_enviar_hoy_pero_sin_horario_3_una_reunion_posible_para_coordinar_4_escribir_el_guion_de_ventas_que_define_tu_oferta_actividad_palanca_del_objetivo_semanal_segun_el_modulo_1_objetivos__planner__calendario_90_90_1_y_enfoque_80_20_que_haces_primero_y_como",
+    "type": "RADIO"
+  },
+  "custom:Ug6BILSkLhvcWQqThSLq": {
+    "label": " Durante M5, además de presupuestar, se sugiere…",
+    "key": "contact.durante_m_5_ademas_de_presupuestar_se_sugiere",
+    "type": "CHECKBOX"
+  },
+  "custom:UpJwR9FhOXTPwTl1oYXd": {
+    "label": "True or False: Career coaches only work with people who are unemployed.",
+    "key": "contact.true_or_false_career_coaches_only_work_with_people_who_are_unemployed",
+    "type": "RADIO"
+  },
+  "custom:V1jjV2LFwReX0r2zxRPv": {
+    "label": "¿Para qué sirve el cashflow proyectado?",
+    "key": "contact.para_que_sirve_el_cashflow_proyectado",
+    "type": "CHECKBOX"
+  },
+  "custom:V4hK36WMxLY8KB3Uv2lS": {
+    "label": "¿Cuál de estos objetivos está bien formulado (SMART)?",
+    "key": "contact.cul_de_estos_objetivos_est_bien_formulado_smart",
+    "type": "CHECKBOX"
+  },
+  "custom:V4kZzn8ARTbWxgy4FVYM": {
+    "label": "¿Cuándo son las consultorías en vivo y los talleres del MEG?",
+    "key": "contact.cundo_son_las_consultoras_en_vivo_y_los_talleres_del_meg",
+    "type": "RADIO"
+  },
+  "custom:V6mi0lV58secBbOhpQrc": {
+    "label": "Grupo Wpp?",
+    "key": "contact.grupo_wpp",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:VAepowRExCP3MRNmw5dj": {
+    "label": "F. Fin M5",
+    "key": "contact.f_fin_m5",
+    "type": "DATE"
+  },
+  "custom:VHqmpJHfVAse5Eb7h3zM": {
+    "label": "Pais",
+    "key": "contact.pais",
+    "type": "TEXT"
+  },
+  "custom:VWoJIYViY3gS8DrXJSKj": {
+    "label": "FV - ¿Cuál es tu nivel de facturación mensual en dólares?",
+    "key": "contact.cual_es_tu_nivel_de_facturacion_mensual_en_dolares",
+    "type": "RADIO"
+  },
+  "custom:VbCN6KJ4ILmW0RCluQ2r": {
+    "label": "Estrategia aperturas",
+    "key": "contact.historial_de_mensajes_aperturas",
+    "type": "LARGE_TEXT"
+  },
+  "custom:VjpQoSWnHxqbhXKhQ13d": {
+    "label": "¿Cuál es una estrategia de prospección efectiva?",
+    "key": "contact.cual_es_una_estrategia_de_prospeccion_efectiva",
+    "type": "CHECKBOX"
+  },
+  "custom:VjqlKsMags44eQDBb5av": {
+    "label": "Margen bruto",
+    "key": "contact.margen_bruto",
+    "type": "NUMERICAL"
+  },
+  "custom:Vmr7E6d7mT4un3Uye9iA": {
+    "label": "La mano de obra variable es la que…",
+    "key": "contact.la_mano_de_obra_variable_es_la_que",
+    "type": "CHECKBOX"
+  },
+  "custom:Vou3W7CQRNnKWJ2ZfuqP": {
+    "label": "Grabacion de llamadas",
+    "key": "contact.grabacion_de_llamadas",
+    "type": "LARGE_TEXT"
+  },
+  "custom:VqFjlTxSaYyQSML4kafo": {
+    "label": "FV - (2) ¿Cuál es tu modelo de negocio? ",
+    "key": "contact.2_cul_es_tu_modelo_de_negocio",
+    "type": "RADIO"
+  },
+  "custom:VuQrecyPXWBTc2SQCEAf": {
+    "label": "Fecha NPS - 5",
+    "key": "contact.fecha_nps__5",
+    "type": "DATE"
+  },
+  "custom:Vyd8nkNyiHM2apZwevAF": {
+    "label": "Método de las 3 tareas clave (la noche anterior):",
+    "key": "contact.mtodo_de_las_3_tareas_clave_la_noche_anterior",
+    "type": "RADIO"
+  },
+  "custom:Vypzv9X2Kl496v8d3SFr": {
+    "label": "Dia 3",
+    "key": "contact.dia_3",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:W1SIUTKDOp6JvIrQS708": {
+    "label": "tEST",
+    "key": "contact.test",
+    "type": "TEXT"
+  },
+  "custom:W9nmlqGjevDucBnlVQbq": {
+    "label": "fbclid",
+    "key": "contact.fbclid",
+    "type": "TEXT"
+  },
+  "custom:WRXdyBs04COHpLeS5szN": {
+    "label": "Para proyectar costos variables en el presupuesto, el criterio recomendado es…",
+    "key": "contact.para_proyectar_costos_variables_en_el_presupuesto_el_criterio_recomendado_es",
+    "type": "CHECKBOX"
+  },
+  "custom:WTtXoh90AsC9kkYNsqa9": {
+    "label": "Score ",
+    "key": "contact.score_score",
+    "type": "NUMERICAL"
+  },
+  "custom:WY7zOEkURqt6NCgUQWjn": {
+    "label": "“Económico” vs “Financiero”: elegí la afirmación correcta.",
+    "key": "contact.economico_vs_financiero_elegi_la_afirmacion_correcta",
+    "type": "CHECKBOX"
+  },
+  "custom:X1P0SvY2xRApvvyB23eO": {
+    "label": "NPS - 5",
+    "key": "contact.nps__5",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:XDwJnJJPP9jJ9goS4GGD": {
+    "label": "Tenés dos iniciativas: (1) contratar marketing con costo mensual y retorno esperado gradual; (2) subir precios un 3% manteniendo volumen. ¿Cuál evaluás primero en el presupuesto económico?",
+    "key": "contact.tenes_dos_iniciativas_1_contratar_marketing_con_costo_mensual_y_retorno_esperado_gradual_2_subir_precios_un_3_manteniendo_volumen_cual_evaluas_primero_en_el_presupuesto_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:XIvrzwJ2BczTu9f5XY4Z": {
+    "label": "Score Orientacion",
+    "key": "contact.score_orientacion",
+    "type": "NUMERICAL"
+  },
+  "custom:XNjuTRwDc1OzzWWozdpO": {
+    "label": "F. Fin M4",
+    "key": "contact.f_fin_m4",
+    "type": "DATE"
+  },
+  "custom:XXwa5XMddqtMAeNhoZXi": {
+    "label": "¿Cómo recomienda el M8 armar los manuales de procedimientos?",
+    "key": "contact.como_recomienda_el_m_8_armar_los_manuales_de_procedimientos",
+    "type": "CHECKBOX"
+  },
+  "custom:Xb0v6XFRna7wBwcJYEir": {
+    "label": "Para que esta unidad 8 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_8_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:XmsLBKk3VlB2OpQNh956": {
+    "label": "F.PR3",
+    "key": "contact.fpr3",
+    "type": "DATE"
+  },
+  "custom:XvUIwJUNq5rtIcfFC5UH": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad?",
+    "key": "contact.qu_fue_lo_ms_til_que_te_llevs_de_esta_unidad",
+    "type": "TEXT"
+  },
+  "custom:Y2wPUDa5Sd5WXfPjpOXy": {
+    "label": "¿Cuál es el nivel de facturación promedio mensual en dólares de la empresa?",
+    "key": "contact.cual_es_el_nivel_de_facturacion_promedio_mensual_de_la_empresa_expresado_en_usd",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:YDmixK6nrrnKgcArvExe": {
+    "label": "Vendiste el 25 de enero con cobro en 60 días (se acredita el 26 de marzo). ¿Cómo se refleja correctamente?",
+    "key": "contact.vendiste_el_25_de_enero_con_cobro_en_60_dias_se_acredita_el_26_de_marzo_como_se_refleja_correctamente",
+    "type": "CHECKBOX"
+  },
+  "custom:YHwL0DVDcMg4GRLsd4vv": {
+    "label": "Un miembro de nuestro equipo se pondrá en contacto con vos. ¿Puedes atender una llamada previa de 10 minutos? La llamada es para conocer tu situación y confirmar si podemos ayudarte. ",
+    "key": "contact.un_miembro_de_nuestro_equipo_se_pondra_en_contacto_con_vos_puedes_atender_una_llamada_previa_de_10_minutos_la_llamada_es_para_conocer_tu_situacion_y_confirmar_si_podemos_ayudarte",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:YL3q3dZjGRG5N2pvpxv0": {
+    "label": "Mensaje 1",
+    "key": "contact.mensaje_1",
+    "type": "LARGE_TEXT"
+  },
+  "custom:YRWsVSczTIxpNzCwRSX0": {
+    "label": "Respondio apertura",
+    "key": "contact.respondio_apertura",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:YUPRc62Zz58ew82SR2dx": {
+    "label": "Primera fecha de agendamiento",
+    "key": "contact.primera_fecha_de_agendamiento",
+    "type": "DATE"
+  },
+  "custom:YbX36rd1d8QXPcVT6LQO": {
+    "label": "FV - ¿Cuál es el nivel de facturación promedio mensual de la empresa? (Expresado en USD)",
+    "key": "contact.cual_es_el_nivel_de_facturacion_promedio_mensual_de_la_empresa_expresado_en_usd_v3",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:YfIxRilW6OL8Sm3R8Hvb": {
+    "label": "Fecha NPS - 6",
+    "key": "contact.fecha_nps__6",
+    "type": "DATE"
+  },
+  "custom:YqOzuq7agCcwGZ5VDOA6": {
+    "label": "F. pago con acceso",
+    "key": "contact.f_pago_con_acceso",
+    "type": "DATE"
+  },
+  "custom:Z39diEHykyqhUmjNGwMM": {
+    "label": "Score examen 8",
+    "key": "contact.score_examen_8",
+    "type": "NUMERICAL"
+  },
+  "custom:Z4K9UkRa3kYieGYUFfAg": {
+    "label": "Fecha de llamada",
+    "key": "contact.fecha_de_llamada",
+    "type": "DATE"
+  },
+  "custom:Z4nluwGNOY78VBzeSpUY": {
+    "label": "En caso de decidir trabajar con nosotros: ¿Existe alguien más que deba estar presente para tomar la decisión de hacerlo?",
+    "key": "contact.en_caso_de_decidir_trabajar_con_nosotros_existe_alguien_mas_que_deba_estar_presente_para_tomar_la_decision_de_hacerlo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Z7Ogprm8XJjJyufCVc7H": {
+    "label": "Como me sumo a las clases?",
+    "key": "contact.como_me_sumo_a_las_clases",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:ZMQRzsh2TFhdch8ZMra4": {
+    "label": "Elegí la combinación correcta para medir rendimiento de prospección:",
+    "key": "contact.elegi_la_combinacion_correcta_para_medir_rendimiento_de_prospeccion",
+    "type": "CHECKBOX"
+  },
+  "custom:ZMrerdsDxcxvO1Yw2s8x": {
+    "label": "Para que esta unidad 9 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_9_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:ZN8hkeVGUOLlG9Mmd80r": {
+    "label": "Ventana M5-M6",
+    "key": "contact.ventana_m5m6",
+    "type": "NUMERICAL"
+  },
+  "custom:ZPiFVHKMQx9cPBstWqCI": {
+    "label": "Qué es el punto de equilibrio?",
+    "key": "contact.que_es_el_punto_de_equilibrio",
+    "type": "CHECKBOX"
+  },
+  "custom:ZfjZ8VKzo4XwcMpglXGn": {
+    "label": "Creado manual",
+    "key": "contact.creado_manual",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:Zqgsukp9vslbLNtqueu1": {
+    "label": "Score examen 5",
+    "key": "contact.score_examen_5",
+    "type": "NUMERICAL"
+  },
+  "custom:Zr8FcP8f4C2Zlhs8QMos": {
+    "label": "CE.Tipo",
+    "key": "contact.cetipo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:ZrDoiUxqNcIC1o9MuYKL": {
+    "label": "¿De qué te diste cuenta al transitar el MEG? (Ej: Me di cuenta que de que no tenía una metodología para analizar los números del negocio, etc)",
+    "key": "contact.de_que_te_diste_cuenta_al_transitar_el_meg_ej_me_di_cuenta_que_de_que_no_tenia_una_metodologia_para_analizar_los_numeros_del_negocio_etc",
+    "type": "LARGE_TEXT"
+  },
+  "custom:ZtdPQiDJSxga7kuEc1yW": {
+    "label": "Tipo",
+    "key": "contact.tipo",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:ZvwOx5XQgLvYBxuNIsWu": {
+    "label": "Are you clear about your long-term career goals?",
+    "key": "contact.are_you_clear_about_your_long_term_career_goals",
+    "type": "RADIO"
+  },
+  "custom:ZzFrQepd4VhfvqulsKsI": {
+    "label": "Dia 4",
+    "key": "contact.dia_4",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:a2H1LZ5GVQGhfqr34ZbI": {
+    "label": "FV - ¿Qué tan pronto querés resolver los obstáculos que hoy te impiden incrementar tu rentabilidad?",
+    "key": "contact.que_tan_pronto_queres_resolver_los_obstaculos_que_hoy_te_impiden_incrementar_tu_rentabilidad",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:a5RpJtyXWHk02O6J4pzM": {
+    "label": "Etapa Club",
+    "key": "contact.etapa_club",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:aBV4bsG52lQalVHWwrRh": {
+    "label": "¿Hoy tenés claridad de los costos y márgenes de tus productos?",
+    "key": "contact.hoy_tenes_claridad_de_los_costos_y_margenes_de_tus_productos",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:aH75309glRcblx1oFxnc": {
+    "label": "Fecha final",
+    "key": "contact.fecha_final",
+    "type": "DATE"
+  },
+  "custom:aJxd9TJGerXAUmAoc5co": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 6?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_6",
+    "type": "TEXT"
+  },
+  "custom:aKn8a92rC9SmBu3Z3thP": {
+    "label": "FV - ¿Alguna vez has tomado procesos/sesiones de Coaching?",
+    "key": "contact.alguna_vez_has_tomado_procesos_sesiones_de_coaching",
+    "type": "RADIO"
+  },
+  "custom:aPK3LEh2GOG10Bg78S0l": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 9?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_9",
+    "type": "TEXT"
+  },
+  "custom:aWYs0y3yYPXoMMH2U8QH": {
+    "label": "Instagram",
+    "key": "contact.instagram",
+    "type": "TEXT"
+  },
+  "custom:agLfNOcYOIHA3P9raIhT": {
+    "label": "adset",
+    "key": "contact.adset",
+    "type": "TEXT"
+  },
+  "custom:ao0ck7pLhPEAO0tpJRFg": {
+    "label": "¿Qué información clave ves resumida en el cashflow intermedio mensual?",
+    "key": "contact.que_informacion_clave_ves_resumida_en_el_cashflow_intermedio_mensual",
+    "type": "CHECKBOX"
+  },
+  "custom:auI2TkFngL0NXTEDjMiy": {
+    "label": "¿Cuál es tu modelo de negocio?",
+    "key": "contact.cul_es_tu_modelo_de_negocio",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:azlO1QQJAKIiaSGgcePa": {
+    "label": "Proximo contacto Closing",
+    "key": "contact.proximo_contacto_closing",
+    "type": "DATE"
+  },
+  "custom:bK50ob1EuHCUQ3RqtVfP": {
+    "label": "¿Cómo agiliza el M8 la etapa inicial de reclutamiento?",
+    "key": "contact.como_agiliza_el_m_8_la_etapa_inicial_de_reclutamiento",
+    "type": "CHECKBOX"
+  },
+  "custom:bQvYOj54JtZHpGHWOfq7": {
+    "label": "Costos 1",
+    "key": "contact.embudo_costos_1",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:bbn3WpgJmkTGkfBvXINt": {
+    "label": "E.PR5",
+    "key": "contact.epr5",
+    "type": "LARGE_TEXT"
+  },
+  "custom:bfBWZ5221stjchWGA8Pf": {
+    "label": "Fecha nuevo seguidor",
+    "key": "contact.fecha_nuevo_seguidor",
+    "type": "DATE"
+  },
+  "custom:bgJ1un7bDb8hLQissO4X": {
+    "label": "Con PV $25.000 y Costos variables totales por venta (incluida publicidad) $12.941, la contribución marginal es:",
+    "key": "contact.con_pv_25_000_y_costos_variables_totales_por_venta_incluida_publicidad_12_941_la_contribucion_marginal_es",
+    "type": "CHECKBOX"
+  },
+  "custom:bkGlNcFhyqmYKu2P1AzV": {
+    "label": "Bot IA",
+    "key": "contact.bot_ia",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:brah8XAY6HLDDWxmv3lB": {
+    "label": "¿Notaste cambios en tu mentalidad a la hora de llevar el negocio? (Ej: Me siento más tranquilo/a a la hora de tomar decisiones, etc)",
+    "key": "contact.notaste_cambios_en_tu_mentalidad_a_la_hora_de_llevar_el_negocio_ej_me_siento_mas_tranquilo_a_a_la_hora_de_tomar_decisiones_etc",
+    "type": "LARGE_TEXT"
+  },
+  "custom:bsDZ2ZcTOAYtXiIpQ3Sf": {
+    "label": "Cantidad de colaboradores",
+    "key": "contact.cantidad_de_colaboradores",
+    "type": "NUMERICAL"
+  },
+  "custom:c6CM3OUdr8a8mGwU22SG": {
+    "label": "Sesión Mati",
+    "key": "contact.sesin_mati",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:cMYnuNXb9RqRlN6A4vKr": {
+    "label": "NPS - P3",
+    "key": "contact.nps__p3",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:cYYuNZ3HgntR6cfC7djD": {
+    "label": "Form acceso",
+    "key": "contact.form_acceso",
+    "type": "TEXT"
+  },
+  "custom:caU3ePS46BDAUA32UBYm": {
+    "label": "Ultima llamada",
+    "key": "contact.ultima_llamada",
+    "type": "DATE"
+  },
+  "custom:chkI0mmSUjUZenxrIGZL": {
+    "label": "Mensaje 2",
+    "key": "contact.mensaje_2",
+    "type": "LARGE_TEXT"
+  },
+  "custom:cmciioBOzTDRNFLYM8PR": {
+    "label": "Contame más sobre tu negocio: ¿Que crees que deberías mejorar en tus finanzas para que tu empresa sea más rentable? ",
+    "key": "contact.v2_contame_mas_sobre_tu_negocio_que_crees_que_deberias_mejorar_en_tus_finanzas_para_que_tu_empresa_sea_mas_rentable",
+    "type": "LARGE_TEXT"
+  },
+  "custom:cuDMFMcLQBrmo0Qp73NS": {
+    "label": "Fecha cancelada",
+    "key": "contact.fecha_cancelada",
+    "type": "DATE"
+  },
+  "custom:d6uHDWQXnfFqS4gO3hPZ": {
+    "label": "Dia 9",
+    "key": "contact.dia_9",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dDJmyiemBodgXtFYDwCW": {
+    "label": "En caso de que podamos ayudarte ¿Estas dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad? ",
+    "key": "contact.v2_en_caso_de_que_podamos_ayudarte_estas_dispuesto_a_invertir_para_profesionalizar_tus_numeros_e_incrementar_tu_rentabilidad",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dI0cQvDTvb0hcDYbWnNd": {
+    "label": "Contacto manual",
+    "key": "contact.contacto_manual",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dPhbm7GQYw9OwJZOQ3VP": {
+    "label": "Estado RT CF",
+    "key": "contact.estado_rt_cf",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dWNc5yZeCwt2QVSo9KuX": {
+    "label": "Por donde van a enviar mas material o regalos?",
+    "key": "contact.por_donde_van_a_enviar_mas_material_o_regalos",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dZrdUv33o7wK0MKb2h2k": {
+    "label": "¿Contás con algún sistema de gestión en tu empresa?",
+    "key": "contact.contas_con_algun_sistema_de_gestion_en_tu_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dikbzltll9JQQnT6czWD": {
+    "label": "NPS - 1",
+    "key": "contact.nps__1",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:dmXRSIfmNtlJDqH9Qc1P": {
+    "label": "Grabacion Diagnostico",
+    "key": "contact.grabacion_onboarding",
+    "type": "LARGE_TEXT"
+  },
+  "custom:dq9W20Nl8QJXmSVrBO8H": {
+    "label": "F. Inicio M5",
+    "key": "contact.modulo_5",
+    "type": "DATE"
+  },
+  "custom:eB9TL4k4NgjRSSvHpg1W": {
+    "label": "F.PR7",
+    "key": "contact.fpr7",
+    "type": "DATE"
+  },
+  "custom:eLkP9Z7By3uxK9GQC56F": {
+    "label": "Para que las métricas de marketing “se estabilicen” y sirvan para predecir, conviene revisarlas:",
+    "key": "contact.para_que_las_metricas_de_marketing_se_estabilicen_y_sirvan_para_predecir_conviene_revisarlas",
+    "type": "CHECKBOX"
+  },
+  "custom:ePrvDBVIF4O9qj1i4dZd": {
+    "label": "Para sostener el avance y recibir material complementario, cada semana es clave…",
+    "key": "contact.para_sostener_el_avance_y_recibir_material_complementario_cada_semana_es_clave",
+    "type": "RADIO"
+  },
+  "custom:eT8NfgkNOThO7HE0whfD": {
+    "label": "Bienvenida",
+    "key": "contact.bienvenida",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:eWfvdgwJeKGXRCgkwCsk": {
+    "label": "Formulario",
+    "key": "contact.formulario",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:eZuTyR8TzvOwCTyOkvof": {
+    "label": "Ventaja del CRM frente a listas sueltas en Excel/agenda:",
+    "key": "contact.ventaja_del_crm_frente_a_listas_sueltas_en_excel_agenda",
+    "type": "CHECKBOX"
+  },
+  "custom:edG4ueiMtqIFPUsqSDBv": {
+    "label": "Fecha hoy",
+    "key": "contact.fecha_hoy",
+    "type": "DATE"
+  },
+  "custom:ei6BaMw5VFesV64ByWzS": {
+    "label": "Form Postulacion Estudio",
+    "key": "contact.form_postulacion_estudio",
+    "type": "TEXT"
+  },
+  "custom:emI2aWHJoDEQOPSXNpEX": {
+    "label": "Tenés Precio $100 y costos variables $60 por unidad. ¿Cuál es la contribución por unidad y la contribución %?",
+    "key": "contact.tenes_precio_100_y_costos_variables_60_por_unidad_cual_es_la_contribucion_por_unidad_y_la_contribucion",
+    "type": "CHECKBOX"
+  },
+  "custom:ettzVN2CEIWibnN3bWeu": {
+    "label": "Margen bruto promedio",
+    "key": "contact.margen_bruto_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:fKIk06q342H9ldoKdvNy": {
+    "label": "Score Sistema",
+    "key": "contact.score_sistema",
+    "type": "NUMERICAL"
+  },
+  "custom:fLNwHZFYRqhkEiIc2NBT": {
+    "label": "NPS - 4",
+    "key": "contact.nps__4",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:faITHYVXOLPgQWzayhIz": {
+    "label": "Bonus Mati",
+    "key": "contact.bonus_mati",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:fbraf4GlIIY4qyaU3ulz": {
+    "label": "adname",
+    "key": "contact.utm_adname",
+    "type": "TEXT"
+  },
+  "custom:fsslaj5IeQ2ykoDqf5FD": {
+    "label": "M3 - Dias",
+    "key": "contact.m3__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:fygU6CeqBgvwTwAJ1Yl8": {
+    "label": "CE.Valor final",
+    "key": "contact.cevalor_final",
+    "type": "NUMERICAL"
+  },
+  "custom:ga974NbXKxnVHz5q3hjP": {
+    "label": "Para que esta unidad 3 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_3_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:gfVUNCeIs7tDOxfcAstM": {
+    "label": "Escribi el % estimado",
+    "key": "contact.escribi_el_estimado",
+    "type": "NUMERICAL"
+  },
+  "custom:gqp4zyUyGy1SJ3TrSvF0": {
+    "label": "modelo de negocio",
+    "key": "contact.modelo_de_negocio",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:gsJ2C8Us7dppJkqpFUqt": {
+    "label": "Etapa del lead",
+    "key": "contact.etapa_del_lead",
+    "type": "TEXT"
+  },
+  "custom:hL4ImkuowYVo1FLzVNsT": {
+    "label": "Calificación",
+    "key": "contact.calificacin",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:hYJpfCzyxH7Bk46zjKJn": {
+    "label": "F EERR Financiero",
+    "key": "contact.f_eerr_financiero",
+    "type": "DATE"
+  },
+  "custom:hdZqOPBDNO7INHXDG3tC": {
+    "label": "¿Cómo funciona el sistema de checks y strikes?",
+    "key": "contact.como_funciona_el_sistema_de_checks_y_strikes",
+    "type": "CHECKBOX"
+  },
+  "custom:hf8j9bBh5lLYVxqv7nwH": {
+    "label": "CC WP",
+    "key": "contact.llamada_cc",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:hgiVBs5KbItLUZ9Sb9yE": {
+    "label": "Closer",
+    "key": "contact.closer",
+    "type": "TEXT"
+  },
+  "custom:hjNdarImkXctOPQg8jKo": {
+    "label": "Para profesionalizar la prospección en el día a día, conviene:",
+    "key": "contact.para_profesionalizar_la_prospeccion_en_el_dia_a_dia_conviene",
+    "type": "CHECKBOX"
+  },
+  "custom:hvmoPPRm82ePJZuOonKV": {
+    "label": "¿Qué entendemos por “contribución” en el análisis económico?",
+    "key": "contact.que_entendemos_por_contribucion_en_el_analisis_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:i24q74xHoIBdYmuf1JSQ": {
+    "label": "Criterio del EERR financiero:",
+    "key": "contact.criterio_del_eerr_financiero",
+    "type": "CHECKBOX"
+  },
+  "custom:i3LUHsyL5wjrirlgygT8": {
+    "label": "F. diagnostico",
+    "key": "contact.f_diagnostico",
+    "type": "DATE"
+  },
+  "custom:i4D3bIISKTXup8ePUbvp": {
+    "label": "F. Inicio MP2",
+    "key": "contact.modulo_9",
+    "type": "DATE"
+  },
+  "custom:i6zAdCeLwXTryi2E17Xu": {
+    "label": "F. baja",
+    "key": "contact.f_baja",
+    "type": "DATE"
+  },
+  "custom:iIvzgTBbHQ8bXKUMFd3W": {
+    "label": "Sesiones Estrategicas",
+    "key": "contact.sesiones_estrategicas",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:iMc3THk4iNepcAohLPjx": {
+    "label": "F.PR2",
+    "key": "contact.fpr2",
+    "type": "DATE"
+  },
+  "custom:iNJiMwkSNReL5dTMR6nj": {
+    "label": "Plf",
+    "key": "contact.plf",
+    "type": "TEXT"
+  },
+  "custom:iO0qznxgOFzpYpalOc6O": {
+    "label": "Ultimo medio",
+    "key": "contact.ultimo_medio",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:ibKTEqxViVXSri2D9ZDQ": {
+    "label": "¿Cuándo conviene no cargar costos fijos dentro del costo unitario para fijar precios del día a día?",
+    "key": "contact.cuando_conviene_no_cargar_costos_fijos_dentro_del_costo_unitario_para_fijar_precios_del_dia_a_dia",
+    "type": "CHECKBOX"
+  },
+  "custom:iiVsLwAvGFxAVmOF5H3c": {
+    "label": "Link Wpp",
+    "key": "contact.link_wpp",
+    "type": "TEXT"
+  },
+  "custom:ij8hyk2FfdlFcEG9nnCJ": {
+    "label": "¿Por dónde me conociste?",
+    "key": "contact.por_donde_me_conociste",
+    "type": "TEXT"
+  },
+  "custom:ioQGJBxSWYx6K61ytnsV": {
+    "label": "¿Tenés en cuenta margen, costos financieros e impositivos para fijar precios?",
+    "key": "contact.tens_en_cuenta_margen_costos_financieros_e_impositivos_para_fijar_precios",
+    "type": "RADIO"
+  },
+  "custom:iv2npsX6Ik4OjEXJu2KK": {
+    "label": "Motivo de la auditoría",
+    "key": "contact.motivo_de_la_auditora",
+    "type": "LARGE_TEXT"
+  },
+  "custom:izG3JyMnfvmio7E9m3Ns": {
+    "label": "Insatisfecho",
+    "key": "contact.insatisfecho",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:jG55nm0v9zbnhAhplLu2": {
+    "label": "F. Fin M3",
+    "key": "contact.f_fin_m3",
+    "type": "DATE"
+  },
+  "custom:jYaxAnwYf7Y7cUrUHAqB": {
+    "label": "Con una inversión de $1.000.000, calcular costo por visita, por lead y por venta sirve para:",
+    "key": "contact.con_una_inversion_de_1_000_000_calcular_costo_por_visita_por_lead_y_por_venta_sirve_para",
+    "type": "CHECKBOX"
+  },
+  "custom:jYnBivOJSLoUKTH1VdOi": {
+    "label": "Acceso",
+    "key": "contact.acceso",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:jc2soQTfRGN9tfN4Uyrc": {
+    "label": "Nivel de facturación mensual(2)",
+    "key": "contact.nivel_de_facturacin_mensual2",
+    "type": "RADIO"
+  },
+  "custom:jf56QNCo390OwCeZRxG2": {
+    "label": "Producto de interes",
+    "key": "contact.producto_de_interes",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:juv4dioQEEaOOELKtWdU": {
+    "label": "Producto Adquirido",
+    "key": "contact.producto_adquirido",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:k6B65VlVuqT3rQH42tL1": {
+    "label": "R - Respondio",
+    "key": "contact.r__respondio",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:k96ikVbLB6JfxXSE2DG1": {
+    "label": "utm_source",
+    "key": "contact.utm_source",
+    "type": "TEXT"
+  },
+  "custom:kMzuJpveYuiznKkdl5Bj": {
+    "label": "Monto final",
+    "key": "contact.monto_final",
+    "type": "TEXT"
+  },
+  "custom:kVD8PZpqrEcyT23h7VH9": {
+    "label": "NPS - 6",
+    "key": "contact.nps__6",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:kZFAP20oa6EuQ11MVC8j": {
+    "label": "EERR Financiero",
+    "key": "contact.eerr_financiero",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:kaFGXWNpIcwB2VgU8Vn0": {
+    "label": "En un embudo comercial simple, los tres pasos clave son:",
+    "key": "contact.en_un_embudo_comercial_simple_los_tres_pasos_clave_son",
+    "type": "CHECKBOX"
+  },
+  "custom:kisuidPnlSDYxdGnPj93": {
+    "label": "Score Facturacion",
+    "key": "contact.score_facturacion",
+    "type": "NUMERICAL"
+  },
+  "custom:kolmVBO6gmCNObqZOqn8": {
+    "label": "Si concentrás la mayoría de ingresos vía un medio con acreditación más lenta, ¿qué ajuste sugiere el M7 para cuidar semanas críticas?",
+    "key": "contact.si_concentras_la_mayoria_de_ingresos_via_un_medio_con_acreditacion_mas_lenta_que_ajuste_sugiere_el_m_7_para_cuidar_semanas_criticas",
+    "type": "CHECKBOX"
+  },
+  "custom:ktU4HasWvM40APYDgOm5": {
+    "label": "Devolucion",
+    "key": "contact.devolucion",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:l83CbY5zFnZmmXhEAYnU": {
+    "label": "Fecha NPS - 7",
+    "key": "contact.fecha_nps__7",
+    "type": "DATE"
+  },
+  "custom:lAEz9qLxdbEacBzIN9bw": {
+    "label": "MP2 - Dias",
+    "key": "contact.mp2__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:lERuXHatMnWDIg765oNK": {
+    "label": "Seguimientos Setting",
+    "key": "contact.seguimientos",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:lGIN3kLYAMbpVmA1G2fL": {
+    "label": "Para que esta unidad 5 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_5_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:lWYsqTQGWEmK101riLnx": {
+    "label": "Mensaje 3",
+    "key": "contact.mensaje_3",
+    "type": "LARGE_TEXT"
+  },
+  "custom:lchXNqOiDnNsc0jaxs4B": {
+    "label": "Estado renovaciones",
+    "key": "contact.estado_renovaciones",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:legCqwWCTb7nalpUKNRJ": {
+    "label": "Call Confirmer",
+    "key": "contact.call_confirmer",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:lfXujNimtyrmD7rqQ2M8": {
+    "label": "Estado Grupo Wpp",
+    "key": "contact.estado_grupo_wpp",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:liyisvIIOrUdVK30SZfV": {
+    "label": "¿Para qué sirve el organigrama, según el M8?",
+    "key": "contact.para_que_sirve_el_organigrama_segun_el_m_8",
+    "type": "CHECKBOX"
+  },
+  "custom:mJQBKv4LGGa5lKLMQ19y": {
+    "label": "Para que el CRM dé resultados, lo clave es:",
+    "key": "contact.para_que_el_crm_de_resultados_lo_clave_es",
+    "type": "CHECKBOX"
+  },
+  "custom:mKLgM7kth7uWIDdIWYxA": {
+    "label": "FV - ¿De qué provincia sos?",
+    "key": "contact.de_que_provincia_sos",
+    "type": "TEXT"
+  },
+  "custom:mQGTc7zpWaxBpDkVnV9l": {
+    "label": "¿Contás con un sistema de gestión en tu empresa?",
+    "key": "contact.contas_con_un_sistema_de_gestion_en_tu_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:mT24ZsJwagz0roFpSUlC": {
+    "label": "Con PV $25.000, CV (incluida publicidad) $12.941 → CM ≈ $12.059. El equipo propone subir inversión manteniendo tasas actuales. ¿Qué harías?",
+    "key": "contact.con_pv_25_000_cv_incluida_publicidad_12_941__cm__12_059_el_equipo_propone_subir_inversion_manteniendo_tasas_actuales_que_harias",
+    "type": "CHECKBOX"
+  },
+  "custom:mozY8GGlqi7oBHtlBFN0": {
+    "label": "Sobre manuales por área, el M8 sugiere…",
+    "key": "contact.sobre_manuales_por_area_el_m_8_sugiere",
+    "type": "CHECKBOX"
+  },
+  "custom:n08GYTcAPw0XrRhq7C5P": {
+    "label": "M7 - Dias",
+    "key": "contact.m7__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:nEytNQjkt1ZP54NOEax2": {
+    "label": "Cuando el MC% de una línea baja, ¿cuál puede ser una causa directa?",
+    "key": "contact.cuando_el_mc_de_una_linea_baja_cual_puede_ser_una_causa_directa",
+    "type": "CHECKBOX"
+  },
+  "custom:nc6VOI41mbKcZyULzz5X": {
+    "label": "Casilla de verificación 5q4l",
+    "key": "contact.casilla_de_verificacin_5q4l",
+    "type": "CHECKBOX"
+  },
+  "custom:ncbZPI3Ni7pcMOyuTIv8": {
+    "label": "¿Cuál es el orden recomendado para planificar la semana en el MEG?",
+    "key": "contact.cual_es_el_orden_recomendado_para_planificar_la_semana_en_el_meg",
+    "type": "CHECKBOX"
+  },
+  "custom:nvKE8vQT6jKX7rYSxyFI": {
+    "label": "Ventana MP2-MP3",
+    "key": "contact.ventana_mp2mp3",
+    "type": "NUMERICAL"
+  },
+  "custom:o1vA5kJbbqSI71qScofW": {
+    "label": "Grabaciones actividades",
+    "key": "contact.grabaciones_actividades",
+    "type": "LARGE_TEXT"
+  },
+  "custom:oBxlQ352vzlUZDSowFMI": {
+    "label": "Solicito devolucion",
+    "key": "contact.solicito_devolucion",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:oWkLhoDST6QBwL6NsRKQ": {
+    "label": "Fecha NPS - 4",
+    "key": "contact.fecha_nps__4",
+    "type": "DATE"
+  },
+  "custom:oYmZ2V0uztYe4eqR98Be": {
+    "label": "Sesiones de seguimiento",
+    "key": "contact.sesiones_de_seguimiento",
+    "type": "NUMERICAL"
+  },
+  "custom:oakCbK81Uy1VJq5oBBLS": {
+    "label": "FV - ¿Estarías dispuesto a invertir minimamente 1500 USD para organizar los números de tu negocio y hacerlo mas rentable?",
+    "key": "contact.estarias_dispuesto_a_invertir_minimamente_1500_usd_para_organizar_los_numeros_de_tu_negocio_y_hacerlo_mas_rentable",
+    "type": "RADIO"
+  },
+  "custom:ot2B2640nsZqPOB4PI3u": {
+    "label": "Score examen 4",
+    "key": "contact.score_examen_4",
+    "type": "NUMERICAL"
+  },
+  "custom:p3EBbxJXDK04IiHv6tQB": {
+    "label": "F. primer resultado",
+    "key": "contact.f_primer_resultado",
+    "type": "DATE"
+  },
+  "custom:pA7lM4jiZHeIOXY0xelr": {
+    "label": "Borrar Contacto",
+    "key": "contact.borrar_contacto",
+    "type": "CHECKBOX"
+  },
+  "custom:pMklPgzW2zgLBU852kzU": {
+    "label": "De esa facturación, ¿cuál es la ganancia real?",
+    "key": "contact.de_esa_facturacion_cual_es_la_ganancia_real",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:pXk0E9gdUgDw59mlya3i": {
+    "label": "Llamada Meg",
+    "key": "contact.llamada_meg",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:pnFHrlXRAVN5H38D20hn": {
+    "label": "¿Por qué decidís sumarte a esta llamada?",
+    "key": "contact.por_qu_decids_sumarte_a_esta_llamada",
+    "type": "LARGE_TEXT"
+  },
+  "custom:pnygaOMTQORRUjAPuzL5": {
+    "label": "Agregado a grupo?",
+    "key": "contact.agregado_a_grupo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:psfv3zdBxnV8j3sgO4er": {
+    "label": "Última fecha de agendamiento",
+    "key": "contact.ltima_fecha_de_agendamiento",
+    "type": "DATE"
+  },
+  "custom:ptR5hvg4rNBFJ38IrK5E": {
+    "label": "NPS - 2",
+    "key": "contact.nps__2",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:q3ElEa4FFJvTFyd1edLw": {
+    "label": "MP1 - Dias",
+    "key": "contact.mp1__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:q3y6v57yKQzahPCuKren": {
+    "label": "Elegí la definición correcta de margen de contribución (MC) por unidad.",
+    "key": "contact.elegi_la_definicion_correcta_de_margen_de_contribucion_mc_por_unidad",
+    "type": "CHECKBOX"
+  },
+  "custom:q7wyIHL9y5zCoISZhHKX": {
+    "label": "F. Inicio M3",
+    "key": "contact.modulo_3",
+    "type": "DATE"
+  },
+  "custom:qEWh7NdnzE3VSaprWQRh": {
+    "label": "Notion Id",
+    "key": "contact.notion_id",
+    "type": "TEXT"
+  },
+  "custom:qFRUCqpWJpv5CoLeXJqc": {
+    "label": "FV - (4) ¿Estarías dispuesto a invertir minimamente 1000 USD para organizar los números de tu negocio y hacerlo mas rentable?",
+    "key": "contact.4_estaras_dispuesto_a_invertir_minimamente_1000_usd_para_organizar_los_nmeros_de_tu_negocio_y_hacerlo_mas_rentable",
+    "type": "RADIO"
+  },
+  "custom:qStrnZC9Ne8fnwBVigv3": {
+    "label": "Cta",
+    "key": "contact.cta",
+    "type": "TEXT"
+  },
+  "custom:qWOQeqA9Eqsooq5YAPiU": {
+    "label": "FV - ¿Cuál es el nivel de facturación promedio mensual en dólares de la empresa?",
+    "key": "contact.cual_es_el_nivel_de_facturacion_promedio_mensual_en_dolares_de_la_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:qfQ7fz19cudjdJ6UnTiD": {
+    "label": "Fecha RT",
+    "key": "contact.fecha_rt",
+    "type": "DATE"
+  },
+  "custom:qmR571GIUUSQurIMa6wc": {
+    "label": "Apertura 8 de octubre",
+    "key": "contact.apertura_8_de_octubre",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:qpSZUIFilXBFPtFs6X5k": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 10?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_10",
+    "type": "TEXT"
+  },
+  "custom:qqpbz9ZcTs6qIaM4iIr4": {
+    "label": "Dia 2",
+    "key": "contact.dia_2",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:qsKOa6ztUqBZyNuwCbuE": {
+    "label": "Score examen 2",
+    "key": "contact.score_examen_2",
+    "type": "NUMERICAL"
+  },
+  "custom:qx82zq6sRNdROy2jM3QD": {
+    "label": "En una escala de 0 a 10, ¿qué tan probable es que recomiendes la Unidad 10 del MEG a otro/a dueño/a de pyme?",
+    "key": "contact.en_una_escala_de_0_a_10_que_tan_probable_es_que_recomiendes_la_unidad_10_del_meg_a_otro_a_dueno_a_de_pyme",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:qxQ2xXu9m4ZPGPLxNmaV": {
+    "label": "F costos 1",
+    "key": "contact.f_costos_1",
+    "type": "DATE"
+  },
+  "custom:rAhnWWs7kpSFMVN1dvEk": {
+    "label": "Recuperado",
+    "key": "contact.recuperado",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:rDsfMnXYkwbdEyURobdc": {
+    "label": "Para que el cashflow sirva de verdad, es clave…",
+    "key": "contact.para_que_el_cashflow_sirva_de_verdad_es_clave",
+    "type": "CHECKBOX"
+  },
+  "custom:rFMnLERRlqRz8msx5Ln7": {
+    "label": "Seguimiento Loom",
+    "key": "contact.seguimiento_loom",
+    "type": "LARGE_TEXT"
+  },
+  "custom:rI1TDim3BRrjF5IoC7r2": {
+    "label": "utm_campaign",
+    "key": "contact.utm_campaign",
+    "type": "TEXT"
+  },
+  "custom:rIRemu1ckvHCVRfDa944": {
+    "label": "F. recordatorio contrato",
+    "key": "contact.f_recordatorio_contrato",
+    "type": "DATE"
+  },
+  "custom:rS0keoWpI9MGpAvSffpr": {
+    "label": "Estado",
+    "key": "contact.estado",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:rYNSuH3AXHbq4xYx8lqm": {
+    "label": "NPS - P1",
+    "key": "contact.nps__p1",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:rZ0BYtG5qdOvaff9Nvk1": {
+    "label": "Relación con el EERR económico:",
+    "key": "contact.relacion_con_el_eerr_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:rZd06FOuWt5qUoqc3euH": {
+    "label": "La estructura del presupuesto económico se apoya en…",
+    "key": "contact.la_estructura_del_presupuesto_economico_se_apoya_en",
+    "type": "CHECKBOX"
+  },
+  "custom:rlzZEuRZFkNdrPnNFt8e": {
+    "label": "Instagram o sitio web de tu negocio. (Si no tenés ningúno de los dos escribí NO TENGO)",
+    "key": "contact.instagram_o_sitio_web_de_tu_negocio_si_no_tenes_ninguno_de_los_dos_escribi_no_tengo",
+    "type": "TEXT"
+  },
+  "custom:rpCeTGd8tgHfeV8gVaYG": {
+    "label": "¿En qué pilar considerás que tenés más por mejorar?",
+    "key": "contact.en_qu_pilar_considers_que_tens_ms_por_mejorar",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:rrCAf29ozRoTPhxz9XQ2": {
+    "label": "Ventana M3-M4",
+    "key": "contact.ventana_m3m4",
+    "type": "NUMERICAL"
+  },
+  "custom:rxGHon4E6Q8bcS4hs8L9": {
+    "label": "Temperatura",
+    "key": "contact.temperatura",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:rywciNKckxiB9Sz2zuHm": {
+    "label": "campaign",
+    "key": "contact.campaign",
+    "type": "TEXT"
+  },
+  "custom:s1ftWyoSj9TTkKdJNNhF": {
+    "label": "¿Qué capital estarías dispuesto a invertir para trabajar en la rentabilidad y el control financiero de tu empresa?",
+    "key": "contact.qu_capital_estaras_dispuesto_a_invertir_para_trabajar_en_la_rentabilidad_y_el_control_financiero_de_tu_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:s7aKXCzSjpJDpR7MB4Pg": {
+    "label": "Ventana M1-M2",
+    "key": "contact.ventana_m1m2",
+    "type": "NUMERICAL"
+  },
+  "custom:sMdrf4VPngpnK8GqNh4L": {
+    "label": "Costos fijos promedio.",
+    "key": "contact.contactmargen_marcacion_promedio_wc6_copy_tst_copy",
+    "type": "TEXT"
+  },
+  "custom:sPqEt9yD2tGg6aKMNVzQ": {
+    "label": "Fechas 30D",
+    "key": "contact.fechas_30d",
+    "type": "DATE"
+  },
+  "custom:sXswhJ4ofYrYAK4pnDTd": {
+    "label": "Dia 5",
+    "key": "contact.dia_5",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:sd2xPllOoitIbbWZPWtv": {
+    "label": "Fecha 15D",
+    "key": "contact.fecha_15d",
+    "type": "DATE"
+  },
+  "custom:sitlucva1eFh1SgpxWLq": {
+    "label": "utm_medium",
+    "key": "contact.utm_medium",
+    "type": "TEXT"
+  },
+  "custom:slQCdx4zpkn4VCiZKaDb": {
+    "label": "F EERR Economico",
+    "key": "contact.f_eerr_economico",
+    "type": "DATE"
+  },
+  "custom:snVYQ6sSCFR6RhXhlA5y": {
+    "label": "F. Onboarding",
+    "key": "contact.f_onboarding",
+    "type": "DATE"
+  },
+  "custom:ssuEmNlUtu9towaE8m02": {
+    "label": "Para que esta unidad 7 sea un 10/10 para vos, ¿qué faltó o qué cambiarías?",
+    "key": "contact.para_que_esta_unidad_7_sea_un_10_10_para_vos_que_falto_o_que_cambiarias",
+    "type": "TEXT"
+  },
+  "custom:svZ76GgkVusVfAsCQ2AB": {
+    "label": "¿Cómo debe ser el proceso de selección propuesto?",
+    "key": "contact.como_debe_ser_el_proceso_de_seleccion_propuesto",
+    "type": "CHECKBOX"
+  },
+  "custom:syCYLEjl4B6HzHEhiYYj": {
+    "label": "FV - Contame brevemente sobre tu negocio y por qué decidís sumarte a esta llamada",
+    "key": "contact.contame_brevemente_sobre_tu_negocio_y_por_qu_decids_sumarte_a_esta_llamada",
+    "type": "LARGE_TEXT"
+  },
+  "custom:t45oWPpQmkPooO5wbKRv": {
+    "label": "Al delegar, ¿qué pasa si no está documentado el proceso?",
+    "key": "contact.al_delegar_que_pasa_si_no_esta_documentado_el_proceso",
+    "type": "CHECKBOX"
+  },
+  "custom:t5RCEVtxIxXbgAs1hn8s": {
+    "label": "M6 - Dias",
+    "key": "contact.m6__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:tEB9cAzABE8A48iU492f": {
+    "label": "¿Sabés cuál es tu producto/servicio más rentable y menos rentable?",
+    "key": "contact.sabes_cual_es_tu_producto_servicio_mas_rentable_y_menos_rentable",
+    "type": "RADIO"
+  },
+  "custom:tFP0KhmytlzNowzHJwj4": {
+    "label": "Estado programa",
+    "key": "contact.estado_programa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:tLFdVuUQQWSp31VDwQmB": {
+    "label": "Ultima fecha de avance",
+    "key": "contact.ultima_fecha_de_avance",
+    "type": "DATE"
+  },
+  "custom:tQAIyyZCRoDtnHWPvmHy": {
+    "label": "¿Qué KPI pertenece al análisis económico mensual por línea?",
+    "key": "contact.que_kpi_pertenece_al_analisis_economico_mensual_por_linea",
+    "type": "CHECKBOX"
+  },
+  "custom:tZWaHYEgagAFGajJtStK": {
+    "label": "Como se si ya estoy participando?",
+    "key": "contact.como_se_si_ya_estoy_participando",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:tcOoQb2UddE8aZYuCmaK": {
+    "label": "¿Cuál es el nivel de facturación promedio mensual de la empresa? (Expresado en USD)",
+    "key": "contact.cul_es_el_nivel_de_facturacin_promedio_mensual_de_la_empresa_expresado_en_usd",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:tivYiiwWzFBeM3CalPr2": {
+    "label": "Cómo calculo el punto de equilibrio en pesos?",
+    "key": "contact.como_calculo_el_punto_de_equilibrio_en_pesos",
+    "type": "CHECKBOX"
+  },
+  "custom:tuDxsxBZBQ8RzXuQfrh9": {
+    "label": "as a lanzar una promo “2×1 al 70% del precio”. Tu objetivo es proteger el margen de contribución. ¿Qué condición debe cumplirse para que la promo tenga sentido económico?",
+    "key": "contact.as_a_lanzar_una_promo_2_1_al_70_del_precio_tu_objetivo_es_proteger_el_margen_de_contribucion_que_condicion_debe_cumplirse_para_que_la_promo_tenga_sentido_economico",
+    "type": "CHECKBOX"
+  },
+  "custom:tumfCFLUWijlVKOb1quK": {
+    "label": "CE.Valor inicial",
+    "key": "contact.cevalor_inicial",
+    "type": "NUMERICAL"
+  },
+  "custom:u0Yqro727TnNGQS2Cx4Z": {
+    "label": "Calidad del lead",
+    "key": "contact.calidad_del_lead",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:u3C4xfKDR6zFsl9CVN0m": {
+    "label": "Que dia y hora son las clases?",
+    "key": "contact.que_dia_y_hora_son_las_clases",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:uCslLeeC3z7N1YCYtSIh": {
+    "label": "Score examen 7",
+    "key": "contact.score_examen_7",
+    "type": "NUMERICAL"
+  },
+  "custom:uEylu1zAL2td8FIbPGHi": {
+    "label": "E.PR1",
+    "key": "contact.epr1",
+    "type": "LARGE_TEXT"
+  },
+  "custom:uIpIYexdKYaJPrF4tQ1A": {
+    "label": "Producto mas vendido",
+    "key": "contact.producto_mas_vendido",
+    "type": "TEXT"
+  },
+  "custom:uLSbRbCHgholunn49fjb": {
+    "label": "score final",
+    "key": "contact.score_final",
+    "type": "NUMERICAL"
+  },
+  "custom:uRZnU5BjuSl7cbditr4q": {
+    "label": "Fecha NPS - P3",
+    "key": "contact.fecha_nps__p3",
+    "type": "DATE"
+  },
+  "custom:uSljCsR6tpvWimZeFp5W": {
+    "label": "NPS - P2",
+    "key": "contact.nps__p2",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:uVxcIdaL82MoKYNywQ7v": {
+    "label": "Pausa",
+    "key": "contact.pausa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:ukydPq5vXBVCQd42mS9v": {
+    "label": "¿Qué esperas lograr al finalizar el MEG? *",
+    "key": "contact.que_esperas_lograr_al_finalizar_el_meg",
+    "type": "LARGE_TEXT"
+  },
+  "custom:ulSxEI2MQJaKkGls1L88": {
+    "label": "En caso de que podamos ayudarte ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar la rentabilidad de la empresa?",
+    "key": "contact.en_caso_de_que_podamos_ayudarte_estas_dispuesto_a_invertir_para_profesionalizar_tus_numeros_e_incrementar_la_rentabilidad_de_la_empresa",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:uqIQxVGOtgMe0yAjXR5D": {
+    "label": "Al configurar ingresos y egresos en el cashflow, el criterio recomendado es…",
+    "key": "contact.al_configurar_ingresos_y_egresos_en_el_cashflow_el_criterio_recomendado_es",
+    "type": "CHECKBOX"
+  },
+  "custom:urGKc8ReoVK0chKNqw9c": {
+    "label": "FV - El Método Acelerador de Ganancias ofrece diferentes niveles de acompañamiento. ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?",
+    "key": "contact.el_metodo_acelerador_de_ganancias_ofrece_diferentes_niveles_de_acompanamiento_estas_dispuesto_a_invertir_para_profesionalizar_tus_numeros_e_incrementar_tu_rentabilidad",
+    "type": "RADIO"
+  },
+  "custom:vBiTd7LytcrMQWBxDeox": {
+    "label": "¿Para qué sirve el Estado de Resultados Económico en el MEG?",
+    "key": "contact.para_que_sirve_el_estado_de_resultados_economico_en_el_meg",
+    "type": "CHECKBOX"
+  },
+  "custom:vEjeW7yZq7ZtQF2OLSHR": {
+    "label": "F. Fin MP1",
+    "key": "contact.f_fin_mp1",
+    "type": "DATE"
+  },
+  "custom:vHK04B3cnvW0PKaiPkiE": {
+    "label": "¿Tenés claridad de lo que es un Estado de resultados Financiero?",
+    "key": "contact.tenes_claridad_de_lo_que_es_un_estado_de_resultados_financiero",
+    "type": "RADIO"
+  },
+  "custom:vRMvAnGrj2EmU9yODxRL": {
+    "label": "¿Tenés fechas CLARAS y ESPECIFICAS de pagos pendientes, cobros y vencimientos de facturas/cheques?",
+    "key": "contact.tenes_fechas_claras_de_pagos_pendientes_cobros_y_vencimientos_de_facturas_cheques",
+    "type": "RADIO"
+  },
+  "custom:vV1B42QLt1lA3CCoZsw1": {
+    "label": "Dni",
+    "key": "contact.dni",
+    "type": "TEXT"
+  },
+  "custom:vo495CZOTo39x35XlDRF": {
+    "label": "⬇️ Tocá en OK para comenzar el test",
+    "key": "contact._toca_en_ok_para_comenzar_eltest",
+    "type": "RADIO"
+  },
+  "custom:w5wv9M0aTWHoCODnbLVR": {
+    "label": "Tu calendario semanal muestra: Semana 2 en rojo; Semana 1 con excedente; Semana 3 equilibrada. Tenés pagos no críticos en Semana 2 y clientes que podrían adelantar con incentivo. ¿Qué combinación refleja el enfoque del M7?",
+    "key": "contact.tu_calendario_semanal_muestra_semana_2_en_rojo_semana_1_con_excedente_semana_3_equilibrada_tenes_pagos_no_criticos_en_semana_2_y_clientes_que_podrian_adelantar_con_incentivo_que_combinacion_refleja_el_enfoque_del_m_7",
+    "type": "CHECKBOX"
+  },
+  "custom:w6rRxo2yNjldCsyk8wJp": {
+    "label": "Costos fijos promedio",
+    "key": "contact.costos_fijos_promedio",
+    "type": "NUMERICAL"
+  },
+  "custom:wAXsWPAcFCCjB9VoByIr": {
+    "label": "Proximo contacto CSM",
+    "key": "contact.proximo_contacto_csm",
+    "type": "DATE"
+  },
+  "custom:wHCgZ3ej3Xb6uNWZZnf2": {
+    "label": "¿Quién van apuntadas tus ventas?",
+    "key": "contact.quien_van_apuntadas_tus_ventas",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:wN2ti4WcYS6F8z2GjC9V": {
+    "label": "¿Para qué sirve el “Resumen de Ingresos y Egresos” del M6?",
+    "key": "contact.para_que_sirve_el_resumen_de_ingresos_y_egresos_del_m_6",
+    "type": "CHECKBOX"
+  },
+  "custom:wae6WCUgbJixCJU1M0f3": {
+    "label": "Chequeo · sesión cancelada",
+    "key": "contact.chequeo__sesin_cancelada",
+    "type": "TEXT"
+  },
+  "custom:wfFeDpeurDAjjw2pz2fV": {
+    "label": "MP3 - Dias",
+    "key": "contact.mp3__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:x1x0i8V1XsKBmlcXBGUy": {
+    "label": "Botón de opción 46mhy",
+    "key": "contact.botn_de_opcin_46mhy",
+    "type": "RADIO"
+  },
+  "custom:x5AkFWfLzxiCl5NuAYd4": {
+    "label": "¿Qué es “prospección” en este contexto?",
+    "key": "contact.que_es_prospeccion_en_este_contexto",
+    "type": "CHECKBOX"
+  },
+  "custom:x8JRzlWWoCKfW9NXD6WM": {
+    "label": "¿Qué fue lo más útil que te llevás de esta unidad 3?",
+    "key": "contact.que_fue_lo_mas_util_que_te_llevas_de_esta_unidad_3",
+    "type": "TEXT"
+  },
+  "custom:xClt9v9lheFmIuHEVsOK": {
+    "label": "¿Cuál es el principal motivo por el que te sumaste al MEG?",
+    "key": "contact.cual_es_el_principal_motivo_por_el_que_te_sumaste_al_meg",
+    "type": "LARGE_TEXT"
+  },
+  "custom:xDrQsyZwWlFedwAqZFMc": {
+    "label": "Regla 80/20 aplicada al enfoque semanal: ¿cuál acción probablemente esté en el 20% de mayor impacto?",
+    "key": "contact.regla_8020_aplicada_al_enfoque_semanal_cul_accin_probablemente_est_en_el_20_de_mayor_impacto",
+    "type": "RADIO"
+  },
+  "custom:xKhXkjEBUdDZ7BF7tq1H": {
+    "label": "El análisis indica dependencia de un solo proveedor (70% de compras). ¿Cuál es el riesgo y primera acción sugerida?",
+    "key": "contact.el_analisis_indica_dependencia_de_un_solo_proveedor_70_de_compras_cual_es_el_riesgo_y_primera_accion_sugerida",
+    "type": "CHECKBOX"
+  },
+  "custom:xWmX5FKlAqcUaV55X6J0": {
+    "label": "Breve descripción de tu modelo de negocio",
+    "key": "contact.breve_descripcion_de_tu_modelo_de_negocio",
+    "type": "LARGE_TEXT"
+  },
+  "custom:xh9i8kTT7dDjpSYBaFOJ": {
+    "label": "Test FN | Confirmado",
+    "key": "contact.test_fn__confirmado",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:yQGgx1OeekXpJASOX83C": {
+    "label": "F. Inicio M7",
+    "key": "contact.modulo_7",
+    "type": "DATE"
+  },
+  "custom:ySJ95m68QUrstARcSfW0": {
+    "label": "Dia D ",
+    "key": "contact.dia_d",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:yVO8NZ4cOgDS95ea1HCv": {
+    "label": "¿Qué recomienda el M8 sobre “promover la búsqueda” de personal?",
+    "key": "contact.que_recomienda_el_m_8_sobre_promover_la_busqueda_de_personal",
+    "type": "CHECKBOX"
+  },
+  "custom:yWfX1E0mKSZ39RXH0SPL": {
+    "label": "Tipo de venta",
+    "key": "contact.tipo_de_venta",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:yb1WYh0XkgB9DfYccdrW": {
+    "label": "Hora esp",
+    "key": "contact.hora_esp",
+    "type": "TEXT"
+  },
+  "custom:ydfHk86NsWpKR1ji98Im": {
+    "label": "¿Qué es un “presupuesto económico” en el MEG?",
+    "key": "contact.que_es_un_presupuesto_economico_en_el_meg",
+    "type": "CHECKBOX"
+  },
+  "custom:ymmA0zPpO3h890fMOh26": {
+    "label": "What’s the biggest challenge you face in your career right now?",
+    "key": "contact.whats_the_biggest_challenge_you_face_in_your_career_right_now",
+    "type": "CHECKBOX"
+  },
+  "custom:yzoKPGQN6D6lCNmwDx91": {
+    "label": "agendaset",
+    "key": "contact.agendaset",
+    "type": "TEXT"
+  },
+  "custom:z2U5TecXVi25fPxJZrCN": {
+    "label": "Quiero invitar a un amigo emprendedor al desafío",
+    "key": "contact.quiero_invitar_a_un_amigo_emprendedor_al_desafo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:zFKGW8S2T7ZMaerLHddL": {
+    "label": "Encontrás a alguien con atención al cliente excepcional en un local. ¿Qué acción sugiere el M8?",
+    "key": "contact.encontras_a_alguien_con_atencion_al_cliente_excepcional_en_un_local_que_accion_sugiere_el_m_8",
+    "type": "CHECKBOX"
+  },
+  "custom:zFoBvFM8M7RvP5IIotOI": {
+    "label": "Agendo",
+    "key": "contact.agendo",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:zGRAHNQbt4nU3oWcYnjb": {
+    "label": "M2 - Dias",
+    "key": "contact.m2__dias",
+    "type": "NUMERICAL"
+  },
+  "custom:zINUgW2p2NQJVMn1PlfZ": {
+    "label": "F. Inicio M1",
+    "key": "contact.modulo_1",
+    "type": "DATE"
+  },
+  "custom:zX0LhynejCRmdIi47Gc6": {
+    "label": "Estrategia",
+    "key": "contact.estrategia",
+    "type": "MULTIPLE_OPTIONS"
+  },
+  "custom:zbE9FyhFQiQ1WN9JNT4t": {
+    "label": "En caso de que podamos ayudarte ¿Estás dispuesto a invertir para profesionalizar tus números e incrementar tu rentabilidad?",
+    "key": "contact.en_caso_de_que_podamos_ayudarte_ests_dispuesto_a_invertir_para_profesionalizar_tus_nmeros_e_incrementar_tu_rentabilidad",
+    "type": "SINGLE_OPTIONS"
+  },
+  "custom:zd6W5457YEfESgzaXwDg": {
+    "label": "Notion Id 2",
+    "key": "contact.notion_id_2",
+    "type": "TEXT"
+  },
+  "custom:zuu4uGSuhDi9tJzO9qtV": {
+    "label": "Ags",
+    "key": "contact.ags",
+    "type": "SINGLE_OPTIONS"
+  }
+}
