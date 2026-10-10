@@ -16,7 +16,11 @@ async function candidates(month,dashboard,all){
  const byPerson=new Map();for(const r of cashRows){if(norm(r.estado)!=='conciliado'||norm(r.producto_format).includes('club'))continue;const name=r.responsable_venta||r.creado_por;if(!name||['sin closer','nahuel','shirlet','shirley'].some(term=>norm(name).includes(term)))continue;const key=norm(name);const total=byPerson.get(key)||{name,amount:0};total.amount+=Math.max(0,Number(r.cash_collected_neto??r.cash_collected??0))*Number(prize.cash_collected_premio_pct||0)/100;byPerson.set(key,total);}
  for(const r of byPerson.values())add(r.name,'reportes-cash','Premio Cash Collected · Reportes',r.amount);
  for(const r of dashboard.bonusCandidates||[])add(r.person,'agendas-setter:'+r.id,r.sourceRule||'Bono por agendas',r.bonusUsd||r.commissionAmount,r.bonusUsd?'USD':'ARS');
- return result.map(r=>({...r,movement:dashboard.movementRows.find(e=>e.person_email===r.person_email&&e.source_key===r.source_key)||null}));
+ return result.map(r=>{
+  const entry=dashboard.movementRows.find(e=>e.person_email===r.person_email&&e.source_key===r.source_key);
+  const movement=entry?{id:entry.id,status:entry.status,amount:entry.amount,currency:entry.currency,exchange_rate:entry.exchange_rate}:null;
+  return {...r,movement};
+ });
 }
 const router=express.Router();router.use((req,res,next)=>{res.set('Cache-Control','no-store');if(!req.authUser)return res.status(401).json({message:'Sesión requerida'});next();});
 router.get('/',wrap(async(req,res)=>{
@@ -43,6 +47,8 @@ router.post('/approve',wrap(async(req,res)=>{
  const tc=candidate.currency==='ARS'?1:Number(b.exchangeRate);if(!(tc>0)||!Number.isFinite(tc))return res.status(400).json({message:'Indicá un tipo de cambio válido'});
  res.json(await ledger.write('create',req.authUser,{...candidate,movement:undefined,request_key:b.requestKey,month_key:month,kind:'bono',exchange_rate:tc,effective_date:new Date().toISOString().slice(0,10)}));
 }));
-router.post('/:id/void',wrap(async(req,res)=>{res.json(await ledger.write('void',req.authUser,{id:req.params.id,reason:req.body.reason}));}));
+router.post('/:id/void',wrap(async(req,res)=>{
+ if(!ledger.canManage(req.authUser)&&!ledger.canApprove(req.authUser))return res.status(403).json({message:'Tu liquidación es de sólo lectura'});
+ res.json(await ledger.write('void',req.authUser,{id:req.params.id,reason:req.body.reason}));}));
 module.exports=router;
 module.exports._test={users,candidates,personForName};

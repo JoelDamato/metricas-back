@@ -15,6 +15,9 @@ test('movimientos preservan auditoría, idempotencia, permisos y bloqueo mensual
  assert.equal((await db.query('select * from commission_movement_audit')).rows.length,1);
  await assert.rejects(write('create','nadia.cavallini@gmail.com',{...row,amount:101}));
  const bono={...row,request_key:'00000000-0000-4000-8000-000000000002',kind:'bono',source_key:'sistema-agendas'};await assert.rejects(write('create','nadia.cavallini@gmail.com',bono));await write('create','leonardoalaniz19@gmail.com',bono);await assert.rejects(write('create','leonardoalaniz19@gmail.com',{...bono,request_key:'00000000-0000-4000-8000-000000000003'}));
+ await assert.rejects(write('void','charliecarlostu@gmail.com',{id:saved.id,reason:'Intento de otro usuario'}));
+ await assert.rejects(write('void','leonardoalaniz19@gmail.com',{id:saved.id,reason:'Leo no administra retiros'}));
+ assert.equal((await db.query('select status from commission_movements where id=$1',[saved.id])).rows[0].status,'approved');
  const cancelled=await write('void','nadia.cavallini@gmail.com',{id:saved.id,reason:'Corrección de carga'});assert.equal(cancelled.status,'void');assert.equal((await db.query('select * from commission_movement_audit')).rows.length,3);
  await db.exec("insert into commission_month_snapshots values('2026-11',true)");await assert.rejects(write('create','nadia.cavallini@gmail.com',{...row,month_key:'2026-11',request_key:'00000000-0000-4000-8000-000000000004'}));
  await db.exec('set role anon');await assert.rejects(db.query('select * from commission_movements'));
