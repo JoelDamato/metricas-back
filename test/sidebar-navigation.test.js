@@ -20,7 +20,7 @@ test('la navegación global se renderiza siempre como sidebar y permanece compac
   assert.doesNotMatch(shell, /id="metricasSidebarToggle"/);
   assert.match(shell, /const isExpanded = false/);
   assert.match(shell, /FAVICON_URL = '\/metricas-assets\/favicon-m\.svg'/);
-  assert.match(shell, /mati-randazzo-logo-web\.png/);
+  assert.doesNotMatch(shell, /class="auth-shell-brand"/);
   assert.match(shell, /setSidebarExpanded\(!shell\.classList\.contains\('is-expanded'\)\)/);
   assert.match(shell, /setSidebarExpanded\(false\)/);
   assert.match(shell, /function shellIcon\(name\)/);

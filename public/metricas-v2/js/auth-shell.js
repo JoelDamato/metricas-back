@@ -333,11 +333,6 @@
     shell.innerHTML = `
       <button id="metricasSidebarBackdrop" class="auth-shell-backdrop" type="button" aria-label="Cerrar menú" hidden></button>
       <div class="auth-shell-inner">
-        <div class="auth-shell-brand" aria-label="Matías Randazzo">
-          <span class="auth-shell-brand-mark" aria-hidden="true">${shellIcon('open')}</span>
-          <img class="auth-shell-brand-full" src="/metricas-assets/mati-randazzo-logo-web.png" alt="Mati Randazzo" />
-          </div>
-        <span class="auth-shell-divider" aria-hidden="true"></span>
         <nav id="metricasSidebarNav" class="auth-shell-group auth-shell-group--primary auth-sidebar-nav" aria-label="Navegación principal">
           <span class="auth-sidebar-section-label">Navegación</span>
           ${canGoBack ? `<button id="metricasGoBack" class="auth-shell-back-icon auth-sidebar-item" type="button"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('back')}</span><span class="auth-sidebar-label">Volver</span></button>` : ''}
