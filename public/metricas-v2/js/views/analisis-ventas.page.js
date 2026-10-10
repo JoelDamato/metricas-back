@@ -20,8 +20,8 @@ const ANALYSIS_SECTIONS = [
     dateField: 'fecha_de_agendamiento',
     salesLabel: 'Agendas vendidas',
     salesDetailLabel: 'ventas',
-    salesDescription: 'Comprobantes de tipo Venta agrupados por fecha de agendamiento.',
-    panelDescription: 'Solo toma comprobantes de tipo Venta, por fecha de agendamiento. No entra cobranza y tampoco productos Club. La clasificacion de señas usa el cash total acumulado de la venta.'
+    salesDescription: 'Ventas agrupadas por la fecha de agenda actual del cliente.',
+    panelDescription: 'Usa la fecha de agenda actual del cliente; si no está disponible, conserva la del comprobante. Solo toma comprobantes de tipo Venta. No entra cobranza y tampoco productos Club. La clasificacion de señas usa el cash total acumulado de la venta.'
   },
   {
     key: 'venta',

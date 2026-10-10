@@ -285,7 +285,11 @@ async function listRows(resourceName, options = {}) {
 
   applyDateFilter(params, options.from, options.to, options.dateField);
 
-  const url = `${env.supabaseUrl}/rest/v1/${resource}`;
+  // Resolve the current agenda before filtering/pagination; otherwise a moved sale
+  // would disappear from its old month without being retrieved in its new month.
+  const source = resource === 'comprobantes' && options.dateField === 'fecha_de_agendamiento'
+    ? 'comprobantes_agenda_metricas' : resource;
+  const url = `${env.supabaseUrl}/rest/v1/${source}`;
 
   try {
     const response = await axios.get(url, {

@@ -27,8 +27,8 @@ Se recalcula al recibir GHL o cambiar comprobantes. Un trabajo horario actualiza
 - `503`: no se pudo confirmar persistencia; el emisor debe reintentar.
 - Configuración opcional: `GHL_LEADS_WEBHOOK_SECRET` exige el mismo valor en `x-webhook-token`.
 
-Instalar `20261010120000_leads_ghl_ingestion.sql`, `20261010130000_preserve_crm_opening_balances.sql` y `20261010140000_metrics_conciliated_cash.sql` antes de desplegar. Conectar el webhook GHL a `/api/crm`, validar el primer envío y después detener el flujo CRM de Notion. La instalación sola no reemplaza los workflows de GHL. La integración de tickets con Notion es independiente.
+Instalar `20261010120000_leads_ghl_ingestion.sql`, `20261010130000_preserve_crm_opening_balances.sql`, `20261010140000_metrics_conciliated_cash.sql` y `20261010150000_metrics_current_lead_agenda.sql` antes de desplegar. Conectar el webhook GHL a `/api/crm`, validar el primer envío y después detener el flujo CRM de Notion. La instalación sola no reemplaza los workflows de GHL. La integración de tickets con Notion es independiente.
 
 Validación: pruebas de mapeo, HTTP y PostgreSQL real embebido en `test/leads-ghl-*.test.js`; incluye reintentos, formatos de fecha, valores vacíos, nuevas propiedades, protección de IDs, permisos, financieros y los triggers existentes de comprobantes.
 
-La fecha de agenda copiada en un comprobante sigue siendo la registrada al cargarlo; una corrección posterior en GHL actualiza el lead, no esa copia histórica. La sincronización retroactiva de esa fecha queda fuera de este ajuste.
+Las métricas por agenda consultan `comprobantes_agenda_metricas` antes de filtrar por fecha: usan la agenda actual de `leads_raw`, resuelta por GHL ID único o relación explícita compatible. Las cobranzas sin identidad pueden heredarla de su venta. Sin una fecha o relación fiable conservan la fecha histórica. La resolución no duplica filas y mantiene el día calendario del lead. Las fechas de venta y acreditación, los importes y el comprobante original no se modifican. Las vistas SQL de cash y las consultas por `fecha_de_agendamiento` de Marketing, Análisis de Ventas y Sistema de Agendas usan esta fuente.

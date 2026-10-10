@@ -11,3 +11,13 @@ test('Marketing conserva las ventas pero excluye cash pendiente, rebotado y marc
   assert.equal(cash.cashCollectedAgenda,500);assert.equal(sales.ventasTotales,4);assert.equal(sales.facturacionVentasTotales,4000);assert.equal(aov.cashCollectedDia1,500);assert.equal(aov.ventasDia1,1);
  }finally{axios.get=original;}
 });
+test('el filtro de agenda se aplica sobre la fecha actual antes de paginar; venta y pago usan el registro original',async()=>{
+ const original=axios.get,calls=[];
+ axios.get=async(url,{params})=>{calls.push({url,params});return {data:[]};};
+ try{
+  for(const dateField of ['fecha_de_agendamiento','f_venta','f_acreditacion'])await service.listRows('comprobantes',{from:'2026-10-01',to:'2026-10-31',dateField,offset:1000});
+  assert(calls[0].url.endsWith('/comprobantes_agenda_metricas'));
+  assert(calls[0].params.and.includes('fecha_de_agendamiento.gte.2026-10-01'));assert.equal(calls[0].params.offset,1000);
+  assert(calls[1].url.endsWith('/comprobantes'));assert(calls[2].url.endsWith('/comprobantes'));
+ }finally{axios.get=original;}
+});
