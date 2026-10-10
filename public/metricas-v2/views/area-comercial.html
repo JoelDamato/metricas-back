@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
     <link rel="stylesheet" href="/css/settlements.css?v=20261010-1">
+    <link rel="stylesheet" href="/css/commercial-area-brand.css?v=20261010-1">
 </head>
   <body class="ranking-page commercial-area-page premium-navy-background">
     <main class="container">
@@ -26,7 +27,7 @@
       </section>
       <p id="commercialAreaStatus"></p>
 
-      <nav class="row" style="display:flex;gap:12px;margin:20px 0"><button type="button" data-personal-view="details">Comisiones</button><button type="button" data-personal-view="settlement">Liquidación del mes</button></nav>
+      <nav class="commercial-view-switch" aria-label="Vista de tu área comercial"><button type="button" data-personal-view="details" aria-pressed="true"><span>Comisiones</span><small>Resultados y comprobantes</small></button><button type="button" data-personal-view="settlement" aria-pressed="false"><span>Liquidación del mes</span><small>Bonos, retiros y total a cobrar</small></button></nav>
       <section id="settlementRoot" data-mode="personal" data-month="commercialAreaMonth" hidden></section>
       <section id="commercialAreaSummary" class="commercial-area-summary" aria-live="polite"></section>
 
@@ -53,6 +54,6 @@
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
     <script src="/js/views/area-comercial.page.js?v=20261009-wally-commissions-1"></script>
-  <script src="/js/views/settlements.page.js?v=20261010-1"></script>
+  <script src="/js/views/settlements.page.js?v=20261010-brand-1"></script>
   </body>
 </html>
