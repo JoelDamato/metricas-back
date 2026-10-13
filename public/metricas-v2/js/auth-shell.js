@@ -33,6 +33,7 @@
       back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>',
       dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 8-7 8 7v9H5v-9"/><path d="M9 20v-6h6v6"/></svg>',
       metrics: '<svg viewBox="0 0 24 24" aria-hidden="true"><g class="shell-dot-grid"><circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/></g></svg>',
+      contact: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16c0-4 6-4 6 0m3-7h3m-3 4h3"/></svg>',
       training: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c4-1 6 0 9 2 3-2 5-3 9-2v14c-4-1-6 0-9 2-3-2-5-3-9-2V5Z"/><path d="M12 7v14"/></svg>',
       ticket: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/></svg>',
       split: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14"/></svg>',
@@ -343,6 +344,7 @@
           </a>
           ${dashboardLink}
           ${metricsLink}
+          <a class="auth-shell-link auth-sidebar-item${navCurrentClass('/contacto-estado/')}" href="/contacto-estado/"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('contact')}</span><span class="auth-sidebar-label">Estado de contacto</span></a>
           <a class="auth-shell-link auth-sidebar-item${navCurrentClass('/views/entrenamiento.html')}" href="/views/entrenamiento.html"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('training')}</span><span class="auth-sidebar-label">Centro de entrenamiento</span></a>
           <a class="auth-shell-link auth-sidebar-item${navCurrentClass('/views/tickets.html')}" href="/views/tickets.html"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('ticket')}</span><span class="auth-sidebar-label">Central de tickets</span></a>
           <a class="auth-shell-link auth-sidebar-item${navCurrentClass(splitToggleHref)}" href="${splitToggleHref}">

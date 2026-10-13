@@ -33,7 +33,7 @@ const PAGE_ROLE_ACCESS = {
   'comprobantes.html': ['total', 'comercial', 'csm'],
   'carga-comprobantes.html': ['total', 'comercial', 'csm'],
   'mis-comprobantes.html': ['total', 'comercial', 'csm'],
-  'estado-contacto-comisiones.html': ['total', 'comercial'],
+  'estado-contacto-comisiones.html': ['total', 'comercial', 'csm'],
   'csm-tiempo.html': ['total', 'csm'],
   'csm-situacion.html': ['total', 'csm'],
   'csm-cuadro.html': ['total', 'csm'],
@@ -485,7 +485,7 @@ function canAccessPageForUser(user, pageName) {
   if (pageName === 'entrenamiento-disc.html') return require('../training/router').canRead(user);
   if (['entrenamiento.html', 'guion-meg.html'].includes(pageName)) return Boolean(user);
   if (pageName === 'area-comercial.html' && commissionAreaForUser(user)) return true;
-  if (pageName === 'tickets.html') return Boolean(user);
+  if (['tickets.html', 'estado-contacto-comisiones.html'].includes(pageName)) return Boolean(user);
   if (pageName === 'pdi.html') return canAccessPdiForUser(user);
   if (pageName === 'grabaciones.html') return Boolean(user) && canAccessPage(user?.role, pageName);
   if (pageName === 'comprobantes-config.html') return canAccessComprobantesLabForUser(user);
@@ -614,7 +614,10 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 function getUserPermissions(user) {
   const override = getUserAccessOverride(user);
   const allowedPages = override ? new Set(override.allowedPages) : null;
-  if (allowedPages && user) allowedPages.add('tickets.html');
+  if (allowedPages && user) {
+    allowedPages.add('tickets.html');
+    allowedPages.add('estado-contacto-comisiones.html');
+  }
   for (const page of ['entrenamiento.html', 'guion-meg.html', 'entrenamiento-disc.html']) {
     if (allowedPages && canAccessPageForUser(user, page)) allowedPages.add(page);
   }

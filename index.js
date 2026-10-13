@@ -73,6 +73,10 @@ app.use('/api/v2/metricas', authMiddleware.metricasApiGuard, metricasV2Routes);
 app.get('/index.html', authMiddleware.metricasPageGuard, (req, res) => {
   res.redirect('/metricas.html');
 });
+app.get('/views/estado-contacto-comisiones.html', authMiddleware.metricasPageGuard, (req, res) => {
+  const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  res.redirect('/contacto-estado/' + query);
+});
 app.use(authMiddleware.metricasPageGuard, express.static(path.join(__dirname, 'public/metricas-v2'), { index: false, redirect: false }));
 app.use(pageResponses.notFound);
 app.use(metricasV2ErrorHandler);

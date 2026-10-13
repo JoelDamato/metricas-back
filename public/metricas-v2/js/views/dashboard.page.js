@@ -36,7 +36,7 @@
     { page: 'carga-comprobantes.html', href: '/views/carga-comprobantes.html', label: 'Cargar Comprobante', description: 'Registrar una venta o cobranza.', icon: '+', roles: ['total', 'comercial', 'csm'] },
     { page: 'instructivos-externos', href: 'https://central.scalo.tech/clientes/matias-randazzo/instructivos', label: 'Instructivos', description: 'Guías, procesos y recursos para usar la Central Matías Randazzo.', icon: '▶', roles: ['total', 'comercial', 'csm'], external: true },
     { page: 'tickets.html', href: '/views/tickets.html', label: 'Central de tickets', description: 'Creá una solicitud y seguí los tickets de todo el equipo.', icon: '✉', roles: ['total', 'comercial', 'csm'] },
-    { page: 'estado-contacto-comisiones.html', href: '/contacto-estado/', label: 'Estado de Contacto', description: 'Seguimiento de contactos y comisiones.', icon: '◉', roles: ['total', 'comercial'] },
+    { page: 'estado-contacto-comisiones.html', href: '/contacto-estado/', label: 'Estado de Contacto', description: 'Datos del cliente, comprobantes y seguimiento.', icon: '◉', roles: ['total', 'comercial', 'csm'] },
     { page: 'mis-comprobantes.html', href: '/views/mis-comprobantes.html', label: 'Mis Comprobantes', description: 'Tus cargas y conciliaciones.', icon: '▤', roles: ['total', 'comercial', 'csm'] },
     { page: 'grabaciones.html', href: '/views/grabaciones.html', label: 'Grabaciones', description: 'Biblioteca de grabaciones del equipo.', icon: '▶', roles: ['total', 'comercial', 'csm'] },
     { page: 'pdi.html', href: '/views/pdi.html', label: 'PDI', description: 'Desarrollo y seguimiento de closers.', icon: '◇', roles: ['total', 'comercial'], permission: 'canAccessPdi' },
@@ -271,7 +271,7 @@
   function canOpen(item, user) {
     const permissions = user.permissions || {};
     if (item?.page === 'entrenamiento.html') return Boolean(user);
-    if (item?.page === 'tickets.html') return Boolean(user);
+    if (['tickets.html', 'estado-contacto-comisiones.html'].includes(item?.page)) return Boolean(user);
     if (!item || !item.roles.includes(user.role)) return false;
     if (item.permission && permissions[item.permission] !== true) return false;
     if (!item.external && Array.isArray(permissions.allowedPages) && !permissions.allowedPages.includes(item.page)) return false;
