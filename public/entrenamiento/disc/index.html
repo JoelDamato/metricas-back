@@ -56,8 +56,6 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
 .opt[aria-pressed="true"] .dot{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
 .note{font-size:.9rem;color:var(--muted)}
 .err{color:var(--d);font-size:.9rem}
-.prof{border-left:4px solid var(--accent);padding-left:14px}
-.prof ul{margin:8px 0 0;padding-left:20px}
 @media (prefers-reduced-motion:reduce){.track i{transition:none}}
 </style>
 </head>
@@ -111,29 +109,14 @@ input[type=text],input[type=email]{font:inherit;padding:12px 14px;border:1px sol
   <h1 id="r-title"></h1>
   <p id="r-name" class="note"></p>
   <div class="card" id="r-bars" aria-label="Distribución del perfil DISC"></div>
-  <div class="prof stack" id="r-prof"></div>
   <p id="r-send" class="note" role="status" aria-live="polite"></p><button id="retry" class="btn" type="button" hidden>Reintentar envío</button>
-  <div class="row">
-    <button id="copy" class="btn" type="button">Copiar resultado</button>
-    <a id="wa" class="btn ghost" href="#" target="_blank" rel="noopener" hidden style="text-align:center;text-decoration:none">Enviar por WhatsApp</a>
-  </div>
   <p class="note">Este test es orientativo: describe tendencias de comportamiento, no capacidades ni valor como persona.</p>
 </section>
 
 </main>
 <script src="/entrenamiento/disc/results.js?v=20261010-bars-1"></script>
 <script>
-/* ===== CONFIGURACIÓN =====
-   ENDPOINT: URL que recibe el resultado por POST en JSON (Google Apps Script, Supabase, Zapier, etc.). Vacío = no envía.
-   WHATSAPP: número con código de país, sin + ni espacios (ej: 5491112345678). Vacío = oculta el botón. */
-const CONFIG = { ENDPOINT: "/api/entrenamiento/disc", WHATSAPP: "" };
-
-const DIM = {
-  D:{name:"Dominio",color:"var(--d)"},
-  I:{name:"Influencia",color:"var(--i)"},
-  S:{name:"Estabilidad",color:"var(--s)"},
-  C:{name:"Conformidad",color:"var(--c)"}
-};
+const CONFIG = { ENDPOINT: "/api/entrenamiento/disc" };
 
 /* 30 preguntas: cada una con una opción por perfil. El orden se mezcla al mostrarlas. */
 const Q = [
@@ -169,13 +152,6 @@ const Q = [
  ["Ante una crítica que me parece injusta…",{D:"Respondo de inmediato y con fuerza.",I:"Me afecta y lo comento con otros.",S:"Lo dejo pasar aunque me moleste.",C:"Preparo una respuesta con datos."}]
 ];
 
-const PROF = {
-  D:{t:"Dominio",s:"Orientado a resultados, directo y rápido para decidir.",f:["Toma la iniciativa y pide la decisión sin rodeos.","Rinde bien con metas exigentes y competencia."],w:["Puede sonar duro o impaciente.","Le conviene escuchar más antes de proponer."]},
-  I:{t:"Influencia",s:"Comunicativo, entusiasta y orientado a las personas.",f:["Conecta rápido y genera buen clima.","Contagia energía y entusiasmo al presentar."],w:["Puede dispersarse o prometer de más.","Le conviene ordenar el seguimiento y los detalles."]},
-  S:{t:"Estabilidad",s:"Paciente, constante y confiable.",f:["Escucha y genera confianza con el tiempo.","Sostiene el ritmo y cumple lo que promete."],w:["Puede evitar conversaciones incómodas o el cierre.","Le conviene practicar poner límites y pedir la decisión."]},
-  C:{t:"Conformidad",s:"Analítico, preciso y cuidadoso con la calidad.",f:["Explica con claridad y se prepara a fondo.","Detecta errores y cuida los detalles."],w:["Puede demorarse buscando la perfección.","Le conviene decidir aunque falte algo de información."]}
-};
-
 const $ = id => document.getElementById(id);
 const st = { nombre:"", email:"", i:0, ans:Array(Q.length).fill(null), order:[] };
 
@@ -188,12 +164,12 @@ async function api(data){const response=await fetch(CONFIG.ENDPOINT,{method:'POS
 function restartAttempt(result){
  if(Number(result.generation||0)<Number(st.generation||0))return;
  Object.assign(st,{i:0,ans:result.answers||Array(Q.length).fill(null),order:Q.map(()=>shuffle(['D','I','S','C'])),revision:result.revision||0,generation:result.generation||0,startedAt:result.startedAt,deadlineAt:result.deadlineAt,closed:false});
- persist();$('r-bars').textContent='';$('r-prof').textContent='';$('copy').hidden=false;show('v-quiz');render();tick();$('save-status').textContent='Se agotó el tiempo anterior. Empezás de cero con 30 minutos.';
+ persist();$('r-bars').textContent='';show('v-quiz');render();tick();$('save-status').textContent='Se agotó el tiempo anterior. Empezás de cero con 30 minutos.';
 }
 function needsRestart(result){return Number(result.generation||0)>Number(st.generation||0);}
 
 async function autosave(){if(saving){queued=true;return;}saving=true;try{const result=await api({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0});if(needsRestart(result))restartAttempt(result);else if($('save-status'))$('save-status').textContent='Respuestas guardadas.';}catch(e){$('save-status').textContent='Sin confirmar guardado. Reintentando…';}finally{saving=false;if(queued){queued=false;autosave();}}}
-function tick(){if(!st.deadlineAt||st.closed)return;const seconds=Math.max(0,Math.ceil((Date.parse(st.deadlineAt)-Date.now()-serverOffset)/1000));$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds===0){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Reiniciando test';$('r-name').textContent=st.nombre;$('r-bars').textContent='Las respuestas se descartan y volvés a empezar con 30 minutos.';$('copy').hidden=true;send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0,finish:true});}}
+function tick(){if(!st.deadlineAt||st.closed)return;const seconds=Math.max(0,Math.ceil((Date.parse(st.deadlineAt)-Date.now()-serverOffset)/1000));$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');if(seconds===0){st.closed=true;persist();show('v-result');$('r-title').textContent='Tiempo cumplido · Reiniciando test';$('r-name').textContent=st.nombre;$('r-bars').textContent='Las respuestas se descartan y volvés a empezar con 30 minutos.';send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0,finish:true});}}
 setInterval(tick,500);setInterval(()=>{if(st.submissionKey&&!st.closed)autosave();},10000);
 $("start").addEventListener("click",async()=>{
  const n=$("nombre").value.trim();if(n.length<2||!$('email').checkValidity()){$('intro-err').hidden=false;return;}
@@ -265,49 +241,13 @@ $("next").addEventListener("click",()=>{
   if(st.i<Q.length-1){ st.i++; render(); } else finish();
 });
 
-function score(){
-  const c={D:0,I:0,S:0,C:0}; st.ans.forEach(k=>c[k]++);
-  const p=DiscResults.percentages(st.ans);
-  return {c,p};
-}
-
 function finish(submit=true){
-  st.closed=true;persist();
-  const {c,p}=score();
-  const ranked=Object.keys(c).sort((a,b)=>c[b]-c[a]);
-  const top=ranked.filter(k=>c[k]===c[ranked[0]]);
-  const second=ranked.find(k=>!top.includes(k));
-  $("r-title").textContent = "Perfil predominante: " + top.map(k=>DIM[k].name).join(" y ");
+  st.closed=true;
+  delete st.text;
+  persist();
+  $("r-title").textContent = "Tu gráfico DISC";
   $("r-name").textContent = st.nombre + (st.email ? " · "+st.email : "");
-
-  $("r-bars").innerHTML=DiscResults.markup(p);
-
-  const prof=$("r-prof"); prof.textContent="";
-  top.forEach(k=>{
-    const x=PROF[k], el=document.createElement("div"); el.className="stack"; el.style.gap="6px";
-    el.innerHTML='<h2></h2><p></p><p class="note">Fortalezas</p><ul class="f"></ul><p class="note">A trabajar</p><ul class="w"></ul>';
-    el.querySelector("h2").textContent=x.t; el.querySelector("h2").style.color=DIM[k].color;
-    el.querySelector("p").textContent=x.s;
-    x.f.forEach(t=>{const li=document.createElement("li"); li.textContent=t; el.querySelector(".f").append(li);});
-    x.w.forEach(t=>{const li=document.createElement("li"); li.textContent=t; el.querySelector(".w").append(li);});
-    prof.append(el);
-  });
-  if(second && top.length===1){
-    const n=document.createElement("p"); n.className="note";
-    n.textContent="Perfil secundario: "+DIM[second].name+" ("+p[second].toLocaleString("es-AR")+"%).";
-    prof.append(n);
-  }
-
-  const txt = "Test DISC – "+st.nombre+(st.email?" ("+st.email+")":"")+"\n"+
-    ["D","I","S","C"].map(k=>DIM[k].name+": "+p[k].toLocaleString("es-AR")+"%").join("\n")+
-    "\nPredominante: "+top.map(k=>DIM[k].name).join(" y ")+
-    "\nRespuestas: "+st.ans.join("");
-  st.text=txt;
-
-  if(CONFIG.WHATSAPP){
-    $("wa").href="https://wa.me/"+CONFIG.WHATSAPP+"?text="+encodeURIComponent(txt);
-    $("wa").hidden=false;
-  }
+  $("r-bars").innerHTML=DiscResults.markup(DiscResults.percentages(st.ans));
   if(submit)send({submissionKey:st.submissionKey,respuestas:st.ans,revision:st.revision,generation:st.generation||0,finish:true});
   $("bar").style.width="100%";
   show("v-result");
@@ -328,11 +268,6 @@ async function send(data){
 }
 $("retry").addEventListener('click',()=>send(st.payload));
 
-$("copy").addEventListener("click",async()=>{
-  try{ await navigator.clipboard.writeText(st.text); $("copy").textContent="Copiado"; }
-  catch(e){ const t=document.createElement("textarea"); t.value=st.text; document.body.append(t); t.select(); try{document.execCommand("copy"); $("copy").textContent="Copiado";}catch(_){ } t.remove(); }
-  setTimeout(()=>{$("copy").textContent="Copiar resultado";},2000);
-});
 </script>
 </body>
 </html>
