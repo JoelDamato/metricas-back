@@ -17,6 +17,7 @@ test('GHL leads: transacción, protección histórica, fórmulas, conciliación,
   await db.exec(runtime.slice(0,runtime.indexOf('create or replace function public.metricas_comprobantes_write_v2'))+'commit;');
   await db.exec(migration);
   await db.exec(fs.readFileSync('supabase/migrations/20261010130000_preserve_crm_opening_balances.sql','utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/20261013160000_leads_commercial_financial_review.sql','utf8'));
   const ingest=async(payload,options={})=>{
    const mapped=mapGhlLead(payload);const id=options.id||`00000000-0000-4000-8000-${String(++sequence).padStart(12,'0')}`;
    return (await db.query('select metricas_leads_ghl_ingest($1,$2,$3,$4,$5,$6,$7,$8) as result',[id,payload.contact_id,options.location||'WU2z8kl23Dr3IyBW1hv5',JSON.stringify(payload),JSON.stringify({...mapped.patch,...options.patch}),JSON.stringify(mapped.fields),JSON.stringify(mapped.warnings),mapped.sourceUpdatedAt])).rows[0].result;
@@ -62,6 +63,31 @@ test('GHL leads: transacción, protección histórica, fórmulas, conciliación,
   assert.equal((await row('opening')).u_product_adquirido,'Meg 1.0');assert.equal((await row('opening')).fecha_venta,'2025-01-01');
   await db.exec("insert into comprobantes(id,ghlid,tipo,estado,facturacion,cash_collected) values('opening-new','opening','Venta','Conciliado',500,500)");
   assert.equal(Number((await row('opening')).facturacion_total),1500);assert.equal(Number((await row('opening')).cash_collected_total),1500);
+  // Legacy financial discrepancies must not stop commercial GHL updates.
+  for(const [key,fact,cash] of [['overpaid',1500,1501],['large-overpaid',2000,3483]]){
+   await db.query('insert into leads_raw(id,ghlid,nombre,facturacion_total,cash_collected_total,saldo,monto_incobrable) values($1,$1,$2,$3,$4,$5,7)',[key,'Anterior',fact,cash,fact-cash]);
+   const result=await ingest({contact_id:key,full_name:'Actualizado','Agendo':'Agendo','Fecha de agendamiento':'13/10/2026','Primer origen':'VSL','Origen Actual':'RT',facturacion_total:99999,cash_collected_total:99999,saldo:0});
+   assert.equal(result.status,'updated');assert.equal(result.leadWritten,true);assert(result.warnings.some(w=>w.reason==='supabase_financial_review_pending'));
+   let a=await row(key);assert.equal(a.nombre,'Actualizado');assert.equal(a.primer_origen,'VSL');assert.equal(a.origen_actual,'RT');assert.equal(a.agendo,'Agendo');assert(a.fecha_agenda.toISOString().startsWith('2026-10-13'));assert.equal(a.etapa,'Agendo');
+   assert.equal(Number(a.facturacion_total),fact);assert.equal(Number(a.cash_collected_total),cash);assert.equal(Number(a.saldo),fact-cash);assert.equal(Number(a.monto_incobrable),7);assert.equal(a.extra.ghl_financial_review.status,'pending');assert.equal(a.extra.ghl_opening_balance,undefined);assert.equal(a.extra.ghl_receipts_managed,undefined);
+   const firstSeen=a.extra.ghl_financial_review.first_seen;await ingest({contact_id:key,full_name:'Otro nombre'});a=await row(key);assert.equal(a.nombre,'Otro nombre');assert.equal(a.extra.ghl_financial_review.first_seen,firstSeen);assert.equal(Number(a.saldo),fact-cash);
+   const event=(await db.query('select warnings,after_row from leads_ghl_events where id=$1',[result.receiptId])).rows[0];assert(event.warnings.some(w=>w.reason==='supabase_financial_review_pending'));assert.equal(event.after_row.cash_collected_total,cash);
+   // The relaxed check must not leak into later receipt writes or other callers.
+   await assert.rejects(db.query('select leads_ghl_derive(l) from leads_raw l where ghlid=$1',[key]),/totales históricos/);
+  }
+  // IVA conflict preserves exact historic totals; commercial updates still work.
+  await db.exec("insert into leads_raw(id,ghlid,nombre,facturacion_total,cash_collected_total,saldo) values('iva-history','iva-history','Anterior',3550.355,3549.99,0.01);insert into comprobantes(id,ghlid,tipo,estado,facturacion,cash_collected,iva,tc) values('iva-h-sale','iva-history','Venta','Conciliado',3550,330.57,0,1415),('iva-h-pay','iva-history','Cobranza','Conciliado',0,3219.42,790620.37,1415)");
+  assert.equal((await ingest({contact_id:'iva-history',full_name:'Actualizado IVA'})).leadWritten,true);const iv=await row('iva-history');assert.equal(Number(iv.facturacion_total),3550.355);assert.equal(Number(iv.cash_collected_total),3549.99);assert.equal(Number(iv.saldo),0.01);assert.equal(iv.extra.ghl_financial_review.status,'pending');
+  await assert.rejects(db.exec("insert into comprobantes(id,ghlid,tipo,estado,cash_collected) values('blocked-pay','iva-history','Cobranza','Conciliado',10)"),/totales históricos/);
+  assert.equal((await db.query("select count(*) from comprobantes where id='blocked-pay'")).rows[0].count,0);
+  assert.equal((await db.query('select metricas_leads_ghl_refresh_aging() n')).rows[0].n>=0,true);
+  // A clean new lead's first sale/collection continues to derive from Supabase.
+  await ingest({contact_id:'fresh-finances',full_name:'Nuevo con pagos',facturacion_total:999});
+  await db.exec("insert into comprobantes(id,ghlid,tipo,estado,facturacion,cash_collected,iva,tc) values('fresh-sale','fresh-finances','Venta','No conciliado',1000,605,10500,100)");
+  assert.equal(Number((await row('fresh-finances')).saldo),1000);
+  await db.exec("update comprobantes set estado='Conciliado' where id='fresh-sale'");
+  await ingest({contact_id:'fresh-finances',full_name:'Nuevo editado','Origen Actual':'RT',cash_collected_total:50000});
+  const fresh=await row('fresh-finances');assert.equal(fresh.nombre,'Nuevo editado');assert.equal(Number(fresh.facturacion_total),1000);assert.equal(Number(fresh.cash_collected_total),500);assert.equal(Number(fresh.saldo),500);assert.equal(fresh.extra.ghl_financial_review,undefined);
   // A pre-existing duplicate is captured for review, never guessed or merged automatically.
   await db.exec("insert into leads_raw(id,ghlid,nombre) values('dup1','dupe','A'),('dup2','dupe','B')");assert.equal((await ingest({contact_id:'dupe',full_name:'No elegir'})).status,'needs_review');
   assert.equal((await ingest({contact_id:'wrong',full_name:'Wrong'},{location:'another-location'})).status,'needs_review');
