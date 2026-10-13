@@ -16,7 +16,11 @@ test('branded missing pages and training aliases preserve authorization and API 
   const alias=await get('/entrenamiento.html?from=dashboard');assert.equal(alias.status,302);assert.equal(alias.headers.get('location'),'/views/entrenamiento.html?from=dashboard');
   for(const email of ['matirandazzo@gmail.com','leonardoalaniz19@gmail.com']){assert.equal((await get('/views/entrenamiento.html',email)).status,200);assert.equal((await get('/api/metricas/training',email)).status,200);}
   assert.equal((await get('/views/entrenamiento.html')).headers.get('location'),'/login.html');
-  assert.equal((await get('/views/entrenamiento.html','walteralegre56@gmail.com')).headers.get('location'),'/unauthorized.html');
+  assert.equal((await get('/views/entrenamiento.html','walteralegre56@gmail.com')).status,200);
+  assert.equal((await get('/views/entrenamiento-disc.html','walteralegre56@gmail.com')).headers.get('location'),'/unauthorized.html');
+  assert.equal((await get('/views/guion-meg.html','walteralegre56@gmail.com')).status,200);
+  assert.equal((await get('/views/guion-meg.html')).headers.get('location'),'/login.html');
+  assert.equal((await get('/views/entrenamiento-disc.html','matirandazzo@gmail.com')).status,200);
   assert.equal((await get('/api/metricas/training','walteralegre56@gmail.com')).status,403);
   assert.equal((await get('/api/metricas/training')).status,401);
   const denied=await get('/unauthorized.html');assert.equal(denied.status,403);assert.match(await denied.text(),/Cambiar de cuenta/);

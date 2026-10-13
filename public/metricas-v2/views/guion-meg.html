@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guion + Auditoría + Manual MEG</title>
+<link rel="stylesheet" href="/css/styles.css?v=20261009-release-1">
+<style>
+:root{
+  --bg:#f5f7fb; --card:#ffffff; --text:#172033; --muted:#667085; --line:#e5e7eb;
+  --accent:#2f6fed; --soft:#eef4ff; --ok:#0f9d58; --warn:#d97706; --bad:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:1100px;margin:auto;padding:24px}
+.hero{background:linear-gradient(135deg,#172033,#2f6fed);color:#fff;border-radius:22px;padding:28px;margin-bottom:18px}
+.hero h1{margin:0 0 8px;font-size:30px}.hero p{margin:0;color:#e7ecf7}
+.tabs{display:flex;gap:8px;background:#fff;padding:8px;border-radius:16px;position:sticky;top:8px;z-index:10;box-shadow:0 8px 30px rgba(0,0,0,.06);margin-bottom:18px}
+.tab{flex:1;border:0;background:transparent;padding:14px 12px;border-radius:12px;font-weight:800;cursor:pointer;color:var(--muted)}
+.tab.active{background:var(--accent);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px}
+.card h2{margin:0 0 8px;font-size:20px}.card h3{margin:16px 0 8px;font-size:15px}
+.small{color:var(--muted);font-size:14px}
+.say{background:var(--soft);border-left:4px solid var(--accent);padding:12px 14px;border-radius:10px;margin:8px 0;font-weight:700}
+.listen{background:#f9fafb;border:1px dashed var(--line);padding:11px 13px;border-radius:10px}
+.branch{padding:10px 12px;background:#fff8ed;border-left:4px solid var(--warn);border-radius:10px;margin:8px 0}
+.gate{padding:10px 12px;background:#edf9f1;border-left:4px solid var(--ok);border-radius:10px;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:760px){.wrap{padding:12px}.hero{padding:20px}.hero h1{font-size:24px}.grid{grid-template-columns:1fr}.tabs{top:4px}}
+.checkitem{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.checkitem:last-child{border-bottom:0}
+.options{display:flex;gap:6px;flex-wrap:wrap}
+.options label{font-size:12px;font-weight:700;padding:7px 9px;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:#fff}
+input[type=radio]{display:none}
+input[type=radio]:checked + span{color:#fff}
+label.yes:has(input:checked){background:var(--ok);color:#fff}
+label.partial:has(input:checked){background:var(--warn);color:#fff}
+label.no:has(input:checked){background:var(--bad);color:#fff}
+.scorebox{background:#101828;color:#fff;border-radius:18px;padding:18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.score{font-size:34px;font-weight:900}
+textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit}
+button.action{border:0;background:var(--accent);color:#fff;padding:11px 14px;border-radius:10px;font-weight:800;cursor:pointer}
+button.secondary{background:#fff;color:var(--text);border:1px solid var(--line)}
+.pill{display:inline-block;padding:6px 9px;border-radius:999px;background:#eef2f7;color:#344054;font-size:12px;font-weight:800}
+ul{margin-top:8px;padding-left:20px}
+.manual-content h1{font-size:30px;margin:0 0 16px}
+.manual-content h2{font-size:23px;margin:28px 0 10px}
+.manual-content h3{font-size:17px;margin:20px 0 8px}
+.manual-content h4{font-size:15px;margin:16px 0 6px}
+.manual-content p{line-height:1.65;margin:8px 0}
+.manual-callout{background:var(--soft);border-left:4px solid var(--accent);padding:12px 14px;border-radius:10px;margin:10px 0;font-weight:700}
+.manual-bullet{padding:4px 0 4px 14px;line-height:1.5}
+.tablewrap{overflow:auto;margin:14px 0}
+.manual-table{width:100%;border-collapse:collapse;background:#fff}
+.manual-table th,.manual-table td{border:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}
+.manual-table th{background:#eef2f7}
+.footer{color:var(--muted);font-size:12px;text-align:center;padding:24px}
+@media(max-width:760px){.tabs{flex-wrap:wrap;position:static}.tab{flex:1 1 90px;font-size:12px;padding:12px 8px}.checkitem{grid-template-columns:1fr}.wrap,.card,.manual-content{min-width:0}.tablewrap{max-width:100%}.manual-content{overflow-wrap:anywhere}}
+</style>
+</head>
+<body>
+<div class="wrap"><a href="/views/entrenamiento.html" style="display:inline-block;margin-bottom:20px;color:#2f6fed;font-weight:700">← Volver a Capacitaciones</a>
+  <div class="hero">
+    <div class="pill">Equipo Comercial · MEG</div>
+    <h1>Guion + Auditoría de llamadas</h1>
+    <p>Una sola herramienta con el guion operativo, el checklist de auditoría y el manual completo del proceso comercial.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="guion">1. Guion de llamada</button>
+    <button class="tab" data-tab="auditoria">2. Checklist de auditoría</button>
+    <button class="tab" data-tab="manual">3. Manual completo</button>
+  </div>
+
+  <section id="guion" class="panel active">
+    <div class="card">
+      <h2>Cómo usar este guion</h2>
+      <p class="small">No es para leerlo como robot. Es para asegurarte de no saltear etapas y de llegar al precio con el prospecto ya convencido del problema, la prioridad y la solución.</p>
+      <div class="gate"><b>Regla:</b> no presentar el programa hasta poder completar: “Este cliente está hoy en ___, le duele ___, quiere llegar a ___, necesita resolverlo ahora porque ___ y necesita ver ___ para comprar”.</div>
+    </div>
+
+    <div class="card"><h2>1. Apertura + rapport</h2>
+      <div class="say">“Hola [Nombre], ¿cómo estás? Un placer tenerte por acá. ¿Desde dónde me estás hablando?”</div>
+      <div class="say">“Vi que se dedican a [actividad], ¿correcto?”</div>
+      <h3>Escuchar</h3><div class="listen">Quién decide, contexto básico, nivel de apertura.</div>
+      <div class="gate"><b>No avanzar hasta:</b> generar una mínima conexión y saber con quién estás hablando.</div>
+    </div>
+
+    <div class="card"><h2>2. Encuadre de la llamada</h2>
+      <div class="say">“El objetivo de esta reunión es conocerte, entender tu negocio, tu situación actual y qué estás buscando resolver. Si veo que podemos ayudarte, te voy a explicar cómo trabajamos y, si para vos también tiene sentido, vemos cómo avanzar hoy. ¿Te parece?”</div>
+      <div class="gate"><b>No avanzar hasta:</b> que acepte el marco de diagnóstico + posible propuesta.</div>
+    </div>
+
+    <div class="card"><h2>3. Situación actual</h2>
+      <div class="say">“Contame un poco de tu situación actual. ¿Cómo funciona hoy tu negocio?”</div>
+      <div class="say">“¿Por qué estás hoy acá?”</div>
+      <div class="branch"><b>Si responde muy general:</b> “¿Y en concreto qué es lo que más te preocupa hoy?”</div>
+      <div class="branch"><b>Si se va por las ramas:</b> “Perfecto. Y hoy, puntualmente, ¿qué sentís que está faltando?”</div>
+    </div>
+
+    <div class="card"><h2>4. Problema puntual</h2>
+      <div class="say">“¿Qué sentís que te está faltando hoy?”</div>
+      <div class="say">“¿Qué no está funcionando como debería?”</div>
+      <div class="say">“¿Hubo algún punto de quiebre que te haya hecho decir ‘esto lo tengo que resolver’?”</div>
+      <div class="branch"><b>Si da varios problemas:</b> “De todo eso, ¿qué necesitás resolver primero?”</div>
+      <div class="gate"><b>No avanzar hasta:</b> identificar un problema principal.</div>
+    </div>
+
+    <div class="card"><h2>5. Impacto</h2>
+      <div class="say">“¿Qué te genera hoy estar manejándote de esta forma?”</div>
+      <div class="say">“¿Cómo te impacta no tener claridad sobre esto?”</div>
+      <div class="say">“¿Qué consecuencias te está trayendo?”</div>
+      <div class="gate"><b>No avanzar hasta:</b> que el cliente reconozca una consecuencia concreta.</div>
+    </div>
+
+    <div class="card"><h2>6. Cualificación operativa + números</h2><p class="small"><b>Esta parte se hace al principio de la cualificación.</b> Antes de profundizar en rentabilidad, dolores o presentar el programa, hay que validar que el negocio tenga una base mínima de información registrada.</p><div class="gate"><b>Filtro de aplicación:</b> si el negocio no usa sistema de gestión, Excel o algún registro ordenado y confiable de ventas y compras, y lleva la información de forma informal o solo en papel, el lead prácticamente no aplica. Primero necesita ordenar el registro de información.</div><h3>6.1. Registro de ventas</h3><div class="say">“Antes de avanzar con los números, quiero entender qué tan ordenada tienen hoy la información del negocio. ¿Usan algún sistema de gestión para registrar las ventas?”</div><div class="branch"><b>Si responde NO:</b> “¿Lo llevan por Excel o tienen algún otro registro digital donde quede guardado el detalle de cada operación?”</div><div class="branch"><b>Si responde que solo lo llevan en papel o de memoria:</b> marcar como lead con baja aplicabilidad. No avanzar como si tuviera la información necesaria para implementar MEG.</div><div class="say">“Cuando hacen una venta, ¿queda registrado el detalle de cada producto vendido?”</div><div class="say">“¿Queda guardado el precio de venta, la cantidad y el total de la operación?”</div><div class="say">“¿También queda registrado cómo se pagó esa venta: efectivo, transferencia, tarjeta, Mercado Pago, etc.?”</div><div class="say">“¿Cada ticket o factura queda correctamente guardado en el sistema?”</div><h3>6.2. Registro de compras</h3><div class="say">“¿Y las compras cómo las registran? ¿También por sistema o las llevan por Excel?”</div><div class="say">“¿Queda registrado qué producto compraron?”</div><div class="say">“¿A qué precio lo compraron?”</div><div class="say">“¿Qué cantidad compraron?”</div><div class="say">“¿Y cómo pagaron esa compra: contado, transferencia, tarjeta, cheque, cuenta corriente, etc.?”</div><h3>6.3. Validación de la base de información</h3><div class="say">“Entonces, hoy por hoy, ¿tienen registradas todas las ventas y todas las compras con el detalle suficiente como para después analizar costos, márgenes y rentabilidad?”</div><div class="gate"><b>No avanzar hasta:</b> confirmar que la información existe, está razonablemente ordenada y puede extraerse del sistema o de Excel.</div><h3>6.4. Números generales del negocio</h3><div class="grid"><div class="say">“¿Cuál es tu facturación mensual promedio?”</div><div class="say">“¿Cuáles son tus costos fijos?”</div><div class="say">“¿Conocés tu markup promedio?”</div><div class="say">“¿Conocés tu rentabilidad real?”</div><div class="say">“¿Cuántas personas trabajan hoy en el negocio?”</div><div class="say">“¿Tenés separadas las finanzas personales de las del negocio?”</div></div></div><div class="card"><h2>7. Costo de no actuar</h2>
+      <div class="say">“Si no hacés nada y seguís exactamente como estás hoy, ¿cómo te ves de acá a 6 o 12 meses?”</div>
+      <div class="say">“¿Qué podría pasar si este problema acompaña el crecimiento del negocio?”</div>
+    </div>
+
+    <div class="card"><h2>8. Prioridad</h2>
+      <div class="say">“¿Esto es algo importante y prioritario resolver ahora o podría seguir esperando?”</div>
+      <div class="gate"><b>Clave:</b> esta pregunta anticipa la objeción “lo veo más adelante”.</div>
+    </div>
+
+    <div class="card"><h2>9. Objetivo deseado</h2>
+      <div class="say">“¿Qué te gustaría lograr?”</div>
+      <div class="say">“¿Cómo te gustaría estar de acá a seis meses?”</div>
+      <div class="say">“Si esto estuviera resuelto, ¿qué cambiaría concretamente para vos y para el negocio?”</div>
+    </div>
+
+    <div class="card"><h2>10. Solución ideal</h2>
+      <div class="say">“¿Qué tendría que tener una solución para que digas ‘esto es exactamente lo que necesito’?”</div>
+      <div class="gate"><b>Importante:</b> anotar las palabras textuales. Después se usan en la presentación.</div>
+    </div>
+
+    <div class="card"><h2>11. Compromiso</h2>
+      <div class="say">“¿Estás dispuesto a sentarte, aprender e implementar?”</div>
+      <div class="say">“¿Cuánto tiempo real podrías dedicarle por día o por semana?”</div>
+    </div>
+
+    <div class="card"><h2>12. Predisposición a invertir</h2>
+      <div class="say">“Suponiendo que encontremos una solución que realmente resuelva esto, ¿tenés predisposición para invertir?”</div>
+      <div class="branch"><b>Si hay una limitación fuerte:</b> explorar rango o restricción antes de presentar una solución fuera de alcance.</div>
+    </div>
+
+    <div class="card"><h2>13. Presentación personalizada</h2>
+      <p><b>Fórmula:</b> Problema detectado → Herramienta → Beneficio específico.</p>
+      <div class="say">“Vos me dijiste que [problema]. Justamente por eso [herramienta del programa], para que puedas [beneficio].”</div>
+      <div class="branch"><b>No hacer:</b> listar todo el programa sin conectar con lo que el prospecto dijo.</div>
+    </div>
+
+    <div class="card"><h2>14. Microcierres</h2>
+      <div class="say">“¿Hasta acá se entiende?”</div>
+      <div class="say">“¿Esto es lo que estabas buscando?”</div>
+      <div class="say">“¿Ves cómo esto ataca lo que me comentaste antes?”</div>
+    </div>
+
+    <div class="card"><h2>15. Autoventa</h2>
+      <div class="say">“¿En qué creés que este programa te podría beneficiar?”</div>
+      <div class="gate"><b>Objetivo:</b> que el prospecto verbalice las razones para comprar.</div>
+    </div>
+
+    <div class="card"><h2>16. Transición al cierre</h2>
+      <div class="say">“¿Sentís que esto puede llevarte de donde estás hoy al resultado que me dijiste que querés conseguir?”</div>
+      <div class="say">“¿Te parece que tendría sentido avanzar?”</div>
+    </div>
+
+    <div class="card"><h2>17. Precio + cierre</h2>
+      <div class="say">“La inversión es de X.”</div>
+      <div class="say">“¿Cómo lo ves?”</div>
+      <div class="say">“¿Cómo te gustaría avanzar?”</div>
+    </div>
+
+    <div class="card"><h2>18. Aislar la objeción</h2>
+      <div class="say">“Para entenderte bien: ¿hay algo del programa que no te cierre o sentís que esto es lo que necesitás y el problema es solamente cómo afrontar la inversión?”</div>
+      <div class="branch"><b>Si el programa no cierra:</b> volver a la duda específica.</div>
+      <div class="branch"><b>Si solo es dinero:</b> no volver a vender. Pasar a estructura de pago.</div>
+    </div>
+
+    <div class="card"><h2>19. Negociación</h2>
+      <div class="say">“¿Cómo podrías afrontar una inversión así sin desordenarte?”</div>
+      <div class="say">“¿Qué forma de pago te quedaría más cómoda?”</div>
+      <div class="say">“¿Qué monto podrías afrontar hoy?”</div>
+    </div>
+
+    <div class="card"><h2>20. Cierre condicional</h2>
+      <div class="say">“Si yo consigo X, ¿vos avanzarías hoy?”</div>
+      <div class="say">“Si logramos hacerlo en dos pagos, ¿ingresarías hoy mismo?”</div>
+      <div class="gate"><b>Regla:</b> conseguir compromiso antes de pedir una excepción o bonificación.</div>
+    </div>
+
+    <div class="card"><h2>21. Cierre operativo</h2>
+      <ul>
+        <li>Confirmar modalidad.</li><li>Enviar alias / cuenta.</li><li>Transferencia o seña.</li>
+        <li>Comprobante.</li><li>DNI / CUIT.</li><li>Contrato.</li><li>Onboarding.</li><li>Primera sesión 1 a 1.</li>
+      </ul>
+      <div class="gate"><b>Una venta no está cerrada</b> hasta que existe una acción concreta.</div>
+    </div>
+  </section>
+
+  <section id="auditoria" class="panel">
+    <div class="scorebox">
+      <div><b>Puntaje de cumplimiento</b><div class="small" style="color:#cfd5df">Sí = 2 · Parcial = 1 · No = 0</div></div>
+      <div class="score" id="score">0%</div>
+    </div>
+
+    <div class="card">
+      <h2>Checklist de auditoría</h2>
+      <p class="small">Marcá cada punto al revisar la transcripción. Los ítems con ★ son críticos.</p>
+      <div id="checks"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lectura del resultado</h2>
+      <div class="grid">
+        <div class="gate"><b>90–100%</b><br>Muy bien ejecutado.</div>
+        <div class="gate"><b>80–89%</b><br>Buena llamada, con ajustes puntuales.</div>
+        <div class="branch"><b>70–79%</b><br>Ejecución irregular.</div>
+        <div class="branch" style="border-left-color:var(--bad);background:#fff1f2"><b>&lt;70%</b><br>No está replicando correctamente el proceso.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Notas del feedback</h2>
+      <textarea id="notes" placeholder="Fortalezas, puntos a corregir, preguntas omitidas, objeciones mal trabajadas..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="action" onclick="copySummary()">Copiar resumen</button>
+        <button class="action secondary" onclick="resetAudit()">Reiniciar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Preguntas críticas</h2>
+      <ul>
+        <li>★ Detectó el problema principal.</li>
+        <li>★ Profundizó impacto.</li>
+        <li>★ Preguntó prioridad.</li>
+        <li>★ Trabajó costo de no actuar.</li>
+        <li>★ Definió resultado deseado.</li>
+        <li>★ Validó encaje antes del precio.</li>
+        <li>★ Aisló la objeción.</li>
+        <li>★ Hizo un cierre concreto.</li>
+      </ul>
+      <p class="small">Aunque el porcentaje total sea alto, omitir varios puntos críticos debería considerarse una llamada a corregir.</p>
+    </div>
+  </section>
+
+
+  <section id="manual" class="panel">
+    <div class="card manual-content">
+      <p>GUION MAESTRO DE VENTAS</p>
+<p>Método Acelerador de Ganancias</p>
+<p>Estructura, preguntas clave, condimentos de cierre y proceso replicable para el equipo comercial</p>
+<p>Basado en el análisis comparado de llamadas cerradas de Federico Zeballos, Sebastián/Daniela y Lisdrelyz/Jonathan.</p>
+<h2>1. Objetivo del documento</h2>
+<p>El objetivo de este manual es transformar los patrones que funcionaron en llamadas de venta reales en un proceso que pueda ser replicado por otros vendedores. No busca convertir la conversación en un interrogatorio rígido. Busca darle al closer una estructura clara para diagnosticar, generar conciencia, presentar de forma personalizada y cerrar.</p>
+<p>La idea central que aparece en las ventas analizadas es simple: el cierre no empieza cuando se dice el precio. Empieza mucho antes, cuando el prospecto verbaliza su problema, reconoce el impacto, acepta que es prioritario, define qué quiere lograr y confirma que la solución presentada coincide con lo que necesita.</p>
+<h2>2. Estructura general de la llamada</h2>
+<div class="manual-bullet">Apertura + rapport + encuadre de la llamada</div>
+<div class="manual-bullet">Situación actual y motivo de consulta</div>
+<div class="manual-bullet">Diagnóstico del problema</div>
+<div class="manual-bullet">Impacto del problema</div>
+<div class="manual-bullet">Datos duros del negocio</div>
+<div class="manual-bullet">Urgencia y consecuencia de no actuar</div>
+<div class="manual-bullet">Objetivo deseado</div>
+<div class="manual-bullet">Solución ideal y criterios de compra</div>
+<div class="manual-bullet">Compromiso y capacidad de implementación</div>
+<div class="manual-bullet">Anticipación de objeciones</div>
+<div class="manual-bullet">Presentación personalizada del programa</div>
+<div class="manual-bullet">Microcierres y autoargumentación del prospecto</div>
+<div class="manual-bullet">Transición al cierre</div>
+<div class="manual-bullet">Presentación de la inversión</div>
+<div class="manual-bullet">Aislamiento de objeciones</div>
+<div class="manual-bullet">Negociación / forma de pago</div>
+<div class="manual-bullet">Cierre operativo y onboarding</div>
+<h2>3. Principio rector</h2>
+<div class="manual-callout">SITUACIÓN → PROBLEMA → IMPACTO → PRIORIDAD → FUTURO → COMPROMISO → SOLUCIÓN → AUTOVENTA → INVERSIÓN → DECISIÓN → PAGO</div>
+<p>La presentación del programa debería comenzar recién cuando el closer puede completar mentalmente esta frase:</p>
+<div class="manual-callout">“Este cliente está hoy en ______, le duele ______, quiere llegar a ______, necesita resolverlo ahora porque ______ y para comprar necesita ver ______.”</div>
+<p>Si el vendedor todavía no puede completar esa frase, todavía no terminó la indagación.</p>
+<h2>4. Apertura + rapport + intención de la llamada</h2>
+<p>El rapport es breve. No se busca pasar diez o quince minutos hablando de temas personales. Se usa para bajar defensas, generar cercanía y luego encuadrar la conversación.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Desde dónde me estás hablando?</div>
+<div class="manual-bullet">• ¿En qué zona están?</div>
+<div class="manual-bullet">• Vi que se dedican a ______, ¿correcto?</div>
+<div class="manual-callout">Frame sugerido:
+“Soy [nombre], parte del equipo de Matías. La intención de esta reunión es conocerte, entender en profundidad tu negocio, tu situación actual y qué estás buscando resolver. Si veo que realmente podemos ayudarte, te voy a mostrar cómo trabajamos y, si para vos también tiene sentido, vemos cómo avanzar hoy. ¿Te parece?”</div>
+<h2>5. Situación actual y motivo de consulta</h2>
+<p>La primera fase de indagación busca que el prospecto cuente la historia con sus propias palabras. No conviene interrumpir demasiado: de esta respuesta suelen salir varios hilos que después se profundizan.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• Contame un poco de tu situación actual. ¿Por qué estás hoy acá?</div>
+<div class="manual-bullet">• Cuéntenme su modelo de negocio hoy y su situación actual.</div>
+<div class="manual-bullet">• ¿Cómo está funcionando hoy tu negocio?</div>
+<div class="manual-bullet">• ¿Qué te trae a esta reunión?</div>
+<div class="manual-callout">Clave: escuchar palabras textuales del prospecto. Después esas mismas palabras se reutilizan en la presentación y en el cierre.</div>
+<h2>6. Detectar el problema puntual</h2>
+<p>Después de entender el contexto general, el closer debe convertir una historia amplia en un problema específico. El cliente tiene que ponerle nombre al problema.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Qué sentís que te está faltando hoy?</div>
+<div class="manual-bullet">• ¿Qué les está haciendo falta en concreto?</div>
+<div class="manual-bullet">• ¿Qué problema puntual están buscando resolver?</div>
+<div class="manual-bullet">• ¿Hubo algún punto de quiebre que los haya hecho decir ‘tenemos que resolver esto’?</div>
+<div class="manual-callout">Ejemplos de problemas detectados en las llamadas: falta de claridad, desorden, incertidumbre sobre rentabilidad, precios, costos, flujo de caja, administración y toma de decisiones.</div>
+<h2>7. Impacto del problema</h2>
+<p>Este bloque lleva al prospecto desde el dato racional hacia la consecuencia real. No alcanza con saber que “faltan números”; hay que entender qué provoca esa falta de claridad.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Qué te genera hoy esta forma de manejarte?</div>
+<div class="manual-bullet">• ¿Cómo te impacta no tener claridad sobre esto?</div>
+<div class="manual-bullet">• ¿Qué consecuencias te está trayendo?</div>
+<div class="manual-bullet">• ¿Qué pasa en el negocio cuando llega una temporada baja o cuando tenés que tomar una decisión importante?</div>
+<div class="manual-callout">El objetivo no es dramatizar. Es lograr que el cliente explicite el costo de seguir operando de esa manera.</div>
+<h2>8. Datos duros del negocio</h2>
+<p><div class="manual-callout"><b>Filtro de aplicación operativa:</b> antes de profundizar en números, validar que el negocio use sistema de gestión, Excel o un registro digital consistente de ventas y compras. Si lleva todo de forma informal, solo en papel o de memoria, prácticamente no aplica todavía para MEG porque primero necesita ordenar la base de información.</div>En MEG la cualificación tiene una dimensión económica concreta. El closer necesita entender si el prospecto tiene información suficiente para trabajar, el tamaño del negocio y qué nivel de claridad real existe.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Cuál es tu facturación mensual promedio?</div>
+<div class="manual-bullet">• ¿Cuáles son hoy tus costos fijos?</div>
+<div class="manual-bullet">• ¿Llevás registrados costos y precios de venta?</div>
+<div class="manual-bullet">• ¿Dónde registrás la información?</div>
+<div class="manual-bullet">• ¿Conocés tu markup promedio?</div>
+<div class="manual-bullet">• ¿Conocés la rentabilidad real?</div>
+<div class="manual-bullet">• ¿Cuántas personas trabajan en el negocio?</div>
+<div class="manual-bullet">• ¿Tenés separadas las finanzas personales de las del negocio?</div>
+<div class="manual-callout">Cuando es posible, una auditoría express con números del prospecto aumenta mucho la percepción de valor porque deja de hablarse en abstracto.</div>
+<h2>9. Consecuencia de no actuar</h2>
+<p>Esta fase hace visible el costo futuro de mantener la situación actual.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• Si no hacés nada y seguís exactamente como estás hoy, ¿cómo te ves de acá a 6 o 12 meses?</div>
+<div class="manual-bullet">• Si siguen así, ¿qué creen que podría pasar?</div>
+<div class="manual-bullet">• ¿Qué pasa si este problema sigue acompañando el crecimiento del negocio?</div>
+<div class="manual-callout">Esta pregunta prepara la urgencia de manera orgánica: la necesidad de actuar surge del propio cliente.</div>
+<h2>10. Prioridad y urgencia</h2>
+<p>En las llamadas analizadas aparece casi con la misma formulación. Es una de las preguntas más repetibles del proceso.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Esto es algo importante y prioritario para resolver ahora o podría seguir esperando?</div>
+<div class="manual-bullet">• ¿Creés que esto es importante y prioritario resolver ahora y no postergarlo en el tiempo?</div>
+<div class="manual-bullet">• ¿Creen que esto es algo importante y prioritario de solucionar hoy?</div>
+<div class="manual-callout">Esta pregunta anticipa directamente la futura objeción “lo veo más adelante”.</div>
+<h2>11. Situación deseada</h2>
+<p>Después del dolor se trabaja el deseo. El vendedor necesita saber qué resultado quiere comprar el prospecto, no solamente qué problema quiere eliminar.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Qué te gustaría lograr?</div>
+<div class="manual-bullet">• ¿Cómo te gustaría estar de acá a seis meses?</div>
+<div class="manual-bullet">• ¿Cómo te gustaría ver a tus negocios de acá a tres, cuatro, cinco o seis meses?</div>
+<div class="manual-bullet">• Si esto estuviera resuelto, ¿qué cambiaría concretamente para vos y para el negocio?</div>
+<div class="manual-callout">El objetivo es definir un antes y un después que luego pueda conectarse con la propuesta.</div>
+<h2>12. La pregunta “¿qué tendría que tener?”</h2>
+<p>Esta pregunta es especialmente potente porque hace que el cliente entregue sus propios criterios de compra.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Qué tendría que tener el programa para que digas: ‘esto es lo que necesito’?</div>
+<div class="manual-bullet">• ¿Qué debería tener una solución para que digas: ‘avancemos ya’?</div>
+<div class="manual-bullet">• Con todo lo que hablamos, ¿qué necesitás ver sí o sí para sentir que esto vale la pena?</div>
+<div class="manual-callout">El closer debe anotar las palabras exactas. Si el prospecto dice “claridad, acompañamiento y saber dónde estoy parado”, la presentación debe usar esas mismas palabras.</div>
+<h2>13. Compromiso y capacidad de implementación</h2>
+<p>Antes de vender el programa, Patricia valida que el prospecto esté dispuesto a hacer su parte. Esto previene la objeción de tiempo y cualifica al cliente.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Está tu voluntad como para aplicar un programa así?</div>
+<div class="manual-bullet">• ¿Estás dispuesto a sentarte, aprender e implementar?</div>
+<div class="manual-bullet">• ¿Cuánto tiempo real podrías dedicarle por día o por semana?</div>
+<div class="manual-callout">Mensaje central: el equipo pone el 100%, pero el cliente también tiene que poner el 100%.</div>
+<h2>14. Anticipación de objeciones económicas</h2>
+<p>En la tercera venta aparece muy claramente una exploración previa de capacidad de inversión. Esto evita descubrir al final que el prospecto estaba totalmente fuera de rango.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• Si encontramos una solución que realmente resuelva esto, ¿tenés predisposición para invertir?</div>
+<div class="manual-bullet">• ¿Hay algún rango de inversión que hoy sepan que sería directamente inviable?</div>
+<div class="manual-bullet">• Si la solución te cierra, ¿estás dispuesto a buscar la forma de implementarla?</div>
+<div class="manual-callout">No se trata de negociar antes de tiempo. Se trata de calificar y conocer la realidad económica antes de hacer una presentación larga.</div>
+<h2>15. Confianza y autoridad</h2>
+<p>En leads fríos, conviene validar por qué confiaron en Matías o qué vieron que les generó credibilidad.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Qué fue lo que vieron de Matías que les hizo querer tener esta reunión?</div>
+<div class="manual-bullet">• ¿Les resultó confiable su forma de explicar?</div>
+<div class="manual-bullet">• ¿Qué les llamó la atención de lo que vieron hasta ahora?</div>
+<div class="manual-callout">Esto permite entender cuánto trabajo de construcción de autoridad necesita la presentación.</div>
+<h2>16. Presentación personalizada</h2>
+<p>La presentación no debería ser genérica. Cada parte del programa debe vincularse con algo que el prospecto ya dijo.</p>
+<div class="manual-callout">Fórmula:
+PROBLEMA DETECTADO → HERRAMIENTA / COMPONENTE → BENEFICIO ESPECÍFICO.
+
+Ejemplo:
+“Vos me dijiste que información tenés, pero que te cuesta bajarla y aplicarla. Justamente por eso tenés sesiones uno a uno: para llevar todo esto a tu negocio con alguien del equipo.”</div>
+<h2>17. Microcierres durante la presentación</h2>
+<p>En vez de esperar al final para descubrir si la propuesta cerró, se chequea temperatura durante el recorrido.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Hasta acá se entiende?</div>
+<div class="manual-bullet">• ¿Esto es lo que estabas buscando?</div>
+<div class="manual-bullet">• ¿Ven cómo esto ataca lo que me comentaron antes?</div>
+<div class="manual-bullet">• ¿Les hace sentido esta parte?</div>
+<div class="manual-callout">Los microcierres permiten corregir una duda antes de llegar al precio.</div>
+<h2>18. Autoventa del prospecto</h2>
+<p>Uno de los patrones más importantes: Patricia hace que el cliente explique por qué el programa le serviría.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿En qué creés que este programa te podría beneficiar?</div>
+<div class="manual-bullet">• ¿En qué creen ustedes que el MEC los podría beneficiar?</div>
+<div class="manual-bullet">• ¿Dónde ves que esto podría ayudarte más?</div>
+<div class="manual-callout">En lugar de que el closer siga justificando la compra, el propio cliente verbaliza las razones para avanzar.</div>
+<h2>19. Transición al cierre</h2>
+<p>Después de presentar, se valida si el prospecto ve el puente entre su situación actual y el resultado deseado.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Llegás a ver cómo este programa te puede llevar por ese camino?</div>
+<div class="manual-bullet">• ¿Sentís que esto puede llevarte de donde estás hoy al resultado que me dijiste que querés conseguir?</div>
+<div class="manual-bullet">• ¿Te parece que tendría sentido avanzar?</div>
+<div class="manual-callout">Solo después de esta validación conviene entrar en la inversión.</div>
+<h2>20. Presentación del precio</h2>
+<p>El precio se presenta después de haber trabajado problema, prioridad, objetivo, solución y encaje.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• El valor de inversión es X.</div>
+<div class="manual-bullet">• ¿Cómo lo ves?</div>
+<div class="manual-bullet">• ¿Cómo te gustaría avanzar?</div>
+<div class="manual-callout">La pregunta “¿cómo te gustaría avanzar?” aparece como una transición natural hacia decisión y modalidad.</div>
+<h2>21. Aislamiento de objeciones</h2>
+<p>Cuando aparece “lo tengo que pensar” o una dificultad de pago, primero se determina si el problema es el producto o únicamente la forma de financiarlo.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Hay algo del programa que no te cierre?</div>
+<div class="manual-bullet">• ¿Sentís que esto es lo que necesitás?</div>
+<div class="manual-bullet">• ¿El único inconveniente hoy es la inversión?</div>
+<div class="manual-bullet">• Para entenderte bien: ¿hay algo de la propuesta que no te convenza o el problema es solamente cómo afrontarla?</div>
+<div class="manual-callout">No conviene volver a vender el programa si el cliente ya dijo que lo quiere. Hay que resolver la objeción real.</div>
+<h2>22. Negociación y forma de pago</h2>
+<p>Una vez aislada la objeción económica, se investiga cómo podría estructurarse la compra sin desordenar al cliente.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• ¿Cómo podrías afrontar una inversión así?</div>
+<div class="manual-bullet">• ¿Qué forma de pago te quedaría más cómoda?</div>
+<div class="manual-bullet">• ¿Qué monto podrías afrontar hoy sin ahogarte?</div>
+<div class="manual-callout">El closer no debería ofrecer automáticamente todas las opciones. Primero debe escuchar cómo el cliente podría resolverlo.</div>
+<h2>23. Cierre condicional</h2>
+<p>Es uno de los cierres más útiles que aparece en las ventas analizadas.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• Si logramos hacerlo en dos pagos, ¿avanzarías hoy?</div>
+<div class="manual-bullet">• Si consigo que ingreses con X ahora y X en 30 días, ¿ingresarías hoy mismo?</div>
+<div class="manual-bullet">• Si yo consigo X, ¿vos harías Y?</div>
+<div class="manual-callout">Este cierre permite saber si la objeción económica es verdadera. Si el cliente acepta la condición, se resuelve. Si sigue dudando, todavía existe otra objeción.</div>
+<h2>24. Cierre operativo</h2>
+<p>Una vez tomada la decisión, la conversación cambia. Ya no se sigue vendiendo: se ejecuta.</p>
+<h3>Preguntas sugeridas</h3>
+<div class="manual-bullet">• Confirmar modalidad.</div>
+<div class="manual-bullet">• Enviar alias / datos de pago.</div>
+<div class="manual-bullet">• Solicitar transferencia o seña.</div>
+<div class="manual-bullet">• Recibir comprobante.</div>
+<div class="manual-bullet">• Solicitar DNI / CUIT.</div>
+<div class="manual-bullet">• Dar indicaciones de onboarding.</div>
+<div class="manual-bullet">• Explicar contrato, plataforma, sesión uno a uno y canales de soporte.</div>
+<div class="manual-callout">Una venta no está cerrada hasta que existe una acción concreta: pago, seña o paso operativo acordado.</div>
+<h2>25. Los condimentos que hicieron posible las ventas</h2>
+<div class="tablewrap"><table class="manual-table">
+<tr>
+<th>Condimento</th>
+<th>Cómo funciona</th>
+</tr>
+<tr>
+<td>Rapport breve</td>
+<td>Genera cercanía sin consumir tiempo innecesario.</td>
+</tr>
+<tr>
+<td>Frame de cierre desde el inicio</td>
+<td>El prospecto sabe que si hay encaje puede existir una propuesta y una decisión ese mismo día.</td>
+</tr>
+<tr>
+<td>Escucha activa</td>
+<td>El prospecto habla mucho durante la indagación y entrega información que después se usa para vender.</td>
+</tr>
+<tr>
+<td>Dolor + deseo</td>
+<td>No se trabaja solo lo que está mal; también se define qué quiere conseguir.</td>
+</tr>
+<tr>
+<td>Urgencia declarada por el cliente</td>
+<td>El prospecto reconoce que resolverlo es prioritario.</td>
+</tr>
+<tr>
+<td>Presentación personalizada</td>
+<td>Cada herramienta se conecta con un problema previamente verbalizado.</td>
+</tr>
+<tr>
+<td>Microcierres</td>
+<td>Se valida el encaje durante la presentación y no recién al final.</td>
+</tr>
+<tr>
+<td>Autoventa</td>
+<td>El cliente explica por qué el programa le serviría.</td>
+</tr>
+<tr>
+<td>Aislamiento de objeciones</td>
+<td>Se diferencia una objeción de producto de una objeción financiera.</td>
+</tr>
+<tr>
+<td>Cierre condicional</td>
+<td>Se consigue compromiso antes de gestionar una excepción o modalidad.</td>
+</tr>
+<tr>
+<td>Cierre operativo rápido</td>
+<td>Una vez que hay decisión, se pasa a pago, comprobante y onboarding.</td>
+</tr>
+</table></div>
+<h2>26. Preguntas obligatorias del guion</h2>
+<div class="manual-bullet">Contame un poco de tu situación actual. ¿Por qué estás hoy acá?</div>
+<div class="manual-bullet">¿Qué sentís que te está faltando hoy?</div>
+<div class="manual-bullet">¿Qué te genera manejarte de esta forma?</div>
+<div class="manual-bullet">¿Cuál es tu facturación mensual promedio?</div>
+<div class="manual-bullet">¿Conocés tu rentabilidad real?</div>
+<div class="manual-bullet">¿Esto es algo importante y prioritario resolver ahora o podría seguir esperando?</div>
+<div class="manual-bullet">Si no hacés nada y seguís igual, ¿cómo te ves de acá a 6 o 12 meses?</div>
+<div class="manual-bullet">¿Qué te gustaría lograr de acá a 6 meses?</div>
+<div class="manual-bullet">¿Qué tendría que tener una solución para que digas ‘esto es lo que necesito’?</div>
+<div class="manual-bullet">¿Estás dispuesto a implementar y dedicarle tiempo?</div>
+<div class="manual-bullet">Si encontramos una solución que realmente te cierre, ¿tenés predisposición para invertir?</div>
+<div class="manual-bullet">¿Esto es lo que estabas buscando?</div>
+<div class="manual-bullet">¿En qué creés que este programa te podría beneficiar?</div>
+<div class="manual-bullet">¿Sentís que esto puede llevarte al resultado que buscás?</div>
+<div class="manual-bullet">¿Cómo te gustaría avanzar?</div>
+<div class="manual-bullet">¿Hay algo del programa que no te cierre o el único problema es la inversión?</div>
+<div class="manual-bullet">¿Cómo podrías afrontar una inversión así?</div>
+<div class="manual-bullet">Si consigo X, ¿avanzarías hoy?</div>
+<h2>27. Guion maestro resumido para el closer</h2>
+<div class="tablewrap"><table class="manual-table">
+<tr>
+<th>Etapa</th>
+<th>Frase / acción</th>
+</tr>
+<tr>
+<td>1. RAPPORT</td>
+<td>“¿Desde dónde me hablás? ¿Cómo estás?”</td>
+</tr>
+<tr>
+<td>2. FRAME</td>
+<td>“Quiero conocer tu negocio, entender tu situación y ver si realmente podemos ayudarte.”</td>
+</tr>
+<tr>
+<td>3. SITUACIÓN</td>
+<td>“Contame cómo funciona hoy tu negocio.”</td>
+</tr>
+<tr>
+<td>4. MOTIVO</td>
+<td>“¿Por qué estás hoy acá?”</td>
+</tr>
+<tr>
+<td>5. PROBLEMA</td>
+<td>“¿Qué sentís que te está faltando?”</td>
+</tr>
+<tr>
+<td>6. IMPACTO</td>
+<td>“¿Qué te genera seguir manejándote así?”</td>
+</tr>
+<tr>
+<td>7. NÚMEROS</td>
+<td>“¿Cuánto facturás? ¿Conocés costos, márgenes y rentabilidad?”</td>
+</tr>
+<tr>
+<td>8. NO ACCIÓN</td>
+<td>“Si seguís igual 6 o 12 meses, ¿qué pasa?”</td>
+</tr>
+<tr>
+<td>9. PRIORIDAD</td>
+<td>“¿Esto es prioritario resolverlo ahora?”</td>
+</tr>
+<tr>
+<td>10. DESEO</td>
+<td>“¿Qué querés lograr?”</td>
+</tr>
+<tr>
+<td>11. SOLUCIÓN IDEAL</td>
+<td>“¿Qué tendría que tener una solución para que digas ‘esto es lo que necesito’?”</td>
+</tr>
+<tr>
+<td>12. COMPROMISO</td>
+<td>“¿Estás dispuesto a implementar?”</td>
+</tr>
+<tr>
+<td>13. INVERSIÓN</td>
+<td>“Si encontramos la solución adecuada, ¿estás dispuesto a invertir?”</td>
+</tr>
+<tr>
+<td>14. PRESENTACIÓN</td>
+<td>Mostrar únicamente lo relevante al diagnóstico.</td>
+</tr>
+<tr>
+<td>15. MICROCIERRE</td>
+<td>“¿Esto es lo que estabas buscando?”</td>
+</tr>
+<tr>
+<td>16. AUTOVENTA</td>
+<td>“¿En qué creés que esto te beneficiaría?”</td>
+</tr>
+<tr>
+<td>17. TRANSICIÓN</td>
+<td>“¿Ves cómo esto puede llevarte a donde querés?”</td>
+</tr>
+<tr>
+<td>18. PRECIO</td>
+<td>“La inversión es X.”</td>
+</tr>
+<tr>
+<td>19. CIERRE</td>
+<td>“¿Cómo te gustaría avanzar?”</td>
+</tr>
+<tr>
+<td>20. AISLAR OBJECIÓN</td>
+<td>“¿Hay algo que no te cierre o el único problema es cómo afrontar la inversión?”</td>
+</tr>
+<tr>
+<td>21. NEGOCIACIÓN</td>
+<td>“¿Cómo podrías afrontarlo?”</td>
+</tr>
+<tr>
+<td>22. CIERRE CONDICIONAL</td>
+<td>“Si consigo X, ¿avanzás hoy?”</td>
+</tr>
+<tr>
+<td>23. PAGO</td>
+<td>Alias → transferencia/seña → comprobante → onboarding.</td>
+</tr>
+</table></div>
+<h2>28. Lo que NO deberían hacer los closers</h2>
+<div class="manual-bullet">• Entrar a presentar demasiado rápido sin terminar el diagnóstico.</div>
+<div class="manual-bullet">• Hacer una presentación genérica de todas las funciones del programa.</div>
+<div class="manual-bullet">• Hablar más que el prospecto durante la etapa de indagación.</div>
+<div class="manual-bullet">• Intentar crear urgencia artificial sin que el cliente haya reconocido primero la prioridad.</div>
+<div class="manual-bullet">• Pelear una objeción de precio cuando el verdadero problema es confianza o encaje.</div>
+<div class="manual-bullet">• Volver a vender el programa cuando el cliente ya dijo que lo quiere y solo necesita resolver la modalidad de pago.</div>
+<div class="manual-bullet">• Ofrecer descuentos o financiación antes de saber si el cliente realmente avanzaría.</div>
+<div class="manual-bullet">• Terminar la llamada sin una acción concreta: pago, seña, fecha o siguiente paso definido.</div>
+<h2>29. La idea central para el equipo</h2>
+<div class="manual-callout">Patricia vende antes de decir el precio.</div>
+<p>Idealmente, cuando llega el momento de hablar de inversión, el prospecto ya dijo con sus propias palabras:</p>
+<div class="manual-bullet">• Tengo un problema.</div>
+<div class="manual-bullet">• Este problema me afecta.</div>
+<div class="manual-bullet">• No quiero seguir así.</div>
+<div class="manual-bullet">• Es prioritario resolverlo.</div>
+<div class="manual-bullet">• Quiero conseguir un resultado concreto.</div>
+<div class="manual-bullet">• Necesito una solución.</div>
+<div class="manual-bullet">• Lo que me mostraron coincide con lo que estaba buscando.</div>
+<div class="manual-bullet">• Creo que esto puede ayudarme.</div>
+<p>En ese punto el cierre deja de ser “convencer al cliente” y pasa a ser “encontrar la forma de implementar una decisión que el cliente ya tomó”.</p>
+<h2>30. Checklist previo a presentar precio</h2>
+<p>☐ ¿Sé cuál es el problema principal?</p>
+<p>☐ ¿Sé qué impacto tiene?</p>
+<p>☐ ¿El prospecto dijo que es prioritario?</p>
+<p>☐ ¿Sé qué resultado quiere?</p>
+<p>☐ ¿Sé qué necesita ver para comprar?</p>
+<p>☐ ¿Validé que está dispuesto a implementar?</p>
+<p>☐ ¿Validé predisposición a invertir?</p>
+<p>☐ ¿La presentación conectó directamente con su diagnóstico?</p>
+<p>☐ ¿El prospecto confirmó que es lo que estaba buscando?</p>
+<p>☐ ¿El prospecto explicó por qué le serviría?</p>
+    </div>
+  </section>
+
+  <div class="footer">Guion interno de ventas · Método Acelerador de Ganancias</div>
+</div>
+
+<script>
+const tabs=document.querySelectorAll('.tab');
+const panels=document.querySelectorAll('.panel');
+tabs.forEach(t=>t.onclick=()=>{
+  tabs.forEach(x=>x.classList.remove('active')); panels.forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); document.getElementById(t.dataset.tab).classList.add('active');
+  window.scrollTo({top:0,behavior:'instant'});
+});
+
+const items=[
+"Abrió con rapport breve y natural",
+"Explicó la intención de la llamada y dejó abierta una decisión hoy",
+"Entendió situación actual y modelo de negocio",
+"★ Detectó el problema principal",
+"★ Profundizó el impacto del problema",
+"Validó que exista un sistema o registro digital ordenado de ventas y compras",
+"Confirmó que ventas registren producto, precio, cantidad, total y medio de pago",
+"Confirmó que compras registren producto, precio, cantidad y forma de pago",
+"Pidió datos duros: facturación / costos / rentabilidad",
+"★ Trabajó el costo de no actuar a 6–12 meses",
+"★ Preguntó si era prioritario resolverlo ahora",
+"★ Definió el resultado deseado",
+"Preguntó qué tendría que tener una solución ideal",
+"Validó compromiso para implementar",
+"Validó predisposición a invertir",
+"Presentó solo lo relevante al diagnóstico",
+"Hizo microcierres durante la presentación",
+"Hizo que el prospecto explique cómo lo beneficiaría el programa",
+"★ Validó encaje antes de decir el precio",
+"Presentó el precio con claridad",
+"Preguntó cómo le gustaría avanzar",
+"★ Aisló la objeción real",
+"No volvió a vender si el problema era solo financiero",
+"Usó cierre condicional antes de ofrecer excepción",
+"★ Terminó con una acción concreta: pago / seña / próximo paso"
+];
+const checks=document.getElementById('checks');
+items.forEach((it,i)=>{
+  const div=document.createElement('div'); div.className='checkitem';
+  div.innerHTML=`<div><b>${i+1}.</b> ${it}</div>
+  <div class="options">
+    <label class="yes"><input type="radio" name="q${i}" value="2"><span>Sí</span></label>
+    <label class="partial"><input type="radio" name="q${i}" value="1"><span>Parcial</span></label>
+    <label class="no"><input type="radio" name="q${i}" value="0"><span>No</span></label>
+  </div>`;
+  checks.appendChild(div);
+});
+document.addEventListener('change',calc);
+function calc(){
+  let total=0,answered=0;
+  items.forEach((_,i)=>{
+    const r=document.querySelector(`input[name=q${i}]:checked`);
+    if(r){total+=Number(r.value);answered++}
+  });
+  const pct=answered?Math.round((total/(items.length*2))*100):0;
+  document.getElementById('score').textContent=pct+'%';
+}
+function resetAudit(){
+  document.querySelectorAll('input[type=radio]').forEach(x=>x.checked=false);
+  document.getElementById('notes').value=''; calc();
+}
+function copySummary(){
+  const score=document.getElementById('score').textContent;
+  let lines=[`AUDITORÍA DE LLAMADA — ${score}`,''];
+  items.forEach((it,i)=>{
+    const r=document.querySelector(`input[name=q${i}]:checked`);
+    lines.push(`${i+1}. ${it}: ${r ? (r.value==='2'?'Sí':r.value==='1'?'Parcial':'No') : 'Sin evaluar'}`);
+  });
+  lines.push('', 'NOTAS:', document.getElementById('notes').value||'-');
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>alert('Resumen copiado'));
+}
+</script>
+<script src="/js/auth-shell.js?v=20261013-training-1"></script>
+</body>
+</html>
