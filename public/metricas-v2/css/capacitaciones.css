@@ -3,3 +3,5 @@
 
 .class-body .class-material-summary{color:#b9d0f2;font-size:13px;line-height:1.6;margin-top:auto;margin-bottom:20px;padding:12px 14px;background:#172d4b;border-radius:10px}.class-material-summary strong{display:block;color:#e1edff;font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}.class-body .class-cta{margin-top:0}.lesson-materials .material-grid{grid-template-columns:1fr}.lesson-materials .lesson-materials-intro{margin:0 0 18px}.lesson-materials .material-card p{font-size:13px}.lesson-materials{scroll-margin-top:24px}
 @media(max-width:760px){.lesson-materials{scroll-margin-top:180px}}
+
+.lesson-task-link{margin-top:12px}

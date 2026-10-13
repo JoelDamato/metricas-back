@@ -1,6 +1,6 @@
 (() => {
   const classes = [
-    {id:1,materials:[],materialSummary:'Grabación y actividades de la clase',title:'Las bases de un profesional de ventas',video:'1S-P5zsDVw5jSFMvwBNJRovKrpKDQ8cuX',teaser:'Mentalidad profesional, reglas del equipo y una forma de vender que empieza por ayudar.',summary:'Capacitación intensiva sobre ventas y desarrollo profesional, con normas de trabajo y evaluación de habilidades.',topics:[
+    {id:1,materials:['contact'],materialSummary:'Grabación, actividades y registro de tus datos',title:'Las bases de un profesional de ventas',video:'1S-P5zsDVw5jSFMvwBNJRovKrpKDQ8cuX',teaser:'Mentalidad profesional, reglas del equipo y una forma de vender que empieza por ayudar.',summary:'Capacitación intensiva sobre ventas y desarrollo profesional, con normas de trabajo y evaluación de habilidades.',topics:[
       ['Inicio del programa y requisitos','Presentación del programa de capacitación y exigencias de imagen corporativa. Normas estrictas de puntualidad y condiciones técnicas.'],
       ['Asignación de tareas y penalizaciones','Clase grabada asignada y prohibición del uso de inteligencia artificial en las actividades. Sistema de penalizaciones y premios.'],
       ['Debate de ventas y cierre','Debate participativo sobre qué significa vender, rechazo de prácticas agresivas y expectativas de asistencia y desempeño.']
@@ -14,7 +14,7 @@
       ['El grupo · Tomar apuntes','Anotar en un cuaderno durante cada clase y usar las notas para preparar el examen final.'],
       ['El grupo · Reflexión personal','Determinar si comprarían sus propios servicios por USD 4.000. Escribir las razones y qué mejorarían para aumentar su valor profesional.'],
       ['El grupo · Subir apuntes','Registrar los puntos clave de la clase de 4 horas y subir el archivo de anotaciones a la carpeta compartida antes del viernes.'],
-      ['El grupo · Enviar contacto','Incluir WhatsApp y correo electrónico en el documento enviado para obtener acceso a los materiales de trabajo.'],
+      ['El grupo · Enviar contacto','Completá tu número de WhatsApp y correo electrónico en la planilla para obtener acceso a los materiales de trabajo.','contact'],
       ['El grupo · Analizar testimonios','Elegir 3 testimonios del listado y justificar por escrito por qué son los más convincentes, antes del viernes.']
     ]},
     {id:2,materials:['disc'],materialSummary:'Grabación, actividades y test DISC',title:'Mentalidad, guion y seguimiento',video:'18cpgRUXZyXTc92SOsZOw5TTysV3CH4kA',teaser:'Estructurá tus llamadas, conocé a quién ayudás y construí relaciones que continúen después del primer contacto.',summary:'Revisión sobre ventas y mentalidad, con estrategias de cierre y asignación de tareas.',topics:[
@@ -45,6 +45,7 @@
     ]}
   ];
   const resources = [
+    {id:'contact',title:'Dejar mis datos',description:'Completá tu WhatsApp y correo electrónico en la planilla de la clase 1 para obtener acceso a los materiales de trabajo.',url:'https://docs.google.com/spreadsheets/d/1862opbnr8OS9efcGyBLXni2c9DGHUR0uS8nHLMcueTM/edit?usp=sharing',icon:'✎',external:true},
     {id:'presentation',title:'Presentación comercial',description:'La presentación del programa, disponible en Canva.',url:'https://canva.link/vbmgr3l60jsdnc6',icon:'▧',external:true},
     {id:'calls',title:'Listado de llamadas',description:'Llamadas para estudiar cierres, objeciones y seguimientos.',url:'https://docs.google.com/spreadsheets/d/185jM0s0OKJdEgxMr9NCGfqKWRgJsuHOsym6jNdaypvg/edit?usp=sharing',icon:'▶',external:true},
     {id:'script',title:'Guion, auditoría y manual MEG',description:'Guion operativo, checklist de llamadas y manual completo.',url:'/views/guion-meg.html',icon:'≡'},
@@ -53,7 +54,10 @@
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const classUrl = id => '/views/entrenamiento.html?clase='+id;
   const resourcesMarkup = lesson => `<div class="material-grid">${lesson.materials.map(id => resources.find(r => r.id === id)).map(r=>`<a class="material-card" href="${r.url}"${r.external?' target="_blank" rel="noopener noreferrer"':''}><span class="material-icon" aria-hidden="true">${r.icon}</span><div><strong>${r.title}</strong><p>${r.description}</p></div><span class="material-arrow" aria-hidden="true">${r.external?'↗':'→'}</span></a>`).join('')}</div>`;
-  const listMarkup = items => `<ul>${items.map(([title,text])=>`<li><strong>${esc(title)}.</strong> ${esc(text)}</li>`).join('')}</ul>`;
+  const listMarkup = items => `<ul>${items.map(([title,text,resourceId])=>{
+    const resource = resources.find(r => r.id === resourceId);
+    return `<li><strong>${esc(title)}.</strong> ${esc(text)}${resource ? `<div class="lesson-task-link"><a class="campus-button secondary" href="${esc(resource.url)}" target="_blank" rel="noopener noreferrer">${esc(resource.title)} ↗</a></div>` : ''}</li>`;
+  }).join('')}</ul>`;
   const selected = new URLSearchParams(location.search).get('clase');
   const lesson = classes.find(c=>String(c.id)===selected);
   const content = document.getElementById('campusContent');
@@ -63,7 +67,7 @@
     document.title=`Clase ${lesson.id} · ${lesson.title} | Central MR`;
     content.innerHTML=`<a class="campus-back" href="/views/entrenamiento.html">← Todas las capacitaciones</a><header class="lesson-heading"><p class="campus-eyebrow">Capacitación comercial · Clase ${String(lesson.id).padStart(2,'0')}</p><h1>${lesson.title}</h1><p class="campus-intro">${lesson.summary}</p></header>
     <div class="lesson-layout"><div><iframe class="lesson-video" src="https://drive.google.com/file/d/${lesson.video}/preview" title="Video de la clase ${lesson.id}: ${lesson.title}" allow="fullscreen; autoplay" allowfullscreen></iframe><div class="lesson-video-note"><p>Si el video solicita acceso, abrilo en Drive con tu cuenta autorizada.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/${lesson.video}/view?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir video en Drive ↗</a></div>
-    ${lesson.materials.length ? `<section id="materiales" class="lesson-panel lesson-materials" aria-labelledby="lessonMaterialsTitle"><h2 id="lessonMaterialsTitle">Materiales de la clase ${lesson.id}</h2><p class="lesson-materials-intro">${lesson.id === 3 ? 'Usá estos tres materiales para estudiar el guion y la presentación, y analizar las llamadas de esta clase.' : 'Completá el test de perfil indicado en las actividades de esta clase.'}</p>${resourcesMarkup(lesson)}</section>` : ''}
+    ${lesson.materials.length ? `<section id="materiales" class="lesson-panel lesson-materials" aria-labelledby="lessonMaterialsTitle"><h2 id="lessonMaterialsTitle">Materiales de la clase ${lesson.id}</h2><p class="lesson-materials-intro">${lesson.id === 1 ? 'Dejá tus datos de contacto para acceder a los materiales del programa.' : lesson.id === 3 ? 'Usá estos tres materiales para estudiar el guion y la presentación, y analizar las llamadas de esta clase.' : 'Completá el test de perfil indicado en las actividades de esta clase.'}</p>${resourcesMarkup(lesson)}</section>` : ''}
     <section class="lesson-panel"><h2>Qué vas a trabajar</h2>${lesson.topics.map(([title,text])=>`<div class="lesson-topic"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`).join('')}</section>
     ${lesson.decisions?`<section class="lesson-panel"><h2>Acuerdos del programa</h2>${listMarkup(lesson.decisions)}</section>`:''}
     <section class="lesson-panel"><h2>Actividades y próximos pasos</h2>${listMarkup(lesson.tasks)}<p class="lesson-deadline">Los días y horarios corresponden a las indicaciones de la grabación. Confirmá con Leonardo las fechas de tu grupo.</p></section>
