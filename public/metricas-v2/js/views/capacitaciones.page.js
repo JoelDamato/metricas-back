@@ -27,7 +27,7 @@
       ['El grupo · Investigar la marca','Investigar qué vende la marca, a quién ayuda y qué perfiles son aptos para sus programas. Analizar los productos antes de las 18:00 del día siguiente.'],
       ['El grupo · Asistir a clase','Asistir a la clase de Matías el jueves a las 14:00, hora Argentina. Observar las consultas de los clientes y los temas tratados.'],
       ['Leonardo · Enviar materiales','Distribuir el formulario de perfil, el documento del avatar y la información sobre strikes y checkpoints.'],
-      ['El grupo · Realizar el test','Completar el formulario de perfil comportamental entregado.'],
+      ['El grupo · Realizar el test','Completá el test DISC desde el siguiente enlace.','disc'],
       ['El grupo · Enviar resultados','Reportar el resultado del test de perfil a Leonardo a través de WhatsApp.'],
       ['El grupo · Subir notas','Cargar los apuntes de las actividades en el documento compartido de Drive.']
     ]},
@@ -49,7 +49,7 @@
     {id:'presentation',title:'Presentación comercial',description:'La presentación del programa, disponible en Canva.',url:'https://canva.link/vbmgr3l60jsdnc6',icon:'▧',external:true},
     {id:'calls',title:'Listado de llamadas',description:'Llamadas para estudiar cierres, objeciones y seguimientos.',url:'https://docs.google.com/spreadsheets/d/185jM0s0OKJdEgxMr9NCGfqKWRgJsuHOsym6jNdaypvg/edit?usp=sharing',icon:'▶',external:true},
     {id:'script',title:'Guion, auditoría y manual MEG',description:'Guion operativo, checklist de llamadas y manual completo.',url:'/views/guion-meg.html',icon:'≡'},
-    {id:'disc',title:'Test de perfil DISC',description:'Completá el test y compartí tu resultado con Leonardo por WhatsApp, como indica la actividad de esta clase.',url:'/entrenamiento/disc/',icon:'◇',external:true}
+    {id:'disc',title:'Hacer test DISC',description:'Abrí el test de perfil comportamental. Al enviarlo, queda registrado para la revisión de Leo y Mati.',url:'/entrenamiento/disc/',icon:'◇',external:true}
   ];
   const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const classUrl = id => '/views/entrenamiento.html?clase='+id;
