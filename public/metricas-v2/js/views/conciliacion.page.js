@@ -205,6 +205,7 @@
           <thead>
             <tr>
               <th>Cliente</th>
+              <th>Comprobante</th>
               <th>DNI / CUIT</th>
               <th>Mail comprador</th>
               <th>Responsable</th>
@@ -229,6 +230,7 @@
               return `
                 <tr data-conciliacion-row="${escapeHtml(row.id)}">
                   <td>${renderContact(row)}</td>
+                  <td><button type="button" class="metricas-secondary-button conciliacion-open-file" data-open-files="${escapeHtml(row.id)}" aria-label="Ver comprobante de ${escapeHtml(row.cliente_format || 'cliente')}">Ver comprobante</button></td>
                   <td>${escapeHtml(row.dni_cuit || 'Sin informar')}</td>
                   <td>${row.mail ? `<a href="mailto:${escapeHtml(row.mail)}">${escapeHtml(row.mail)}</a>` : '—'}</td>
                   <td>${escapeHtml(row.responsable_venta || row.creado_por || '—')}</td>
@@ -306,6 +308,49 @@
     }
   }
 
+  const filesDialog = document.getElementById('conciliacionFiles');
+  const filesBody = document.getElementById('conciliacionFilesBody');
+  let filesRequest = 0;
+
+  async function openFiles(id) {
+    const request = ++filesRequest;
+    const row = state.rows.find(row => row.id === id);
+    document.getElementById('conciliacionFilesClient').textContent = row?.cliente_format || 'Cliente';
+    filesBody.innerHTML = '<p role="status">Cargando adjuntos…</p>';
+    if (!filesDialog.open) filesDialog.showModal();
+    try {
+      const response = await api.fetchComprobanteFiles(id);
+      if (request !== filesRequest || !filesDialog.open) return;
+      const files = Array.isArray(response.files) ? response.files : [];
+      if (!files.length) {
+        filesBody.innerHTML = '<p>No hay archivos adjuntos guardados para este comprobante.</p>';
+        return;
+      }
+      filesBody.innerHTML = `<div class="conciliacion-files-grid">${files.map((file, index) => {
+        const name = file.name || `Comprobante ${index + 1}`;
+        let url = '';
+        try { const parsed = new URL(file.url); if (['https:', 'http:'].includes(parsed.protocol)) url = parsed.href; } catch (_) { /* Archivo sin enlace válido. */ }
+        if (!url) return `<article class="conciliacion-file"><strong>${escapeHtml(name)}</strong><p>El enlace no está disponible.</p></article>`;
+        const isImage = /^image\/(jpeg|png|webp|gif|avif)$/i.test(file.mimeType || '');
+        return `<article class="conciliacion-file">
+          ${isImage ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir ${escapeHtml(name)}"><img src="${escapeHtml(url)}" alt="Vista previa de ${escapeHtml(name)}" loading="lazy" /></a>` : '<div class="conciliacion-file-icon" aria-hidden="true">▤</div>'}
+          <strong>${escapeHtml(name)}</strong>
+          <a class="metricas-primary-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Abrir archivo ${index + 1}</a>
+        </article>`;
+      }).join('')}</div><p class="conciliacion-files-hint">Los archivos se abren en una pestaña nueva. Si un enlace vence, cerrá y volvé a abrir los adjuntos.</p>`;
+    } catch (error) {
+      if (request !== filesRequest || !filesDialog.open) return;
+      filesBody.innerHTML = `<p role="alert">${escapeHtml(error.message || 'No pude cargar los adjuntos.')}</p><button type="button" class="metricas-secondary-button" data-retry-files="${escapeHtml(id)}">Reintentar</button>`;
+    }
+  }
+
+  document.getElementById('closeConciliacionFiles').addEventListener('click', () => filesDialog.close());
+  filesDialog.addEventListener('close', () => { filesRequest += 1; filesBody.innerHTML = ''; });
+  filesBody.addEventListener('click', event => {
+    const retry = event.target.closest('[data-retry-files]');
+    if (retry) openFiles(retry.dataset.retryFiles);
+  });
+
   async function saveState(id) {
     const select = refs.table.querySelector(`[data-state-select="${CSS.escape(id)}"]`);
     const nextState = select?.value;
@@ -353,6 +398,8 @@
     if (button) button.disabled = select.value === select.dataset.originalState;
   });
   refs.table?.addEventListener('click', (event) => {
+    const filesButton = event.target.closest('[data-open-files]');
+    if (filesButton) { openFiles(filesButton.dataset.openFiles); return; }
     const noteButton=event.target.closest('[data-save-note]');
     if(noteButton){
       const id=noteButton.dataset.saveNote,row=state.rows.find(row=>row.id===id),textarea=refs.table.querySelector(`[data-note="${CSS.escape(id)}"]`);
