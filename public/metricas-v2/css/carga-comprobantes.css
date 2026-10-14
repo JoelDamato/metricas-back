@@ -75,3 +75,5 @@
 :root .carga-comprobantes-page.carga-renovada .carga-field input[type='checkbox'] { min-height:0; }
 :root .carga-comprobantes-page.carga-renovada [hidden] { display:none!important; }
 :root .carga-comprobantes-page.carga-renovada button:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+.carga-submit-feedback{flex:1;min-width:0}.carga-submit-issues{margin:10px 0 0;padding-left:20px;font-size:13px;line-height:1.6;color:#f1c58b}.carga-submit-issues li+li{margin-top:4px}.carga-renovada #submitComprobanteBtn{flex-shrink:0}

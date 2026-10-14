@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/carga-comprobantes.css?v=20261002-brand-1" />
+    <link rel="stylesheet" href="/css/carga-comprobantes.css?v=20261014-review-validation-1" />
     <script defer src="/js/api/http.js?v=20261003-runtime-v2"></script>
     <script defer src="/js/api/metricas.api.js?v=20261003-runtime-v2"></script>
     <script defer src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script defer src="/js/views/carga-comprobantes.page.js?v=20261003-runtime-v2"></script>
+    <script defer src="/js/views/carga-comprobantes.page.js?v=20261014-review-validation-1"></script>
   </head>
   <body class="carga-comprobantes-page carga-renovada premium-navy-background">
     <main class="container carga-comprobantes-layout">
@@ -48,7 +48,7 @@
           <span>Preparando formulario...</span>
         </div>
 
-        <form id="comprobanteForm" class="carga-comprobantes-form" hidden>
+        <form novalidate id="comprobanteForm" class="carga-comprobantes-form" hidden>
           <section id="clientSection" class="carga-section">
             <div class="carga-section-head">
               <h2>Cliente y relación</h2>
@@ -244,8 +244,11 @@
           </section>
 
           <section id="submitSection" class="carga-submit">
-            <div id="submitStatus" class="carga-submit-status">Todavía no se envió nada.</div>
-            <button id="submitComprobanteBtn" type="submit" class="metricas-primary-button">Revisar antes de enviar</button>
+            <div class="carga-submit-feedback">
+              <div id="submitStatus" class="carga-submit-status" role="status" aria-live="polite">Todavía no se envió nada.</div>
+              <ul id="submitIssues" class="carga-submit-issues" aria-label="Datos a completar" hidden></ul>
+            </div>
+            <button id="submitComprobanteBtn" type="submit" aria-describedby="submitStatus submitIssues" class="metricas-primary-button">Revisar antes de enviar</button>
           </section>
 
           <section id="previewSection" class="carga-section carga-preview-section" hidden>

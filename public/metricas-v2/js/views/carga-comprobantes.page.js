@@ -25,6 +25,7 @@
     previewPayload: null,
     submissionKey: null,
     isSubmitting: false,
+    isReviewing: false,
     submissionProgressTimer: null,
     submissionProgressStartedAt: 0,
     submissionProgressStages: [],
@@ -87,6 +88,7 @@
     searchRelatedSaleBtn: document.getElementById('searchRelatedSaleBtn'),
     latestSaleSummary: document.getElementById('latestSaleSummary'),
     submitStatus: document.getElementById('submitStatus'),
+    submitIssues: document.getElementById('submitIssues'),
     submitBtn: document.getElementById('submitComprobanteBtn'),
     previewSection: document.getElementById('previewSection'),
     previewAlerts: document.getElementById('previewAlerts'),
@@ -594,7 +596,6 @@
     const clientReady = Boolean(refs.clientName.value && refs.ghlId.value && refs.clientPageId.value);
     const baseReady = clientReady
       && Boolean(tipo)
-      && (isClubSale || Boolean(refs.dniCuit.value.trim()))
       && Boolean(refs.medioPago.value)
       && isPositiveNumber(refs.tc.value)
       && Boolean(refs.responsableVenta.value);
@@ -633,7 +634,8 @@
       : state.attachments.length > 0) && attachmentFilesValid;
     const needsRelatedSale = tipo === 'Cobranza' || tipo === 'Devolución';
     const relationReady = !needsRelatedSale || hasValidatedRelatedSale();
-    const readyToReview = baseReady && ventaReady && relationReady && cashReady && chequeReady && attachmentReady;
+    const documentReady = isClubSale || Boolean(refs.dniCuit.value.trim());
+    const readyToReview = baseReady && documentReady && ventaReady && relationReady && cashReady && chequeReady && attachmentReady;
 
     return {
       tipo,
@@ -645,6 +647,7 @@
       isClubSale,
       clientReady,
       baseReady,
+      documentReady,
       ventaReady,
       cashReady,
       chequeReady,
@@ -661,7 +664,7 @@
     const stepState = getStepState();
 
     const activeStep = !stepState.clientReady ? 0
-      : !(stepState.baseReady && (!stepState.isVenta || stepState.ventaReady)
+      : !(stepState.baseReady && stepState.documentReady && (!stepState.isVenta || stepState.ventaReady)
         && stepState.relationReady && stepState.cashReady && stepState.chequeReady) ? 1
       : !stepState.attachmentReady ? 2 : 3;
     document.querySelectorAll('[data-carga-step]').forEach((item) => {
@@ -694,57 +697,22 @@
       refs.attachmentsSection,
       stepState.baseReady && (!stepState.isVenta || stepState.ventaReady) && stepState.relationReady && stepState.cashReady && stepState.chequeReady
     );
-    setSectionVisibility(
-      refs.submitSection,
-      stepState.baseReady
-        && (!stepState.isVenta || stepState.ventaReady)
-        && stepState.relationReady
-        && stepState.cashReady
-        && stepState.chequeReady
-        && stepState.attachmentReady
-    );
-
-    refs.submitBtn.disabled = !stepState.readyToReview;
-
-    if (!stepState.clientReady) {
-      refs.submitStatus.textContent = 'Primero buscá y vinculá el cliente.';
-      return;
+    // Keep the explanation and review action visible even when fields are missing.
+    // The review validates first; only an actual request temporarily disables it.
+    setSectionVisibility(refs.submitSection, true);
+    const busy = state.loading || state.isSubmitting || state.isReviewing
+      || state.clientLookupInFlight || state.relatedSaleLookupInFlight;
+    refs.submitBtn.disabled = Boolean(busy);
+    const warnings = buildPreviewWarnings(buildPayload({ validateFiles: false }));
+    if (refs.submitIssues) {
+      refs.submitIssues.hidden = !warnings.length || Boolean(busy);
+      refs.submitIssues.innerHTML = warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('');
     }
-    if (!stepState.baseReady) {
-      refs.submitStatus.textContent = 'Completá tipo, DNI/CUIT, medio de pago, TC mayor a cero y responsable para seguir.';
-      return;
-    }
-    if (stepState.isVenta && !stepState.ventaReady) {
-      refs.submitStatus.textContent = stepState.isClubSale
-        ? 'Elegí Precio Club 1 o Precio Club 2 para seguir.'
-        : 'Completá producto, facturación USD y cantidad de pagos para seguir.';
-      return;
-    }
-    if (!stepState.relationReady) {
-      refs.submitStatus.textContent = 'Necesitás cargar la venta relacionada para seguir.';
-      return;
-    }
-    if (!stepState.cashReady) {
-      refs.submitStatus.textContent = stepState.isClubSale
-        ? 'Elegí un precio de Club válido para seguir.'
-        : 'Completá el cash collected ARS con un importe mayor a cero para seguir.';
-      return;
-    }
-    if (!stepState.chequeReady) {
-      refs.submitStatus.textContent = !stepState.chequeCount
-        ? `Elegí entre 1 y ${MAX_CHEQUES} cheques para seguir.`
-        : stepState.chequeTotalMatchesCash
-        ? 'Completá monto, fecha y archivo de cada cheque para seguir.'
-        : 'La suma de los cheques debe coincidir con el cash collected ARS.';
-      return;
-    }
-    if (!stepState.attachmentReady) {
-      refs.submitStatus.textContent = stepState.attachmentFilesValid
-        ? 'Adjuntá el comprobante para seguir.'
-        : validateAttachmentFiles(getAllAttachments())[0];
-      return;
-    }
-    refs.submitStatus.textContent = 'Todo completo. Ya podés revisar antes de enviar.';
+    refs.submitStatus.textContent = busy
+      ? (state.isSubmitting ? 'Guardando comprobante…' : state.isReviewing ? 'Preparando la revisión…' : 'Validando los datos…')
+      : warnings.length
+        ? 'Para continuar, revisá estos datos:'
+        : 'Todo completo. Ya podés revisar antes de enviar.';
   }
 
   function populateSelect(selectNode, values, placeholder) {
@@ -1122,6 +1090,7 @@
 
     if (!payload.clientName) warnings.push('Falta buscar y vincular el cliente.');
     if (!payload.ghlId) warnings.push('Falta el GHL ID.');
+    if (!payload.clientPageId) warnings.push('Falta validar la referencia del cliente. Volvé a buscarlo.');
     if (!payload.tipo) warnings.push('Falta elegir el tipo.');
     if (!isIsoDate(payload.fechaVenta)) warnings.push('Falta una fecha de venta / transacción válida.');
     if (!isIsoDate(payload.fechaAcreditacion)) warnings.push('Falta una fecha de acreditación válida.');
@@ -1258,6 +1227,8 @@
       .join('');
 
     refs.previewSection.hidden = false;
+    refs.confirmSubmitBtn.disabled = state.isSubmitting || warnings.length > 0;
+    refs.editPreviewBtn.disabled = state.isSubmitting;
     refs.previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -1564,8 +1535,8 @@
     }));
   }
 
-  async function buildPayload() {
-    const attachmentFiles = attachmentMetadata();
+  function buildPayload({ validateFiles = true } = {}) {
+    const attachmentFiles = validateFiles ? attachmentMetadata() : getAllAttachments();
     const usesRelatedSaleDate = refs.tipo.value === 'Cobranza' || refs.tipo.value === 'Devolución';
     const clubSale = isClubSale();
     return {
@@ -1596,13 +1567,15 @@
       sesiones: refs.tipo.value === 'Venta' ? refs.sesiones.value : '',
       bonusMati: refs.tipo.value === 'Venta' ? refs.bonusMati.checked : false,
       infoComprobantes: refs.infoComprobantes.value,
-      submissionKey: state.submissionKey || generateSubmissionKey()
+      submissionKey: state.submissionKey || (validateFiles ? generateSubmissionKey() : '')
     };
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (state.isSubmitting) return;
+    if (state.loading || state.isReviewing || state.clientLookupInFlight || state.relatedSaleLookupInFlight) return;
+    state.isReviewing = true;
     refs.submitBtn.disabled = true;
     refs.submitStatus.textContent = 'Preparando la revisión...';
     const previewRevision = state.previewRevision || 0;
@@ -1628,7 +1601,8 @@
     } catch (error) {
       refs.submitStatus.textContent = error.message || 'No pude preparar la revisión del comprobante.';
     } finally {
-      refs.submitBtn.disabled = false;
+      state.isReviewing = false;
+      refs.submitBtn.disabled = Boolean(state.loading || state.isSubmitting || state.clientLookupInFlight || state.relatedSaleLookupInFlight);
     }
   }
 
