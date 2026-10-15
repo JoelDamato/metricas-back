@@ -35,6 +35,7 @@
       metrics: '<svg viewBox="0 0 24 24" aria-hidden="true"><g class="shell-dot-grid"><circle cx="6" cy="6" r="1"/><circle cx="12" cy="6" r="1"/><circle cx="18" cy="6" r="1"/><circle cx="6" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="18" cy="12" r="1"/><circle cx="6" cy="18" r="1"/><circle cx="12" cy="18" r="1"/><circle cx="18" cy="18" r="1"/></g></svg>',
       contact: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16c0-4 6-4 6 0m3-7h3m-3 4h3"/></svg>',
       training: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5c4-1 6 0 9 2 3-2 5-3 9-2v14c-4-1-6 0-9 2-3-2-5-3-9-2V5Z"/><path d="M12 7v14"/></svg>',
+      recordings: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 8 6 4-6 4Z"/></svg>',
       ticket: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v5a2 2 0 0 0 0 4v5H4v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/></svg>',
       split: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M12 5v14"/></svg>',
       growth: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18 19 4m-8 0h8v8"/></svg>',
@@ -298,7 +299,7 @@
       .map((part) => part[0] || '')
       .join('')
       .toUpperCase() || 'MR';
-    const accessLabel = onlyMarketingAccess ? 'marketing' : (String(user.role || '').trim() || 'sin acceso');
+    const accessLabel = permissions.trainingOnly ? 'capacitación' : onlyMarketingAccess ? 'marketing' : (String(user.role || '').trim() || 'sin acceso');
     const isSplitScreenPage = window.location.pathname.endsWith('/split-screen.html');
     const splitBaseUrl = new URL('/views/split-screen.html', window.location.origin);
     splitBaseUrl.searchParams.set('left', `${window.location.pathname}${window.location.search}`);
@@ -379,6 +380,12 @@
         </div>
       </div>
     `;
+    if (permissions.trainingOnly) {
+      shell.querySelector('#metricasSidebarNav').innerHTML = `
+        <span class="auth-sidebar-section-label">Tu formación</span>
+        <a class="auth-shell-link auth-sidebar-item${navCurrentClass('/views/entrenamiento.html')}" href="/views/entrenamiento.html"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('training')}</span><span class="auth-sidebar-label">Capacitaciones</span></a>
+        <a class="auth-shell-link auth-sidebar-item${navCurrentClass('/views/grabaciones.html')}" href="/views/grabaciones.html"><span class="auth-shell-link-icon" aria-hidden="true">${shellIcon('recordings')}</span><span class="auth-sidebar-label">Grabaciones</span></a>`;
+    }
     document.body.prepend(shell);
     document.body.classList.add('auth-sidebar-layout');
     const sidebarToggle = document.getElementById('metricasSidebarToggle');

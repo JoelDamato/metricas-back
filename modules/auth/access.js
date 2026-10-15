@@ -480,8 +480,19 @@ function canAccessFeature(role, featureName) {
   return hasRoleAccess(FEATURE_ROLE_ACCESS[featureName], role);
 }
 
+const TRAINING_PAGES = new Set(['entrenamiento.html', 'guion-meg.html', 'grabaciones.html']);
+
+function isTrainingOnlyUser(user) {
+  const config = getAccessConfig(user);
+  return config.useCustomAccess === true
+    && config.homePath === '/views/entrenamiento.html'
+    && Array.isArray(config.allowedPages) && config.allowedPages.length > 0
+    && config.allowedPages.every(page => TRAINING_PAGES.has(page));
+}
+
 function canAccessPageForUser(user, pageName) {
   pageName = canonicalPageName(pageName);
+  if (isTrainingOnlyUser(user)) return TRAINING_PAGES.has(pageName) && getAccessConfig(user).allowedPages.includes(pageName);
   if (pageName === 'entrenamiento-disc.html') return require('../training/router').canRead(user);
   if (['entrenamiento.html', 'guion-meg.html'].includes(pageName)) return Boolean(user);
   if (pageName === 'area-comercial.html' && commissionAreaForUser(user)) return true;
@@ -509,6 +520,7 @@ function canAccessPageForUser(user, pageName) {
 }
 
 function canAccessResourceForUser(user, resourceName) {
+  if (isTrainingOnlyUser(user)) return false;
   if (hasForcedMarketingAccess(user) && ['kpi_marketing_diario', 'kpi_marketing_inversiones'].includes(resourceName)) return true;
   const override = getUserAccessOverride(user);
   if (override) return override.allowedResources.has(resourceName);
@@ -520,6 +532,7 @@ function canAccessResourceForUser(user, resourceName) {
 }
 
 function canAccessFeatureForUser(user, featureName, options = {}) {
+  if (isTrainingOnlyUser(user)) return featureName === 'auth_session' && String(options.method || 'GET').toUpperCase() === 'GET';
   if (featureName === 'commercial_area' && commissionAreaForUser(user)) return String(options.method || 'GET').toUpperCase() === 'GET';
   if (featureName === 'pdi') {
     return canAccessPdiForUser(user);
@@ -614,7 +627,7 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 function getUserPermissions(user) {
   const override = getUserAccessOverride(user);
   const allowedPages = override ? new Set(override.allowedPages) : null;
-  if (allowedPages && user) {
+  if (allowedPages && user && !isTrainingOnlyUser(user)) {
     allowedPages.add('tickets.html');
     allowedPages.add('estado-contacto-comisiones.html');
   }
@@ -636,6 +649,7 @@ function getUserPermissions(user) {
     });
   }
   return {
+    trainingOnly: isTrainingOnlyUser(user),
     canReviewDisc: require('../training/router').canRead(user),
     onlyMarketingAccess: isMarketingOnlyUser(user),
     homePath: canonicalHomePath(override?.homePath || null),
@@ -688,6 +702,7 @@ function getUserAccessSummary(user) {
 }
 
 module.exports = {
+  isTrainingOnlyUser,
   PAGE_ROLE_ACCESS,
   RESOURCE_ROLE_ACCESS,
   FEATURE_ROLE_ACCESS,

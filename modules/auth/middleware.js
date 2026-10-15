@@ -48,7 +48,7 @@ async function metricasPageGuard(req, res, next) {
     }
 
     if (!access.canAccessPageForUser(req.authUser, pageName)) {
-      if (['index.html', 'metricas.html'].includes(pageName) && !access.isMarketingOnlyUser(req.authUser)) {
+      if (['index.html', 'metricas.html'].includes(pageName) && !access.isMarketingOnlyUser(req.authUser) && !access.isTrainingOnlyUser(req.authUser)) {
         return next();
       }
       return res.redirect('/unauthorized.html');
@@ -84,6 +84,10 @@ async function metricasApiGuard(req, res, next) {
     const freshUser = await hydrateAuthUser(req);
     if (!freshUser) {
       return res.status(401).json({ ok: false, message: 'Sesión requerida' });
+    }
+
+    if (access.isTrainingOnlyUser(req.authUser) && !/^\/recordings(?:\/|$)/.test(reqPath)) {
+      return res.status(403).json({ ok: false, message: 'Tu cuenta tiene acceso a capacitaciones y grabaciones.' });
     }
 
     if (reqPath === '/views') {
