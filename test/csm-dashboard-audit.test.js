@@ -290,3 +290,17 @@ test('la portada Por Tiempo expone Módulos y la subvista renderiza pestañas am
   assert.match(script, /hideFilters: isModuleSnapshotView/);
   assert.match(script, /hideStatus: isModuleSnapshotView/);
 });
+
+test('diagnósticos clasifican día 7, separan fechas inválidas y muestran CCM sin duplicados',()=>{
+ const api=loadInternals(),filters={year:'2026',month:'10'};
+ const rows=api.enrichRows([
+ {ghlid:'a',nombre:'Dentro',f_onboarding:'2026-10-01',f_diagnostico:'2026-10-08',ccm:'Valeria Calmet',updated_at:'2026-10-10'},
+ {ghlid:'a',nombre:'Duplicado viejo',f_onboarding:'2026-10-01',f_diagnostico:'2026-10-09',updated_at:'2026-10-01'},
+ {ghlid:'b',f_onboarding:'2026-10-01',f_diagnostico:'2026-10-09'},
+ {ghlid:'c',f_diagnostico:'2026-10-10'},
+ {ghlid:'d',f_onboarding:'2026-10-11',f_diagnostico:'2026-10-10'}
+ ]);
+ const page=api.buildTimePageByEvent(rows,{allRows:rows,filters});
+ assert.equal(metric(page,'diagnosis_total').value,'4');assert.equal(metric(page,'diagnosis_under_7').value,'1');assert.equal(metric(page,'diagnosis_over_7').value,'1');assert.equal(metric(page,'diagnosis_unclassified').value,'2');
+ const info=metric(page,'diagnosis_total').info;assert(info.detailColumns.includes('CCM'));assert.equal(info.detailRows[0][1],'Valeria Calmet');
+});

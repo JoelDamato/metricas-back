@@ -30,6 +30,7 @@ router.get('/health', controller.health);
 router.get('/launch-gifts', require('../modules/training/launch-gifts'));
 const csmFollowup = require('../modules/csm/followup');
 router.get('/csm-followup', csmFollowup.list);
+router.get('/csm-diagnosis-metadata', require('../modules/csm/diagnosis-metadata').list);
 router.get('/csm-entry-metadata', require('../modules/csm/entry-metadata').createHandler());
 router.put('/csm-followup/:ghlid', csmFollowup.save);
 router.put('/csm-followup-rules/:stage', csmFollowup.saveRule);

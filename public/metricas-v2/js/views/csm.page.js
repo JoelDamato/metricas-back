@@ -1,4 +1,5 @@
 let csmChart = null;
+let diagnosisCharts = [];
 let csmPeriodFiltersInitialized = false;
 const MONTH_FILTER_OPTIONS = [
   { value: 'all', label: 'Anual' },
@@ -934,6 +935,8 @@ function sectionKey(section, index = 0) {
 }
 
 function resetCsmResultContainers() {
+  diagnosisCharts.forEach(chart => chart.destroy());
+  diagnosisCharts = [];
   const kpiContainer = document.getElementById('kpiContainer');
   const tableContainer = document.getElementById('tableContainer');
   const detailContainer = document.getElementById('detailContainer');
@@ -1400,6 +1403,30 @@ async function renderBusinessSegments(source) {
  }catch(e){target.textContent=e.message;}
 }
 
+function renderDiagnosisDashboard(allRows, filters) {
+  const target = document.getElementById('detailContainer');
+  target.hidden = false;
+  target.classList.add('csm-module-durations');
+  const unique = dedupeClientRows(allRows);
+  const classify = row => {
+    const days = daysBetween(row.onboardingDate, row.diagnosisDate);
+    return {row,days,bucket:days === null || !Number.isFinite(days) ? 'Sin onboarding' : days < 0 ? 'Fechas inconsistentes' : days <= 7 ? 'Hasta 7 días' : 'Más de 7 días'};
+  };
+  const months = MONTH_FILTER_OPTIONS.slice(1);
+  const monthly = months.map(month => {
+    const entries = filterRowsByDatePeriod(unique,'f_diagnostico',{year:filters.year,month:month.value}).map(classify);
+    return {total:entries.length,under:entries.filter(x=>x.bucket==='Hasta 7 días').length,over:entries.filter(x=>x.bucket==='Más de 7 días').length,unknown:entries.filter(x=>!['Hasta 7 días','Más de 7 días'].includes(x.bucket)).length};
+  });
+  const entries = filterRowsByDatePeriod(unique,'f_diagnostico',filters).map(classify).sort((a,b)=>String(a.row.f_diagnostico).localeCompare(String(b.row.f_diagnostico)));
+  target.innerHTML = `<div class="csm-diagnosis-charts"><section class="csm-diagnosis-chart"><h2>Diagnósticos iniciales mes a mes · ${escapeHtml(filters.year)}</h2><p>Clientes únicos por fecha de diagnóstico, no por fecha de ingreso.</p><div class="csm-diagnosis-canvas"><canvas id="diagnosisMonthlyChart" role="img" aria-label="Cantidad mensual de diagnósticos iniciales"></canvas></div></section><section class="csm-diagnosis-chart"><h2>Dentro o fuera de los 7 días</h2><p>Del onboarding a la fecha del diagnóstico. El día 7 está incluido dentro del plazo.</p><div class="csm-diagnosis-canvas"><canvas id="diagnosisDeadlineChart" role="img" aria-label="Diagnósticos hasta 7 días, después de 7 días y sin clasificación por mes"></canvas></div></section></div>
+  <details class="csm-diagnosis-chart"><summary>Ver cantidades mensuales</summary><div class="csm-duration-scroll"><table><thead><tr><th>Mes</th><th>Diagnósticos</th><th>Hasta 7 días</th><th>Más de 7 días</th><th>Sin clasificación</th></tr></thead><tbody>${monthly.map((m,i)=>`<tr><td>${escapeHtml(months[i].label)}</td><td>${m.total}</td><td>${m.under}</td><td>${m.over}</td><td>${m.unknown}</td></tr>`).join('')}</tbody></table></div></details>
+  <section class="csm-diagnosis-chart"><h2>Diagnósticos · ${escapeHtml(describeCsmPeriod(filters))}</h2><p>${entries.length} clientes. CCM tomado de la etapa inicial de la Carta de diagnóstico; si falta, del responsable de la carta.</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>CCM</th><th>Onboarding</th><th>Diagnóstico</th><th>Días</th><th>Plazo</th></tr></thead><tbody>${entries.map(({row,days,bucket})=>`<tr><td>${row.ghlid?`<a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(row.ghlid)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.nombre||'Sin nombre')} ↗</a>`:escapeHtml(row.nombre||'Sin nombre')}</td><td>${escapeHtml(row.ccm||'Sin CCM informado')}</td><td>${formatDate(row.f_onboarding)}</td><td>${formatDate(row.f_diagnostico)}</td><td>${days !== null && days >= 0 ? formatDays(days) : '—'}</td><td><span class="csm-duration-tone ${bucket==='Hasta 7 días'?'green':bucket==='Más de 7 días'?'red':'yellow'}">${bucket}</span></td></tr>`).join('')||'<tr><td colspan="6">Sin diagnósticos en el período seleccionado.</td></tr>'}</tbody></table></div></section>`;
+  if(typeof Chart === 'undefined') return;
+  const options = () => ({responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{color:'#b5c9e3'},grid:{color:'#29415b'}},y:{beginAtZero:true,ticks:{precision:0,color:'#b5c9e3'},grid:{color:'#29415b'}}},plugins:{legend:{position:'bottom',labels:{color:'#d3e3f7'}}}});
+  diagnosisCharts.push(new Chart(document.getElementById('diagnosisMonthlyChart'),{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'Diagnósticos iniciales',data:monthly.map(m=>m.total),backgroundColor:'#438dff',borderRadius:5}]},options:options()}));
+  diagnosisCharts.push(new Chart(document.getElementById('diagnosisDeadlineChart'),{type:'line',data:{labels:months.map(m=>m.label),datasets:[['Hasta 7 días','under','#1da88a'],['Más de 7 días','over','#e16075'],['Sin clasificación','unknown','#d49b32']].map(([label,key,color])=>({label,data:monthly.map(m=>m[key]),borderColor:color,backgroundColor:color,tension:0,pointRadius:4,borderDash:key==='unknown'?[5,5]:[]}))},options:options()}));
+}
+
 function renderChart(config, infoMap = {}) {
   const canvas = document.getElementById('csmChart');
   const panel = canvas?.closest('.chart-panel');
@@ -1810,7 +1837,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
   const currentModuleRows = dedupeClientRows(allRows).filter(isInCurrentModuleCircuit);
   const moduleTraffic = buildModuleTraffic(currentModuleRows);
   if (moduleTraffic[0]) moduleTraffic[0].sourceRows = allRows;
-  const diagnosisEventRows = filterRowsByDatePeriod(allRows, 'f_diagnostico', filters);
+  const diagnosisEventRows = filterRowsByDatePeriod(dedupeClientRows(allRows), 'f_diagnostico', filters);
   const diagnosisDetails = diagnosisEventRows.map((row) => {
     const elapsedDays = daysBetween(row.onboardingDate, row.diagnosisDate);
     let bucket = 'Sin fecha de onboarding';
@@ -1874,6 +1901,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
 
   const diagnosisDetailRows = (items) => items.map((item) => [
     createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
+    item.row.ccm || 'Sin CCM informado',
     item.bucket,
     item.elapsedDays !== null && Number.isFinite(item.elapsedDays) ? formatDays(item.elapsedDays) : '-',
     formatDate(item.row.f_onboarding),
@@ -1903,7 +1931,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(diagnosisEventRows.length)} fechas "f_diagnostico" en ${periodLabel}`,
       fieldsLabel: '"f_diagnostico"',
       logic: 'Cuenta diagnósticos por la fecha real de la sesión. Esta base debe coincidir con el total mensual.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'CCM', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisDetails)
     }),
     buildMetricRow({
@@ -1913,7 +1941,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
       fieldsLabel: '"f_onboarding" → "f_diagnostico"',
       logic: 'Cuenta sesiones realizadas en el período cuya diferencia desde el video de onboarding es de 0 a 7 días inclusive.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'CCM', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisUnder7Rows)
     }),
     buildMetricRow({
@@ -1923,7 +1951,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
       fieldsLabel: '"f_onboarding" → "f_diagnostico"',
       logic: 'Cuenta solo sesiones efectivamente realizadas en el período que demoraron más de 7 días.',
-      detailColumns: ['Cliente', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
+      detailColumns: ['Cliente', 'CCM', 'Clasificación', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisOver7Rows)
     }),
     buildMetricRow({
@@ -1932,8 +1960,8 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       value: formatInteger(diagnosisUnclassifiedRows.length),
       base: `${formatInteger(diagnosisEventRows.length)} diagnósticos realizados en ${periodLabel}`,
       fieldsLabel: '"f_pago_con_acceso", "f_acceso", "f_diagnostico"',
-      logic: 'Expone diagnósticos que no se pueden clasificar por falta de ingreso o por fechas inconsistentes.',
-      detailColumns: ['Cliente', 'Motivo', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
+      logic: 'Expone diagnósticos que no se pueden clasificar por falta de onboarding o por fechas inconsistentes.',
+      detailColumns: ['Cliente', 'CCM', 'Motivo', 'Tiempo desde onboarding', 'Onboarding', 'Diagnóstico'],
       detailRows: diagnosisDetailRows(diagnosisUnclassifiedRows)
     }),
     buildMetricRow({
@@ -1943,9 +1971,10 @@ function buildTimePageByEvent(cohortRows, context = {}) {
       base: `${formatInteger(dedupeClientRows(filterRowsByDatePeriod(allRows, 'f_onboarding', filters)).filter(row => row.isActive && !isAbandonmentActivity(row)).length)} clientes activos con onboarding en ${periodLabel}`,
       fieldsLabel: '"acceso"="Acceso", "f_onboarding", "f_diagnostico"',
       logic: 'Métrica de cohorte: clientes activos que vieron onboarding en el período seleccionado que aún no tienen fecha de diagnóstico.',
-      detailColumns: ['Cliente', 'Onboarding', 'Días transcurridos', 'GHL'],
+      detailColumns: ['Cliente', 'CCM', 'Onboarding', 'Días transcurridos', 'GHL'],
       detailRows: pendingDiagnosisRows.map((item) => [
         createContactCell(item.row.nombre || 'Sin nombre', item.row.ghlid || ''),
+        item.row.ccm || 'Sin CCM informado',
         formatDate(item.row.f_onboarding),
         item.elapsedDays !== null && Number.isFinite(item.elapsedDays) ? formatDays(item.elapsedDays) : '-',
         createGhlLinkCell(item.row.ghlid || '')
@@ -1987,19 +2016,7 @@ function buildTimePageByEvent(cohortRows, context = {}) {
     })
     .filter((item) => item.total > 0 || filterRowsByDatePeriod([item.row], 'f_pago_con_acceso', filters).length > 0)
     .sort((a, b) => b.total - a.total || String(a.row.nombre || '').localeCompare(String(b.row.nombre || ''), 'es'));
-  const newEntryDetailRows = [...uniqueCohortRows]
-    .sort((a,b) => String(b.f_pago_con_acceso||'').localeCompare(String(a.f_pago_con_acceso||'')) || String(a.nombre||'').localeCompare(String(b.nombre||''),'es'))
-    .map(row => [createContactCell(row.nombre || 'Sin nombre', row.ghlid), formatDate(row.f_pago_con_acceso),
-      row.call_date ? formatDate(row.call_date) : 'Sin fecha informada', row.closer || 'Sin closer informado',
-      row.ghlid ? createGhlLinkCell(row.ghlid, 'Abrir en GHL ↗') : 'Sin GHL informado']);
   const sections = [
-    {
-      key: 'clientes-nuevos-detalle',
-      title: `Clientes nuevos · ${periodLabel}`,
-      description: `${uniqueCohortRows.length} clientes únicos ingresados en el período por fecha de pago con acceso. La fecha de llamada corresponde a la informada en GHL.`,
-      columns: ['Cliente', 'Fecha de ingreso', 'Fecha de llamada', 'Closer', 'Contacto'],
-      rows: newEntryDetailRows
-    },
     {
       key: 'desglose-persona',
       title: 'Desglose por persona',
@@ -2595,7 +2612,8 @@ function buildSituationPageAudited(cohortRows, context = {}) {
       title: `Clientes nuevos · ${periodLabel}`,
       description: `${uniqueCohortRows.length} clientes únicos ingresados en el período por fecha de pago con acceso. La fecha de llamada corresponde a la informada en GHL.`,
       columns: ['Cliente', 'Fecha de ingreso', 'Fecha de llamada', 'Closer', 'Contacto'],
-      rows: newEntryDetailRows
+      rows: newEntryDetailRows,
+      totalRow: [`TOTAL · ${uniqueCohortRows.length} clientes`, '', '', '', '']
     },
     {
       key: 'desglose-persona',
@@ -3131,7 +3149,13 @@ async function initCsmPage() {
       const csmRows = Array.isArray(csmResponse) ? csmResponse : (csmResponse.rows || []);
       const comprobanteRows = Array.isArray(comprobantesResponse) ? comprobantesResponse : (comprobantesResponse.rows || []);
       const leadRows = Array.isArray(leadsResponse) ? leadsResponse : (leadsResponse.rows || []);
-      const enrichedRows = enrichRows(csmRows);
+      let enrichedRows = enrichRows(csmRows);
+      if (requestedGroup?.key === 'diagnosticos') {
+        const response = await fetch('/api/metricas/csm-diagnosis-metadata');
+        if (!response.ok) throw new Error('No se pudieron cargar los CCM de los diagnósticos. Volvé a aplicar los filtros.');
+        const data = await response.json(), names = new Map(data.rows.map(row => [row.ghlid,row.ccm]));
+        enrichedRows = enrichedRows.map(row => ({...row,ccm:names.get(row.ghlid)||''}));
+      }
 
       if (pageKey !== 'renovaciones' && !csmPeriodFiltersInitialized) {
         setupCsmPeriodFilters(enrichedRows);
@@ -3189,10 +3213,7 @@ async function initCsmPage() {
           const groupChart = ['tiempos-recorrido','personas','diagnosticos','segmentacion'].includes(selectedGroup.key) ? null : buildCsmGroupChart(page, selectedGroup, selectedMetrics);
           if (groupChart) renderChart(groupChart, infoMap);
           if (selectedGroup.key === 'diagnosticos') {
-            const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');
-            const value=key=>parseCsmChartNumber(page.metrics.find(m=>m.key===key)?.value)||0;
-            const total=value('diagnosis_total'),under=value('diagnosis_under_7'),over=value('diagnosis_over_7'),missing=value('diagnosis_unclassified');
-            target.innerHTML=`<h2>Del onboarding al diagnóstico</h2><p>Sesiones realizadas en el período. Hasta 7 días incluye el día 7.</p><div class="csm-diagnosis-progress" aria-label="${under} hasta 7 días, ${over} después de 7 días"><span style="flex:${under||0.001}">${under} hasta 7 días</span><span style="flex:${over||0.001}">${over} después de 7 días</span></div><p>${total} diagnósticos en total.${missing?' '+missing+' no se pueden medir porque falta onboarding o las fechas son inconsistentes.':''} Abrí una tarjeta para ver el detalle de clientes.</p>`;
+            renderDiagnosisDashboard(enrichedRows, filters);
           } else if (selectedGroup.key === 'modulos') {
             renderModuleTraffic(page.moduleTraffic);
           } else if (selectedGroup.key === 'tiempos-recorrido') {
