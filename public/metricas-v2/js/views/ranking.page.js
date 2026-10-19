@@ -46,7 +46,7 @@ const RANKING_METRIC_INFO = {
     title: 'Incobrable',
     viewLabel: '"ranking_closers_mensual"',
     dateLabel: 'Mes del ranking por "f_venta"',
-    logic: 'Suma "monto_incobrable" de comprobantes no Club, agrupado por "responsable_venta" y, si falta, cae a "creado_por", dentro del mismo mes de "f_venta" que usa el ranking.'
+    logic: 'Saldo pendiente de ventas no Club cuando pasaron más de 60 días desde el último pago conciliado del cliente (fecha de acreditación, horario de Argentina). Los pagos pendientes o rebotados no reinician el plazo. Sin fecha de pago verificable no se clasifica automáticamente. Se atribuye al closer y mes de la venta original; no borra la deuda.'
   }
 };
 
