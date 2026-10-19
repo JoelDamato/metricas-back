@@ -778,7 +778,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
   };
 
   const headerMonths = months
-    .map((month) => `<th class="${month === currentMonth ? 'month-current' : ''}">${month}</th>`)
+    .map((month) => `<th class="${month === currentMonth ? 'month-current' : ''}">${MONTHS[month - 1].label.slice(0, 3)}</th>`)
     .join('');
 
   const renderMetricTable = (metrics, title, subtitle, tone = 'default') => {
