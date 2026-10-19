@@ -29,6 +29,7 @@ router.delete('/auth/users/:id', authController.deleteUser);
 router.get('/health', controller.health);
 const csmFollowup = require('../modules/csm/followup');
 router.get('/csm-followup', csmFollowup.list);
+router.get('/csm-entry-metadata', require('../modules/csm/entry-metadata').createHandler());
 router.put('/csm-followup/:ghlid', csmFollowup.save);
 router.put('/csm-followup-rules/:stage', csmFollowup.saveRule);
 router.get('/diagnosticos', controller.listDiagnosticos);

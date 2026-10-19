@@ -27,6 +27,12 @@ const CLOSER_ALIAS_MAP = {
   'nahuel iasci': 'Nahuel Iasci'
 };
 
+// Commercial closers (including historical reporting); excludes CSM and setters.
+const AGENDA_CLOSERS = new Set([
+  'Carlos Tu', 'Claudio Nicolini', 'Mauro Gaitan',
+  'Patricia Conti', 'Walter Alegre', 'Pablo Butera'
+].map(normalizeText));
+
 const AGENDA_CLOSER_KPI_INFO = {
   total_agendados: {
     title: 'Total Agendados',
@@ -935,7 +941,9 @@ async function initFilters() {
     .filter((year) => Number.isInteger(year) && year >= 2000)
     .sort((a, b) => b - a);
   const origenes = uniqueValues(rows, 'origen');
-  const closers = uniqueValues(rows, 'closer');
+  // Only commercial closers belong in this selector.
+  const closers = uniqueValues(rows, 'closer')
+    .filter((name) => AGENDA_CLOSERS.has(normalizeText(name)));
 
   const defaultYear = years.includes(current.year) ? current.year : years[0];
   setOptions('anio', years, defaultYear);
@@ -968,13 +976,24 @@ async function runAgendaRequests(tasks, isCurrent = () => true, concurrency = 3)
   return results;
 }
 
+function setAgendaLoading(loading) {
+  document.getElementById('agendaLoading').hidden = !loading;
+  const button = document.getElementById('reload');
+  button.disabled = loading;
+  button.textContent = loading ? 'Cargando…' : 'Aplicar filtros';
+  ['anio', 'origen', 'closer'].forEach(id => { document.getElementById(id).disabled = loading; });
+  ['kpiContainer', 'tableContainer'].forEach(id => {
+    document.getElementById(id).setAttribute('aria-busy', String(loading));
+  });
+}
+
 async function loadAgendaCloser() {
   const status = document.getElementById('status');
   const filters = getFilters();
   const revision = ++agendaLoadRevision;
   document.getElementById('kpiContainer').replaceChildren();
   document.getElementById('tableContainer').replaceChildren();
-  document.getElementById('reload').disabled = true;
+  setAgendaLoading(true);
   status.textContent = 'Cargando agendas y métricas del filtro seleccionado…';
 
   try {
@@ -995,8 +1014,6 @@ async function loadAgendaCloser() {
     if (filters.closer) query.eq_closer = filters.closer;
 
     const yearRange = getYearRange(selectedYear);
-    const aovRequests = MONTHS.map((month) => () => fetchAovDia1ForFilters(getMonthRange(selectedYear, month.value), filters));
-    const investmentRequests = MONTHS.map((month) => () => fetchInvestmentForFilters(getMonthRange(selectedYear, month.value), filters));
     const totalsQuery = {
       limit: 1000,
       orderBy: 'mes',
@@ -1008,19 +1025,15 @@ async function loadAgendaCloser() {
     const responses = await runAgendaRequests([
       () => window.metricasApi.fetchAllRows(RESOURCE, query),
       () => fetchAovDia1ForFilters(yearRange, filters),
-      ...aovRequests,
       () => fetchInvestmentForFilters(yearRange, filters),
-      ...investmentRequests,
       () => window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
     ], () => revision === agendaLoadRevision);
     if (revision !== agendaLoadRevision) return;
 
     const response = responses[0];
     const totalAovDia1Response = responses[1];
-    const monthAovResponses = responses.slice(2, 2 + MONTHS.length);
-    const totalInvestmentResponse = responses[2 + MONTHS.length];
-    const monthInvestmentResponses = responses.slice(3 + MONTHS.length, 3 + MONTHS.length * 2);
-    const totalsResponse = responses[3 + (MONTHS.length * 2)];
+    const totalInvestmentResponse = responses[2];
+    const totalsResponse = responses[3];
 
     const rows = applyLocalFilters(
       sanitizeRowsForYear(normalizeCloserRows(response.rows || []), selectedYear),
@@ -1034,7 +1047,7 @@ async function loadAgendaCloser() {
     const aovDia1Data = {
       total: Number(totalAovDia1Response?.aovDia1 || 0),
       byMonth: MONTHS.reduce((acc, month, index) => {
-        acc[month.value] = Number(monthAovResponses[index]?.aovDia1 || 0);
+        acc[month.value] = Number(totalAovDia1Response?.byMonth?.[month.value]?.aovDia1 || 0);
         return acc;
       }, {})
     };
@@ -1042,7 +1055,7 @@ async function loadAgendaCloser() {
     const investmentData = {
       total: Number(totalInvestmentResponse?.investment?.inversion_realizada || 0),
       byMonth: MONTHS.reduce((acc, month, index) => {
-        acc[month.value] = Number(monthInvestmentResponses[index]?.investment?.inversion_realizada || 0);
+        acc[month.value] = Number(totalInvestmentResponse?.investment?.byMonth?.[month.value] || 0);
         return acc;
       }, {})
     };
@@ -1063,13 +1076,18 @@ async function loadAgendaCloser() {
   } catch (error) {
     if (revision === agendaLoadRevision) status.textContent = `No se pudieron cargar las métricas de este filtro. Volvé a aplicar los filtros. ${error.message}`;
   } finally {
-    if (revision === agendaLoadRevision) document.getElementById('reload').disabled = false;
+    if (revision === agendaLoadRevision) setAgendaLoading(false);
   }
 }
 
 async function initPage() {
-  await initFilters();
-  await loadAgendaCloser();
+  setAgendaLoading(true);
+  try {
+    await initFilters();
+    await loadAgendaCloser();
+  } finally {
+    setAgendaLoading(false);
+  }
 }
 
 document.getElementById('reload').addEventListener('click', loadAgendaCloser);

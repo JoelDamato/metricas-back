@@ -1064,7 +1064,7 @@ const CSM_DIRECTORY_GROUPS = {
       title: 'Ingresos de clientes',
       description: 'Nuevos ingresos, evolución mensual y distribución por año de ingreso.',
       metricKeys: ['new_entries'],
-      sectionKeys: ['nuevos-ingresos-mes', 'clientes-anio-ingreso'],
+      sectionKeys: ['clientes-nuevos-detalle', 'nuevos-ingresos-mes', 'clientes-anio-ingreso'],
       chart: { source: 'page' }
     },
     {
@@ -1987,7 +1987,19 @@ function buildTimePageByEvent(cohortRows, context = {}) {
     })
     .filter((item) => item.total > 0 || filterRowsByDatePeriod([item.row], 'f_pago_con_acceso', filters).length > 0)
     .sort((a, b) => b.total - a.total || String(a.row.nombre || '').localeCompare(String(b.row.nombre || ''), 'es'));
+  const newEntryDetailRows = [...uniqueCohortRows]
+    .sort((a,b) => String(b.f_pago_con_acceso||'').localeCompare(String(a.f_pago_con_acceso||'')) || String(a.nombre||'').localeCompare(String(b.nombre||''),'es'))
+    .map(row => [createContactCell(row.nombre || 'Sin nombre', row.ghlid), formatDate(row.f_pago_con_acceso),
+      row.call_date ? formatDate(row.call_date) : 'Sin fecha informada', row.closer || 'Sin closer informado',
+      row.ghlid ? createGhlLinkCell(row.ghlid, 'Abrir en GHL ↗') : 'Sin GHL informado']);
   const sections = [
+    {
+      key: 'clientes-nuevos-detalle',
+      title: `Clientes nuevos · ${periodLabel}`,
+      description: `${uniqueCohortRows.length} clientes únicos ingresados en el período por fecha de pago con acceso. La fecha de llamada corresponde a la informada en GHL.`,
+      columns: ['Cliente', 'Fecha de ingreso', 'Fecha de llamada', 'Closer', 'Contacto'],
+      rows: newEntryDetailRows
+    },
     {
       key: 'desglose-persona',
       title: 'Desglose por persona',
@@ -2572,7 +2584,19 @@ function buildSituationPageAudited(cohortRows, context = {}) {
   const replacedKeys = new Set(auditedMetrics.map((metric) => metric.key));
   const metrics = [...auditedMetrics, ...basePage.metrics.filter((metric) => !replacedKeys.has(metric.key))];
   const preservedSections = basePage.sections.filter((section) => !['Clientes por Año', 'Clientes por Rubro'].includes(section.title));
+  const newEntryDetailRows = [...uniqueCohortRows]
+    .sort((a,b) => String(b.f_pago_con_acceso||'').localeCompare(String(a.f_pago_con_acceso||'')) || String(a.nombre||'').localeCompare(String(b.nombre||''),'es'))
+    .map(row => [createContactCell(row.nombre || 'Sin nombre', row.ghlid), formatDate(row.f_pago_con_acceso),
+      row.call_date ? formatDate(row.call_date) : 'Sin fecha informada', row.closer || 'Sin closer informado',
+      row.ghlid ? createGhlLinkCell(row.ghlid, 'Abrir en GHL ↗') : 'Sin GHL informado']);
   const sections = [
+    {
+      key: 'clientes-nuevos-detalle',
+      title: `Clientes nuevos · ${periodLabel}`,
+      description: `${uniqueCohortRows.length} clientes únicos ingresados en el período por fecha de pago con acceso. La fecha de llamada corresponde a la informada en GHL.`,
+      columns: ['Cliente', 'Fecha de ingreso', 'Fecha de llamada', 'Closer', 'Contacto'],
+      rows: newEntryDetailRows
+    },
     {
       key: 'desglose-persona',
       title: 'Desglose por persona',
@@ -3117,9 +3141,22 @@ async function initCsmPage() {
         filters = getCsmPeriodFilters();
       }
 
-      const rows = pageKey === 'renovaciones'
+      let rows = pageKey === 'renovaciones'
         ? enrichedRows
         : filterRowsByPayAccessPeriod(enrichedRows, filters);
+
+      if (pageKey === 'situacion' && requestedGroup?.key === 'ingresos') {
+        const ids = [...new Set(rows.map(row => String(row.ghlid || '').trim()).filter(Boolean))];
+        const metadata = new Map();
+        for (let offset=0; offset<ids.length; offset+=100) {
+          const response = await fetch('/api/metricas/csm-entry-metadata?ids='+encodeURIComponent(ids.slice(offset,offset+100).join(',')));
+          if (!response.ok) throw new Error('No se pudieron cargar las fechas de llamada y closers. Volvé a aplicar el filtro.');
+          const data = await response.json();
+          data.rows.forEach(row => metadata.set(row.ghlid,row));
+        }
+        rows = rows.map(row => ({...row, call_date:metadata.get(row.ghlid)?.call_date || row.call_date || null,
+          closer:metadata.get(row.ghlid)?.closer || row.closer || ''}));
+      }
 
       const page = builder(rows, {
         allRows: enrichedRows,

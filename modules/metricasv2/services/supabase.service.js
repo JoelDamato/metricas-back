@@ -2225,9 +2225,20 @@ async function getMarketingInvestment({ from, to, origen }) {
     }
 
     const rows = withCreditLineBalanceFallback(response.data || []).filter(row=>!isClientSession(row.origen));
+    // Preserve monthly range containment: investments spanning months belong only to the annual total.
+    const byMonth = {};
+    for (const row of rows) {
+      const start = String(row.fecha_desde || '').slice(0, 7);
+      const end = String(row.fecha_hasta || '').slice(0, 7);
+      if (start && start === end) {
+        const month = Number(start.slice(5, 7));
+        byMonth[month] = (byMonth[month] || 0) + Number(row.inversion_realizada || 0);
+      }
+    }
 
     if (!rows.length) {
       return {
+        byMonth,
         fecha_desde: from,
         fecha_hasta: to,
         origen: hasOriginFilter ? safeOrigin : '__ALL__',
@@ -2239,6 +2250,7 @@ async function getMarketingInvestment({ from, to, origen }) {
     }
 
     return rows.reduce((acc, row) => ({
+      byMonth,
       fecha_desde: from,
       fecha_hasta: to,
       origen: hasOriginFilter ? safeOrigin : '__ALL__',
@@ -2248,6 +2260,7 @@ async function getMarketingInvestment({ from, to, origen }) {
       cantidad_registros: acc.cantidad_registros + 1,
       updated_at: row.updated_at || acc.updated_at || null
     }), {
+      byMonth,
       fecha_desde: from,
       fecha_hasta: to,
       origen: hasOriginFilter ? safeOrigin : '__ALL__',
@@ -2685,11 +2698,21 @@ async function getMarketingAovDia1({ from, to, origen, estrategia, closer }) {
     return true;
   });
 
+  const byMonth = {};
+  for (const row of filtered) {
+    const month = Number(String(row.fecha_de_agendamiento || '').slice(5, 7));
+    const bucket = byMonth[month] ||= { ventasDia1: 0, cashCollectedDia1: 0, aovDia1: 0 };
+    bucket.ventasDia1++;
+    bucket.cashCollectedDia1 += getNetCashCollected(row);
+    bucket.aovDia1 = bucket.cashCollectedDia1 / bucket.ventasDia1;
+  }
+
   const facturacionDia1 = filtered.reduce((sum, row) => sum + Number(row.facturacion || 0), 0);
   const cashCollectedDia1 = filtered.reduce((sum, row) => sum + getNetCashCollected(row), 0);
   const ventasDia1 = filtered.length;
 
   return {
+    byMonth,
     aovDia1: ventasDia1 > 0 ? cashCollectedDia1 / ventasDia1 : 0,
     ventasDia1,
     facturacionDia1,
