@@ -321,6 +321,18 @@ function dedupeClientRows(rows) {
   return [...byIdentity.values()];
 }
 
+function isCsmProduct(row) {
+  const products = normalizeText([row.productos_adquiridos, row.ultimo_producto_adquirido].filter(Boolean).join(' '));
+  // Preserve legacy records without product information; exclude Club-only clients.
+  return !products.includes('club') || /meg|personaliz|renov|costos rentables/.test(products);
+}
+
+function hasCurrentSupport(row, today = new Date()) {
+  const end = String(row.fecha_final || '').slice(0,10);
+  const todayKey = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(today);
+  return Boolean(parseDate(end)) && end > todayKey && ['vigente','activo'].includes(normalizeText(row.support_active)) && row.isActive && !isPausedActivity(row) && !isAbandonmentActivity(row) && !row.hasFarewell;
+}
+
 function getSupportStatus(row) {
   const access = normalizeText(row?.acceso);
   if (access === 'acceso') return 'active';
@@ -786,8 +798,10 @@ function enrichRows(rows) {
     const payToDiagnosisMetric = normalizeDayMetric(parseMetricNumber(row.pago_a_diagnostico));
     const diagnosisUnder7Flag = parseUnderSevenMetric(row.diagnostico_7dias);
     const npsValues = Array.from({ length: 10 }, (_, index) => {
-      const value = Number(row[`nps_${index + 1}`]);
-      return Number.isFinite(value) ? value : null;
+      const raw = row[`nps_${index + 1}`];
+      if (raw === null || raw === undefined || String(raw).trim() === '') return null;
+      const value = Number(raw);
+      return Number.isFinite(value) && value >= 0 && value <= 10 ? value : null;
     });
 
     return {
@@ -1052,8 +1066,8 @@ const CSM_DIRECTORY_GROUPS = {
     {
       key: 'estado-actual',
       title: 'Estado actual de clientes',
-      description: 'Clientes únicos, activos, sin acceso, sin información y registros a revisar.',
-      metricKeys: ['total_clients', 'active_support', 'inactive_support', 'unknown_support', 'identity_quality'],
+      description: 'Clientes con soporte vigente, sus closers y acceso al seguimiento individual.',
+      metricKeys: ['total_clients', 'active_support', 'inactive_support'],
       sectionKeys: ['desglose-persona'],
       chart: {
         source: 'metrics',
@@ -1397,10 +1411,39 @@ function renderPeopleFollowup(source) {
 }
 async function renderBusinessSegments(source) {
  const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');target.innerHTML='<p>Cargando segmentos…</p>';
- try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json(),byId=new Map(profiles.map(p=>[p.ghlid,p]));const rows=dedupeClientRows(source).map(r=>({...r,rubro:byId.get(r.ghlid)?.rubro||'Sin rubro informado',modelo:r.modelo_negocio||'Sin modelo informado'}));let dimension='modelo',selected='',query='';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
+ try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json(),byId=new Map(profiles.map(p=>[p.ghlid,p]));const rows=dedupeClientRows(source).map(r=>({...r,rubro:r.rubro||byId.get(r.ghlid)?.rubro||'Sin rubro informado',modelo:r.modelo_negocio||'Sin modelo informado'}));let dimension='modelo',selected='',query='';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
  function update(){const counts=new Map();rows.forEach(r=>counts.set(r[dimension],(counts.get(r[dimension])||0)+1));target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([label,count])=>`<button type="button" data-segment="${escapeHtml(label)}" aria-pressed="${selected===label}"><strong>${escapeHtml(label)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=rows.filter(r=>(!selected||r[dimension]===selected)&&String(r.nombre||'').toLowerCase().includes(query.toLowerCase()));target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected||'Todos los segmentos')}</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th></tr></thead><tbody>${filtered.map(r=>`<tr><td><a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid||'')}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a></td><td>${escapeHtml(r.modelo)}</td><td>${escapeHtml(r.rubro)}</td></tr>`).join('')}</tbody></table></div>`;}
  target.querySelector('[data-segment-dimension]').onchange=e=>{dimension=e.target.value;selected='';update();};target.querySelector('[data-segment-search]').oninput=e=>{query=e.target.value;update();};update();
  }catch(e){target.textContent=e.message;}
+}
+
+function matchesCsmProduct(row, product) {
+  const value=normalizeText([row.productos_adquiridos,row.ultimo_producto_adquirido].filter(Boolean).join(' '));
+  if(product==='meg 1') return /meg\s*1(?:\D|$)/.test(value);
+  if(product==='meg 2') return /meg\s*2(?![.\d])/.test(value);
+  if(product==='meg 2.1') return /meg\s*2\.1/.test(value);
+  return value.includes(product);
+}
+
+function renderClientDirectory(source, mode) {
+  const target = document.getElementById('detailContainer');
+  target.hidden = false; target.classList.add('csm-module-durations');
+  const clients = dedupeClientRows(source);
+  const closers = [...new Set(clients.map(r=>r.closer||'Sin closer'))].sort((a,b)=>a.localeCompare(b,'es'));
+  target.innerHTML = `<div class="csm-followup-tools"><label>Buscar cliente<input data-client-search type="search" placeholder="Nombre"></label><label>Closer<select data-client-closer><option value="">Todos</option>${closers.map(c=>`<option>${escapeHtml(c)}</option>`).join('')}</select></label><label>Producto<select data-client-product><option value="">Todos</option>${['MEG 1','MEG 2','MEG 2.1','Personalizado','Renovación'].map(c=>`<option>${c}</option>`).join('')}</select></label>${mode==='estado-actual'?'<label>Estado<select data-client-state><option value="">Todos</option><option selected>Soporte activo</option><option>Con acceso</option><option>En pausa</option><option>Despedido</option><option>Abandono</option><option>Sin acceso</option><option>Soporte por verificar</option></select></label>':''}<button type="button" data-client-export>Descargar CSV</button></div><div data-client-results></div>`;
+  let filtered=[];
+  const state = r=>isPausedActivity(r)?'En pausa':isAbandonmentActivity(r)?'Abandono':r.hasFarewell?'Despedido':hasCurrentSupport(r)?'Soporte activo':r.isActive?(r.fecha_final?'Con acceso':'Soporte por verificar'):r.supportStatus==='inactive'?'Sin acceso':'Sin informar';
+  function update(){
+    const query=normalizeText(target.querySelector('[data-client-search]').value),closer=target.querySelector('[data-client-closer]').value,product=normalizeText(target.querySelector('[data-client-product]').value),status=target.querySelector('[data-client-state]')?.value;
+    filtered=clients.filter(r=>normalizeText(r.nombre).includes(query)&&(!closer||(r.closer||'Sin closer')===closer)&&(!product||matchesCsmProduct(r,product))&&(!status||state(r)===status)).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));
+    target.querySelector('[data-client-results]').innerHTML=`<p>${filtered.length} clientes</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Closer</th><th>Producto</th><th>Estado</th><th>Ingreso</th><th>Fecha de llamada</th><th>Detalle</th></tr></thead><tbody>${filtered.map(r=>`<tr><td>${escapeHtml(r.nombre||'Sin nombre')}</td><td>${escapeHtml(r.closer||'Sin closer')}</td><td>${escapeHtml(r.productos_adquiridos||r.ultimo_producto_adquirido||'Sin informar')}</td><td>${state(r)}</td><td>${formatDate(r.f_pago_con_acceso)}</td><td>${formatDate(r.call_date)}</td><td>${r.ghlid?`<a href="/contacto-estado/?ghlId=${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener">Estado de contacto ↗</a> · <a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener">GHL ↗</a>`:'—'}</td></tr>`).join('')||'<tr><td colspan="7">Sin clientes para estos filtros.</td></tr>'}</tbody></table></div>`;
+  }
+  target.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',update));
+  target.querySelector('[data-client-export]').onclick=()=>{
+    const cell=value=>'"'+String(value??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';
+    const csv=[['Cliente','Closer','Producto','Estado','Ingreso','Fecha de llamada','GHL ID'],...filtered.map(r=>[r.nombre,r.closer,r.productos_adquiridos||r.ultimo_producto_adquirido,state(r),r.f_pago_con_acceso,r.call_date,r.ghlid])].map(row=>row.map(cell).join(';')).join('\r\n');
+    const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='csm-'+mode+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };update();
 }
 
 function renderDiagnosisDashboard(allRows, filters) {
@@ -1418,13 +1461,28 @@ function renderDiagnosisDashboard(allRows, filters) {
     return {total:entries.length,under:entries.filter(x=>x.bucket==='Hasta 7 días').length,over:entries.filter(x=>x.bucket==='Más de 7 días').length,unknown:entries.filter(x=>!['Hasta 7 días','Más de 7 días'].includes(x.bucket)).length};
   });
   const entries = filterRowsByDatePeriod(unique,'f_diagnostico',filters).map(classify).sort((a,b)=>String(a.row.f_diagnostico).localeCompare(String(b.row.f_diagnostico)));
-  target.innerHTML = `<div class="csm-diagnosis-charts"><section class="csm-diagnosis-chart"><h2>Diagnósticos iniciales mes a mes · ${escapeHtml(filters.year)}</h2><p>Clientes únicos por fecha de diagnóstico, no por fecha de ingreso.</p><div class="csm-diagnosis-canvas"><canvas id="diagnosisMonthlyChart" role="img" aria-label="Cantidad mensual de diagnósticos iniciales"></canvas></div></section><section class="csm-diagnosis-chart"><h2>Dentro o fuera de los 7 días</h2><p>Del onboarding a la fecha del diagnóstico. El día 7 está incluido dentro del plazo.</p><div class="csm-diagnosis-canvas"><canvas id="diagnosisDeadlineChart" role="img" aria-label="Diagnósticos hasta 7 días, después de 7 días y sin clasificación por mes"></canvas></div></section></div>
+  target.innerHTML = `<div class="csm-diagnosis-charts" style="grid-template-columns:1fr"><section class="csm-diagnosis-chart"><h2>Diagnósticos iniciales · ${escapeHtml(filters.year)}</h2><p>Del onboarding al diagnóstico: verde hasta 7 días inclusive, rojo más de 7 días. La línea muestra el total mensual.</p><div class="csm-diagnosis-canvas"><canvas id="diagnosisMonthlyChart" role="img" aria-label="Diagnósticos mensuales: hasta 7 días, más de 7 días, sin clasificación y total"></canvas></div></section></div>
   <details class="csm-diagnosis-chart"><summary>Ver cantidades mensuales</summary><div class="csm-duration-scroll"><table><thead><tr><th>Mes</th><th>Diagnósticos</th><th>Hasta 7 días</th><th>Más de 7 días</th><th>Sin clasificación</th></tr></thead><tbody>${monthly.map((m,i)=>`<tr><td>${escapeHtml(months[i].label)}</td><td>${m.total}</td><td>${m.under}</td><td>${m.over}</td><td>${m.unknown}</td></tr>`).join('')}</tbody></table></div></details>
   <section class="csm-diagnosis-chart"><h2>Diagnósticos · ${escapeHtml(describeCsmPeriod(filters))}</h2><p>${entries.length} clientes. CCM tomado de la etapa inicial de la Carta de diagnóstico; si falta, del responsable de la carta.</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>CCM</th><th>Onboarding</th><th>Diagnóstico</th><th>Días</th><th>Plazo</th></tr></thead><tbody>${entries.map(({row,days,bucket})=>`<tr><td>${row.ghlid?`<a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(row.ghlid)}" target="_blank" rel="noopener noreferrer">${escapeHtml(row.nombre||'Sin nombre')} ↗</a>`:escapeHtml(row.nombre||'Sin nombre')}</td><td>${escapeHtml(row.ccm||'Sin CCM informado')}</td><td>${formatDate(row.f_onboarding)}</td><td>${formatDate(row.f_diagnostico)}</td><td>${days !== null && days >= 0 ? formatDays(days) : '—'}</td><td><span class="csm-duration-tone ${bucket==='Hasta 7 días'?'green':bucket==='Más de 7 días'?'red':'yellow'}">${bucket}</span></td></tr>`).join('')||'<tr><td colspan="6">Sin diagnósticos en el período seleccionado.</td></tr>'}</tbody></table></div></section>`;
   if(typeof Chart === 'undefined') return;
-  const options = () => ({responsive:true,maintainAspectRatio:false,scales:{x:{ticks:{color:'#b5c9e3'},grid:{color:'#29415b'}},y:{beginAtZero:true,ticks:{precision:0,color:'#b5c9e3'},grid:{color:'#29415b'}}},plugins:{legend:{position:'bottom',labels:{color:'#d3e3f7'}}}});
-  diagnosisCharts.push(new Chart(document.getElementById('diagnosisMonthlyChart'),{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'Diagnósticos iniciales',data:monthly.map(m=>m.total),backgroundColor:'#438dff',borderRadius:5}]},options:options()}));
-  diagnosisCharts.push(new Chart(document.getElementById('diagnosisDeadlineChart'),{type:'line',data:{labels:months.map(m=>m.label),datasets:[['Hasta 7 días','under','#1da88a'],['Más de 7 días','over','#e16075'],['Sin clasificación','unknown','#d49b32']].map(([label,key,color])=>({label,data:monthly.map(m=>m[key]),borderColor:color,backgroundColor:color,tension:0,pointRadius:4,borderDash:key==='unknown'?[5,5]:[]}))},options:options()}));
+  const labelsPlugin = {id:'diagnosisCounts',afterDatasetsDraw(chart){
+    const {ctx}=chart;ctx.save();ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    chart.data.datasets.forEach((dataset,index)=>{if(!chart.isDatasetVisible(index))return;
+      chart.getDatasetMeta(index).data.forEach((point,i)=>{const value=dataset.data[i];if(!value)return;
+        ctx.fillStyle=dataset.type==='line'?'#e3efff':'#ffffff';
+        ctx.fillText(value,point.x,dataset.type==='line'?point.y-12:(point.y+point.base)/2+4);
+      });
+    });ctx.restore();
+  }};
+  diagnosisCharts.push(new Chart(document.getElementById('diagnosisMonthlyChart'),{
+    type:'bar',plugins:[labelsPlugin],data:{labels:months.map(m=>m.label),datasets:[
+      {type:'line',label:'Total',data:monthly.map(m=>m.total),borderColor:'#64c9f1',backgroundColor:'#64c9f1',pointRadius:4,tension:0,order:0,stack:'total'},
+      ...[['Hasta 7 días','under','#19966e'],['Más de 7 días','over','#dc4459'],['Sin clasificación','unknown','#a67a21']].map(([label,key,color])=>({label,data:monthly.map(m=>m[key]),backgroundColor:color,stack:'diagnoses',order:1,maxBarThickness:48}))
+    ]},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},interaction:{mode:'index',intersect:false},scales:{
+      x:{stacked:true,ticks:{color:'#b5c9e3'},grid:{display:false}},
+      y:{stacked:true,beginAtZero:true,grace:'15%',ticks:{precision:0,color:'#b5c9e3'},grid:{color:'#29415b'}}
+    },plugins:{legend:{position:'bottom',labels:{color:'#d3e3f7'}}}}
+  }));
 }
 
 function renderChart(config, infoMap = {}) {
@@ -2152,8 +2210,10 @@ function buildSituationPage(rows, context = {}) {
     .map((item) => item.row);
   const explicitEngagementRows = activeRows.filter((row) => hasExplicitEngagement(row));
 
+  const npsRowsByUnit = Array.from({length:10}, (_,index) => dedupeClientRows(allProgramRows).filter(row =>
+    row.npsValues[index] !== null && (!context.filters || filterRowsByDatePeriod([row], `modulo_${index+1}_fin`, context.filters).length)));
   const npsUnitStats = Array.from({ length: 10 }, (_, index) => {
-    const values = rows.map((row) => row.npsValues[index]).filter((value) => value !== null);
+    const values = npsRowsByUnit[index].map(row => row.npsValues[index]);
     return {
       unit: `Unidad ${index + 1}`,
       average: average(values),
@@ -2161,7 +2221,7 @@ function buildSituationPage(rows, context = {}) {
     };
   });
 
-  const allNpsValues = rows.flatMap((row) => row.npsValues.filter((value) => value !== null));
+  const allNpsValues = npsRowsByUnit.flatMap((unitRows,index) => unitRows.map(row => row.npsValues[index]));
   const recommendationCount = allNpsValues.filter((value) => Number(value) >= 9).length;
 
   const modelBucketNames = [...new Set(rows.map((row) => row.modelBucket || 'Sin rubro'))]
@@ -2345,7 +2405,7 @@ function buildSituationPage(rows, context = {}) {
       label: 'NPS promedio de cada unidad',
       value: 'Ver detalle por unidad',
       base: `${formatInteger(allNpsValues.length)} respuestas NPS`,
-      note: 'La tabla inferior muestra unidad por unidad.',
+      note: 'Respuestas en escala 0–10, agrupadas por fecha de fin del módulo como referencia.',
       dateLabel: '"nps_1" a "nps_10"',
       fieldsLabel: '"nps_1" a "nps_10"',
       logic: 'Promedio simple por cada columna NPS, usando solo respuestas no nulas.'
@@ -2384,7 +2444,7 @@ function buildSituationPage(rows, context = {}) {
     },
     {
       title: 'NPS Promedio por Unidad',
-      description: 'Promedio y cantidad de respuestas disponibles en cada unidad.',
+      description: 'Escala de 0 a 10. Período por fecha de fin del módulo, como referencia: GHL no informa la fecha de respuesta. Los vacíos no cuentan como cero. Respuestas sin fecha de fin quedan fuera del período.',
       columns: ['Unidad', 'Promedio NPS', 'Respuestas'],
       rows: npsUnitStats.map((row) => [
         row.unit,
@@ -2459,7 +2519,7 @@ function buildSituationPageAudited(cohortRows, context = {}) {
   const periodLabel = describeCsmPeriod(filters);
   const uniqueRows = dedupeClientRows(allRows);
   const uniqueCohortRows = dedupeClientRows(cohortRows);
-  const activeRows = uniqueRows.filter((row) => row.isActive);
+  const activeRows = uniqueRows.filter(row => hasCurrentSupport(row));
   const inactiveRows = uniqueRows.filter((row) => row.supportStatus === 'inactive');
   const unknownRows = uniqueRows.filter((row) => row.supportStatus === 'unknown');
   const duplicateRows = Math.max(allRows.length - uniqueRows.length, 0);
@@ -2551,13 +2611,13 @@ function buildSituationPageAudited(cohortRows, context = {}) {
     }),
     buildMetricRow({
       key: 'active_support',
-      label: 'Clientes activos actuales',
+      label: 'Clientes con soporte activo',
       value: formatCountWithPercent(activeRows.length, uniqueRows.length),
       base: `${formatInteger(uniqueRows.length)} clientes únicos actuales`,
       fieldsLabel: '"acceso"',
-      logic: 'Cuenta como activo únicamente cuando "acceso" es exactamente "Acceso" (sin distinguir mayúsculas/minúsculas). Es una foto actual, no un histórico.',
+      logic: 'Soporte vigente en GHL y fecha de finalización posterior a hoy (Argentina), con acceso y sin pausa, despedida ni abandono. Los casos sin estado de soporte no se presumen vigentes.',
       detailColumns: ['Cliente', 'Estado', 'Valor acceso', 'Ingreso', 'Rubro', 'GHL'],
-      detailRows: supportDetailRows.filter((row) => row[1] === 'Activo')
+      detailRows: activeRows.map(row => [createContactCell(row.nombre,row.ghlid),'Soporte vigente',row.acceso,formatDate(row.f_pago_con_acceso),row.rubro||row.modelRaw,createGhlLinkCell(row.ghlid)])
     }),
     buildMetricRow({
       key: 'inactive_support',
@@ -3108,7 +3168,7 @@ async function initCsmPage() {
     if (requestedGroup && title) title.textContent = requestedGroup.title;
     if (requestedGroup && description) description.textContent = requestedGroup.description;
   }
-  const isModuleSnapshotView = renderedPageKey === 'cuadro' && requestedGroup?.key === 'modulos';
+  const isModuleSnapshotView = renderedPageKey === 'cuadro' && ['modulos','estado-actual','segmentacion'].includes(requestedGroup?.key);
 
   async function loadPage() {
     status.textContent = 'Cargando metricas de CSM...';
@@ -3149,7 +3209,11 @@ async function initCsmPage() {
       const csmRows = Array.isArray(csmResponse) ? csmResponse : (csmResponse.rows || []);
       const comprobanteRows = Array.isArray(comprobantesResponse) ? comprobantesResponse : (comprobantesResponse.rows || []);
       const leadRows = Array.isArray(leadsResponse) ? leadsResponse : (leadsResponse.rows || []);
-      let enrichedRows = enrichRows(csmRows);
+      const programResponse = await fetch('/api/metricas/csm-program-metadata');
+      if (!programResponse.ok) throw new Error('No se pudo verificar la información de soporte y rubro. Reintentá.');
+      const programData = await programResponse.json();
+      const programs = new Map(programData.rows.map(row => [row.ghlid,row]));
+      let enrichedRows = enrichRows(csmRows.filter(isCsmProduct).map(row => ({...row,...programs.get(row.ghlid)})));
       if (requestedGroup?.key === 'diagnosticos') {
         const response = await fetch('/api/metricas/csm-diagnosis-metadata');
         if (!response.ok) throw new Error('No se pudieron cargar los CCM de los diagnósticos. Volvé a aplicar los filtros.');
@@ -3208,12 +3272,14 @@ async function initCsmPage() {
           if (description) description.textContent = selectedGroup.description;
           if (selectedMetrics.length && selectedGroup.key !== 'tiempos-recorrido') {
             renderKpiCards(selectedMetrics, selectedMetrics.map((metric) => metric.key), infoMap);
-            if (!['diagnosticos','sesiones','tiempos-recorrido'].includes(selectedGroup.key)) renderMetricsTable(selectedMetrics, infoMap);
+            if (!['diagnosticos','sesiones','tiempos-recorrido','estado-actual','ingresos'].includes(selectedGroup.key)) renderMetricsTable(selectedMetrics, infoMap);
           }
-          const groupChart = ['tiempos-recorrido','personas','diagnosticos','segmentacion'].includes(selectedGroup.key) ? null : buildCsmGroupChart(page, selectedGroup, selectedMetrics);
+          const groupChart = ['tiempos-recorrido','personas','diagnosticos','segmentacion','estado-actual'].includes(selectedGroup.key) ? null : buildCsmGroupChart(page, selectedGroup, selectedMetrics);
           if (groupChart) renderChart(groupChart, infoMap);
           if (selectedGroup.key === 'diagnosticos') {
             renderDiagnosisDashboard(enrichedRows, filters);
+          } else if (['estado-actual','ingresos'].includes(selectedGroup.key)) {
+            renderClientDirectory(selectedGroup.key === 'ingresos' ? rows : enrichedRows, selectedGroup.key);
           } else if (selectedGroup.key === 'modulos') {
             renderModuleTraffic(page.moduleTraffic);
           } else if (selectedGroup.key === 'tiempos-recorrido') {
@@ -3326,6 +3392,8 @@ if (typeof window !== 'undefined') {
     filterRowsByDatePeriod,
     dedupeClientRows,
     getSupportStatus,
+    hasCurrentSupport,
+    isCsmProduct,
     isInCurrentModuleCircuit,
     buildMonthlyEntryStats,
     buildModuleTraffic,

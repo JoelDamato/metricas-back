@@ -36,7 +36,7 @@ test('CSM usa acceso = Acceso como estado activo y deduplica por GHL', () => {
   const api = loadInternals();
   const rows = api.enrichRows([
     { id: '1', ghlid: 'same', nombre: 'Duplicado viejo', acceso: 'Sin acceso', updated_at: '2026-01-01', f_pago_con_acceso: '2026-01-05' },
-    { id: '2', ghlid: 'same', nombre: 'Duplicado nuevo', acceso: 'Acceso', activos: false, updated_at: '2026-02-01', f_pago_con_acceso: '2026-02-05' },
+    { id: '2', ghlid: 'same', nombre: 'Duplicado nuevo', support_active:'Vigente', fecha_final:'2099-01-01', acceso: 'Acceso', activos: false, updated_at: '2026-02-01', f_pago_con_acceso: '2026-02-05' },
     { id: '3', ghlid: 'inactive', nombre: 'Sin acceso', acceso: 'Sin acceso', activos: true, f_pago_con_acceso: '2026-03-05' },
     { id: '4', ghlid: 'unknown', nombre: 'Sin dato', acceso: null, activos: true, f_pago_con_acceso: '2026-03-06' }
   ]);
@@ -303,4 +303,30 @@ test('diagnósticos clasifican día 7, separan fechas inválidas y muestran CCM 
  const page=api.buildTimePageByEvent(rows,{allRows:rows,filters});
  assert.equal(metric(page,'diagnosis_total').value,'4');assert.equal(metric(page,'diagnosis_under_7').value,'1');assert.equal(metric(page,'diagnosis_over_7').value,'1');assert.equal(metric(page,'diagnosis_unclassified').value,'2');
  const info=metric(page,'diagnosis_total').info;assert(info.detailColumns.includes('CCM'));assert.equal(info.detailRows[0][1],'Valeria Calmet');
+});
+
+
+test('NPS vacío no es cero; Club solo se excluye y soporte exige vigencia sin pausa',()=>{
+ const api=loadInternals();
+ const rows=api.enrichRows([{nps_1:null,nps_2:'',nps_3:'0',nps_4:'9',acceso:'Acceso',support_active:'Vigente',fecha_final:'2099-01-01'}]);
+ assert.equal(rows[0].npsValues[0],null);assert.equal(rows[0].npsValues[1],null);assert.equal(rows[0].npsValues[2],0);
+ assert.equal(api.hasCurrentSupport(rows[0]),true);
+ assert.equal(api.hasCurrentSupport({...rows[0],fecha_final:'2020-01-01'}),false);
+ assert.equal(api.hasCurrentSupport({...rows[0],fecha_final:null}),false);
+ assert.equal(api.hasCurrentSupport({...rows[0],pausa:'En pausa'}),false);
+ assert.equal(api.hasCurrentSupport({...rows[0],support_active:'Vencido'}),false);
+ assert.equal(api.isCsmProduct({productos_adquiridos:'Club'}),false);
+ assert.equal(api.isCsmProduct({productos_adquiridos:'Club, MEG 2.1'}),true);
+});
+
+
+test('NPS del mes incluye ingresados antes, usa fin del módulo y no imputa respuestas sin fecha',()=>{
+ const api=loadInternals(),allRows=api.enrichRows([
+ {ghlid:'a',f_pago_con_acceso:'2026-09-01',modulo_1_fin:'2026-10-02',nps_1:10},
+ {ghlid:'b',f_pago_con_acceso:'2026-10-01',modulo_1_fin:'2026-10-03',nps_1:0},
+ {ghlid:'c',f_pago_con_acceso:'2026-10-01',modulo_1_fin:'2026-10-03',nps_1:null},
+ {ghlid:'d',f_pago_con_acceso:'2026-10-01',nps_1:2}]);
+ const page=api.buildSituationPageAudited(allRows.filter(r=>r.ghlid!=='a'),{allRows,filters:{year:'2026',month:'10'}});
+ const unit=page.sections.find(s=>s.title==='NPS Promedio por Unidad').rows[0];
+ assert.equal(unit[1],'5,0');assert.equal(unit[2],'2');
 });

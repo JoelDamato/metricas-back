@@ -22,3 +22,5 @@
 
 .csm-diagnosis-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.csm-diagnosis-chart{min-width:0;padding:24px;border:1px solid #9ebde155;border-radius:16px;background:var(--card-bg,#f3f7ff);margin-bottom:20px}.csm-diagnosis-chart h2{font-size:20px;margin:0 0 10px}.csm-diagnosis-chart p{font-size:14px;line-height:1.6}.csm-diagnosis-canvas{position:relative;height:320px}.csm-diagnosis-chart summary{cursor:pointer;font-weight:600}.csm-diagnosis-chart table td{white-space:nowrap}:root[data-theme='dark'] .csm-diagnosis-chart{background:#101f35;color:#e4efff}@media(max-width:1000px){.csm-diagnosis-charts{grid-template-columns:1fr}.csm-diagnosis-chart{padding:16px}.csm-diagnosis-canvas{height:280px}}
 .csm-module-durations .csm-diagnosis-chart{background:#10233a;color:#e3efff;border-color:#314b69}.csm-module-durations .csm-diagnosis-chart h2,.csm-module-durations .csm-diagnosis-chart summary{color:#e3efff}.csm-module-durations .csm-diagnosis-chart p{color:#b5c9e3}
+
+.csm-module-durations [data-client-results] > p { color: #d3e3f7; margin: 12px 0; }

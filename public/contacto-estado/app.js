@@ -118,7 +118,7 @@ function renderContact(contact) {
   ];
   const areaMarkup = areaSections.map((section, index) => {
     const items = Array.isArray(contact.areas?.[section.key]) ? contact.areas[section.key] : [];
-    const itemsMarkup = items.slice(0, 3).map((item) => `
+    const itemsMarkup = items.map((item) => `
       <div class="area-detail">
         <dt>${escapeHtml(item.label || 'Dato')}</dt>
         <dd>${escapeHtml(item.type === 'amount' ? formatAmount(item.value) : (item.value || 'Sin dato'))}</dd>
@@ -143,6 +143,7 @@ function renderContact(contact) {
           <p class="card-kicker">Ficha resumida</p>
           <h2>${safeName}</h2>
           <p class="card-subcopy">Resumen principal del contacto para compartir de forma simple y rápida.</p>
+          ${contact.areas?.csm?.some(item=>item.label==='Diagnóstico' && !String(item.value).startsWith('Sin sesión')) ? `<p class="card-subcopy"><a href="/diagnostico/?ghl_id=${encodeURIComponent(contact.ghlId)}" target="_blank" rel="noopener">Carta de diagnóstico ↗</a></p>` : ''}
           ${ghlUrl ? `<p class="card-subcopy"><a class="metricas-ghl-link" href="${ghlUrl}" target="_blank" rel="noopener noreferrer">Ver GHL</a></p>` : ''}
         </div>
         <span class="status-pill ${statusTone}">${safeStatus}</span>
