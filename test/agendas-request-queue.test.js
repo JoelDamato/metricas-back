@@ -1,0 +1,7 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('fs');
+const src=fs.readFileSync('public/metricas-v2/js/views/agendas-closer.page.js','utf8');
+const context={setTimeout};vm.createContext(context);vm.runInContext(src.slice(src.indexOf('async function runAgendaRequests'),src.indexOf('async function loadAgendaCloser')),context);
+const run=context.runAgendaRequests;
+test('las 28 consultas conservan orden con hasta 3 conexiones simultáneas',async()=>{let active=0,peak=0;const tasks=Array.from({length:28},(_,i)=>async()=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,3+(i%4)));active--;return i;});const results=await run(tasks);assert.deepEqual(Array.from(results),Array.from({length:28},(_,i)=>i));assert.equal(peak,3);});
+test('un corte transitorio se reintenta una sola vez',async()=>{let calls=0;const result=await run([async()=>{if(++calls===1)throw Error('Error consultando comprobantes: socket hang up');return 42;}]);assert.equal(result[0],42);assert.equal(calls,2);let permanent=0;await assert.rejects(run([async()=>{permanent++;throw Error('socket hang up');}]),/socket/);assert.equal(permanent,2);});
+test('no reintenta errores de permisos ni inicia tareas de un filtro obsoleto',async()=>{let calls=0;await assert.rejects(run([async()=>{calls++;throw Error('Sin permiso');}]),/Sin permiso/);assert.equal(calls,1);await run([async()=>{calls++;}],()=>false);assert.equal(calls,1);});

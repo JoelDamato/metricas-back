@@ -943,10 +943,39 @@ async function initFilters() {
   setOptions('closer', closers, '', true);
 }
 
+let agendaLoadRevision = 0;
+
+async function runAgendaRequests(tasks, isCurrent = () => true, concurrency = 3) {
+  const results = new Array(tasks.length);
+  let next = 0;
+  let failed = false;
+  async function worker() {
+    while (!failed && isCurrent() && next < tasks.length) {
+      const index = next++;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          results[index] = await tasks[index]();
+          break;
+        } catch (error) {
+          const transient = /socket hang up|ECONNRESET|timeout|timed out|network|failed to fetch|502|503|504/i.test(error.message || '');
+          if (!transient || attempt > 0 || !isCurrent()) { failed = true; throw error; }
+          await new Promise(resolve => setTimeout(resolve, 350));
+        }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, worker));
+  return results;
+}
+
 async function loadAgendaCloser() {
   const status = document.getElementById('status');
   const filters = getFilters();
-  status.textContent = `Cargando ${RESOURCE}...`;
+  const revision = ++agendaLoadRevision;
+  document.getElementById('kpiContainer').replaceChildren();
+  document.getElementById('tableContainer').replaceChildren();
+  document.getElementById('reload').disabled = true;
+  status.textContent = 'Cargando agendas y métricas del filtro seleccionado…';
 
   try {
     const selectedYear = Number(filters.anio);
@@ -966,8 +995,8 @@ async function loadAgendaCloser() {
     if (filters.closer) query.eq_closer = filters.closer;
 
     const yearRange = getYearRange(selectedYear);
-    const aovRequests = MONTHS.map((month) => fetchAovDia1ForFilters(getMonthRange(selectedYear, month.value), filters));
-    const investmentRequests = MONTHS.map((month) => fetchInvestmentForFilters(getMonthRange(selectedYear, month.value), filters));
+    const aovRequests = MONTHS.map((month) => () => fetchAovDia1ForFilters(getMonthRange(selectedYear, month.value), filters));
+    const investmentRequests = MONTHS.map((month) => () => fetchInvestmentForFilters(getMonthRange(selectedYear, month.value), filters));
     const totalsQuery = {
       limit: 1000,
       orderBy: 'mes',
@@ -976,20 +1005,21 @@ async function loadAgendaCloser() {
     };
     if (filters.origen) totalsQuery.eq_origen = filters.origen;
 
-    const responses = await Promise.all([
-      window.metricasApi.fetchAllRows(RESOURCE, query),
-      fetchAovDia1ForFilters(yearRange, filters),
+    const responses = await runAgendaRequests([
+      () => window.metricasApi.fetchAllRows(RESOURCE, query),
+      () => fetchAovDia1ForFilters(yearRange, filters),
       ...aovRequests,
-      fetchInvestmentForFilters(yearRange, filters),
+      () => fetchInvestmentForFilters(yearRange, filters),
       ...investmentRequests,
-      window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
-    ]);
+      () => window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
+    ], () => revision === agendaLoadRevision);
+    if (revision !== agendaLoadRevision) return;
 
     const response = responses[0];
     const totalAovDia1Response = responses[1];
     const monthAovResponses = responses.slice(2, 2 + MONTHS.length);
     const totalInvestmentResponse = responses[2 + MONTHS.length];
-    const monthInvestmentResponses = responses.slice(3 + MONTHS.length);
+    const monthInvestmentResponses = responses.slice(3 + MONTHS.length, 3 + MONTHS.length * 2);
     const totalsResponse = responses[3 + (MONTHS.length * 2)];
 
     const rows = applyLocalFilters(
@@ -1031,7 +1061,9 @@ async function loadAgendaCloser() {
     buildMatrixTable(totalsRows, filters, aovDia1Data, investmentData, agendaBaseData);
     status.textContent = `Filas: ${rows.length} | año ${selectedYear}${filters.origen ? ` | origen ${filters.origen}` : ' | origen Todos'}${filters.closer ? ` | closer ${filters.closer}` : ' | closer Todos'}`;
   } catch (error) {
-    status.textContent = error.message;
+    if (revision === agendaLoadRevision) status.textContent = `No se pudieron cargar las métricas de este filtro. Volvé a aplicar los filtros. ${error.message}`;
+  } finally {
+    if (revision === agendaLoadRevision) document.getElementById('reload').disabled = false;
   }
 }
 
@@ -1041,4 +1073,4 @@ async function initPage() {
 }
 
 document.getElementById('reload').addEventListener('click', loadAgendaCloser);
-initPage();
+initPage().catch(error => { document.getElementById('status').textContent = `No se pudieron cargar los filtros: ${error.message}. Recargá la página para reintentar.`; });
