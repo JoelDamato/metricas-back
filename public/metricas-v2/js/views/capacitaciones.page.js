@@ -61,7 +61,14 @@
   const selected = new URLSearchParams(location.search).get('clase');
   const lesson = classes.find(c=>String(c.id)===selected);
   const content = document.getElementById('campusContent');
-  if (selected && !lesson) {
+  if (new URLSearchParams(location.search).get('tab') === 'lanzamiento') {
+    document.title = 'Lanzamiento | Centro de entrenamiento';
+    document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
+    document.getElementById('launchTab').setAttribute('aria-current','page');
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá la clase de lanzamiento y después abrí el documento con las actividades de Leo.</p></div><div class="campus-stats"><div><strong>01</strong><span>Clase de lanzamiento</span></div></div></section>
+    <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
+    <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
+  } else if (selected && !lesson) {
     content.innerHTML='<div class="campus-hero"><div><h1>Esta clase no está disponible</h1><p class="campus-intro">Elegí una de las clases de la capacitación.</p><a class="campus-back" href="/views/entrenamiento.html">← Ver todas las clases</a></div></div>';
   } else if (lesson) {
     document.title=`Clase ${lesson.id} · ${lesson.title} | Central MR`;
