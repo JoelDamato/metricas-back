@@ -5,3 +5,5 @@
 @media(max-width:760px){.lesson-materials{scroll-margin-top:180px}}
 
 .lesson-task-link{margin-top:12px}
+
+.launch-gift{display:flex;flex-direction:column;gap:14px;margin:0}.launch-gift .campus-eyebrow{color:#81affb;font-size:12px;letter-spacing:.1em}.launch-gift .campus-button{margin-top:auto;align-self:flex-start}.launch-gift .launch-gift-url{overflow-wrap:anywhere;font-size:12px;color:#8da8ce}.launch-gift details{border-top:1px solid #30415e;padding-top:16px}.launch-gift summary{cursor:pointer;color:#bbd5fa;font-size:14px;font-weight:650}.launch-gift details p{margin:12px 0}.launch-gift code{display:inline-block;background:#193353;padding:10px 12px;border-radius:8px;color:#e7f2ff;font-size:15px;overflow-wrap:anywhere;max-width:100%}.launch-gift summary:focus-visible{outline:2px solid #aacdff;outline-offset:5px}

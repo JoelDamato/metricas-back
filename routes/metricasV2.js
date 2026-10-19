@@ -27,6 +27,7 @@ router.patch('/auth/users/:id', authController.updateUser);
 router.patch('/auth/users/:id/password', authController.updateUserPassword);
 router.delete('/auth/users/:id', authController.deleteUser);
 router.get('/health', controller.health);
+router.get('/launch-gifts', require('../modules/training/launch-gifts'));
 const csmFollowup = require('../modules/csm/followup');
 router.get('/csm-followup', csmFollowup.list);
 router.get('/csm-entry-metadata', require('../modules/csm/entry-metadata').createHandler());

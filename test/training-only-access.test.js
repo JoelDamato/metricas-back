@@ -20,7 +20,7 @@ test('los permisos del equipo actual se conservan',()=>{
 test('el servidor permite grabaciones y sesión pero bloquea APIs y páginas operativas',async()=>{
  const old=auth.getActiveUserByEmail;auth.getActiveUserByEmail=async()=>user;
  try{
-  for(const [path,allowed] of [['/auth/session',true],['/recordings',true],['/recordings/abc/comments',true],['/training',false],['/tickets',false],['/commercial-area',false],['/views',false],['/recordings-other',false]]){
+  for(const [path,allowed] of [['/auth/session',true],['/launch-gifts',true],['/launch-gifts-other',false],['/recordings',true],['/recordings/abc/comments',true],['/training',false],['/tickets',false],['/commercial-area',false],['/views',false],['/recordings-other',false]]){
    let status,next=false;const req={path,method:'GET',authUser:{email:user.email}};const res={status(n){status=n;return this;},json(){}};
    await metricasApiGuard(req,res,e=>{if(e)throw e;next=true;});assert.equal(next,allowed,path);if(!allowed)assert.equal(status,403,path);
   }
@@ -29,4 +29,12 @@ test('el servidor permite grabaciones y sesión pero bloquea APIs y páginas ope
    assert.equal(destination,'/unauthorized.html',path);
   }
  }finally{auth.getActiveUserByEmail=old;}
+});
+
+test('regalos requieren sesión y permiso de capacitación',()=>{
+ const handler=require('../modules/training/launch-gifts');
+ let status,data;const res={status(n){status=n;return this;},set(){return this;},json(value){data=value;}};
+ handler({},res);assert.equal(status,401);
+ handler({authUser:user},res);assert.equal(data.gifts.length,3);assert.deepEqual(data.gifts.map(g=>g.day),[4,7,9]);assert.equal(data.uses,7);
+ handler({authUser:{...user,access_config:{...user.access_config,allowedPages:['grabaciones.html']}}},res);assert.equal(status,403);
 });

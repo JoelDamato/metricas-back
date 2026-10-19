@@ -86,7 +86,7 @@ async function metricasApiGuard(req, res, next) {
       return res.status(401).json({ ok: false, message: 'Sesión requerida' });
     }
 
-    if (access.isTrainingOnlyUser(req.authUser) && !/^\/recordings(?:\/|$)/.test(reqPath)) {
+    if (access.isTrainingOnlyUser(req.authUser) && !/^\/recordings(?:\/|$)/.test(reqPath) && !(reqPath === '/launch-gifts' && req.method === 'GET')) {
       return res.status(403).json({ ok: false, message: 'Tu cuenta tiene acceso a capacitaciones y grabaciones.' });
     }
 
