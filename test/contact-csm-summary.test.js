@@ -4,9 +4,20 @@ test('contacto muestra todas las sesiones CSM, estados y fechas sin inferir asis
  const rows=summary({f_diagnostico:'2026-10-20T00:00:00Z',costos_1:'Agendado',f_costos_1:'2026-10-22',cashflow:'Cancelada',f_cashflow:'2026-10-03',modulo_1:'2026-09-02'});
  const value=label=>rows.find(r=>r.label===label).value;
  assert.equal(value('Diagnóstico'),'Fecha registrada · 20/10/2026');
- assert.equal(value('Costos 1'),'Agendado · 22/10/2026');
+ assert.equal(value('Costos'),'Agendado · 22/10/2026');
  assert.equal(value('Cashflow'),'Cancelada · 03/10/2026');
  assert.equal(value('Coaching'),'Sin sesión registrada');
  assert.equal(value('Módulo 1'),'02/09/2026');
  assert.equal(summary(null)[0].value,'Sin ficha CSM');
+});
+
+
+test('Estado de contacto muestra una sola sesión Costos incluso con Costos 2 histórico',()=>{
+ const {summary,progress}=require('../modules/csm/contact-summary');
+ const row={f_costos_1:'2026-10-22',costos_1:'Agendado',f_costos_2:'2026-09-10',costos_2:'Realizado'};
+ const sessions=progress(row).sessions;
+ assert.equal(sessions.filter(s=>s.label.startsWith('Costos')).length,1);
+ assert.equal(sessions.find(s=>s.label==='Costos').date,'22/10/2026');
+ assert.equal(summary(row).filter(s=>s.label.startsWith('Costos')).length,1);
+ assert.equal(row.f_costos_2,'2026-09-10');
 });

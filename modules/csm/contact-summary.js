@@ -1,8 +1,7 @@
 const SESSIONS = [
  ['Onboarding','f_onboarding','onboarding'],
  ['Diagnóstico','f_diagnostico'],
- ['Costos 1','f_costos_1','costos_1'],
- ['Costos 2','f_costos_2','costos_2'],
+ ['Costos','f_costos_1','costos_1'],
  ['EERR económico','f_eerr_economico','eerr_economico'],
  ['EERR financiero','f_eerr_financiero','eerr_financiero'],
  ['Cashflow','f_cashflow','cashflow'],
