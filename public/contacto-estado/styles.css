@@ -319,3 +319,33 @@ code {
 }
 
 .contact-receipts{margin-top:28px;border-top:1px solid #30415e;padding-top:24px;min-width:0}.contact-receipts h3{font-size:23px;margin:8px 0}.contact-receipts p,.contact-receipts small{color:#afbed4}.contact-receipts small{display:block;margin-top:5px}.receipt-summary{display:flex;gap:20px;flex-wrap:wrap;margin:18px 0}.receipt-scroll{overflow:auto;max-height:620px;border:1px solid #334665;border-radius:12px}.contact-receipts table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.contact-receipts th,.contact-receipts td{padding:14px;border-bottom:1px solid #293c59;vertical-align:top}.contact-receipts th{position:sticky;top:0;background:#14233b;color:#c5d6ef;z-index:1}.receipt-state{white-space:nowrap}.contact-receipts code{display:block;max-width:160px;overflow-wrap:anywhere}.contact-receipts summary{cursor:pointer;white-space:nowrap}.contact-receipts h3 span{font-size:14px;color:#9fc9ff}.receipt-scroll:focus-visible{outline:2px solid #80baff;outline-offset:3px}
+
+.csm-learning, .csm-appointments { padding: 24px; margin: 24px 0; border: 1px solid var(--contact-line); border-radius: 20px; background: #0b1b30; }
+.csm-learning { background: linear-gradient(125deg,#102b4b,#0b192c); border-color: #326398; }
+.csm-learning-heading { display:flex; justify-content:space-between; gap:20px; align-items:center; }
+.csm-learning h3, .csm-appointments h3 { margin: 6px 0; color:var(--contact-ink); font-size: 24px; }
+.csm-learning p, .csm-appointments > p { color:var(--contact-muted); margin:8px 0 16px; }
+.csm-learning-score { text-align:right; flex-shrink:0; }
+.csm-learning-score strong { font-family:'Space Grotesk',sans-serif; display:block; font-size:36px; color:#75c9ff; }
+.csm-learning-score span { color:var(--contact-muted); font-size:13px; }
+.csm-progress-track { height:12px; overflow:hidden; border-radius:99px; background:#20334c; margin:8px 0 20px; }
+.csm-progress-track > span { display:block; height:100%; background:linear-gradient(90deg,#397bff,#65d1ff); border-radius:inherit; }
+.csm-module-steps { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+.csm-module-step { padding:12px; border:1px solid #31445e; border-radius:12px; background:#0b1729; }
+.csm-module-step b,.csm-module-step span,.csm-module-step small { display:block; }
+.csm-module-step b { color:var(--contact-muted); font-size:16px; }
+.csm-module-step span { margin:6px 0; color:#c3d3e8; font-size:12px; }
+.csm-module-step small { color:var(--contact-muted); font-size:11px; }
+.csm-module-step.is-complete { background:#12374b; border-color:#3a8aaa; }
+.csm-module-step.is-complete b { color:#89e0ff; }
+.csm-module-step.is-current { border:2px solid #6bbfff; padding:11px; box-shadow:0 0 0 3px #3391ff17; }
+.csm-module-step.is-current b { color:#fff; }
+.csm-learning .csm-progress-note { margin:16px 0 0; font-size:12px; line-height:1.6; }
+.csm-appointment-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.csm-appointment { display:flex; align-items:flex-start; gap:12px; padding:16px; border:1px solid #293c55; border-radius:12px; background:#101f33; }
+.csm-calendar-icon { font-size:24px; color:#8f9eb9; }
+.csm-appointment.has-date .csm-calendar-icon { color:#c0b1ff; }
+.csm-appointment h4 { margin:0 0 10px; font-size:14px; color:var(--contact-ink); }
+.csm-appointment strong { display:block; font-size:14px; color:#d0c7f5; }
+.csm-appointment small { display:block; color:var(--contact-muted); margin-top:6px; line-height:1.5; }
+@media(max-width:700px) { .csm-learning,.csm-appointments { padding:18px; } .csm-learning-heading { align-items:flex-start; flex-direction:column; } .csm-learning-score { text-align:left; } .csm-module-steps { grid-template-columns:repeat(2,minmax(0,1fr)); } .csm-appointment-grid { grid-template-columns:1fr; } }

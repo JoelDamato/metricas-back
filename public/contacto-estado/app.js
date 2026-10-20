@@ -102,6 +102,17 @@ function renderReceipts(contact) {
   </section>`;
 }
 
+function renderCsmProgress(progress) {
+  if (!progress) return '';
+  const percent = Math.round(progress.completed / progress.total * 100);
+  return `<section class="csm-learning" aria-label="Avance en la plataforma">
+    <div class="csm-learning-heading"><div><p class="card-kicker">PLATAFORMA · MÓDULOS</p><h3>${progress.completed===progress.total?'Recorrido completado':progress.current?`Módulo ${progress.current}`:'Sin módulo registrado'}</h3><p>Último módulo con avance registrado</p></div><div class="csm-learning-score"><strong>${percent}%</strong><span>${progress.completed} de ${progress.total} módulos finalizados</span></div></div>
+    <div class="csm-progress-track" role="progressbar" aria-label="Módulos con fecha de fin registrada" aria-valuemin="0" aria-valuemax="${progress.total}" aria-valuenow="${progress.completed}"><span style="width:${percent}%"></span></div>
+    <div class="csm-module-steps">${progress.modules.map(m=>`<div class="csm-module-step ${m.completed?'is-complete':m.number===progress.current?'is-current':''}" ${m.number===progress.current?'aria-current="step"':''}><b>${m.completed?'✓ ':''}M${m.number}</b><span>${m.invalid?'Revisar fechas':m.completed?'Finalizado':m.start?'Iniciado':'Sin registro'}</span><small>${m.completed?'Fin: '+escapeHtml(m.end):m.start?'Inicio: '+escapeHtml(m.start):'—'}</small></div>`).join('')}</div>
+    <p class="csm-progress-note">La barra cuenta módulos con fecha de finalización. Iniciar un módulo no marca los anteriores como completados.${progress.platformProgress?` Avance informado por la plataforma: ${escapeHtml(progress.platformProgress)}.`:''}</p>
+  </section><section class="csm-appointments" aria-label="Sesiones por cita"><p class="card-kicker">ACOMPAÑAMIENTO · CITAS</p><h3>Sesiones del cliente</h3><p>Fechas y estados registrados de cada sesión, separados del avance del curso.</p><div class="csm-appointment-grid">${progress.sessions.map(session=>`<article class="csm-appointment ${session.date?'has-date':''}"><span class="csm-calendar-icon" aria-hidden="true">▦</span><div><h4>${escapeHtml(session.label)}</h4><strong>${escapeHtml(session.date||'Sin fecha registrada')}</strong><small>${escapeHtml(session.status|| (session.date?'Fecha de cita registrada':'Sin sesión registrada'))}</small></div></article>`).join('')}</div></section>`;
+}
+
 function renderContact(contact) {
   const container = document.getElementById('cardContainer');
   const statusTone = getStatusTone(contact.estado);
@@ -117,7 +128,8 @@ function renderContact(contact) {
     { key: 'administracion', label: 'Administracion' }
   ];
   const areaMarkup = areaSections.map((section, index) => {
-    const items = Array.isArray(contact.areas?.[section.key]) ? contact.areas[section.key] : [];
+    const allItems = Array.isArray(contact.areas?.[section.key]) ? contact.areas[section.key] : [];
+    const items = section.key === 'csm' && contact.csmProgress ? allItems.filter(item => ['Acceso','Actividad','Próximo contacto','Última respuesta'].includes(item.label)) : allItems;
     const itemsMarkup = items.map((item) => `
       <div class="area-detail">
         <dt>${escapeHtml(item.label || 'Dato')}</dt>
@@ -175,6 +187,7 @@ function renderContact(contact) {
         </div>
       </dl>
 
+      ${renderCsmProgress(contact.csmProgress)}
       <section class="areas-block">
         <div class="areas-header">
           <p class="card-kicker">Resumen por área</p>

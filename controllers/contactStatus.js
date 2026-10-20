@@ -115,6 +115,7 @@ async function fetchContactByGhlId(ghlId) {
   contact.receiptTotals=receiptTotals;
   contact.facturacionTotal=receiptTotals.facturacion;
   contact.cashCollectedTotal=receiptTotals.cobrado;
+  contact.csmProgress = csmContactSummary.progress(csmRow);
   contact.areas = {
     comercial: [
       { label: 'Etapa', value: row.etapa || 'Sin dato' },

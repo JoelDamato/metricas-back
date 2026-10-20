@@ -9,7 +9,7 @@ const SESSIONS = [
  ['Traffiker','f_traffiker'],
  ['Coaching','f_coaching']
 ];
-const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta',...Array.from({length:10},(_,i)=>`modulo_${i+1}`)])];
+const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta',...Array.from({length:10},(_,i)=>[`modulo_${i+1}`,`modulo_${i+1}_fin`]).flat()])];
 function dateLabel(value){
  const raw=String(value||'').slice(0,10);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)||Number.isNaN(Date.parse(raw))||new Date(raw).toISOString().slice(0,10)!==raw)return null;
@@ -29,4 +29,16 @@ function summary(row){
   {label:'Última respuesta',value:dateLabel(row.ultima_respuesta)||'Sin fecha registrada'},
   ...Array.from({length:10},(_,i)=>({label:`Módulo ${i+1}`,value:dateLabel(row[`modulo_${i+1}`])||row[`modulo_${i+1}`]||'Sin avance registrado'}))];
 }
-module.exports={fields,summary};
+function progress(row) {
+ if(!row)return null;
+ const modules=Array.from({length:10},(_,i)=>{
+  const start=dateLabel(row[`modulo_${i+1}`]),end=dateLabel(row[`modulo_${i+1}_fin`]);
+  const invalid=Boolean(start&&end&&String(row[`modulo_${i+1}_fin`]).slice(0,10)<String(row[`modulo_${i+1}`]).slice(0,10));
+  return {number:i+1,start,end,completed:Boolean(end&&!invalid),invalid};
+ });
+ const current=modules.filter(m=>m.start||m.completed).at(-1)?.number||null;
+ return {modules,current,completed:modules.filter(m=>m.completed).length,total:modules.length,
+  platformProgress:row.progreso_curso||null,
+  sessions:SESSIONS.map(([label,date,status])=>({label,date:dateLabel(row[date]),status:status?String(row[status]||'').trim():''}))};
+}
+module.exports={fields,summary,progress};
