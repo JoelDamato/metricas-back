@@ -29,3 +29,14 @@ test('la ficha usa el histórico explícito sin inventar comprobantes ni duplica
  };
  try{const c=await controller._test.fetchContactByGhlId('client');assert.equal(c.facturacionTotal,3475);assert.equal(c.cashCollectedTotal,3475);assert.equal(c.receiptTotals.saldo,0);assert.equal(c.comprobantes.length,1);assert.equal(c.historicalOpeningBalance.facturacion,1500);}finally{axios.get=get;if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
 });
+
+test('enlace a carta de rumbo depende de la carta existente y no de la fecha de sesión',async()=>{
+ const get=axios.get,oldUrl=process.env.SUPABASE_URL,oldKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ process.env.SUPABASE_URL='https://example.invalid';process.env.SUPABASE_SERVICE_ROLE_KEY='test';let hasCard=true;
+ axios.get=async(url,{params})=>{
+  if(url.endsWith('/csm_diagnosticos')){assert.equal(params.client_ghlid,'eq.client');assert.equal(params.select,'id');return{data:hasCard?[{id:'card'}]:[]};}
+  return{data:url.endsWith('/csm')?[{ghlid:'client',nombre:'Cliente',f_diagnostico:hasCard?null:'2026-10-20'}]:[]};
+ };
+ try{assert.equal((await controller._test.fetchContactByGhlId('client')).diagnosticUrl,'/diagnostico/?ghl_id=client&vista=rumbo');hasCard=false;assert.equal((await controller._test.fetchContactByGhlId('client')).diagnosticUrl,null);}
+ finally{axios.get=get;if(oldUrl===undefined)delete process.env.SUPABASE_URL;else process.env.SUPABASE_URL=oldUrl;if(oldKey===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=oldKey;}
+});

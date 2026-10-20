@@ -349,3 +349,6 @@ code {
 .csm-appointment strong { display:block; font-size:14px; color:#d0c7f5; }
 .csm-appointment small { display:block; color:var(--contact-muted); margin-top:6px; line-height:1.5; }
 @media(max-width:700px) { .csm-learning,.csm-appointments { padding:18px; } .csm-learning-heading { align-items:flex-start; flex-direction:column; } .csm-learning-score { text-align:left; } .csm-module-steps { grid-template-columns:repeat(2,minmax(0,1fr)); } .csm-appointment-grid { grid-template-columns:1fr; } }
+
+.contact-roadmap-link { display:inline-flex; align-items:center; padding:12px 18px; border:1px solid #4a9ae8; border-radius:12px; background:#123a61; color:#e9f6ff; font-weight:700; text-decoration:none; }
+.contact-roadmap-link:hover, .contact-roadmap-link:focus-visible { background:#1b5285; outline:2px solid #83cbff; outline-offset:3px; }

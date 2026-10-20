@@ -73,7 +73,7 @@ function getRowScore(row) {
 async function fetchContactByGhlId(ghlId) {
   const { supabaseUrl } = getSupabaseConfig();
 
-  const [leadRows, csmResponse] = await Promise.all([
+  const [leadRows, csmResponse, diagnosticResponse] = await Promise.all([
     (async () => {
       const result=[];
       for(let offset=0;;offset+=500){
@@ -93,7 +93,10 @@ async function fetchContactByGhlId(ghlId) {
         limit: 5
       }
     }),
-
+    axios.get(`${supabaseUrl}/rest/v1/csm_diagnosticos`, {
+      headers: buildHeaders(), timeout: 15000,
+      params: {select: 'id', client_ghlid: `eq.${ghlId}`, limit: 1}
+    })
   ]);
 
   const rows = leadRows;
@@ -115,6 +118,7 @@ async function fetchContactByGhlId(ghlId) {
   contact.receiptTotals=receiptTotals;
   contact.facturacionTotal=receiptTotals.facturacion;
   contact.cashCollectedTotal=receiptTotals.cobrado;
+  contact.diagnosticUrl = diagnosticResponse.data?.length ? `/diagnostico/?ghl_id=${encodeURIComponent(ghlId)}&vista=rumbo` : null;
   contact.csmProgress = csmContactSummary.progress(csmRow);
   contact.areas = {
     comercial: [

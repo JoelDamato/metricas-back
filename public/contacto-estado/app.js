@@ -155,7 +155,7 @@ function renderContact(contact) {
           <p class="card-kicker">Ficha resumida</p>
           <h2>${safeName}</h2>
           <p class="card-subcopy">Resumen principal del contacto para compartir de forma simple y rápida.</p>
-          ${contact.areas?.csm?.some(item=>item.label==='Diagnóstico' && !String(item.value).startsWith('Sin sesión')) ? `<p class="card-subcopy"><a href="/diagnostico/?ghl_id=${encodeURIComponent(contact.ghlId)}" target="_blank" rel="noopener">Carta de diagnóstico ↗</a></p>` : ''}
+          ${contact.diagnosticUrl ? `<p class="card-subcopy"><a class="contact-roadmap-link" href="${escapeHtml(contact.diagnosticUrl)}" target="_blank" rel="noopener">Ver Carta de rumbo ↗</a></p>` : '<p class="card-subcopy">Carta de rumbo: todavía no registrada.</p>'}
           ${ghlUrl ? `<p class="card-subcopy"><a class="metricas-ghl-link" href="${ghlUrl}" target="_blank" rel="noopener noreferrer">Ver GHL</a></p>` : ''}
         </div>
         <span class="status-pill ${statusTone}">${safeStatus}</span>
