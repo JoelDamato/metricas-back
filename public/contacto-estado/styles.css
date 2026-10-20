@@ -344,7 +344,10 @@ code {
 .csm-appointment-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
 .csm-appointment { display:flex; align-items:flex-start; gap:12px; padding:16px; border:1px solid #293c55; border-radius:12px; background:#101f33; }
 .csm-calendar-icon { font-size:24px; color:#8f9eb9; }
-.csm-appointment.has-date .csm-calendar-icon { color:#c0b1ff; }
+.csm-appointment.has-date { background:#10382f; border-color:#348b73; }
+.csm-appointment.has-date .csm-calendar-icon { color:#8df0bd; font-weight:700; }
+.csm-appointment.has-date strong { color:#b2f4d2; }
+.csm-appointment.has-date small { color:#acd3c5; }
 .csm-appointment h4 { margin:0 0 10px; font-size:14px; color:var(--contact-ink); }
 .csm-appointment strong { display:block; font-size:14px; color:#d0c7f5; }
 .csm-appointment small { display:block; color:var(--contact-muted); margin-top:6px; line-height:1.5; }
