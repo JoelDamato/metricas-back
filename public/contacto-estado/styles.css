@@ -350,5 +350,15 @@ code {
 .csm-appointment small { display:block; color:var(--contact-muted); margin-top:6px; line-height:1.5; }
 @media(max-width:700px) { .csm-learning,.csm-appointments { padding:18px; } .csm-learning-heading { align-items:flex-start; flex-direction:column; } .csm-learning-score { text-align:left; } .csm-module-steps { grid-template-columns:repeat(2,minmax(0,1fr)); } .csm-appointment-grid { grid-template-columns:1fr; } }
 
-.contact-roadmap-link { display:inline-flex; align-items:center; padding:12px 18px; border:1px solid #4a9ae8; border-radius:12px; background:#123a61; color:#e9f6ff; font-weight:700; text-decoration:none; }
-.contact-roadmap-link:hover, .contact-roadmap-link:focus-visible { background:#1b5285; outline:2px solid #83cbff; outline-offset:3px; }
+/* Quick actions share dimensions and spacing, with a clear primary action. */
+.contact-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+.contact-actions .contact-action { display:inline-flex; align-items:center; justify-content:flex-start; gap:10px; min-height:50px; min-width:190px; padding:12px 16px; border:1px solid #395573; border-radius:12px; color:#e9f3ff; font-size:14px; font-weight:700; line-height:1.3; text-decoration:none; transition:background .18s ease,border-color .18s ease,box-shadow .18s ease; }
+.contact-action svg { width:20px; height:20px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.contact-action .contact-action-arrow { width:16px; height:16px; margin-left:auto; opacity:.75; }
+.contact-actions .contact-action-primary { border-color:#528ff8; background:linear-gradient(115deg,#2467da,#2354b0); color:#fff; box-shadow:0 5px 18px #0d45aa30,inset 0 1px 0 #ffffff15; }
+.contact-actions .contact-action-primary:hover { background:linear-gradient(115deg,#3278ee,#2b62c8); border-color:#91c4ff; }
+.contact-actions .contact-action-secondary { background:#11243b; color:#d6e8ff; }
+.contact-actions .contact-action-secondary:hover { background:#1a3452; border-color:#6c9bca; }
+.contact-actions .contact-action:focus-visible { outline:3px solid #8cd0ff; outline-offset:3px; }
+@media(max-width:700px) { .contact-actions { width:100%; } .contact-actions .contact-action { flex:1 1 180px; min-width:0; } .card-copy { width:100%; } }
+@media(prefers-reduced-motion:reduce) { .contact-actions .contact-action { transition:none; } }

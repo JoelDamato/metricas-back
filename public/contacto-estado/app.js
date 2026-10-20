@@ -155,8 +155,11 @@ function renderContact(contact) {
           <p class="card-kicker">Ficha resumida</p>
           <h2>${safeName}</h2>
           <p class="card-subcopy">Resumen principal del contacto para compartir de forma simple y rápida.</p>
-          ${contact.diagnosticUrl ? `<p class="card-subcopy"><a class="contact-roadmap-link" href="${escapeHtml(contact.diagnosticUrl)}" target="_blank" rel="noopener">Ver Carta de rumbo ↗</a></p>` : '<p class="card-subcopy">Carta de rumbo: todavía no registrada.</p>'}
-          ${ghlUrl ? `<p class="card-subcopy"><a class="metricas-ghl-link" href="${ghlUrl}" target="_blank" rel="noopener noreferrer">Ver GHL</a></p>` : ''}
+          <div class="contact-actions" aria-label="Accesos del cliente">
+            ${contact.diagnosticUrl ? `<a class="contact-action contact-action-primary contact-roadmap-link" href="${escapeHtml(contact.diagnosticUrl)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-6 3v14l6-3 6 3 6-3V4l-6 3-6-3Z"/><path d="M9 4v14M15 7v14"/></svg><span>Carta de rumbo</span><svg class="contact-action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ''}
+            ${ghlUrl ? `<a class="contact-action contact-action-secondary" href="${ghlUrl}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2M17 3h4v4M16 8l5-5"/></svg><span>Abrir en GHL</span><svg class="contact-action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ''}
+          </div>
+          ${!contact.diagnosticUrl ? '<p class="card-subcopy">Carta de rumbo: todavía no registrada.</p>' : ''}
         </div>
         <span class="status-pill ${statusTone}">${safeStatus}</span>
       </div>
