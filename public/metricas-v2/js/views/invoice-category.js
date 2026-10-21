@@ -10,6 +10,15 @@
     if(type==='A'&&(id===1||condition.includes('inscripto')))return {key:'A-RI',label:'A · RI'};
     return {key:'unknown',label:type==='A'?'A · Condición sin informar':'Por confirmar'};
   }
-  if(typeof module!=='undefined'&&module.exports)module.exports={invoiceCategory};
-  else root.invoiceCategory=invoiceCategory;
+  function invoiceFiscalDetails(row={}) {
+    const issued=Boolean(row.arcaCae || row.arcaInvoiceType);
+    const source=issued ? {type:row.arcaInvoiceType,id:row.arcaVatConditionId,condition:row.arcaVatCondition}
+      : {type:row.proposedInvoice?.invoiceType||row.requestedInvoiceType,id:row.proposedInvoice?.vatConditionId??row.vatConditionId,condition:row.proposedInvoice?.vatCondition};
+    const id=Number(source.id);
+    const condition=source.condition || ({1:'Responsable Inscripto',5:'Consumidor Final',6:'Monotributista'}[id]) || 'Sin informar';
+    const type=String(source.type || (!issued ? ({1:'A',5:'B',6:'A'}[id]) : '') || '').toUpperCase();
+    return {invoice:type ? `Factura ${type}` : 'Tipo por confirmar',condition};
+  }
+  if(typeof module!=='undefined'&&module.exports)module.exports={invoiceCategory,invoiceFiscalDetails};
+  else {root.invoiceCategory=invoiceCategory;root.invoiceFiscalDetails=invoiceFiscalDetails;}
 })(typeof window!=='undefined'?window:globalThis);

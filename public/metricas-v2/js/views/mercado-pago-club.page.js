@@ -376,7 +376,7 @@ function renderRecords() {
       <td><input class="record-check" type="checkbox" data-key="${escapeHtml(recordKey(row))}" ${selectedKeys.has(recordKey(row)) ? 'checked' : ''} /></td>
       <td>${formatDate(row.date)}</td>
       <td><span class="type ${escapeHtml(row.kind)}">${row.kind === 'subscription' ? 'Suscripción' : row.kind === 'manual' ? 'Manual' : 'Pago'}</span></td>
-      <td><strong>${escapeHtml(invoiceCategory(row).label)}</strong>${!row.arcaInvoiceType && !row.requestedInvoiceType && ![1,5,6].includes(Number(row.vatConditionId)) ? '<small>Por confirmar</small>' : ''}</td>
+      <td class="invoice-fiscal-details"><strong>${escapeHtml(invoiceFiscalDetails(row).invoice)}</strong><small>${escapeHtml(invoiceFiscalDetails(row).condition)}</small></td>
       <td><strong>${escapeHtml(row.arcaDescription || row.description)}</strong><small>${escapeHtml(row.externalReference || '')}</small>${row.arcaTaxTreatment ? `<small>${escapeHtml(row.arcaTaxTreatment)}</small>` : ''}${['invoiced', 'credit_notes'].includes(row.workflowStatus) ? `<a class="invoice-link" href="/api/metricas/mercado-pago/club/invoice/${encodeURIComponent(row.kind)}/${encodeURIComponent(row.id)}?format=pdf" target="_blank" rel="noopener">Ver factura</a>` : ''}</td>
       <td>${escapeHtml(row.payer || '—')}</td>
       <td class="${hasValidFiscalIdentification(row) ? '' : 'fiscal-data-missing'}"><strong>${escapeHtml(row.identificationNumber || '—')}</strong><small>${escapeHtml(row.identificationType || 'No informado')}</small>${hasValidFiscalIdentification(row) ? '' : '<span>Completar antes de facturar</span>'}</td>

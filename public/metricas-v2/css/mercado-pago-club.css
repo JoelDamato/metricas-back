@@ -84,4 +84,7 @@ td small { display: block; color: #8793a4; margin-top: 4px; max-width: 300px; }
 @media (max-width: 850px) { .mp-hero { align-items: stretch; flex-direction: column; }.summary { grid-template-columns: repeat(2, 1fr); }.workflow-bar { align-items: stretch; flex-direction: column; }.workflow-tabs, .workflow-actions { flex-wrap: wrap; } }
 @media (max-width: 520px) { .mp-shell { width: min(100% - 22px, 1420px); }.mp-hero { padding: 22px; }.summary { grid-template-columns: 1fr; } }
 
-.records-table.compact th:nth-child(4){width:5%}.workflow-state.excluded{background:#394354;color:#e0e8f2}
+.records-table.compact th:nth-child(4){width:12%}.workflow-state.excluded{background:#394354;color:#e0e8f2}
+
+.invoice-fiscal-details { min-width: 140px; }
+.invoice-fiscal-details small { display: block; margin-top: 4px; }

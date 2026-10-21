@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261009-billing-selection-1" />
+    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261021-fiscal-visible" />
   </head>
   <body class="mp-club-page">
     <main class="mp-shell">
@@ -22,7 +22,7 @@
         <div class="filters">
           <label for="month">Mes</label>
           <input type="month" id="month" />
-          <label for="invoiceCategory">Tipo de factura</label><select id="invoiceCategory"><option value="">Todas</option><option value="A-RI">Factura A · RI</option><option value="A-MONO">Factura A · Monotributista</option><option value="B">Factura B</option><option value="unknown">Sin clasificar / por confirmar</option></select>
+          <label for="invoiceCategory">Tipo de factura</label><select id="invoiceCategory"><option value="">Todas</option><option value="A-RI">Factura A · Responsable Inscripto</option><option value="A-MONO">Factura A · Monotributista</option><option value="B">Factura B</option><option value="unknown">Sin clasificar / por confirmar</option></select>
           <button id="reload" type="button">Actualizar</button>
         </div>
       </header>
@@ -52,7 +52,7 @@
         <div class="table-head"><h2>Registros encontrados</h2><span id="count"></span></div>
         <div class="table-scroll">
           <table id="recordsTable" class="records-table">
-            <thead><tr><th><input id="selectAll" type="checkbox" aria-label="Seleccionar todos" /></th><th>Fecha</th><th>Registro</th><th>Tipo</th><th>Detalle</th><th>Cliente</th><th>CUIT / DNI</th><th>Conciliación</th><th>Estado MP</th><th>Medio</th><th>Importe</th><th>ID</th><th>Acciones</th></tr></thead>
+            <thead><tr><th><input id="selectAll" type="checkbox" aria-label="Seleccionar todos" /></th><th>Fecha</th><th>Registro</th><th>Factura / condición fiscal</th><th>Detalle</th><th>Cliente</th><th>CUIT / DNI</th><th>Conciliación</th><th>Estado MP</th><th>Medio</th><th>Importe</th><th>ID</th><th>Acciones</th></tr></thead>
             <tbody id="rows"></tbody>
           </table>
         </div>
@@ -61,7 +61,7 @@
       </section>
     </main>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/invoice-category.js?v=20261020-nadia"></script>
-    <script src="/js/views/mercado-pago-club.page.js?v=20261020-nadia"></script>
+    <script src="/js/views/invoice-category.js?v=20261021-fiscal-visible"></script>
+    <script src="/js/views/mercado-pago-club.page.js?v=20261021-fiscal-visible"></script>
   </body>
 </html>
