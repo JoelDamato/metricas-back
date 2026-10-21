@@ -1,5 +1,5 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
-const {fetchContactMaterials,productsForContact,contractLabel} = require('../modules/csm/contact-materials');
+const {fetchContactMaterials,productsForContact,contractLabel,isDebtor} = require('../modules/csm/contact-materials');
 const {listContactReceipts,totals,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -124,6 +124,7 @@ async function fetchContactByGhlId(ghlId) {
   contact.diagnosticUrl = diagnosticResponse.data?.length ? `/diagnostico/?ghl_id=${encodeURIComponent(ghlId)}&vista=rumbo` : null;
   contact.csmProgress = csmContactSummary.progress(csmRow);
   contact.csmMaterials = materials;
+  contact.deudor = isDebtor(materials.fields);
   contact.products = productsForContact(csmRow, materials.fields, comprobantesRows);
   const dateValue = value => csmContactSummary.dateLabel(value) || 'Sin fecha registrada';
   const programDetails = [

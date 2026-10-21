@@ -216,6 +216,9 @@ code {
 .status-pill.tone-club { color: #bdf8d2; background: rgba(41, 150, 89, 0.2); border-color: rgba(72, 211, 129, 0.2); }
 .status-pill.tone-meg { color: #cfe4ff; background: rgba(55, 113, 208, 0.22); border-color: rgba(91, 157, 255, 0.2); }
 .status-pill.tone-hot { color: #ffdbbf; background: rgba(165, 82, 34, 0.22); border-color: rgba(255, 148, 85, 0.2); }
+.contact-card.is-debtor { border-color: #f87171; }
+.contact-card.is-debtor .card-hero { background: rgba(127, 29, 29, 0.3); border-radius: 18px; padding: 20px; }
+.status-pill.tone-debtor { color: #fff; background: #b91c1c; border-color: #f87171; }
 
 .metric-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
 

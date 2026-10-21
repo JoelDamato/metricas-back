@@ -7,7 +7,8 @@ const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300
 const FIELD_IDS = {
   products: 'juv4dioQEEaOOELKtWdU', support: 'O4aDm5mD3cSNVAqqboEl',
   contractType: 'RgygmQecy6WWV4DOX3IS', pause: 'uVxcIdaL82MoKYNywQ7v',
-  programEnd: 'aH75309glRcblx1oFxnc', renewalEnd: 'SBJ30WpKhfP8WNZuXdWV'
+  programEnd: 'aH75309glRcblx1oFxnc', renewalEnd: 'SBJ30WpKhfP8WNZuXdWV',
+  paymentStatus: '0hjtUW5o2FzZodVWjJQd'
 };
 
 function linksFromNotes(notes) {
@@ -58,6 +59,10 @@ function mapAppointments(events, calendarNames = {}) {
 function mapFields(contact) {
   const values = new Map((contact.customFields || []).map(field => [field.id, field.value]));
   return Object.fromEntries(Object.entries(FIELD_IDS).map(([key, id]) => [key, values.get(id) ?? null]));
+}
+
+function isDebtor(fields) {
+  return normalize(fields?.paymentStatus).trim() === 'deudor';
 }
 
 async function fetchContactMaterials(contactId, options = {}) {
@@ -128,4 +133,4 @@ function contractLabel(type, receipts) {
   return count > 0 ? `${type} · ${count} ${count === 1 ? 'cuota' : 'cuotas'}` : `${type} · Cantidad de cuotas sin registrar`;
 }
 
-module.exports = {fetchContactMaterials, linksFromNotes, mapAppointments, mapFields, productsForContact, contractLabel};
+module.exports = {fetchContactMaterials, linksFromNotes, mapAppointments, mapFields, productsForContact, contractLabel, isDebtor};
