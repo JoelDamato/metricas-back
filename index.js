@@ -60,6 +60,12 @@ app.use('/metricas/', (req, res) => {
 app.get(['/contacto-estado', '/contacto-estado/:ghlId'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/contacto-estado/index.html'));
 });
+app.use('/portal-cliente', express.static(path.join(__dirname, 'public/portal-cliente'), {index:false,redirect:false}));
+app.get('/portal-cliente/:ghlId', (req, res) => {
+  res.set({'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow','Referrer-Policy':'no-referrer'});
+  res.sendFile(path.join(__dirname, 'public/portal-cliente/index.html'));
+});
+app.get('/api/portal-cliente/:ghlId', require('./controllers/clientPortal').getClientPortal);
 app.use('/diagnostico', express.static(path.join(__dirname, 'public/diagnostico'), { index: false, redirect: false }));
 app.get('/diagnostico', (req, res) => res.sendFile(path.join(__dirname, 'public/diagnostico/index.html')));
 app.get('/api/diagnostico/cliente/:ghlId', metricasV2Controller.getPublicDiagnosticoByGhlId);

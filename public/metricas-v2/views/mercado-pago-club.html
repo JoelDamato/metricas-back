@@ -22,6 +22,7 @@
         <div class="filters">
           <label for="month">Mes</label>
           <input type="month" id="month" />
+          <label for="invoiceCategory">Tipo de factura</label><select id="invoiceCategory"><option value="">Todas</option><option value="A-RI">Factura A · RI</option><option value="A-MONO">Factura A · Monotributista</option><option value="B">Factura B</option><option value="unknown">Sin clasificar / por confirmar</option></select>
           <button id="reload" type="button">Actualizar</button>
         </div>
       </header>
@@ -43,7 +44,7 @@
           <button id="reconcileSelected" type="button" disabled>Marcar conciliadas</button>
           <button id="billingSelection" type="button" hidden disabled>Mover a No facturar</button>
           <button id="invoiceSelected" type="button" disabled>Facturar en ARCA</button>
-          <button id="exportInvoiced" class="export-excel-button" type="button" hidden>Exportar Excel del mes</button>
+          <button id="exportInvoiced" class="export-excel-button" type="button" hidden>Exportar facturas filtradas</button>
           <button id="newManual" type="button">Facturar manual</button>
         </div>
       </section>
@@ -60,6 +61,7 @@
       </section>
     </main>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/mercado-pago-club.page.js?v=20261009-billing-selection-1"></script>
+    <script src="/js/views/invoice-category.js?v=20261020-nadia"></script>
+    <script src="/js/views/mercado-pago-club.page.js?v=20261020-nadia"></script>
   </body>
 </html>

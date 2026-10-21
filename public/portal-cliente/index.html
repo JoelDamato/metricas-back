@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Tu portal | MEG</title>
+  <link rel="icon" type="image/svg+xml" href="/metricas-assets/favicon-m.svg">
+  <link rel="stylesheet" href="/contacto-estado/styles.css?v=20261020-portal">
+  <link rel="stylesheet" href="/portal-cliente/styles.css?v=20261020-portal">
+  <script defer src="/contacto-estado/sessions.js?v=20261020-active-sessions"></script>
+  <script defer src="/portal-cliente/app.js?v=20261020-portal"></script>
+</head>
+<body class="contact-status-page client-portal">
+  <main class="portal-shell">
+    <header class="portal-header">
+      <a class="portal-brand" href="#inicio" aria-label="Inicio de tu portal">MEG<span>MI PORTAL</span></a>
+      <nav aria-label="Secciones del portal"><a href="#rumbo">Carta de rumbo</a><a href="#sesiones">Mis sesiones</a></nav>
+    </header>
+    <section class="portal-welcome" id="inicio"><p class="card-kicker">TU NEGOCIO, UN PASO MÁS ADELANTE</p><h1 id="clientName">Tu espacio de acompañamiento</h1><p>Todo tu recorrido en un solo lugar. Consultá tu carta de rumbo y volvé a los materiales de cada sesión cuando los necesites.</p></section>
+    <p id="portalStatus" role="status" aria-live="polite">Cargando tu portal…</p>
+    <div id="portalContent" hidden>
+      <section class="portal-roadmap" id="rumbo" aria-labelledby="roadmapTitle"></section>
+      <div id="sesiones"></div>
+    </div>
+    <footer>MEG · Tu espacio de aprendizaje y acompañamiento</footer>
+  </main>
+</body>
+</html>

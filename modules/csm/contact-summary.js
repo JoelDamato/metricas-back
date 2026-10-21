@@ -4,11 +4,9 @@ const SESSIONS = [
  ['Costos','f_costos_1','costos_1'],
  ['EERR económico','f_eerr_economico','eerr_economico'],
  ['EERR financiero','f_eerr_financiero','eerr_financiero'],
- ['Cashflow','f_cashflow','cashflow'],
- ['Traffiker','f_traffiker'],
- ['Coaching','f_coaching']
+ ['Cashflow','f_cashflow','cashflow']
 ];
-const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta',...Array.from({length:10},(_,i)=>[`modulo_${i+1}`,`modulo_${i+1}_fin`]).flat()])];
+const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta','productos_adquiridos','pausa','fecha_final','fecha_final_renovacion',...Array.from({length:10},(_,i)=>[`modulo_${i+1}`,`modulo_${i+1}_fin`]).flat()])];
 function dateLabel(value){
  const raw=String(value||'').slice(0,10);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)||Number.isNaN(Date.parse(raw))||new Date(raw).toISOString().slice(0,10)!==raw)return null;
@@ -22,7 +20,6 @@ function summary(row){
  });
  return [...sessions,
   {label:'Acceso',value:row.acceso||'Sin dato'},
-  {label:'Actividad',value:row.actividad||'Sin dato'},
   {label:'Progreso del curso',value:row.progreso_curso||'Sin dato'},
   {label:'Próximo contacto',value:dateLabel(row.proximo_contacto_csm)||'Sin fecha registrada'},
   {label:'Última respuesta',value:dateLabel(row.ultima_respuesta)||'Sin fecha registrada'},
@@ -40,4 +37,4 @@ function progress(row) {
   platformProgress:row.progreso_curso||null,
   sessions:SESSIONS.map(([label,date,status])=>({label,date:dateLabel(row[date]),status:status?String(row[status]||'').trim():''}))};
 }
-module.exports={fields,summary,progress};
+module.exports={fields,summary,progress,dateLabel};

@@ -11,6 +11,8 @@ const PAGE_ROLE_ACCESS = {
   'agendas-detalle-closer.html': ['total', 'comercial'],
   'analisis-ventas.html': ['total', 'comercial'],
   'administracion.html': ['total'],
+  'equipo-mr.html': ['total'],
+  'tutoriales-admin.html': ['total'],
   'mercado-pago-club.html': ['total'],
   'demo-facturacion-club.html': ['total'],
   'conciliacion.html': ['total'],
@@ -500,7 +502,7 @@ function canAccessPageForUser(user, pageName) {
   if (pageName === 'pdi.html') return canAccessPdiForUser(user);
   if (pageName === 'grabaciones.html') return Boolean(user) && canAccessPage(user?.role, pageName);
   if (pageName === 'comprobantes-config.html') return canAccessComprobantesLabForUser(user);
-  if (pageName === 'administracion.html' || pageName === 'mercado-pago-club.html' || pageName === 'demo-facturacion-club.html' || pageName === 'conciliacion.html') {
+  if (['equipo-mr.html','tutoriales-admin.html'].includes(pageName) || pageName === 'administracion.html' || pageName === 'mercado-pago-club.html' || pageName === 'demo-facturacion-club.html' || pageName === 'conciliacion.html') {
     return canAccessAdministrationForUser(user);
   }
   if (pageName === 'admin-usuarios.html') return canManageUsersForUser(user);
@@ -644,6 +646,9 @@ function getUserPermissions(user) {
     allowedPages.add('pdi.html');
   }
   if (allowedPages) {
+    for (const page of ['equipo-mr.html','tutoriales-admin.html']) {
+      if (canAccessPageForUser(user, page)) allowedPages.add(page);
+    }
     CSM_OPERATIONAL_PAGES.forEach((pageName) => {
       if (canAccessPageForUser(user, pageName)) allowedPages.add(pageName);
     });

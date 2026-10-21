@@ -110,7 +110,23 @@ function renderCsmProgress(progress) {
     <div class="csm-progress-track" role="progressbar" aria-label="Módulos con fecha de fin registrada" aria-valuemin="0" aria-valuemax="${progress.total}" aria-valuenow="${progress.completed}"><span style="width:${percent}%"></span></div>
     <div class="csm-module-steps">${progress.modules.map(m=>`<div class="csm-module-step ${m.completed?'is-complete':m.number===progress.current?'is-current':''}" ${m.number===progress.current?'aria-current="step"':''}><b>${m.completed?'✓ ':''}M${m.number}</b><span>${m.invalid?'Revisar fechas':m.completed?'Finalizado':m.start?'Iniciado':'Sin registro'}</span><small>${m.completed?'Fin: '+escapeHtml(m.end):m.start?'Inicio: '+escapeHtml(m.start):'—'}</small></div>`).join('')}</div>
     <p class="csm-progress-note">La barra cuenta módulos con fecha de finalización. Iniciar un módulo no marca los anteriores como completados.${progress.platformProgress?` Avance informado por la plataforma: ${escapeHtml(progress.platformProgress)}.`:''}</p>
-  </section><section class="csm-appointments" aria-label="Sesiones por cita"><p class="card-kicker">ACOMPAÑAMIENTO · CITAS</p><h3>Sesiones del cliente</h3><p>Las sesiones con fecha registrada aparecen marcadas con ✓. Las que todavía no tienen fecha quedan sin marcar.</p><div class="csm-appointment-grid">${progress.sessions.map(session=>`<article class="csm-appointment ${session.date?'has-date':''}"><span class="csm-calendar-icon" aria-hidden="true">${session.date?'✓':'▦'}</span><div><h4>${escapeHtml(session.label)}</h4><strong>${escapeHtml(session.date||'Sin fecha registrada')}</strong><small>${escapeHtml(session.status|| (session.date?'Fecha de cita registrada':'Sin sesión registrada'))}</small></div></article>`).join('')}</div></section>`;
+  </section>`;
+}
+
+function setupPortalLink(contact) {
+  const button = document.getElementById('copyPortalLink');
+  const input = document.getElementById('portalLink');
+  const status = document.getElementById('portalLinkStatus');
+  input.value = new URL(contact.portalUrl, window.location.origin).href;
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(input.value);
+      status.textContent = 'Enlace del portal copiado. Ya podés enviárselo al cliente.';
+    } catch {
+      input.focus(); input.select();
+      status.textContent = 'Seleccionamos el enlace. Copialo para enviárselo al cliente.';
+    }
+  });
 }
 
 function renderContact(contact) {
@@ -129,7 +145,7 @@ function renderContact(contact) {
   ];
   const areaMarkup = areaSections.map((section, index) => {
     const allItems = Array.isArray(contact.areas?.[section.key]) ? contact.areas[section.key] : [];
-    const items = section.key === 'csm' && contact.csmProgress ? allItems.filter(item => ['Acceso','Actividad','Próximo contacto','Última respuesta'].includes(item.label)) : allItems;
+    const items = section.key === 'csm' && contact.csmProgress ? allItems.filter(item => ['Acceso','Próximo contacto','Última respuesta','Pausa','Fecha de pausa','Días de pausa','Fecha final del programa','Fecha final de renovación','Meses de soporte'].includes(item.label)) : allItems;
     const itemsMarkup = items.map((item) => `
       <div class="area-detail">
         <dt>${escapeHtml(item.label || 'Dato')}</dt>
@@ -154,7 +170,7 @@ function renderContact(contact) {
         <div class="card-copy">
           <p class="card-kicker">Ficha resumida</p>
           <h2>${safeName}</h2>
-          <p class="card-subcopy">Resumen principal del contacto para compartir de forma simple y rápida.</p>
+          <p class="card-subcopy">Resumen interno del contacto y sus sesiones.</p>
           <div class="contact-actions" aria-label="Accesos del cliente">
             ${contact.diagnosticUrl ? `<a class="contact-action contact-action-primary contact-roadmap-link" href="${escapeHtml(contact.diagnosticUrl)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4-6 3v14l6-3 6 3 6-3V4l-6 3-6-3Z"/><path d="M9 4v14M15 7v14"/></svg><span>Carta de rumbo</span><svg class="contact-action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ''}
             ${ghlUrl ? `<a class="contact-action contact-action-secondary" href="${ghlUrl}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2M17 3h4v4M16 8l5-5"/></svg><span>Abrir en GHL</span><svg class="contact-action-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ''}
@@ -177,6 +193,8 @@ function renderContact(contact) {
 
       <dl class="contact-details">
         <div class="detail">
+          <dt>Productos adquiridos</dt><dd>${escapeHtml((contact.products || []).join(' · ') || 'Sin dato')}</dd>
+        </div><div class="detail">
           <dt>GHL ID</dt>
           <dd>${safeGhlId}</dd>
         </div>
@@ -191,6 +209,13 @@ function renderContact(contact) {
       </dl>
 
       ${renderCsmProgress(contact.csmProgress)}
+      <section class="portal-link-panel" aria-label="Portal del cliente">
+        <div><p class="card-kicker">PARA COMPARTIR CON EL CLIENTE</p><h3>Un portal para todo su recorrido</h3><p>Carta de rumbo, grabaciones e informes de sus sesiones en un único enlace.</p></div>
+        <div class="portal-link-actions"><a href="${escapeHtml(contact.portalUrl)}" target="_blank" rel="noopener">Abrir portal del cliente ↗</a><button id="copyPortalLink" type="button">Copiar enlace del portal</button></div>
+        <label for="portalLink">Enlace del cliente</label><input id="portalLink" type="text" readonly />
+        <p id="portalLinkStatus" role="status" aria-live="polite"></p>
+      </section>
+      ${renderSessions(contact)}
       <section class="areas-block">
         <div class="areas-header">
           <p class="card-kicker">Resumen por área</p>
@@ -244,6 +269,7 @@ async function loadContact() {
   try {
     const contact = await fetchContact(ghlId);
     renderContact(contact);
+    setupPortalLink(contact);
     clearStatus();
   } catch (error) {
     document.getElementById('cardContainer').innerHTML = '';

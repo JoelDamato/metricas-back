@@ -1,3 +1,4 @@
+const invoiceCategoryFilter = document.querySelector('#invoiceCategory');
 const monthInput = document.querySelector('#month');
 const reloadButton = document.querySelector('#reload');
 const statusNode = document.querySelector('#status');
@@ -62,7 +63,7 @@ function hasValidFiscalIdentification(row = {}) {
 function recordKey(row) { return `${row.kind}:${row.id}`; }
 
 function activeRecords() {
-  return allRecords.filter((row) => row.workflowStatus === activeWorkflow);
+  return allRecords.filter((row) => row.workflowStatus === activeWorkflow && (!invoiceCategoryFilter.value || invoiceCategory(row).key === invoiceCategoryFilter.value));
 }
 
 function visibleRecords(records = activeRecords()) {
@@ -108,7 +109,7 @@ function updateSelectionUi() {
   invoiceButton.hidden = activeWorkflow !== 'reconciled';
   invoiceButton.disabled = activeWorkflow !== 'reconciled' || !selected.length;
   exportInvoicedButton.hidden = activeWorkflow !== 'invoiced';
-  exportInvoicedButton.disabled = activeWorkflow !== 'invoiced' || !allRecords.length;
+  exportInvoicedButton.disabled = activeWorkflow !== 'invoiced' || !activeRecords().length;
 }
 
 function renderPagination(records) {
@@ -165,7 +166,7 @@ function invoiceExportRows(records) {
     const [pointOfSale = row.arcaPointOfSale || '', invoiceNumber = ''] = String(row.arcaInvoiceNumber || '').split('-');
     return [
       exportDate(row.arcaIssuedAt || row.invoicedAt), exportDate(row.date), exportDate(row.arcaServiceFrom), exportDate(row.arcaServiceTo),
-      `Factura ${row.arcaInvoiceType || ''}`.trim(), pointOfSale, invoiceNumber, row.arcaCae || '', exportDate(row.arcaCaeExpiration),
+      `Factura ${invoiceCategory(row).label}`, pointOfSale, invoiceNumber, row.arcaCae || '', exportDate(row.arcaCaeExpiration),
       row.arcaRecipientName || row.payer || '', row.identificationType || '', row.identificationNumber || '', row.arcaVatCondition || '',
       address.address, address.locality, address.province, row.payerEmail || '', row.arcaDescription || row.description || '',
       Number(amounts.net || 0), Number(amounts.exempt || 0), Number(amounts.vat || 0), Number(amounts.total ?? row.amount ?? 0),
@@ -183,7 +184,7 @@ function createInvoiceSpreadsheet(month, records) {
 }
 
 function exportInvoicedRecords() {
-  const records = allRecords.filter((row) => row.workflowStatus === 'invoiced');
+  const records = activeRecords().filter((row) => row.workflowStatus === 'invoiced');
   if (!records.length) { statusNode.textContent = 'No hay facturas emitidas para exportar en este mes.'; return; }
   const blob = new Blob([createInvoiceSpreadsheet(monthInput.value, records)], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -375,7 +376,7 @@ function renderRecords() {
       <td><input class="record-check" type="checkbox" data-key="${escapeHtml(recordKey(row))}" ${selectedKeys.has(recordKey(row)) ? 'checked' : ''} /></td>
       <td>${formatDate(row.date)}</td>
       <td><span class="type ${escapeHtml(row.kind)}">${row.kind === 'subscription' ? 'Suscripción' : row.kind === 'manual' ? 'Manual' : 'Pago'}</span></td>
-      <td><strong>${escapeHtml(row.arcaInvoiceType || proposedInvoiceType(row).replace('Factura ', ''))}</strong>${!row.arcaInvoiceType && !row.requestedInvoiceType && ![1,5,6].includes(Number(row.vatConditionId)) ? '<small>Por confirmar</small>' : ''}</td>
+      <td><strong>${escapeHtml(invoiceCategory(row).label)}</strong>${!row.arcaInvoiceType && !row.requestedInvoiceType && ![1,5,6].includes(Number(row.vatConditionId)) ? '<small>Por confirmar</small>' : ''}</td>
       <td><strong>${escapeHtml(row.arcaDescription || row.description)}</strong><small>${escapeHtml(row.externalReference || '')}</small>${row.arcaTaxTreatment ? `<small>${escapeHtml(row.arcaTaxTreatment)}</small>` : ''}${['invoiced', 'credit_notes'].includes(row.workflowStatus) ? `<a class="invoice-link" href="/api/metricas/mercado-pago/club/invoice/${encodeURIComponent(row.kind)}/${encodeURIComponent(row.id)}?format=pdf" target="_blank" rel="noopener">Ver factura</a>` : ''}</td>
       <td>${escapeHtml(row.payer || '—')}</td>
       <td class="${hasValidFiscalIdentification(row) ? '' : 'fiscal-data-missing'}"><strong>${escapeHtml(row.identificationNumber || '—')}</strong><small>${escapeHtml(row.identificationType || 'No informado')}</small>${hasValidFiscalIdentification(row) ? '' : '<span>Completar antes de facturar</span>'}</td>
@@ -686,3 +687,5 @@ monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2
 reloadButton.addEventListener('click', () => { currentPage = 1; loadRecords(); });
 monthInput.addEventListener('change', () => { currentPage = 1; loadRecords(); });
 loadRecords();
+
+invoiceCategoryFilter.addEventListener('change', () => { currentPage=1; selectedKeys.clear(); renderRecords(); });

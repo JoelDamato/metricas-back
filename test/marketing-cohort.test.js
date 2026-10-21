@@ -1,9 +1,23 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('node:vm');
 const cohort=require('../public/metricas-v2/js/marketing-cohort');
 const {resolveMarketingOrigin,buildMarketingLeadByGhlId}=require('../modules/metricasv2/services/marketing-origin.service');
-test('VSL + rt exige RT actual y VSL inicial, sin sumar los dos orígenes',()=>{
- for(const row of [{origen_actual:'rt',primer_origen:'VSL'},{origen_actual:' RT ',primer_origen:'Postulación MEG - VSL - form'},{origen_actual:'Postulación MEG - RT',primer_origen:'Postulaci%C3%B3n%20MEG%20-%20VSL'}])assert.equal(cohort.matches(row,cohort.combined),true);
- for(const row of [{origen_actual:'VSL',primer_origen:'VSL'},{origen_actual:'rt',primer_origen:'ORG'},{origen_actual:'rt',origen:'VSL'},{primer_origen:'VSL'}])assert.equal(cohort.matches(row,cohort.combined),false);
+test('VSL UNICO con emoji numérico pertenece a VSL + rt en el panel y en el backend',()=>{
+ const source=fs.readFileSync('modules/metricasv2/services/supabase.service.js','utf8');
+ const matches=vm.runInNewContext('('+source.match(/function matchesCurrentMarketingOrigin\([\s\S]*?\n}/)[0]+')',{resolveMarketingOrigin,require:()=>cohort});
+ for(const origin of ['3️⃣ Postulación MEG - VSL UNICO','3\u20e3 Postulación MEG - VSL UNICO',encodeURIComponent('3️⃣ Postulación MEG - VSL UNICO')]){
+  const lead={ghlid:'example',origen_actual:'Postulación MEG - RT',primer_origen:origin};
+  assert.equal(cohort.group(origin),'vsl');
+  assert.equal(cohort.label(origin),'VSL');
+  assert.equal(cohort.matches(lead,cohort.combined),true);
+  assert.equal(cohort.matches(lead,'RT'),true);
+  assert.equal(matches({ghlid:'example'},buildMarketingLeadByGhlId([lead]),cohort.combined),true);
+ }
+ assert.equal(cohort.group('3 Postulación MEG - VSL UNICO'),'3 postulacion meg - vsl unico');
+ assert.equal(cohort.matches({origen_actual:'RT',primer_origen:'3️⃣ Postulación MEG - ORG'},cohort.combined),false);
+});
+test('VSL + rt incluye VSL actual y RT proveniente de VSL',()=>{
+ for(const row of [{origen_actual:'VSL'},{origen_actual:'VSL',primer_origen:'ORG'},{origen_actual:'VSL',primer_origen:'VSL'},{origen_actual:'3️⃣ Postulación MEG - VSL UNICO'},{origen_actual:'rt',primer_origen:'VSL'},{origen_actual:' RT ',primer_origen:'Postulación MEG - VSL - form'},{origen_actual:'Postulación MEG - RT',primer_origen:'Postulaci%C3%B3n%20MEG%20-%20VSL'}])assert.equal(cohort.matches(row,cohort.combined),true);
+ for(const row of [{origen_actual:'ORG',primer_origen:'ORG'},{origen_actual:'rt',primer_origen:'ORG'},{origen_actual:'rt',origen:'VSL'},{primer_origen:'VSL'}])assert.equal(cohort.matches(row,cohort.combined),false);
 });
 test('comprobantes filtran usando primer origen del lead vinculado y actualizado',()=>{
  const source=fs.readFileSync('modules/metricasv2/services/supabase.service.js','utf8');
@@ -13,6 +27,8 @@ test('comprobantes filtran usando primer origen del lead vinculado y actualizado
  assert.equal(matches({ghlid:'abc'},linked,cohort.combined),true);
  assert.equal(matches({ghlid:'other'},linked,cohort.combined),false);
  linked.get('abc').primer_origen='ORG';assert.equal(matches({ghlid:'abc',primer_origen:'VSL'},linked,cohort.combined),false);
+ linked.get('abc').origen_actual='3️⃣ Postulación MEG - VSL UNICO';
+ assert.equal(matches({ghlid:'abc'},linked,cohort.combined),true);
 });
 test('CSV incluye toda la cohorte, identificadores, filtros y protege fórmulas',()=>{
  const rows=Array.from({length:75},(_,i)=>({id:String(i),ghlid:'ghl'+i,nombre:i?'Cliente; "ñ"':'=1+1',telefono:'+541123456789',fecha_agenda:'2026-10-09',origen_actual:'RT',primer_origen:'VSL'}));

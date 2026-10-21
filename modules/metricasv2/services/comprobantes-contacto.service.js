@@ -1,5 +1,5 @@
 const axios=require('axios');
-const COLUMNS='id,ghlid,cliente,cliente_format,mail,telefono,tipo,producto_format,medios_de_pago_format,estado,rebotar_pago,f_venta,f_acreditacion,fecha_creado,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,iva,tc,comisiones,venta_relacionada';
+const COLUMNS='id,ghlid,cliente,cliente_format,mail,telefono,tipo,producto_format,cantidad_de_pagos,medios_de_pago_format,estado,rebotar_pago,f_venta,f_acreditacion,fecha_creado,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,iva,tc,comisiones,venta_relacionada';
 const quote=value=>'"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
 async function listContactReceipts(ghlid,clientIds=[],options={}) {
  const request=options.request||axios.get;

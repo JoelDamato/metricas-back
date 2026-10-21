@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Equipo MR | Administración</title>
+<link rel="stylesheet" href="/css/styles.css?v=20261009-release-1"><link rel="stylesheet" href="/css/administration-resources.css?v=20261020-nadia"></head>
+<body class="ranking-page premium-navy-background" data-resource="team"><main class="container resource-shell">
+<nav><a href="/views/administracion.html">← Volver a Administración</a></nav>
+<header class="resource-hero"><div><p class="resource-eyebrow">ADMINISTRACIÓN</p><h1>Equipo MR</h1><p>Legajos del equipo, organizados por área.</p></div><button id="newResource" type="button">Nuevo legajo</button></header>
+<section class="resource-tools" aria-label="Filtros"><label>Buscar<input id="resourceSearch" type="search" placeholder="Nombre, cargo o área"></label><label>Área<select id="resourceArea"><option value="">Todas las áreas</option></select></label><label>Estado<select id="resourceState"><option value="active">Activos</option><option value="archived">Archivados</option><option value="all">Todos</option></select></label><button id="reloadResources" type="button">Actualizar</button></section>
+<p id="resourceStatus" role="status" aria-live="polite">Cargando…</p><p id="resourceCount"></p><div id="resourceList"></div>
+<dialog id="resourceDialog"><form id="resourceForm"><header><h2 id="formTitle"></h2><button type="button" id="closeDialog" aria-label="Cerrar">×</button></header><div id="resourceFields" class="resource-fields"></div><p id="formStatus" role="status" aria-live="polite"></p><footer><button type="button" id="cancelResource">Cancelar</button><button type="submit" id="saveResource">Guardar</button></footer></form></dialog>
+<datalist id="areaOptions"><option>Administración</option><option>Comercial</option><option>CSM</option><option>Marketing</option><option>Sistemas</option><option>Dirección</option></datalist>
+</main><script src="/js/auth-shell.js?v=20261013-contact-access-1"></script><script src="/js/views/administration-resources.page.js?v=20261020-nadia"></script></body></html>

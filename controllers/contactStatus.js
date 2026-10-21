@@ -1,4 +1,5 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
+const {fetchContactMaterials,productsForContact,contractLabel} = require('../modules/csm/contact-materials');
 const {listContactReceipts,totals,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -73,7 +74,7 @@ function getRowScore(row) {
 async function fetchContactByGhlId(ghlId) {
   const { supabaseUrl } = getSupabaseConfig();
 
-  const [leadRows, csmResponse, diagnosticResponse] = await Promise.all([
+  const [leadRows, csmResponse, diagnosticResponse, materials] = await Promise.all([
     (async () => {
       const result=[];
       for(let offset=0;;offset+=500){
@@ -96,7 +97,8 @@ async function fetchContactByGhlId(ghlId) {
     axios.get(`${supabaseUrl}/rest/v1/csm_diagnosticos`, {
       headers: buildHeaders(), timeout: 15000,
       params: {select: 'id', client_ghlid: `eq.${ghlId}`, limit: 1}
-    })
+    }),
+    fetchContactMaterials(ghlId)
   ]);
 
   const rows = leadRows;
@@ -111,6 +113,7 @@ async function fetchContactByGhlId(ghlId) {
   if(!row)row={nombre:csmRow?.nombre||latestComprobante?.cliente_format||'Sin nombre',mail:csmRow?.mail||latestComprobante?.mail,telefono:csmRow?.telefono||latestComprobante?.telefono,closer:csmRow?.closer,etapa:csmRow?'Cliente CSM':'Con comprobantes'};
 
   const contact = mapLead(row, ghlId);
+  contact.portalUrl = `/portal-cliente/${encodeURIComponent(ghlId)}`;
   const historicalOpeningBalance=openingBalance(row.extra);
   const receiptTotals=totals(comprobantesRows,historicalOpeningBalance);
   contact.historicalOpeningBalance=historicalOpeningBalance;
@@ -120,14 +123,27 @@ async function fetchContactByGhlId(ghlId) {
   contact.cashCollectedTotal=receiptTotals.cobrado;
   contact.diagnosticUrl = diagnosticResponse.data?.length ? `/diagnostico/?ghl_id=${encodeURIComponent(ghlId)}&vista=rumbo` : null;
   contact.csmProgress = csmContactSummary.progress(csmRow);
+  contact.csmMaterials = materials;
+  contact.products = productsForContact(csmRow, materials.fields, comprobantesRows);
+  const dateValue = value => csmContactSummary.dateLabel(value) || 'Sin fecha registrada';
+  const programDetails = [
+    {label:'Pausa',value:materials.fields.pause || csmRow?.pausa || 'Sin pausa registrada'},
+    {label:'Fecha de pausa',value:'Sin fecha registrada'},
+    {label:'Días de pausa',value:'No calculable: faltan fechas de inicio y reanudación'},
+    {label:'Fecha final del programa',value:dateValue(materials.fields.programEnd || csmRow?.fecha_final)},
+    {label:'Fecha final de renovación',value:dateValue(materials.fields.renewalEnd || csmRow?.fecha_final_renovacion)},
+    {label:'Meses de soporte',value:materials.fields.support || 'Sin dato'}
+  ];
   contact.areas = {
     comercial: [
+      { label: 'Productos adquiridos', value: contact.products.join(' · ') || 'Sin dato' },
       { label: 'Etapa', value: row.etapa || 'Sin dato' },
       { label: 'Setter', value: row.setter || 'Sin dato' },
       { label: 'Closer', value: row.closer || csmRow?.closer || 'Sin dato' }
     ],
-    csm: csmContactSummary.summary(csmRow),
+    csm: [...csmContactSummary.summary(csmRow),...programDetails],
     administracion: [
+      {label:'Tipo de contrato',value:contractLabel(materials.fields.contractType, comprobantesRows)},
       { label: 'Facturación total', value: receiptTotals.facturacion, type: 'amount' },
       { label: 'Cobrado conciliado sin IVA', value: receiptTotals.cobrado, type: 'amount' },
       { label: 'Último comprobante', value: latestComprobante ? `${latestComprobante.tipo || 'Sin tipo'} · ${latestComprobante.medios_de_pago_format || latestComprobante.estado || latestComprobante.producto_format || 'Sin dato'}` : 'Sin dato' }
