@@ -11,6 +11,7 @@ const commissionsService = require('../services/commissions.service');
 const diagnosticosService = require('../services/diagnosticos.service');
 const pdiService = require('../services/pdi.service');
 const access = require('../../auth/access');
+const { multipartAttachments } = require('../services/comprobantes-attachments');
 
 async function health(req, res) {
   res.json({
@@ -774,12 +775,7 @@ async function createComprobanteManual(req, res, next) {
     if (Array.isArray(req.files)) {
       payload = {
         ...payload,
-        attachmentFiles: req.files.map((file) => ({
-          name: file.originalname,
-          type: file.mimetype || 'application/octet-stream',
-          size: Number(file.size || file.buffer?.length || 0),
-          base64: file.buffer.toString('base64')
-        }))
+        attachmentFiles: multipartAttachments(req.files, payload)
       };
     }
 
@@ -811,12 +807,7 @@ function parseComprobanteLabPayload(req) {
   if (Array.isArray(req.files)) {
     payload = {
       ...payload,
-      attachmentFiles: req.files.map((file) => ({
-        name: file.originalname,
-        type: file.mimetype || 'application/octet-stream',
-        size: Number(file.size || file.buffer?.length || 0),
-        base64: file.buffer.toString('base64')
-      }))
+      attachmentFiles: multipartAttachments(req.files, payload)
     };
   }
   return payload;
