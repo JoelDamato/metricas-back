@@ -3,7 +3,9 @@ const env = require('../metricasv2/config/env');
 const access = require('../auth/access');
 async function list(req, res, next) {
   try {
-    if (!req.authUser || !access.canAccessPageForUser(req.authUser, 'csm-cuadro.html')) return res.status(403).json({message:'Sin acceso a CSM'});
+    const canReadPrograms = req.authUser && ['csm-cuadro.html', 'csm-renovaciones.html']
+      .some(page => access.canAccessPageForUser(req.authUser, page));
+    if (!canReadPrograms) return res.status(403).json({message:'Sin acceso a CSM'});
     const rows = [];
     for (let offset = 0; ; offset += 500) {
       const {data} = await axios.get(`${env.supabaseUrl}/rest/v1/csm_followup_profiles`, {

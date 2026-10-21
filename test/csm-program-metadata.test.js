@@ -8,3 +8,18 @@ test('metadatos CSM exigen permisos y proyectan sólo los campos necesarios',asy
  await list({authUser:{role:'csm'}},{set(){return this},json(d){output=d}},e=>{throw e});assert.equal(output.rows[0].rubro,'Textil');assert.equal(called,1);
  }finally{axios.get=original}
 });
+
+test('Renovaciones permite consultar soporte con acceso comercial sin exigir acceso al cuadro CSM',async()=>{
+ const access=require('../modules/auth/access');
+ const user={role:'comercial'};
+ assert.equal(access.canAccessPageForUser(user,'csm-renovaciones.html'),true);
+ assert.equal(access.canAccessPageForUser(user,'csm-cuadro.html'),false);
+ const original=axios.get;let output,called=0;
+ axios.get=async()=>{called++;return {data:[{ghlid:'renewal-client',support_active:'Vigente',support:6,rubro:'Textil'}]};};
+ try{
+  await list({authUser:user},{status(n){throw new Error(`Acceso inesperado ${n}`)},set(){return this},json(d){output=d}},e=>{throw e});
+  assert.equal(called,1);assert.equal(output.rows[0].ghlid,'renewal-client');
+  let denied;await list({authUser:{role:'sin-acceso'}},{status(n){denied=n;return this},json(){}},e=>{throw e});
+  assert.equal(denied,403);assert.equal(called,1);
+ }finally{axios.get=original}
+});
