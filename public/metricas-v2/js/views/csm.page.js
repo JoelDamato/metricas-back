@@ -3197,21 +3197,21 @@ async function initCsmPage() {
         return;
       }
 
-      const [csmResponse, comprobantesResponse, leadsResponse] = await Promise.all([
-        api.fetchAllRows('csm', { limit: 1000 }),
-        pageKey === 'renovaciones'
-          ? api.fetchAllRows('comprobantes', { limit: 1000 })
-          : Promise.resolve([]),
-        pageKey === 'renovaciones'
-          ? api.fetchAllRows('leads_raw', { limit: 1000 })
-          : Promise.resolve([])
-      ]);
-      const csmRows = Array.isArray(csmResponse) ? csmResponse : (csmResponse.rows || []);
-      const comprobanteRows = Array.isArray(comprobantesResponse) ? comprobantesResponse : (comprobantesResponse.rows || []);
-      const leadRows = Array.isArray(leadsResponse) ? leadsResponse : (leadsResponse.rows || []);
-      const programResponse = await fetch('/api/metricas/csm-program-metadata');
-      if (!programResponse.ok) throw new Error('No se pudo verificar la información de soporte y rubro. Reintentá.');
-      const programData = await programResponse.json();
+      let csmRows, comprobanteRows = [], leadRows = [], programData;
+      if (pageKey === 'renovaciones') {
+        const response = await fetch('/api/metricas/csm-renewal-data');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'No se pudieron cargar las renovaciones.');
+        ({csmRows, comprobanteRows, leadRows} = data);
+        programData = {rows:data.programs};
+      } else {
+        const [csmResponse, programResponse] = await Promise.all([
+          api.fetchAllRows('csm', {limit:1000}), fetch('/api/metricas/csm-program-metadata')
+        ]);
+        csmRows = Array.isArray(csmResponse) ? csmResponse : (csmResponse.rows || []);
+        if (!programResponse.ok) throw new Error('No se pudo verificar la información de soporte y rubro. Reintentá.');
+        programData = await programResponse.json();
+      }
       const programs = new Map(programData.rows.map(row => [row.ghlid,row]));
       let enrichedRows = enrichRows(csmRows.filter(isCsmProduct).map(row => ({...row,...programs.get(row.ghlid)})));
       if (requestedGroup?.key === 'diagnosticos') {

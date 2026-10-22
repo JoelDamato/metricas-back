@@ -1,4 +1,5 @@
 const axios = require('axios');
+const {readUser} = require('./read-user');
 const crypto = require('crypto');
 const env = require('../metricasv2/config/env');
 
@@ -146,7 +147,7 @@ async function findUserByEmail(email) {
   const url = `${env.supabaseUrl}/rest/v1/metricas_usuarios`;
 
   try {
-    const response = await axios.get(url, {
+    const response = await readUser(url, {
       headers: buildHeaders(),
       params: {
         select: USER_COLUMNS,
