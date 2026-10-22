@@ -2920,37 +2920,13 @@ function buildRenewalsPage(rows, context = {}) {
     const daysToRenewal = calendarDaysUntil(row.fecha_final);
     return daysToRenewal !== null && daysToRenewal <= 0;
   });
+  const overdue15Rows = overdueUnrenewedRows.filter(row => calendarDaysUntil(row.fecha_final) >= -15);
   const overdueCurrentMonthRows = overdueUnrenewedRows.filter((row) => (
     row.finalDate instanceof Date
     && row.finalDate.getUTCFullYear() === currentYear
     && row.finalDate.getUTCMonth() === currentMonth
   ));
-  const renewedRows = rows.filter((row) => row.renewalCompletedDate);
-  const renewable30Ids = new Set(renewable30Rows.map((row) => row.id));
-  const renewable15Ids = new Set(renewable15Rows.map((row) => row.id));
   const renewalFinancials = buildRenewalFinancialMetrics(context.comprobanteRows || [], context.filters || {});
-
-  const monthBuckets = new Map();
-  rows.forEach((row) => {
-    if (!row.finalDate) return;
-    const monthKey = `${row.finalDate.getUTCFullYear()}-${String(row.finalDate.getUTCMonth() + 1).padStart(2, '0')}`;
-    if (!monthBuckets.has(monthKey)) {
-      monthBuckets.set(monthKey, {
-        label: row.finalDate.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
-        renewable30: 0,
-        renewable15: 0,
-        renewed: 0
-      });
-    }
-    const bucket = monthBuckets.get(monthKey);
-    if (renewable30Ids.has(row.id)) bucket.renewable30 += 1;
-    if (renewable15Ids.has(row.id)) bucket.renewable15 += 1;
-    if (row.renewalCompletedDate) bucket.renewed += 1;
-  });
-
-  const sortedMonths = [...monthBuckets.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .slice(-8);
 
   const detailColumns = ['Cliente', 'Closer', 'Fecha final', 'Dias al cierre', 'GHL'];
   const toDetailRows = (detailRows) => detailRows
@@ -2966,20 +2942,6 @@ function buildRenewalsPage(rows, context = {}) {
       ];
     })
     .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[2]).localeCompare(String(b[2])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
-
-  const renewedDetailColumns = ['Cliente', 'Closer', 'Fecha final', 'Fecha renovacion', 'GHL'];
-  const renewedDetailRows = renewedRows
-    .map((row) => {
-      const closer = resolveRenewalCloser(row, closerLookup);
-      return [
-        createContactCell(row.nombre || 'Sin nombre', row.ghlid || ''),
-        closer,
-        formatDate(row.fecha_final),
-        formatDate(row.fecha_final_renovacion),
-        createGhlLinkCell(row.ghlid || '', 'Ir a GHL')
-      ];
-    })
-    .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es') || String(a[3]).localeCompare(String(b[3])) || String(a[0]?.label || '').localeCompare(String(b[0]?.label || ''), 'es'));
 
   const operationalMetrics = [
     buildMetricRow({
@@ -3007,28 +2969,16 @@ function buildRenewalsPage(rows, context = {}) {
       detailRows: toDetailRows(renewable15Rows)
     }),
     buildMetricRow({
-      key: 'renewals_completed',
-      label: 'Cantidad de renovaciones',
-      value: formatInteger(renewedRows.length),
+      key: 'renewals_overdue_15d',
+      label: 'Clientes vencidos sin renovar · últimos 15 días',
+      value: formatInteger(overdue15Rows.length),
       base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'Cuenta renovaciones cerradas con fecha registrada.',
-      dateLabel: '"fecha_final_renovacion"',
-      fieldsLabel: '"fecha_final_renovacion"',
-      logic: 'Cuenta clientes con fecha válida en "fecha_final_renovacion".',
-      detailColumns: renewedDetailColumns,
-      detailRows: renewedDetailRows
-    }),
-    buildMetricRow({
-      key: 'renewals_overdue',
-      label: 'Clientes ya vencidos sin renovar',
-      value: formatInteger(overdueUnrenewedRows.length),
-      base: `${formatInteger(rows.length)} clientes totales`,
-      note: 'Incluye también los que vencen hoy para que no queden mezclados en 15 y 30 días.',
-      dateLabel: '"fecha_final" menor o igual a hoy',
+      note: 'Incluye desde el día del vencimiento hasta 15 días después, sin renovación registrada.',
+      dateLabel: '"fecha_final" entre hace 15 días y hoy',
       fieldsLabel: '"fecha_final", "fecha_final_renovacion"',
-      logic: 'Cuenta clientes no renovados cuya "fecha_final" ya quedó atrás o vence hoy.',
+      logic: 'Cuenta clientes sin renovación cuya fecha final está entre hoy y hace 15 días, ambos inclusive. Excluye vencimientos de hace 16 días o más.',
       detailColumns,
-      detailRows: toDetailRows(overdueUnrenewedRows)
+      detailRows: toDetailRows(overdue15Rows)
     }),
     buildMetricRow({
       key: 'renewals_overdue_current_month',
@@ -3065,25 +3015,23 @@ function buildRenewalsPage(rows, context = {}) {
   return {
     metrics,
     tableMetrics: operationalMetrics,
-    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_completed', 'renewals_overdue', 'renewals_overdue_current_month'],
+    kpiKeys: ['renewable_30d', 'renewable_15d', 'renewals_overdue_15d', 'renewals_overdue_current_month'],
     chart: {
       title: 'Embudo de Renovación',
-      description: 'Lectura rápida de la base renovable, cierres, vencidos y el recorte del mes actual.',
-      labels: ['30 dias', '15 dias', 'Renovadas', 'Vencidas', 'Vencidas este mes'],
+      description: 'Próximos vencimientos, vencidos en los últimos 15 días y vencidos del mes actual.',
+      labels: ['Vencen en 30 días', 'Vencen en 15 días', 'Vencidos hasta 15 días', 'Vencidos este mes'],
       datasets: [
         {
           label: 'Clientes',
           data: [
             renewable30Rows.length,
             renewable15Rows.length,
-            renewedRows.length,
-            overdueUnrenewedRows.length,
+            overdue15Rows.length,
             overdueCurrentMonthRows.length
           ],
           backgroundColor: [
             'rgba(37, 99, 235, 0.72)',
             'rgba(59, 130, 246, 0.72)',
-            'rgba(16, 185, 129, 0.72)',
             'rgba(239, 68, 68, 0.72)',
             'rgba(245, 158, 11, 0.72)'
           ],
