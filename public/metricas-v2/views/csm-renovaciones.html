@@ -8,8 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
+    <link rel="stylesheet" href="/css/csm-renovaciones-loading.css?v=20261022-1" />
   </head>
-  <body class="ranking-page csm-page" data-csm-page="renovaciones">
+  <body class="ranking-page csm-page renewal-loading" data-csm-page="renovaciones">
     <main class="container">
       <div class="nav"><a href="/metricas.html">Volver al listado</a></div>
       <section class="ranking-hero">
@@ -29,6 +30,10 @@
         <button id="reload">Aplicar fechas</button>
       </div>
 
+      <section id="renewalLoading" class="renewal-loading-panel" role="status" aria-live="polite">
+        <span class="renewal-spinner" aria-hidden="true"></span>
+        <div><strong>Cargando renovaciones</strong><p>Estamos preparando las métricas y los clientes. Puede tardar unos segundos.</p></div>
+      </section>
       <p id="status"></p>
       <section id="kpiContainer" class="cards"></section>
       <section class="chart-panel">
@@ -44,6 +49,6 @@
     <script src="/js/api/http.js"></script>
     <script src="/js/api/metricas.api.js"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/csm.page.js?v=20261022-renewal-data"></script>
+    <script src="/js/views/csm.page.js?v=20261022-renewal-loading"></script>
   </body>
 </html>

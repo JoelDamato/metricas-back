@@ -3170,7 +3170,27 @@ async function initCsmPage() {
   }
   const isModuleSnapshotView = renderedPageKey === 'cuadro' && ['modulos','estado-actual','segmentacion'].includes(requestedGroup?.key);
 
+  let renewalRequestPending = false;
+  function setRenewalLoading(loading) {
+    if (pageKey !== 'renovaciones') return;
+    document.body.classList.toggle('renewal-loading', loading);
+    const panel = document.getElementById('renewalLoading');
+    if (panel) panel.hidden = !loading;
+    for (const id of ['reload', 'desde', 'hasta']) {
+      const control = document.getElementById(id);
+      if (control) control.disabled = loading;
+    }
+    const button = document.getElementById('reload');
+    if (button) button.textContent = loading ? 'Cargando…' : 'Aplicar fechas';
+    for (const id of ['kpiContainer', 'tableContainer', 'detailContainer']) {
+      document.getElementById(id)?.setAttribute('aria-busy', String(loading));
+    }
+  }
+
   async function loadPage() {
+    if (pageKey === 'renovaciones' && renewalRequestPending) return;
+    renewalRequestPending = pageKey === 'renovaciones';
+    setRenewalLoading(true);
     status.textContent = 'Cargando metricas de CSM...';
     if (renderedPageKey === 'cuadro') {
       resetCsmResultContainers();
@@ -3370,6 +3390,9 @@ async function initCsmPage() {
       document.getElementById('detailContainer').innerHTML = '';
       status.textContent = error.message || 'No se pudieron cargar las metricas de CSM.';
       if (renderedPageKey === 'cuadro') setCsmPageLoading(false);
+    } finally {
+      renewalRequestPending = false;
+      setRenewalLoading(false);
     }
   }
 
