@@ -1,4 +1,5 @@
 const axios = require('axios');
+const {appointmentTimestamp} = require('./appointment-time');
 
 const DEFAULT_GHL_API_BASE = 'https://services.leadconnectorhq.com';
 const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires';
@@ -568,7 +569,11 @@ function buildDiscordMessages({ appointment, contact, closer, calendar, submissi
     .join('\n') || 'Sin email ni teléfono';
   const ghlContactUrl = `https://app.gohighlevel.com/v2/location/${encodeURIComponent(config.ghlLocationId)}/contacts/detail/${encodeURIComponent(appointment.contactId)}`;
   const links = makeLink('Abrir contacto en GHL', ghlContactUrl);
-  const dateValue = `${formatDiscordTimestamp(appointment.startTime, 'F')}\n${formatDiscordTimestamp(appointment.startTime, 'R')}`;
+  const timezone = config.timezone || DEFAULT_TIMEZONE;
+  const startTimestamp = appointmentTimestamp(appointment.startTime, timezone);
+  const dateValue = Number.isFinite(startTimestamp)
+    ? `${new Intl.DateTimeFormat('es-AR', {timeZone:timezone, dateStyle:'full', timeStyle:'short', hourCycle:'h23'}).format(new Date(startTimestamp))} (${timezone === DEFAULT_TIMEZONE ? 'hora Argentina' : timezone})\n${formatDiscordTimestamp(startTimestamp, 'R')}`
+    : 'Fecha no informada';
   const surveyName = survey?.name
     || (typeof survey === 'string' ? survey : '')
     || submission?.others?.eventData?.parentName
