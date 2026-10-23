@@ -65,9 +65,31 @@
     document.title = 'Lanzamiento | Centro de entrenamiento';
     document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
     document.getElementById('launchTab').setAttribute('aria-current','page');
-    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá la clase de lanzamiento y después abrí el documento con las actividades de Leo.</p></div><div class="campus-stats"><div><strong>01</strong><span>Clase de lanzamiento</span></div></div></section>
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>02</strong><span>Clases de lanzamiento</span></div></div></section>
     <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
     <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchFollowupTitle">
+      <div class="campus-section-title"><h2 id="launchFollowupTitle">Clase 02 · Seguimiento y alter ego comercial</h2></div>
+      <iframe class="lesson-video" src="https://drive.google.com/file/d/1qX8EQSmFGY3RXzP3GQ_XH14KiJoRX1YJ/preview" title="Clase de lanzamiento: seguimiento y alter ego comercial" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
+      <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/1qX8EQSmFGY3RXzP3GQ_XH14KiJoRX1YJ/view?usp=sharing" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
+      <section class="lesson-panel"><h3>Puntos tratados</h3><ul>
+        <li><strong>Lanzamiento:</strong> inicio de campañas y llegada de leads.</li>
+        <li><strong>WhatsApp y CRM:</strong> clasificación de prospectos (caliente, tibio y frío) y actualización manual en GoHighLevel.</li>
+        <li><strong>Comunicación:</strong> priorizar audios y videos para generar mayor conexión.</li>
+        <li><strong>Seguimiento:</strong> contactar a los leads idealmente dentro de los primeros 15 minutos.</li>
+        <li><strong>Grupos de WhatsApp:</strong> envío del historial y solicitud para que los prospectos agenden al asesor.</li>
+        <li><strong>Alter ego comercial:</strong> creación de un personaje que transmita seguridad, autoridad y confianza.</li>
+      </ul></section>
+      <section class="lesson-panel"><h3>Actividades asignadas</h3><ol>
+        <li>Crear las tres etiquetas en WhatsApp Business.</li>
+        <li>Practicar los audios comerciales entre 5 y 6 veces antes de enviarlos.</li>
+        <li>Crear o perfeccionar el alter ego: nombre, imagen, atributos y propósito.</li>
+        <li>Definir un ritual de activación y desactivación del personaje.</li>
+        <li>Compartir en el grupo el nombre y la imagen del alter ego.</li>
+        <li>Presentarse en la próxima capacitación con el personaje activado.</li>
+        <li>Revisar los procesos y preparar preguntas puntuales.</li>
+      </ol></section>
+    </section>`);
     content.insertAdjacentHTML('beforeend', `<section class="materials-section launch-gifts" aria-labelledby="launchGiftsTitle"><div class="campus-section-title"><h2 id="launchGiftsTitle">Regalos del lanzamiento</h2><p>Guía de entrega para asesores</p></div><div class="lesson-panel"><h3>La clave se comparte sólo si el lead la solicita.</h3><p>Cada regalo permite 7 usos. Después, la herramienta pide una clave que el lead debe solicitar a su asesor. Entregá el enlace el día indicado y compartí la clave únicamente cuando te la pidan, para continuar la interacción.</p></div><div id="launchGiftList" class="class-grid"><p role="status">Cargando regalos…</p></div></section>`);
     window.http.getJson('/api/metricas/launch-gifts').then(({gifts}) => {
       document.getElementById('launchGiftList').innerHTML = gifts.map(gift => `<article class="lesson-panel launch-gift"><p class="campus-eyebrow">Regalo ${esc(gift.number)} · Día ${esc(gift.day)}</p><h3>${esc(gift.title)}</h3><p>7 usos antes de solicitar la clave.</p><a class="campus-button secondary" href="${esc(gift.url)}" target="_blank" rel="noopener noreferrer">Abrir regalo ↗</a><p class="launch-gift-url">${esc(gift.url)}</p><details><summary>Ver clave para el asesor</summary><p>Compartila sólo si el lead la solicita.</p><code>${esc(gift.key)}</code></details></article>`).join('');
