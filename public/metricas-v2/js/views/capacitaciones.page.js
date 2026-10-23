@@ -65,7 +65,7 @@
     document.title = 'Lanzamiento | Centro de entrenamiento';
     document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
     document.getElementById('launchTab').setAttribute('aria-current','page');
-    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>02</strong><span>Clases de lanzamiento</span></div></div></section>
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>03</strong><span>Clases de lanzamiento</span></div></div></section>
     <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
     <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
     content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchFollowupTitle">
@@ -88,6 +88,39 @@
         <li>Compartir en el grupo el nombre y la imagen del alter ego.</li>
         <li>Presentarse en la próxima capacitación con el personaje activado.</li>
         <li>Revisar los procesos y preparar preguntas puntuales.</li>
+      </ol></section>
+    </section>`);
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchMindsetTitle">
+      <div class="campus-section-title"><h2 id="launchMindsetTitle">Clase 03 · Cualificación y termostato financiero</h2></div>
+      <iframe class="lesson-video" src="https://drive.google.com/file/d/133ErURw58rmd6J7xHaSMnE34BG6_oJsp/preview" title="Clase de lanzamiento: cualificación y termostato financiero" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
+      <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/133ErURw58rmd6J7xHaSMnE34BG6_oJsp/view?usp=sharing" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
+      <section class="lesson-panel"><h3>Puntos tratados</h3><ul>
+        <li><strong>Resultados del lanzamiento:</strong> revisión de leads, conversaciones y tasas de respuesta.</li>
+        <li><strong>Comunicación comercial:</strong> los audios generan mejores respuestas en las experiencias compartidas. Importancia de probar diferentes formatos.</li>
+        <li><strong>Cualificación:</strong> priorizar prospectos según facturación y perfil comercial.</li>
+        <li><strong>Etiquetas:</strong> mantener rojo, amarillo y celeste según calificación. Opcionalmente, agregar etiquetas de nivel de interés.</li>
+        <li><strong>Seguimiento:</strong> utilizar preguntas estratégicas, testimonios y redes sociales para conocer mejor al prospecto.</li>
+        <li><strong>Mentalidad comercial:</strong> paciencia, perseverancia y congruencia entre lo que pensamos, decimos y hacemos.</li>
+        <li><strong>Termostato financiero:</strong> identificar las limitaciones personales para comunicar y sostener precios elevados.</li>
+        <li><strong>Crecimiento personal:</strong> experiencias nuevas, entorno, metas SMART y visualización de objetivos.</li>
+      </ul></section>
+      <section class="lesson-panel"><h3>Actividades asignadas</h3><ol>
+        <li>Continuar probando audios, videos y textos para identificar qué genera mejores respuestas.</li>
+        <li>Mantener las etiquetas de calificación y priorizar los prospectos con mayor potencial.</li>
+        <li>Practicar preguntas de diagnóstico para identificar desafíos, facturación y objetivos del negocio.</li>
+        <li>Registrar información relevante en GoHighLevel.</li>
+        <li>Practicar audios comerciales con naturalidad, energía y sin muletillas.</li>
+        <li>Responder para mañana las preguntas del termostato financiero:
+          <ul>
+            <li>¿Qué precio decís sin dudar?</li>
+            <li>¿Desde qué monto te empieza a costar?</li>
+            <li>¿Alguna vez invertiste un monto similar?</li>
+            <li>¿Cómo te sentiste al invertirlo?</li>
+            <li>¿Qué precio vas a comunicar con seguridad y qué acción vas a realizar para lograrlo?</li>
+          </ul>
+        </li>
+        <li>Durante la semana: realizar nuevas experiencias que desafíen los límites financieros personales y compartir qué hicieron y cómo se sintieron.</li>
+        <li>Continuar trabajando con el vision board y las metas personales.</li>
       </ol></section>
     </section>`);
     content.insertAdjacentHTML('beforeend', `<section class="materials-section launch-gifts" aria-labelledby="launchGiftsTitle"><div class="campus-section-title"><h2 id="launchGiftsTitle">Regalos del lanzamiento</h2><p>Guía de entrega para asesores</p></div><div class="lesson-panel"><h3>La clave se comparte sólo si el lead la solicita.</h3><p>Cada regalo permite 7 usos. Después, la herramienta pide una clave que el lead debe solicitar a su asesor. Entregá el enlace el día indicado y compartí la clave únicamente cuando te la pidan, para continuar la interacción.</p></div><div id="launchGiftList" class="class-grid"><p role="status">Cargando regalos…</p></div></section>`);
