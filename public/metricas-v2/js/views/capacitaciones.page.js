@@ -65,7 +65,7 @@
     document.title = 'Lanzamiento | Centro de entrenamiento';
     document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
     document.getElementById('launchTab').setAttribute('aria-current','page');
-    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>03</strong><span>Clases de lanzamiento</span></div></div></section>
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>05</strong><span>Clases de lanzamiento</span></div></div></section>
     <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
     <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
     content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchFollowupTitle">
@@ -121,6 +121,60 @@
         </li>
         <li>Durante la semana: realizar nuevas experiencias que desafíen los límites financieros personales y compartir qué hicieron y cómo se sintieron.</li>
         <li>Continuar trabajando con el vision board y las metas personales.</li>
+      </ol></section>
+    </section>`);
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchConversationsTitle">
+      <div class="campus-section-title"><h2 id="launchConversationsTitle">Clase 04 · Primeros resultados y conversaciones comerciales</h2></div>
+      <iframe class="lesson-video" src="https://drive.google.com/file/d/1_y69YZVzbdmFh5XBnYy8gy5asRaSRKUS/preview" title="Clase de lanzamiento: primeros resultados y conversaciones comerciales" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
+      <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/1_y69YZVzbdmFh5XBnYy8gy5asRaSRKUS/view?usp=sharing" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
+      <section class="lesson-panel"><h3>Puntos tratados</h3><ul>
+        <li><strong>Primeros resultados:</strong> revisión de leads recibidos, conversaciones y respuestas.</li>
+        <li><strong>Cualificación:</strong> las etiquetas determinan prioridades, pero no descartan prospectos automáticamente.</li>
+        <li><strong>Comunicación comercial:</strong> probar textos, audios y videos para mejorar las respuestas.</li>
+        <li><strong>Mensajes de bienvenida:</strong> dividirlos en dos partes y finalizar con una pregunta abierta.</li>
+        <li><strong>Mentalidad comercial:</strong> gestionar el rechazo, evitar frustraciones y evaluar resultados con suficientes conversaciones.</li>
+        <li><strong>Seguimiento:</strong> utilización de testimonios, casos de éxito y recursos para generar interés y conseguir agendas.</li>
+        <li><strong>Alter ego:</strong> presentación de personajes comerciales y sus rituales de activación.</li>
+        <li><strong>GoHighLevel:</strong> registro de información y resolución de inconvenientes técnicos.</li>
+      </ul></section>
+      <section class="lesson-panel"><h3>Actividades asignadas</h3><ol>
+        <li>Modificar los mensajes de bienvenida: dividirlos y finalizar con una sola pregunta abierta.</li>
+        <li>Probar diferentes formatos de contacto: texto, audio, video y combinaciones.</li>
+        <li>Registrar qué mensajes generan mejores respuestas.</li>
+        <li>Contactar también a los leads de baja prioridad cuando haya disponibilidad.</li>
+        <li>Actualizar las etiquetas según la información obtenida en las conversaciones.</li>
+        <li>Registrar datos importantes de cada prospecto en GoHighLevel.</li>
+        <li>Consultar con Jota los inconvenientes técnicos de asignación o contacto.</li>
+        <li>Continuar practicando y perfeccionando el alter ego comercial.</li>
+        <li>Utilizar testimonios y casos de éxito relevantes para realizar seguimientos comerciales.</li>
+      </ol></section>
+    </section>`);
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchWorkflowTitle">
+      <div class="campus-section-title"><h2 id="launchWorkflowTitle">Clase 05 · Gestión de leads y proceso de lanzamiento</h2></div>
+      <iframe class="lesson-video" src="https://drive.google.com/file/d/1ugLxGtufdN8dg0M9It-MsJCvJ8Q38HST/preview" title="Clase de lanzamiento: gestión de leads y proceso de lanzamiento" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
+      <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/1ugLxGtufdN8dg0M9It-MsJCvJ8Q38HST/view?usp=sharing" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
+      <section class="lesson-panel"><h3>Puntos tratados</h3><ul>
+        <li><strong>Lanzamiento:</strong> inicio de campañas y asignación automática y rotativa de leads.</li>
+        <li><strong>Discord:</strong> recepción de notificaciones de nuevos prospectos.</li>
+        <li><strong>WhatsApp:</strong> contacto inicial, bienvenida y verificación de ingreso al grupo.</li>
+        <li><strong>GoHighLevel:</strong> consulta de facturación, registro de notas y seguimiento de prospectos.</li>
+        <li><strong>Clasificación:</strong> etiquetas rojo (caliente), amarillo (tibio) y celeste (frío).</li>
+        <li><strong>Cualificación:</strong> identificar facturación, rubro, estructura, necesidades y potencial de compra.</li>
+        <li><strong>Recursos gratuitos:</strong> entrega de regalos los días 4, 7 y 9 del lanzamiento.</li>
+        <li><strong>Comisiones:</strong> importancia de registrar las conversaciones para validar las ventas.</li>
+        <li><strong>Alter ego comercial:</strong> reforzar la identidad, vestimenta y anclajes del personaje.</li>
+      </ul></section>
+      <section class="lesson-panel"><h3>Actividades asignadas</h3><ol>
+        <li>Enviar foto del vision board, colocado en pantalla o pared.</li>
+        <li>Perfeccionar el alter ego y definir su anclaje.</li>
+        <li>Preparar diferentes versiones de mensajes de bienvenida.</li>
+        <li>Practicar el proceso completo: Discord → GoHighLevel → WhatsApp.</li>
+        <li>Verificar que cada prospecto ingrese al grupo y compartirle el historial.</li>
+        <li>Clasificar los leads con etiquetas en WhatsApp Business.</li>
+        <li>Registrar información relevante de cada prospecto en las notas de GoHighLevel.</li>
+        <li>Preparar los enlaces de los regalos y respetar los días de entrega.</li>
+        <li>Repasar la guía de asesores y las preguntas de cualificación.</li>
+        <li>Reportar problemas técnicos o dudas para resolverlos rápidamente.</li>
       </ol></section>
     </section>`);
     content.insertAdjacentHTML('beforeend', `<section class="materials-section launch-gifts" aria-labelledby="launchGiftsTitle"><div class="campus-section-title"><h2 id="launchGiftsTitle">Regalos del lanzamiento</h2><p>Guía de entrega para asesores</p></div><div class="lesson-panel"><h3>La clave se comparte sólo si el lead la solicita.</h3><p>Cada regalo permite 7 usos. Después, la herramienta pide una clave que el lead debe solicitar a su asesor. Entregá el enlace el día indicado y compartí la clave únicamente cuando te la pidan, para continuar la interacción.</p></div><div id="launchGiftList" class="class-grid"><p role="status">Cargando regalos…</p></div></section>`);
