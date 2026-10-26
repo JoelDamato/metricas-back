@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261026-invoice-filter" />
+    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261026-fiscal-auto" />
   </head>
   <body class="mp-club-page">
     <main class="mp-shell">
@@ -28,6 +28,7 @@
       </header>
 
       <p id="status" class="status" role="status"></p>
+      <p id="fiscalStatus" class="status" role="status" aria-live="polite"></p>
       <div id="loading" class="mp-loading" hidden><span class="mp-spinner" aria-hidden="true"></span><strong id="loadingText">Consultando Mercado Pago…</strong></div>
       <section id="summary" class="summary" aria-label="Resumen"></section>
       <section class="workflow-bar" aria-label="Flujo de conciliación">
@@ -61,7 +62,7 @@
       </section>
     </main>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/invoice-category.js?v=20261026-invoice-filter"></script>
-    <script src="/js/views/mercado-pago-club.page.js?v=20261026-invoice-filter"></script>
+    <script src="/js/views/invoice-category.js?v=20261026-fiscal-auto"></script>
+    <script src="/js/views/mercado-pago-club.page.js?v=20261026-fiscal-auto"></script>
   </body>
 </html>

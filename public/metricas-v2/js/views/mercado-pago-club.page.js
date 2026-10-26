@@ -22,6 +22,8 @@ let activeWorkflow = 'pending';
 let currentPage = 1;
 const selectedKeys = new Set();
 const PENDING_PAGE_SIZE = 40;
+let loadGeneration = 0;
+let fiscalController = null;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -657,7 +659,54 @@ function openManualForm(existing = null) {
 newManualButton.addEventListener('click', () => openManualForm());
 exportInvoicedButton.addEventListener('click', exportInvoicedRecords);
 
+async function classifyLoadedRecords(generation) {
+  const status = document.querySelector('#fiscalStatus');
+  const pending = allRecords.filter(row => row.workflowStatus === activeWorkflow && !row.arcaCae && !row.arcaInvoiceType && !['invoiced', 'credit_notes'].includes(row.workflowStatus));
+  if (!pending.length) { if (status) status.textContent = ''; return; }
+  const controller = new AbortController();
+  fiscalController = controller;
+  for (const row of pending) row.fiscalStatus = 'loading';
+  renderRecords();
+  let completed = 0;
+  const progress = () => {
+    const failed = pending.filter(row => ['error', 'missing'].includes(row.fiscalStatus)).length;
+    if (status) status.textContent = completed < pending.length
+      ? `Consultando condición fiscal: ${completed} de ${pending.length}. Los filtros se completan a medida que llegan los resultados.`
+      : `Condición fiscal consultada: ${completed - failed} de ${pending.length}.${failed ? ` ${failed} requieren revisión; el motivo aparece en cada fila.` : ''}`;
+  };
+  progress();
+  try {
+    for (let offset = 0; offset < pending.length; offset += 20) {
+      if (generation !== loadGeneration) return;
+      const batch = pending.slice(offset, offset + 20);
+      const records = batch.map(row => Object.fromEntries(['kind', 'id', 'identificationType', 'identificationNumber', 'source', 'vatConditionId', 'requestedInvoiceType', 'payer', 'payerAddress'].map(key => [key, row[key]])));
+      const response = await fetch('/api/metricas/mercado-pago/club/fiscal-classification', {
+        method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({records}), signal: controller.signal
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'No se pudo consultar la condición fiscal');
+      if (generation !== loadGeneration) return;
+      const results = new Map((data.records || []).map(row => [recordKey(row), row]));
+      for (const row of batch) Object.assign(row, results.get(recordKey(row)) || {fiscalStatus:'error',fiscalError:'Sin respuesta fiscal. Actualizá para reintentar.'});
+      completed += batch.length;
+      renderRecords();
+      progress();
+    }
+  } catch (error) {
+    if (generation !== loadGeneration || error.name === 'AbortError') return;
+    for (const row of pending) if (row.fiscalStatus === 'loading') Object.assign(row, {fiscalStatus:'error', fiscalError:error.message});
+    completed = pending.length;
+    renderRecords();
+    progress();
+  }
+}
+
 async function loadRecords() {
+  const generation = ++loadGeneration;
+  fiscalController?.abort();
+  const fiscalStatus = document.querySelector('#fiscalStatus');
+  if (fiscalStatus) fiscalStatus.textContent = '';
   reloadButton.disabled = true;
   loadingNode.hidden = false;
   loadingTextNode.textContent = activeWorkflow === 'pending' ? 'Consultando pagos en Mercado Pago…' : 'Cargando registros guardados…';
@@ -669,14 +718,18 @@ async function loadRecords() {
     const response = await fetch(endpoint, { credentials: 'same-origin' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'No se pudo consultar Mercado Pago');
+    if (generation !== loadGeneration) return;
     render(data);
+    void classifyLoadedRecords(generation);
     statusNode.textContent = `Actualizado ${new Intl.DateTimeFormat('es-AR', { timeStyle: 'short' }).format(new Date())}`;
   } catch (error) {
+    if (generation !== loadGeneration) return;
     statusNode.textContent = error.message;
     summaryNode.innerHTML = '';
     rowsNode.innerHTML = '';
     emptyNode.hidden = false;
   } finally {
+    if (generation !== loadGeneration) return;
     reloadButton.disabled = false;
     loadingNode.hidden = true;
   }

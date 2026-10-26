@@ -89,6 +89,10 @@ router.post('/mercado-pago/club/billing-selection', async (req,res,next) => {
   catch(error){next(error);}
 });
 router.post('/mercado-pago/club/unreconcile', controller.unreconcileMercadoPagoClubRecord);
+router.post('/mercado-pago/club/fiscal-classification', async (req, res, next) => {
+  try { res.set('Cache-Control', 'no-store').json(await require('../modules/metricasv2/services/club-fiscal-classification.service').classifyRecords(req.body?.records)); }
+  catch (error) { next(error); }
+});
 router.post('/mercado-pago/club/invoice-preview', controller.previewMercadoPagoClubInvoices);
 router.post('/mercado-pago/club/invoice', controller.invoiceMercadoPagoClubRecords);
 router.get('/mercado-pago/club/invoice/:kind/:id', controller.viewMercadoPagoClubInvoice);
