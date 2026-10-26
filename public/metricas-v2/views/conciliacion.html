@@ -12,7 +12,7 @@
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-3"></script>
     <script defer src="/js/auth-shell.js?v=20261013-contact-access-1"></script>
-    <script defer src="/js/views/conciliacion.page.js?v=20261026-cheques"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20261026-pendientes"></script>
   </head>
   <body class="carga-comprobantes-page mis-comprobantes-page conciliacion-page">
     <main class="container carga-comprobantes-layout mis-comprobantes-layout">
@@ -42,9 +42,9 @@
 
       <section class="carga-comprobantes-panel conciliacion-panel">
         <div id="conciliacionTabs" class="mis-comprobantes-tabs mis-comprobantes-reconciliation-tabs" role="tablist" aria-label="Estado de conciliación">
-          <button type="button" class="mis-comprobantes-tab is-active" data-status-filter="all" role="tab" aria-selected="true">Todos <strong data-status-count="all">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-status-filter="all" role="tab" aria-selected="false">Todos <strong data-status-count="all">0</strong></button>
           <button type="button" class="mis-comprobantes-tab" data-status-filter="conciliated" role="tab" aria-selected="false">Conciliados <strong data-status-count="conciliated">0</strong></button>
-          <button type="button" class="mis-comprobantes-tab" data-status-filter="not_conciliated" role="tab" aria-selected="false">No conciliados <strong data-status-count="not_conciliated">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab is-active" data-status-filter="not_conciliated" role="tab" aria-selected="true">No conciliados <strong data-status-count="not_conciliated">0</strong></button>
           <button type="button" class="mis-comprobantes-tab" data-status-filter="bounced" role="tab" aria-selected="false">Rebotados <strong data-status-count="bounced">0</strong></button>
         </div>
 

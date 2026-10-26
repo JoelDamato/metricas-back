@@ -81,7 +81,8 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
     window: {
       metricasApi: {
         fetchReconciliationComprobantes: async () => ({ rows: [
-          { id: 'current', cliente_format: 'Mes actual', mail: 'comprador@example.com', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
+          { id: 'current', cliente_format: 'Mes actual', mail: 'comprador@example.com', f_acreditacion: `${currentMonth}-15`, estado: null },
+          { id: 'conciliated', cliente_format: 'Pago ya conciliado', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
           { id: 'future', cliente_format: 'Cheque futuro', cheque: true, f_acreditacion: '2099-12-20', estado: null },
           { id: 'paid', cliente_format: 'Cheque acreditado', cheque: true, f_acreditacion: '2099-12-20', estado: 'Conciliado' },
           { id: 'past', cliente_format: 'Cheque anterior', cheque: 'true', f_acreditacion: '2020-01-02', estado: null },
@@ -98,7 +99,7 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
   assert.equal(elements.conciliacionMonth.value, currentMonth);
   assert.match(elements.conciliacionTable.innerHTML, /Mes actual/);
   assert.match(elements.conciliacionTable.innerHTML, /comprador@example\.com/);
-  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes anterior/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes anterior|Pago ya conciliado/);
 
   elements.conciliacionMonth.value = otherMonth;
   elements.conciliacionMonth.change();

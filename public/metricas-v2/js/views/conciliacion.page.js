@@ -6,7 +6,7 @@
     rows: [],
     baseFilteredRows: [],
     filteredRows: [],
-    statusFilter: 'all',
+    statusFilter: 'not_conciliated',
     dataSource: 'notion_sync',
     savingIds: new Set()
   };
@@ -416,7 +416,7 @@
     refs.month.disabled = cheques;
     refs.month.hidden = cheques;
     refs.chequeScopeLabel.hidden = !cheques;
-    state.statusFilter = cheques ? 'not_conciliated' : 'all';
+    state.statusFilter = 'not_conciliated';
     renderAll();
   });
   refs.chequeScope?.addEventListener('change', renderAll);
