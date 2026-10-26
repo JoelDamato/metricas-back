@@ -14,3 +14,8 @@
 @media(max-width: 600px) { .conciliacion-files-dialog { padding: 16px; } .conciliacion-files-head h2 { font-size: 1.1rem; } }
 .conciliacion-files-dialog .metricas-secondary-button { color: #eaf2ff; background: #1c365a; border: 1px solid #527caf; }
 .conciliacion-files-dialog .metricas-secondary-button:hover { background: #284b7a; }
+
+/* Keep the cheque controls readable alongside the existing filters. */
+#conciliacionKind, #chequeScope { min-width: 230px; }
+.conciliacion-toolbar-actions > label { display: flex; flex-direction: column; gap: 6px; }
+.conciliacion-toolbar-actions > label[hidden], #conciliacionMonth[hidden] { display: none; }

@@ -5,7 +5,7 @@
     const raw=issued?row.arcaVatCondition:row.proposedInvoice?.vatCondition;
     const condition=String(raw||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     const id=Number(issued?row.arcaVatConditionId:row.proposedInvoice?.vatConditionId??row.vatConditionId);
-    if(type==='B')return {key:'B',label:'B'};
+    if(type==='B'||type==='C')return {key:type,label:type};
     if(type==='A'&&(id===6||condition.includes('monotrib')))return {key:'A-MONO',label:'A · Monotributista'};
     if(type==='A'&&(id===1||condition.includes('inscripto')))return {key:'A-RI',label:'A · RI'};
     return {key:'unknown',label:type==='A'?'A · Condición sin informar':'Por confirmar'};
@@ -19,6 +19,11 @@
     const type=String(source.type || (!issued ? ({1:'A',5:'B',6:'A'}[id]) : '') || '').toUpperCase();
     return {invoice:type ? `Factura ${type}` : 'Tipo por confirmar',condition};
   }
-  if(typeof module!=='undefined'&&module.exports)module.exports={invoiceCategory,invoiceFiscalDetails};
-  else {root.invoiceCategory=invoiceCategory;root.invoiceFiscalDetails=invoiceFiscalDetails;}
+  function matchesInvoiceCategory(row, filter) {
+    if (!filter) return true;
+    if (['A','B','C'].includes(filter)) return invoiceFiscalDetails(row).invoice === `Factura ${filter}`;
+    return invoiceCategory(row).key === filter;
+  }
+  if(typeof module!=='undefined'&&module.exports)module.exports={invoiceCategory,invoiceFiscalDetails,matchesInvoiceCategory};
+  else {root.matchesInvoiceCategory=matchesInvoiceCategory;root.invoiceCategory=invoiceCategory;root.invoiceFiscalDetails=invoiceFiscalDetails;}
 })(typeof window!=='undefined'?window:globalThis);

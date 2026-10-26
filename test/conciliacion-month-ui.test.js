@@ -22,7 +22,7 @@ test('Conciliación solicita y muestra el mail del comprador', () => {
   assert.match(script, /mailto:/);
   assert.match(script, /row\.mail/);
   assert.match(html, /Cliente, mail, GHL, producto o responsable/);
-  assert.match(html, /shared-note-1/);
+  assert.match(script, /data-save-note/);
 });
 
 test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
@@ -51,6 +51,12 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
   const otherMonth = `${otherDate.getFullYear()}-${String(otherDate.getMonth() + 1).padStart(2, '0')}`;
   const tab = makeElement({ dataset: { statusFilter: 'all' } });
   const elements = {
+    conciliacionKind: makeElement({value:'all'}),
+    chequeScope: makeElement({value:'upcoming'}),
+    chequeScopeLabel: makeElement(),
+    conciliacionFiles: makeElement(),
+    conciliacionFilesBody: makeElement(),
+    closeConciliacionFiles: makeElement(),
     conciliacionTotalChip: makeElement(),
     conciliacionTabs: makeElement({ children: [tab] }),
     conciliacionHint: makeElement(),
@@ -76,6 +82,9 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
       metricasApi: {
         fetchReconciliationComprobantes: async () => ({ rows: [
           { id: 'current', cliente_format: 'Mes actual', mail: 'comprador@example.com', f_acreditacion: `${currentMonth}-15`, estado: 'Conciliado' },
+          { id: 'future', cliente_format: 'Cheque futuro', cheque: true, f_acreditacion: '2099-12-20', estado: null },
+          { id: 'paid', cliente_format: 'Cheque acreditado', cheque: true, f_acreditacion: '2099-12-20', estado: 'Conciliado' },
+          { id: 'past', cliente_format: 'Cheque anterior', cheque: 'true', f_acreditacion: '2020-01-02', estado: null },
           { id: 'other', cliente_format: 'Mes anterior', f_acreditacion: `${otherMonth}-15`, estado: null }
         ] })
       }
@@ -95,4 +104,15 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
   elements.conciliacionMonth.change();
   assert.match(elements.conciliacionTable.innerHTML, /Mes anterior/);
   assert.doesNotMatch(elements.conciliacionTable.innerHTML, /Mes actual/);
+  elements.conciliacionKind.value='cheques';elements.conciliacionKind.change();
+  assert.equal(elements.conciliacionMonth.disabled,true);
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque futuro/);
+  assert.match(elements.conciliacionTable.innerHTML,/Acreditado \/ conciliado/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque anterior|Cheque acreditado|Mes anterior/);
+  elements.chequeScope.value='overdue';elements.chequeScope.change();
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque anterior/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque futuro/);
+  elements.conciliacionKind.value='all';elements.conciliacionKind.change();
+  assert.equal(elements.conciliacionMonth.disabled,false);
+  assert.match(elements.conciliacionTable.innerHTML,/Mes anterior/);
 });

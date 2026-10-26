@@ -63,7 +63,7 @@ function hasValidFiscalIdentification(row = {}) {
 function recordKey(row) { return `${row.kind}:${row.id}`; }
 
 function activeRecords() {
-  return allRecords.filter((row) => row.workflowStatus === activeWorkflow && (!invoiceCategoryFilter.value || invoiceCategory(row).key === invoiceCategoryFilter.value));
+  return allRecords.filter((row) => row.workflowStatus === activeWorkflow && matchesInvoiceCategory(row, invoiceCategoryFilter.value));
 }
 
 function visibleRecords(records = activeRecords()) {

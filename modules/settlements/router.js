@@ -27,15 +27,17 @@ router.get('/',wrap(async(req,res)=>{
  const month=ledger.month(req.query.month),manage=ledger.canManage(req.authUser),approve=ledger.canApprove(req.authUser);
  const dashboard=await commissions.buildCommissionDashboard(month,{includeSourceRows:true});const all=await users(dashboard);
  const selected=manage?all:all.filter(u=>u.email===ledger.email(req.authUser));
- const rows=selected.map(u=>{const personal=commissions.buildUserCommercialArea(dashboard,u.raw);return {email:u.email,name:u.nombre,...ledger.calculate(personal,dashboard.movementRows.filter(e=>e.person_email===u.email))};});
+ const firstMonth=await ledger.firstWithdrawalMonth(month,manage?null:ledger.email(req.authUser));
+ const balances=await ledger.openingBalances(month,selected,firstMonth,commissions.buildCommissionDashboard,commissions.buildUserCommercialArea);
+ const rows=selected.map(u=>{const personal=commissions.buildUserCommercialArea(dashboard,u.raw);return {email:u.email,name:u.nombre,...ledger.calculate(personal,dashboard.movementRows.filter(e=>e.person_email===u.email),balances[u.email])};});
  res.json({month,locked:dashboard.locked,canManage:manage,canApprove:approve,rows,candidates:approve?await candidates(month,dashboard,all):[]});
 }));
 router.post('/',wrap(async(req,res)=>{
- if(!ledger.canManage(req.authUser))return res.status(403).json({message:'Sólo Nadia o Mati cargan retiros y adelantos'});
+ if(!ledger.canManage(req.authUser))return res.status(403).json({message:'Sólo Nadia o Mati cargan movimientos manuales'});
  const b=req.body,month=ledger.month(b.month),dashboard=await commissions.buildCommissionDashboard(month),all=await users(dashboard),u=all.find(u=>u.email===String(b.email||'').trim().toLowerCase());
  const amount=Number(b.amount),tc=b.currency==='ARS'?1:Number(b.exchangeRate);
- if(!u||!['retiro','adelanto'].includes(b.kind)||!['ARS','USD'].includes(b.currency)||!Number.isFinite(amount)||amount<=0||!Number.isFinite(tc)||tc<=0||!/^\d{4}-\d{2}-\d{2}$/.test(b.date||'')||!String(b.concept||'').trim()||String(b.concept).length>500)return res.status(400).json({message:'Completá persona, importe, moneda, TC, fecha y concepto válidos'});
- res.json(await ledger.write('create',req.authUser,{request_key:b.requestKey,month_key:month,person_email:u.email,person_name:u.nombre||u.email,kind:b.kind,amount,currency:b.currency,exchange_rate:tc,effective_date:b.date,concept:String(b.concept).trim()}));
+ if(!u||!['retiro','adelanto','bono'].includes(b.kind)||!['ARS','USD'].includes(b.currency)||!Number.isFinite(amount)||amount<=0||!Number.isFinite(tc)||tc<=0||!/^\d{4}-\d{2}-\d{2}$/.test(b.date||'')||!String(b.concept||'').trim()||String(b.concept).length>500)return res.status(400).json({message:'Completá persona, importe, moneda, TC, fecha y concepto válidos'});
+ res.json(await ledger.write('create',req.authUser,{request_key:b.requestKey,month_key:month,person_email:u.email,person_name:u.nombre||u.email,kind:b.kind,...(b.kind==='bono'?{source_key:'manual:'+b.requestKey}:{}),amount,currency:b.currency,exchange_rate:tc,effective_date:b.date,concept:String(b.concept).trim()}));
 }));
 router.post('/approve',wrap(async(req,res)=>{
  if(!ledger.canApprove(req.authUser))return res.status(403).json({message:'Sólo Leo o Mati aprueban bonos'});

@@ -28,6 +28,7 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
  t.mock.method(supabase,'listAllRows',async()=>[]);
  t.mock.method(supabase,'getAgendaBonusRules',async()=>({}));
  t.mock.method(supabase,'getReportesPremioConfig',async()=>({cash_collected_premio_pct:0}));
+ t.mock.method(ledger,'firstWithdrawalMonth',async()=>null);
  let writes=0;t.mock.method(ledger,'write',async()=>{writes++;throw Error('Unexpected financial write');});
  const app=express();app.use(express.json());app.use((req,res,next)=>{req.authUser=all.find(u=>u.email===req.headers['x-test-user']);next();});app.use('/settlements',router);app.use((err,req,res,next)=>res.status(err.statusCode||500).json({message:err.message}));
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));
@@ -50,4 +51,11 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
  dashboard.movementRows.push({id:'bonus',kind:'bono',person_email:people[1].email,source_key:'agendas-setter:test',status:'approved',amount:100,currency:'USD',exchange_rate:1500,concept:'private concept',void_reason:'private reason'});
  const approved=await router._test.candidates('2026-10',dashboard,await router._test.users(dashboard));
  assert.deepEqual(Object.keys(approved[0].movement).sort(),['id','status','amount','currency','exchange_rate'].sort());
+ let saved; t.mock.method(ledger,'write',async(action,user,payload)=>{saved={action,actor:user.email,...payload};return saved;});
+ const manual={month:'2026-10',email:people[1].email,kind:'bono',amount:150,currency:'ARS',date:'2026-10-26',concept:'Reconocimiento',requestKey:'00000000-0000-4000-8000-000000000015',source_key:'sistema-agendas'};
+ assert.equal((await request(managers[0],'','POST',manual)).status,200);
+ assert.equal(saved.source_key,'manual:'+manual.requestKey);assert.equal(saved.person_email,people[1].email);assert.equal(saved.actor,managers[0].email);
+ assert.equal((await request(people[1],'','POST',manual)).status,403);
+ assert.equal((await request(managers[0],'/approve','POST',manual)).status,403);
+ assert.equal((await request(managers[0],'','POST',{...manual,email:'unknown@example.com'})).status,400);
 });

@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/conciliacion-files.css?v=20261013-1" />
+    <link rel="stylesheet" href="/css/conciliacion-files.css?v=20261026-cheques" />
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-3"></script>
     <script defer src="/js/auth-shell.js?v=20261013-contact-access-1"></script>
-    <script defer src="/js/views/conciliacion.page.js?v=20261013-files-1"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20261026-cheques"></script>
   </head>
   <body class="carga-comprobantes-page mis-comprobantes-page conciliacion-page">
     <main class="container carga-comprobantes-layout mis-comprobantes-layout">
@@ -54,6 +54,8 @@
             <p id="conciliacionHint">Preparando el listado...</p>
           </div>
           <div class="mis-comprobantes-toolbar-actions conciliacion-toolbar-actions">
+            <label>Comprobantes<select id="conciliacionKind"><option value="all">Todos</option><option value="cheques">Gestión de cheques</option></select></label>
+            <label id="chequeScopeLabel" hidden>Vencimiento<select id="chequeScope"><option value="upcoming">Desde hoy en adelante</option><option value="overdue">Anteriores a hoy</option><option value="all">Todas las fechas</option></select></label>
             <select id="conciliacionResponsibleFilter" aria-label="Filtrar por responsable">
               <option value="">Todos los responsables</option>
             </select>

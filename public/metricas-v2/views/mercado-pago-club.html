@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261021-fiscal-visible" />
+    <link rel="stylesheet" href="/css/mercado-pago-club.css?v=20261026-invoice-filter" />
   </head>
   <body class="mp-club-page">
     <main class="mp-shell">
@@ -22,7 +22,7 @@
         <div class="filters">
           <label for="month">Mes</label>
           <input type="month" id="month" />
-          <label for="invoiceCategory">Tipo de factura</label><select id="invoiceCategory"><option value="">Todas</option><option value="A-RI">Factura A · Responsable Inscripto</option><option value="A-MONO">Factura A · Monotributista</option><option value="B">Factura B</option><option value="unknown">Sin clasificar / por confirmar</option></select>
+          <label for="invoiceCategory">Tipo de factura</label><select id="invoiceCategory"><option value="">Todas</option><option value="A">Factura A · Todas</option><option value="A-RI">Factura A · Responsable Inscripto</option><option value="A-MONO">Factura A · Monotributista</option><option value="B">Factura B</option><option value="C">Factura C · Históricas</option><option value="unknown">Sin clasificar / por confirmar</option></select>
           <button id="reload" type="button">Actualizar</button>
         </div>
       </header>
@@ -61,7 +61,7 @@
       </section>
     </main>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/invoice-category.js?v=20261021-fiscal-visible"></script>
-    <script src="/js/views/mercado-pago-club.page.js?v=20261021-fiscal-visible"></script>
+    <script src="/js/views/invoice-category.js?v=20261026-invoice-filter"></script>
+    <script src="/js/views/mercado-pago-club.page.js?v=20261026-invoice-filter"></script>
   </body>
 </html>

@@ -12,6 +12,9 @@
   };
 
   const refs = {
+    kind: document.getElementById('conciliacionKind'),
+    chequeScope: document.getElementById('chequeScope'),
+    chequeScopeLabel: document.getElementById('chequeScopeLabel'),
     totalChip: document.getElementById('conciliacionTotalChip'),
     tabs: document.getElementById('conciliacionTabs'),
     hint: document.getElementById('conciliacionHint'),
@@ -99,6 +102,14 @@
     return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : '';
   }
 
+  function isCheque(row) {
+    return ['true', '1'].includes(String(row.cheque).toLowerCase()) || /cheque/i.test(row.medios_de_pago_format || '');
+  }
+
+  function argentinaToday() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
+
   function isClubRow(row) {
     return normalizeText(row?.producto_format).includes('club');
   }
@@ -132,12 +143,20 @@
 
   function applyFilters() {
     const query = normalizeText(refs.search.value);
-    const month = refs.month.value;
+    const cheques = refs.kind?.value === 'cheques';
+    const month = cheques ? '' : refs.month.value;
+    const today = argentinaToday();
     const responsible = normalizeText(refs.responsible.value);
     const clubMode = refs.club.value;
 
     state.baseFilteredRows = state.rows.filter((row) => {
       if (month && rowMonth(row) !== month) return false;
+      if (cheques) {
+        if (!isCheque(row)) return false;
+        const date = String(row.f_acreditacion || '').slice(0, 10);
+        if (refs.chequeScope.value === 'upcoming' && (!date || date < today)) return false;
+        if (refs.chequeScope.value === 'overdue' && (!date || date >= today)) return false;
+      }
       if (responsible && normalizeText(row.responsable_venta || row.creado_por) !== responsible) return false;
       if (clubMode === 'only' && !isClubRow(row)) return false;
       if (clubMode === 'exclude' && isClubRow(row)) return false;
@@ -183,10 +202,10 @@
     `;
   }
 
-  function stateOptions(selected) {
+  function stateOptions(selected, cheque = false) {
     return [
       ['not_conciliated', 'No conciliado'],
-      ['conciliated', 'Conciliado'],
+      ['conciliated', cheque ? 'Acreditado / conciliado' : 'Conciliado'],
       ['bounced', 'Rebotado']
     ].map(([value, label]) => (
       `<option value="${value}"${value === selected ? ' selected' : ''}>${label}</option>`
@@ -237,7 +256,7 @@
                   <td>${escapeHtml(row.tipo || '—')}</td>
                   <td>${escapeHtml(row.producto_format || '—')}</td>
                   <td>${escapeHtml(formatDate(row.f_acreditacion))}</td>
-                  <td>${escapeHtml(row.medios_de_pago_format || '—')}</td>
+                  <td>${isCheque(row) ? '<strong>Cheque</strong><br>' : ''}${escapeHtml(row.medios_de_pago_format || '—')}</td>
                   <td>${row.facturacion ? escapeHtml(formatCurrency(row.facturacion)) : '—'}</td>
                   <td>${resolveCashUsd(row) ? escapeHtml(formatCurrency(resolveCashUsd(row))) : '—'}</td>
                   <td>${resolveCashAr(row) ? escapeHtml(formatCurrency(resolveCashAr(row), 'ARS')) : '—'}</td>
@@ -251,7 +270,7 @@
                   </td><td>
                     <div class="conciliacion-state-control">
                       <select data-state-select="${escapeHtml(row.id)}" data-original-state="${currentState}" ${saving ? 'disabled' : ''}>
-                        ${stateOptions(currentState)}
+                        ${stateOptions(currentState, isCheque(row))}
                       </select>
                       <button type="button" class="metricas-primary-button" data-save-state="${escapeHtml(row.id)}" disabled>${saving ? 'Guardando...' : 'Guardar'}</button>
                     </div>
@@ -274,9 +293,13 @@
     renderSummary();
     renderTable();
     const selectedMonth = refs.month.value ? refs.month.value.split('-').reverse().join('/') : '';
-    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${selectedMonth ? ` Mes de acreditación: ${selectedMonth}.` : ''}`;
     refs.totalChip.textContent = `${state.rows.length} comprobantes`;
     refs.status.hidden = true;
+    if (refs.kind?.value === 'cheques') {
+      refs.hint.textContent = `${state.filteredRows.length} cheques. Elegí Acreditado / conciliado y Guardar al confirmar el ingreso. Los pendientes no suman al cash conciliado.`;
+      return;
+    }
+    refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${selectedMonth ? ` Mes de acreditación: ${selectedMonth}.` : ''}`;
   }
 
   function setStatus(message, mode = '') {
@@ -388,6 +411,15 @@
     renderAll();
   });
 
+  refs.kind?.addEventListener('change', () => {
+    const cheques = refs.kind.value === 'cheques';
+    refs.month.disabled = cheques;
+    refs.month.hidden = cheques;
+    refs.chequeScopeLabel.hidden = !cheques;
+    state.statusFilter = cheques ? 'not_conciliated' : 'all';
+    renderAll();
+  });
+  refs.chequeScope?.addEventListener('change', renderAll);
   [refs.responsible, refs.month, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
   refs.search?.addEventListener('input', renderAll);
   refs.reload?.addEventListener('click', loadRows);

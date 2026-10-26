@@ -10,6 +10,7 @@ const LIST_COLUMNS = [
   'mail',
   'dni_cuit',
   'tipo',
+  'cheque',
   'producto_format',
   'medios_de_pago_format',
   'f_venta',
