@@ -65,7 +65,7 @@
     document.title = 'Lanzamiento | Centro de entrenamiento';
     document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
     document.getElementById('launchTab').setAttribute('aria-current','page');
-    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>05</strong><span>Clases de lanzamiento</span></div></div></section>
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>06</strong><span>Clases de lanzamiento</span></div></div></section>
     <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
     <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
     content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchFollowupTitle">
@@ -176,6 +176,11 @@
         <li>Repasar la guía de asesores y las preguntas de cualificación.</li>
         <li>Reportar problemas técnicos o dudas para resolverlos rápidamente.</li>
       </ol></section>
+    </section>`);
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchClassSixTitle">
+      <div class="campus-section-title"><h2 id="launchClassSixTitle">Clase 06 · Lanzamiento</h2></div>
+      <iframe class="lesson-video" src="https://drive.google.com/file/d/1xV2aYU5NATfAVItZlep492GN-CeXq_dH/preview" title="Clase 06 de lanzamiento" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
+      <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/1xV2aYU5NATfAVItZlep492GN-CeXq_dH/view" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
     </section>`);
     content.insertAdjacentHTML('beforeend', `<section class="materials-section launch-gifts" aria-labelledby="launchGiftsTitle"><div class="campus-section-title"><h2 id="launchGiftsTitle">Regalos del lanzamiento</h2><p>Guía de entrega para asesores</p></div><div class="lesson-panel"><h3>La clave se comparte sólo si el lead la solicita.</h3><p>Cada regalo permite 7 usos. Después, la herramienta pide una clave que el lead debe solicitar a su asesor. Entregá el enlace el día indicado y compartí la clave únicamente cuando te la pidan, para continuar la interacción.</p></div><div id="launchGiftList" class="class-grid"><p role="status">Cargando regalos…</p></div></section>`);
     window.http.getJson('/api/metricas/launch-gifts').then(({gifts}) => {
