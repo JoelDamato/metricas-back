@@ -16,6 +16,7 @@
       @media(max-width:720px){.diag{padding:17px 13px 60px}.area-head{grid-template-columns:1fr}.compare-row{grid-template-columns:1fr}.previous,.arrow{text-align:left}.btn{width:100%}.actions .btn{width:auto}.save-bar{align-items:stretch;flex-direction:column}.route-values{align-items:flex-start;flex-direction:column;text-align:left}}
       @media(max-width:720px){.workflow-grid{grid-template-columns:1fr}.workflow-choice{min-height:125px}.workflow-panel-head,.create-confirm{align-items:stretch;flex-direction:column}.editing-identity{grid-template-columns:1fr}.client-row{align-items:stretch;flex-direction:column}.client-row .btn{width:100%}}
     </style>
+    <link rel="stylesheet" href="/diagnostico/diagnostico-layout.css?v=20261030-rumbo" />
   </head>
   <body class="diag-page">
     <main class="diag">
@@ -70,6 +71,12 @@
       <section id="editMode" class="panel workflow-panel" hidden>
         <div class="workflow-panel-head"><div><span class="editing-eyebrow">Cartas existentes</span><h2>Elegí la Carta que vas a editar</h2><p class="muted">El cliente seleccionado quedará fijo durante toda la edición.</p></div><button class="btn alt workflow-back" type="button" data-back-to-modes>← Cambiar acción</button></div>
         <div class="field existing-search"><label>Buscar entre las cartas creadas</label><input id="diagnosticSearch" type="search" placeholder="Ejemplo: Ivan Orellano" autocomplete="off"/></div>
+        <div class="actions comparison-controls">
+          <div class="field"><label for="diagnosticComparison">Clientes que mejoraron el margen</label><select id="diagnosticComparison"><option value="">Todas las cartas</option value="inicial:medio">Inicial → Intermedio</option><option value="inicial:final">Inicial → Final</option><option value="medio:final">Intermedio → Final</option></select></div>
+          <div class="field"><label for="diagnosticLimit">Mostrar</label><select id="diagnosticLimit"><option value="all">Todos los resultados</option><option value="10">Los 10 con mayor mejora</option></select></div>
+          <button id="exportDiagnosticComparison" type="button" class="btn alt" disabled>Exportar comparación CSV</button>
+        </div>
+        <p id="diagnosticComparisonSummary" class="muted" aria-live="polite"></p>
         <div id="clientList" class="client-list"></div>
       </section>
 
@@ -87,7 +94,7 @@
         <section id="stageContent"></section>
       </section>
     </main>
-    <script src="/diagnostico/diagnostico-core.js?v=20260911-2"></script>
-    <script src="/js/views/diagnostico.page.js?v=20261007-rubro-1"></script>
+    <script src="/diagnostico/diagnostico-core.js?v=20261030-rumbo"></script>
+    <script src="/js/views/diagnostico.page.js?v=20261030-rumbo"></script>
   </body>
 </html>

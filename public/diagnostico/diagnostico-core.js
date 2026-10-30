@@ -410,6 +410,50 @@
     };
   }
 
+  const ROUTE_METRICS = [
+    {key:'margenContribucion',label:'Margen de Contribución',area:'resultados',highlight:true},
+    {key:'netProfitPercent',label:'Porcentaje de rentabilidad',calculated:true},
+    {key:'margenMarcacion',label:'Margen de Marcación',area:'resultados'},
+    {key:'facturacionPromedio',label:'Facturación promedio',area:'resultados'},
+    {key:'costosFijos',label:'Costos fijos',area:'resultados'},
+    {key:'margenContribucionProducto',label:'Margen del producto más vendido',area:'costos'}
+  ];
+  function routeMetricValue(data, stage, metric) {
+    return metric.calculated
+      ? formatPercent(calculateStage(data.checkpoints[stage])[metric.key])
+      : formatField(metric.key, data.checkpoints[stage].areas[metric.area].nums[metric.key]) || '—';
+  }
+
+  function compareDiagnostics(items, from = 'inicial', to = 'final') {
+    if (!STAGES.includes(from) || !STAGES.includes(to) || from === to) return [];
+    return items.map((item) => {
+      // Normalization derives legacy margins; clone to keep the editor's data untouched.
+      const data = normalizeData(JSON.parse(JSON.stringify(item.data || {})), item.csmName);
+      const margins = STAGES.map((stage) => {
+        const value = parsePercent(data.checkpoints[stage].areas.resultados.nums.margenContribucion);
+        return Number.isFinite(value) ? value : null;
+      });
+      const profits = STAGES.map((stage) => calculateStage(data.checkpoints[stage]).netProfitPercent);
+      const difference = (values) => {
+        const start = values[STAGES.indexOf(from)], end = values[STAGES.indexOf(to)];
+        return start == null || end == null ? null : end - start;
+      };
+      return { ...item, margins, profits, marginChange: difference(margins), profitChange: difference(profits) };
+    }).filter((item) => item.marginChange !== null && item.marginChange > 0)
+      .sort((a, b) => b.marginChange - a.marginChange || (b.profitChange ?? -Infinity) - (a.profitChange ?? -Infinity) || String(a.clientName).localeCompare(String(b.clientName), 'es'));
+  }
+
+  function diagnosticComparisonCsv(items) {
+    const cell = (value) => {
+      const raw = String(value ?? '');
+      const safe = /^[=+@\-\t\r\n]/.test(raw) ? "'" + raw : raw;
+      return '"' + safe.replace(/"/g, '""') + '"';
+    };
+    const headers = ['Cliente', 'Negocio', 'CSM', 'Margen inicial %', 'Margen intermedio %', 'Margen final %', 'Mejora margen (pp)', 'Rentabilidad inicial %', 'Rentabilidad intermedia %', 'Rentabilidad final %', 'Mejora rentabilidad (pp)'];
+    const number = (value) => value == null ? '' : Number(value.toFixed(2)).toLocaleString('es-AR', { useGrouping: false });
+    return '\uFEFF' + [headers, ...items.map((item) => [item.clientName, item.businessName, normalizeCsmName(item.csmName), ...item.margins.map(number), number(item.marginChange), ...item.profits.map(number), number(item.profitChange)])].map((row) => row.map(cell).join(';')).join('\r\n');
+  }
+
   function formatMoney(value) {
     return value === null || value === undefined || !Number.isFinite(Number(value))
       ? '—'
@@ -421,7 +465,7 @@
   }
 
   return {
-    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS,
+    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS, ROUTE_METRICS, routeMetricValue, compareDiagnostics, diagnosticComparisonCsv,
     emptyData, normalizeData, computeAutoScore, applyAutoScores, getPatternScore,
     computeSummary, band, bandLabel, parseMoney, parsePercent, formatMoneyInput,
     formatPercentInput, formatField, marginContributionFromMarkup, autofillDerivedMargins,

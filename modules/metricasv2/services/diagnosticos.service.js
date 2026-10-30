@@ -176,8 +176,15 @@ function payloadFrom(input = {}, user = {}) {
 }
 
 async function listDiagnosticos() {
-  const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,created_at,updated_at', order: 'updated_at.desc', limit: 500 } });
-  return withClientRubro((response.data || []).map(normalize).filter(Boolean));
+  const rows = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const response = await axios.get(tableUrl(), { headers: headers(), params: { select: 'id,client_ghlid,client_name,business_name,csm_name,data,created_at,updated_at', order: 'updated_at.desc,id.asc', limit: pageSize, offset } });
+    const page = response.data || [];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return withClientRubro(rows.map(normalize).filter(Boolean));
 }
 
 async function createDiagnostico(input, user) {

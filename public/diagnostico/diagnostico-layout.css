@@ -1,0 +1,24 @@
+/* Keep the three checkpoints readable for amounts with many digits. */
+.route-grid {grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));}
+.route,.route-card,.calc,.calc-block,.field {min-width:0;}
+.route-values {display:grid;grid-template-columns:minmax(120px,1fr) 16px minmax(120px,1fr) 16px minmax(120px,1fr);gap:10px;overflow-x:auto;align-items:center;padding-bottom:5px;}
+.route-values>div {min-width:0;text-align:center;}
+.route-values strong {display:block;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:clamp(13px,1.5vw,17px);line-height:1.5;}
+.calc-row {flex-wrap:wrap;align-items:baseline;}
+.calc-row>strong,.calc-values {margin-left:auto;}
+.calc-row strong {white-space:nowrap;font-variant-numeric:tabular-nums;}
+.calc-values {flex-wrap:wrap;}
+@media(max-width:720px){
+ .route-values {grid-template-columns:minmax(0,1fr);gap:10px;}
+ .route-values>div {display:flex;align-items:baseline;justify-content:space-between;gap:12px;text-align:left;}
+ .route-values>div>span {margin:0;}
+ .route-values>b {display:none;}
+ .route-values strong {font-size:16px;}
+ .calcs {grid-template-columns:minmax(0,1fr);}
+}
+
+.comparison-controls {align-items:end;flex-wrap:wrap;gap:12px;margin-top:16px;}
+.comparison-table {max-width:100%;overflow-x:auto;}
+.comparison-table table {width:100%;border-collapse:collapse;}
+.comparison-table th,.comparison-table td {padding:12px;text-align:left;border-bottom:1px solid var(--line,#667788);white-space:nowrap;}
+.comparison-table td:first-child {white-space:normal;min-width:180px;}

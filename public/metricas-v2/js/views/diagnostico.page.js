@@ -148,10 +148,34 @@
       return;
     }
     const terms = String($('#diagnosticSearch')?.value || '').trim().toLocaleLowerCase('es').split(/\s+/).filter(Boolean);
-    const filtered = diagnostics.filter((item) => {
+    let filtered = diagnostics.filter((item) => {
       const searchable = `${item.clientName} ${item.businessName} ${core.normalizeCsmName(item.csmName)}`.toLocaleLowerCase('es');
       return terms.every((term) => searchable.includes(term));
     });
+    const comparison = $('#diagnosticComparison').value;
+    $('#exportDiagnosticComparison').disabled = !comparison;
+    $('#diagnosticLimit').disabled = !comparison;
+    $('#diagnosticComparisonSummary').textContent = '';
+    if (comparison) {
+      filtered = core.compareDiagnostics(filtered, ...comparison.split(':'));
+      const count = filtered.length;
+      if ($('#diagnosticLimit').value === '10') filtered = filtered.slice(0, 10);
+      $('#diagnosticComparisonSummary').textContent = `${count} clientes con mejora. Mostrando ${filtered.length}, ordenados por aumento del margen en puntos porcentuales (pp). Se excluyen comparaciones sin datos. Rentabilidad: resultado neto sobre facturación.`;
+      const percent = (value) => core.formatPercent(value);
+      const points = (value) => value == null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(1)} pp`;
+      list.innerHTML = filtered.length ? `<div class="comparison-table"><table><thead><tr><th>Cliente / CSM</th><th>Margen inicial</th><th>Intermedio</th><th>Final</th><th>Mejora margen</th><th>Rentabilidad inicial</th><th>Intermedia</th><th>Final</th><th>Mejora rentabilidad</th><th>Carta</th></tr></thead><tbody>${filtered.map((item) => `<tr><td><strong>${escapeHtml(item.clientName)}</strong><br>${escapeHtml(core.normalizeCsmName(item.csmName))}</td>${item.margins.map((value) => `<td>${percent(value)}</td>`).join('')}<td><strong>${points(item.marginChange)}</strong></td>${item.profits.map((value) => `<td>${percent(value)}</td>`).join('')}<td>${points(item.profitChange)}</td><td><button class="btn alt" type="button" data-open="${escapeHtml(item.id)}">Abrir</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No hay clientes con mejora y datos completos para estas etapas.</p>';
+      $('#exportDiagnosticComparison').disabled = !filtered.length;
+      $('#exportDiagnosticComparison').onclick = () => {
+        const url = URL.createObjectURL(new Blob([core.diagnosticComparisonCsv(filtered)], { type: 'text/csv;charset=utf-8;' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mejora-margen-${comparison.replace(':', '-')}.csv`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+      list.querySelectorAll('[data-open]').forEach((button) => { button.onclick = () => openDiagnostic(button.dataset.open); });
+      return;
+    }
     list.innerHTML = filtered.length
       ? filtered.map((item) => `<div class="client-row"><div class="client-row-details"><strong>${escapeHtml(item.clientName)}</strong><span class="small">${escapeHtml(item.businessName || 'Sin negocio')} · ${escapeHtml(core.normalizeCsmName(item.csmName) || 'Sin CSM')}</span></div><span class="small">Actualizada ${new Date(item.updatedAt || Date.now()).toLocaleDateString('es-AR')}</span><button class="btn alt" data-open="${escapeHtml(item.id)}" type="button">Editar esta Carta →</button></div>`).join('')
       : `<p class="muted">${diagnostics.length ? 'No encontré cartas con esa búsqueda.' : 'Todavía no hay diagnósticos creados.'}</p>`;
@@ -220,17 +244,11 @@
     return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${csmOptions(checkpoint.csm || current.csmName || '')}</select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
   }
 
-  const ROUTE_METRICS = [
-    { key: 'margenContribucion', label: 'Margen de Contribución', area: 'resultados', highlight: true },
-    { key: 'margenMarcacion', label: 'Margen de Marcación', area: 'resultados' },
-    { key: 'facturacionPromedio', label: 'Facturación promedio', area: 'resultados' },
-    { key: 'costosFijos', label: 'Costos fijos', area: 'resultados' },
-    { key: 'margenContribucionProducto', label: 'Margen del producto más vendido', area: 'costos' }
-  ];
+  const ROUTE_METRICS = core.ROUTE_METRICS;
 
   function routeHtml() {
     const metricCards = ROUTE_METRICS.map((metric) => {
-      const values = core.STAGES.map((stage) => core.formatField(metric.key, current.data.checkpoints[stage].areas[metric.area].nums[metric.key]) || '—');
+      const values = core.STAGES.map((stage) => core.routeMetricValue(current.data, stage, metric));
       if (values.every((value) => value === '—')) return '';
       return `<article class="route-card ${metric.highlight ? 'highlight' : ''}"><h3>${escapeHtml(metric.label)}</h3><div class="route-values">${core.STAGES.map((stage, index) => `<div class="route-value"><span>${stage}</span><strong>${escapeHtml(values[index])}</strong></div>${index < 2 ? '<b>→</b>' : ''}`).join('')}</div></article>`;
     }).filter(Boolean).join('');
@@ -338,6 +356,8 @@
     populateCsmSelect('#csmName');
     $('#clientSearch').addEventListener('input', searchClients);
     $('#diagnosticSearch').addEventListener('input', renderList);
+    $('#diagnosticComparison').addEventListener('change', renderList);
+    $('#diagnosticLimit').addEventListener('change', renderList);
     renderPicker();
     $('#clientList').innerHTML = '';
     setStatus('');

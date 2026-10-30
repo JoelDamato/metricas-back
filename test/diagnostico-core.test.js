@@ -156,7 +156,7 @@ test('la búsqueda de diagnóstico incorpora Leads y prioriza CSM sin duplicados
     and: '(nombre.ilike.*ivan*,nombre.ilike.*ore*)'
   });
   assert.match(adminScript, /terms\.every/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261007-rubro-1/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261030-rumbo/);
 });
 
 test('la vista pública usa los cálculos nuevos y no muestra información interna', () => {
@@ -190,7 +190,7 @@ test('la carta separa crear de editar y bloquea visualmente la identidad elegida
   assert.match(adminHtml, /Confirmación obligatoria/);
   assert.match(adminHtml, /id="editingClientName"/);
   assert.match(adminHtml, /Cliente bloqueado/);
-  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261007-rubro-1/);
+  assert.match(adminHtml, /diagnostico\.page\.js\?v=20261030-rumbo/);
   assert.match(adminScript, /createConfirmTitle/);
   assert.match(adminScript, /editingClientName/);
   assert.match(adminScript, /showWorkflow\('edit'\)/);
@@ -244,4 +244,41 @@ test('el tema claro usa la paleta azul de la marca en ambas cartas', () => {
     assert.match(source, /--(?:diag-)?gold:#1f66b3/);
     assert.match(source, /--(?:diag-)?bg:#f3f7fc/);
   });
+});
+
+test('comparativa incluye rentabilidad calculada en cada etapa sin confundirla con margen',()=>{
+ const data=core.emptyData(),metric=core.ROUTE_METRICS.find(m=>m.key==='netProfitPercent');
+ assert(metric);
+ for(const [stage,fixed] of [['inicial','100.000'],['medio','300.000'],['final','500.000']]){
+  data.checkpoints[stage].areas.resultados.nums={margenContribucion:'30%',facturacionPromedio:'1.000.000',costosFijos:fixed};
+ }
+ assert.equal(core.routeMetricValue(data,'inicial',metric),'20.0%');
+ assert.equal(core.routeMetricValue(data,'medio',metric),'0.0%');
+ assert.equal(core.routeMetricValue(data,'final',metric),'-20.0%');
+ data.checkpoints.final.areas.resultados.nums.facturacionPromedio='0';
+ assert.equal(core.routeMetricValue(data,'final',metric),'—');
+ assert.equal(core.routeMetricValue(core.emptyData(),'final',metric),'—');
+ assert.match(publicHtml,/core\.ROUTE_METRICS/);assert.match(adminScript,/core\.ROUTE_METRICS/);
+});
+
+test('compara márgenes sin inventar ceros ni mutar cartas y exporta los resultados', () => {
+  function item(name, initial, middle, final) {
+    const data = core.emptyData();
+    [initial, middle, final].forEach((margin, index) => {
+      data.checkpoints[core.STAGES[index]].areas.resultados.nums = { margenContribucion: margin, facturacionPromedio: '100000', costosFijos: '10000' };
+    });
+    return { clientName: name, data };
+  }
+  const items = [item('Menor', '10', '15', '20'), item('Mayor', '0', '20', '30'), item('Incompleto', '', '', '80'), item('Baja', '50', '20', '10'), item('Igual', '10', '10', '10')];
+  const before = JSON.stringify(items);
+  const result = core.compareDiagnostics(items);
+  assert.deepEqual(result.map(x => x.clientName), ['Mayor', 'Menor']);
+  assert.equal(result[0].marginChange, 30);
+  assert.equal(result[0].profitChange, 30);
+  assert.equal(JSON.stringify(items), before);
+  assert.equal(core.compareDiagnostics(items, 'medio', 'final')[0].clientName, 'Mayor');
+  assert.deepEqual(core.compareDiagnostics(items, 'bad', 'final'), []);
+  const csv = core.diagnosticComparisonCsv([{...result[0],clientName:'=HYPERLINK("x")',businessName:'A;B\nC'}]);
+  assert.match(csv, /'\=HYPERLINK\(""x""\)/);
+  assert.match(csv, /"A;B\nC"/);
 });
