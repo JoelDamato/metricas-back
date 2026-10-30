@@ -549,6 +549,15 @@ function sanitizeRowsForYear(rows, year) {
 }
 
 function combineAovDia1Responses(responses) {
+  const byMonth = {};
+  for (const response of responses || []) {
+    for (const [month, values] of Object.entries(response?.byMonth || {})) {
+      const bucket = byMonth[month] ||= { ventasDia1: 0, cashCollectedDia1: 0, aovDia1: 0 };
+      bucket.ventasDia1 += Number(values.ventasDia1 || 0);
+      bucket.cashCollectedDia1 += Number(values.cashCollectedDia1 || 0);
+      bucket.aovDia1 = bucket.ventasDia1 ? bucket.cashCollectedDia1 / bucket.ventasDia1 : 0;
+    }
+  }
   const totals = (responses || []).reduce((acc, response) => {
     acc.ventasDia1 += Number(response?.ventasDia1 || 0);
     acc.facturacionDia1 += Number(response?.facturacionDia1 || 0);
@@ -562,6 +571,7 @@ function combineAovDia1Responses(responses) {
 
   return {
     ...totals,
+    byMonth,
     aovDia1: totals.ventasDia1 > 0 ? totals.cashCollectedDia1 / totals.ventasDia1 : 0
   };
 }
@@ -1007,6 +1017,7 @@ function buildKpis(rows) {
   });
 }
 
+let initialAgendaRows = null;
 async function initFilters() {
   const status = document.getElementById('status');
   status.textContent = 'Cargando opciones de filtros...';
@@ -1018,6 +1029,7 @@ async function initFilters() {
   });
 
   const rows = response.rows || [];
+  initialAgendaRows = rows;
   const current = getCurrentPeriod();
 
   const years = uniqueValues(rows, 'anio')
@@ -1071,39 +1083,50 @@ async function loadAgendaTotales() {
     }
 
     const yearRange = getYearRange(selectedYear);
-    const aovRequests = MONTHS.map((month) => {
-      const range = getMonthRange(selectedYear, month.value);
-      return fetchAovDia1Safely(range, filters);
-    });
-
-    const [response, totalAovDia1Response, ...monthAovResponses] = await Promise.all([
-      window.metricasApi.fetchAllRows(AGENDA_RESOURCE, query),
-      fetchAovDia1Safely(yearRange, filters),
-      ...aovRequests
+    const firstRows = initialAgendaRows;
+    initialAgendaRows = null;
+    const [response, totalAovDia1Response] = await Promise.all([
+      firstRows ? Promise.resolve({ rows: firstRows }) : window.metricasApi.fetchAllRows(AGENDA_RESOURCE, query),
+      fetchAovDia1Safely(yearRange, filters)
     ]);
     const rows = applyLocalFilters(sanitizeRowsForYear(response.rows, selectedYear), filters);
     const aovDia1Data = {
       total: Number(totalAovDia1Response?.aovDia1 || 0),
       byMonth: MONTHS.reduce((acc, month, index) => {
-        acc[month.value] = Number(monthAovResponses[index]?.aovDia1 || 0);
+        acc[month.value] = Number(totalAovDia1Response?.byMonth?.[month.value]?.aovDia1 || 0);
         return acc;
       }, {})
     };
 
     buildKpis(rows);
     buildMatrixTable(rows, filters, aovDia1Data);
-    const aovUnavailable = totalAovDia1Response?.unavailable === true
-      || monthAovResponses.some((responseItem) => responseItem?.unavailable === true);
+    const aovUnavailable = totalAovDia1Response?.unavailable === true;
     status.textContent = `Filas: ${rows.length} | año ${selectedYear} | ${AGENDA_ORIGIN_LABEL.toLowerCase()} ${formatOriginFilterLabel(filters)}${filters.estrategia ? ` | estrategia ${filters.estrategia}` : ''}${aovUnavailable ? ' | AOV día 1 no disponible' : ''}`;
   } catch (error) {
     status.textContent = error.message;
   }
 }
 
+let agendaFiltersReady = false;
+let agendaLoading = false;
 async function initPage() {
-  await initFilters();
-  await loadAgendaTotales();
+  if (agendaLoading) return;
+  agendaLoading = true;
+  const button = document.getElementById('reload');
+  button.disabled = true;
+  try {
+    if (!agendaFiltersReady) {
+      await initFilters();
+      agendaFiltersReady = true;
+    }
+    await loadAgendaTotales();
+  } catch (error) {
+    document.getElementById('status').textContent = `No se pudieron cargar las agendas. ${error.message}. Tocá Aplicar filtros para reintentar.`;
+  } finally {
+    agendaLoading = false;
+    button.disabled = false;
+  }
 }
 
-document.getElementById('reload').addEventListener('click', loadAgendaTotales);
+document.getElementById('reload').addEventListener('click', initPage);
 initPage();
