@@ -1434,6 +1434,7 @@
     }
 
     detailNode.innerHTML = `
+        ${clubOnly ? '<p>Club: el monto comisionable descuenta IVA y cargos de Club una sola vez del importe bruto.</p>' : ''}
         <table class="csm-table comisiones-table">
           <thead>
             <tr>

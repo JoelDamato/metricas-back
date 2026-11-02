@@ -695,6 +695,8 @@ function resolveGrossTotalArs(row) {
   return 0;
 }
 
+// Club uses its product-specific deductions for commissions, regardless of upload source.
+// Payment-method snapshots can omit Club charges and must not replace this rule.
 function computeClubNetBreakdown(grossArs) {
   const safeGross = safeNumber(grossArs);
   if (safeGross <= 0) {
@@ -725,13 +727,9 @@ function computeClubNetBreakdown(grossArs) {
   };
 }
 
-function usesStoredPaymentDeductions(row) {
-  return row.source_system === 'supabase_direct' || /^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''));
-}
-
 function computeCommissionBaseArs(row) {
   const grossArs = resolveGrossTotalArs(row);
-  if (isClubProduct(row.producto_format) && !usesStoredPaymentDeductions(row)) {
+  if (isClubProduct(row.producto_format)) {
     return computeClubNetBreakdown(grossArs).netArs;
   }
   const ivaArs = safeNumber(row.iva_ars);
@@ -816,7 +814,7 @@ function buildSettersMonthMap(setterRows, monthKey, liveAgendaCountMap = new Map
 function normalizeComprobanteRows(rows = []) {
   return rows.map((row) => {
     const grossArs = resolveGrossTotalArs(row);
-    const clubBreakdown = isClubProduct(row.producto_format) && !usesStoredPaymentDeductions(row) ? computeClubNetBreakdown(grossArs) : null;
+    const clubBreakdown = isClubProduct(row.producto_format) ? computeClubNetBreakdown(grossArs) : null;
     const ivaArs = clubBreakdown?.ivaArs > 0 ? clubBreakdown.ivaArs : safeNumber(row.iva_ars ?? row.iva);
     const externalCommissionsArs = clubBreakdown?.externalCommissionsArs > 0
       ? clubBreakdown.externalCommissionsArs

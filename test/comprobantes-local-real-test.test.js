@@ -25,13 +25,14 @@ test('los medios son generales y se descartan restricciones antiguas por product
  delete base.rules.productPaymentMethods;
  assert.deepEqual(config.paymentMethods,d.validateConfig(base).paymentMethods);
 });
-test('las nuevas cargas descuentan IVA y costo del medio antes del porcentaje del vendedor, también en Club',()=>{
+test('las cargas aplican cargos del medio en MEG y la regla propia del producto en Club',()=>{
  const {normalizeConfig,_test:{buildTransactionDetails}}=require('../modules/metricasv2/services/commissions.service');
  for(const product of ['Club del Costo','Meg 2.1']) {
   const details=buildTransactionDetails({monthKey:'2026-10',config:normalizeConfig({}),settersRows:[],agendaRows:[],comprobantesRows:[{
    id:'test-net',tipo:'Venta',estado:'Conciliado',producto_format:product,responsable_venta:'Patricia Conti',setter:'Nahuel Iasci',f_venta:'2026-10-01',f_acreditacion:'2026-10-01',cash_ar:100000,cash_collected_ar:100000,cash_collected_ars:100000,iva:10000,comisiones:5000,medios_de_pago:'Transferencia',info_comprobantes:'[TEST SUPABASE LOCAL] test-net'
   }]});
   assert.ok(details.length>0);
-  for(const detail of details){assert.equal(detail.baseAmount,85000);assert.equal(detail.commissionAmount,85000*detail.commissionPct);}
+  const expectedBase=product==='Club del Costo'?74553.72:85000;
+  for(const detail of details){assert.equal(Math.round(detail.baseAmount*100)/100,expectedBase);assert.equal(detail.commissionAmount,detail.baseAmount*detail.commissionPct);}
  }
 });
