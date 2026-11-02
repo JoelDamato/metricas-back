@@ -375,19 +375,34 @@ async function fetchOriginLeadRowsForComprobantes(rows = []) {
     chunks.push(ghlIds.slice(index, index + 200));
   }
 
-  const responses = await Promise.all(chunks.map((chunk) => axios.get(
-    `${env.supabaseUrl}/rest/v1/leads_raw`,
-    {
-      headers: buildHeaders(),
-      params: {
-        select: 'ghlid,primer_origen,origen_actual,last_edited_time,created_time',
-        ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
-        limit: 1000
-      }
+  const responses = await Promise.all(chunks.map(async (chunk) => {
+    const params = { ghlid: `in.(${chunk.map(value => `"${value}"`).join(',')})`, limit: 1000 };
+    const [leads, contacts] = await Promise.all([
+      axios.get(`${env.supabaseUrl}/rest/v1/leads_raw`, { headers: buildHeaders(), params: { ...params, select: 'ghlid,primer_origen,origen_actual,last_edited_time,created_time' }, timeout: 20000 }),
+      axios.get(`${env.supabaseUrl}/rest/v1/leads_ghl_contacts`, { headers: buildHeaders(), params: { ...params, select: 'ghlid,fields' }, timeout: 20000 })
+    ]);
+    const webinarById = new Map((contacts.data || []).map(contact => [String(contact.ghlid).toLowerCase(), extractWebinarSetters(contact.fields)]));
+    const merged = (leads.data || []).map(lead => ({ ...lead, webinarSetters: webinarById.get(String(lead.ghlid).toLowerCase()) || [] }));
+    const known = new Set(merged.map(lead => String(lead.ghlid).toLowerCase()));
+    for (const contact of contacts.data || []) {
+      if (!known.has(String(contact.ghlid).toLowerCase())) merged.push({ ghlid: contact.ghlid, webinarSetters: extractWebinarSetters(contact.fields) });
     }
-  )));
+    return merged;
+  }));
+  return responses.flat();
+}
 
-  return responses.flatMap((response) => response.data || []);
+function extractWebinarSetters(fields = {}) {
+  const names = [];
+  for (const [key, field] of Object.entries(fields || {})) {
+    const label = normalizeText(field?.label || key);
+    if (!label.includes('webinar') || !label.includes('setter') || /turno|whatsapp|asesor|telefono/.test(label)) continue;
+    const value = field?.value;
+    for (const name of Array.isArray(value) ? value : [value]) {
+      if (typeof name === 'string' && name.trim()) names.push(name.trim());
+    }
+  }
+  return [...new Set(names)];
 }
 
 function enrichComprobanteOrigins(rows = [], leadRows = []) {
@@ -396,6 +411,7 @@ function enrichComprobanteOrigins(rows = [], leadRows = []) {
     const linkedLead = leadByGhlId.get(String(row?.ghlid || '').trim().toLowerCase());
     return {
       ...row,
+      webinarSetters: linkedLead?.webinarSetters || row.webinarSetters || [],
       origen_actual: String(row?.origen_actual || linkedLead?.origen_actual || '').trim(),
       primer_origen: String(row?.primer_origen || linkedLead?.primer_origen || '').trim()
     };
@@ -565,6 +581,7 @@ function matchesCommissionOrigin(row, setterName = row?.setter) {
 }
 
 function qualifiesForSettingTransaction(row, setterName = row?.setter) {
+  if (isNahuelSetter(setterName) && row?.webinarSetters?.length) return row.webinarSetters.every(isNahuelSetter);
   return matchesCommissionOrigin(row, setterName);
 }
 
@@ -1137,7 +1154,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const nahuelClubSequence = new Map();
   activeRows
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .filter((row) => isNahuelSetter(row.setter) || isNahuelSetter(row.responsable_venta || row.creado_por))
+    .filter((row) => isNahuelSetter(row.responsable_venta || row.creado_por) || (isNahuelSetter(row.setter) && (!row.webinarSetters?.length || row.webinarSetters.every(isNahuelSetter))))
     .sort(compareRowsByArrival)
     .forEach((row) => {
       if (!nahuelClubSequence.has(row.id)) nahuelClubSequence.set(row.id, nahuelClubSequence.size + 1);
@@ -1268,6 +1285,8 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     }
 
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
+    const webinarSetters = row.webinarSetters?.length ? row.webinarSetters : (findRelatedSale(row, saleIndex)?.webinarSetters || []);
+    if (isNahuelSetter(setterName) && webinarSetters.length && !webinarSetters.every(isNahuelSetter)) return;
 
     const fixedPct = getOverridePct(config.setterFixedOverrides, setterName);
     const setterAgendas = getSetterAgendaCount(settersMap, setterName);
@@ -1328,7 +1347,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     if (isClub) return;
 
-    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction(row, setterName)) {
+    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction({ ...row, webinarSetters }, setterName)) {
       return;
     }
 
@@ -1535,13 +1554,27 @@ function summarizeDetails(details) {
   };
 }
 
+function hasProductInReceiptChain(row, byId, predicate) {
+  const seen = new Set();
+  while (row && !seen.has(row.id)) {
+    if (predicate(row.producto_format)) return true;
+    seen.add(row.id);
+    const relation = String(row.venta_relacionada || row.cobranza_relacionada || '').trim();
+    const ids = [...new Set(relation.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/gi) || [])];
+    row = byId.get(relation) || (ids.length === 1 ? byId.get(ids[0]) : null);
+  }
+  return false;
+}
+
 function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const uniqueRows = new Map();
+  const sourceById = new Map(normalizedRows.map(row => [String(row.id), row]));
 
   normalizedRows.forEach((row) => {
     const type = normalizeText(row.tipo);
     if (!row.id || uniqueRows.has(row.id)) return;
+    if (hasProductInReceiptChain(row, sourceById, isClubProduct)) return;
     if (!['venta', 'cobranza'].includes(type)) return;
     if (!matchesMonth(row.f_acreditacion_only, monthKey)) return;
     if (config.global.includeOnlyVerified && !row.verified_for_commissions) return;
@@ -1577,22 +1610,20 @@ function uniqueTransactions(details) {
 }
 
 function buildAreaCommissionData(details, marketingArea, sourceRows = [], monthKey, config) {
-  const commercial = uniqueTransactions(details.filter(d => d.role === 'Setter' && d.category === 'MEG'));
-  const sourceById = new Map(sourceRows.map(row=>[String(row.id),row]));
-  const csm = commercial.filter(detail => {
-    const row=sourceById.get(String(detail.transactionId));
-    const related=sourceById.get(String(row?.venta_relacionada || row?.cobranza_relacionada || ''));
-    return ![detail.product,row?.producto_format,related?.producto_format].some(product=>normalizeText(product).includes('consultor'));
-  });
-  const marketing = normalizeComprobanteRows(sourceRows).filter(row =>
+  const sourceById = new Map(sourceRows.map(row => [String(row.id), row]));
+  const eligible = normalizeComprobanteRows(sourceRows).filter(row =>
     ['venta','cobranza'].includes(normalizeText(row.tipo)) && matchesMonth(row.f_acreditacion_only, monthKey)
     && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase())
     && (!config.global.includeOnlyVerified || row.verified_for_commissions) && row.commission_base_ars > 0
-  ).map(row => ({transactionId:row.id, tipo:row.tipo, product:row.producto_format, category:isClubProduct(row.producto_format)?'Club':'MEG',
+    && !hasProductInReceiptChain(row, sourceById, isClubProduct)
+  );
+  const toDetail = row => ({transactionId:row.id, tipo:row.tipo, product:row.producto_format, category:'MEG',
     clientName:row.cliente_format, ghlid:row.ghlid, tc:row.tc, paymentMethod:row.medios_de_pago,
     acreditacionDate:row.f_acreditacion_only, facturacionUsd:row.facturacion, facturacionArs:row.facturacion_display_ars,
-    cashUsd:row.cash_usd, cashArs:row.cash_collected_ars, ...buildDetailFinancials(row)}));
-  const groups = {Comercial:commercial, CSM:csm, Marketing:uniqueTransactions(marketing)};
+    cashUsd:row.cash_usd, cashArs:row.cash_collected_ars, ...buildDetailFinancials(row)});
+  const all = uniqueTransactions(eligible.map(toDetail));
+  const csm = uniqueTransactions(eligible.filter(row => !hasProductInReceiptChain(row, sourceById, product => normalizeText(product).includes('consultor'))).map(toDetail));
+  const groups = {Comercial:all, CSM:csm, Marketing:all};
   return Object.entries(groups).map(([label,rows]) => {
     const percentage=label==='Marketing'?0.05:0.04;
     const netRows=rows.map(row=>personalNetFinancials(row));
@@ -1926,6 +1957,7 @@ module.exports = {
     buildLiveAgendaCountMap,
     qualifiesForSettingTransaction,
     enrichComprobanteOrigins,
+    extractWebinarSetters,
     buildTransactionDetails,
     computeClubNetBreakdown,
     buildMarketingAreaSummary,

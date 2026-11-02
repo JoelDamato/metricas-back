@@ -6,10 +6,13 @@ const config=service.normalizeConfig({global:{includeOnlyVerified:false}});
 function detail(id,product,tipo='Venta'){return {transactionId:id,role:'Setter',category:'MEG',product,tipo,tc:1000,grossArs:121000,cashArs:121000,cashUsd:121,facturacionUsd:200,facturacionArs:200000,ivaArs:21000,paymentFeesArs:10000,totalDeductionsArs:31000,netTotalArs:90000,baseAmount:90000};}
 test('áreas usan CC neto, deduplican comprobantes y CSM excluye venta/cobranza consultoría',()=>{
  const rows=[detail('meg','MEG 2.1'),detail('costos','Sistema de Costos Rentables'),detail('consult','Consultoría'),detail('collection','Consultoría','Cobranza'),detail('related','','Cobranza')];
- const areas=service._test.buildAreaCommissionData([...rows,rows[0]],null,[{id:'related',venta_relacionada:'consult'},{id:'consult',producto_format:'Consultoría'}],'2026-10',config);
+ const source=rows.map(row=>({id:row.transactionId,tipo:row.tipo,producto_format:row.product,estado:'Conciliado',f_acreditacion:'2026-10-04',cash_ar:121000,tc:1000,iva:21000,comisiones:10000,...(row.transactionId==='related'?{venta_relacionada:'consult'}:{})}));
+ const areas=service._test.buildAreaCommissionData([],null,[...source,source[0],{...source[0],id:'club',producto_format:'Club'},{...source[0],id:'club-payment',tipo:'Cobranza',producto_format:'',venta_relacionada:'club'}],'2026-10',config);
  assert.deepEqual(areas.map(a=>a.label),['Comercial','CSM','Marketing']);
  assert.equal(areas[0].cc,450000);assert.equal(areas[0].gain,18000);
  assert.equal(areas[1].cc,180000);assert.equal(areas[1].gain,7200);assert.equal(areas[1].transactionCount,2);
+ assert.equal(areas[2].cc,450000);
+ assert(areas.every(area=>area.ventasClub===0));
  assert.equal(areas[1].details[0].cashUsd,90);assert.equal(areas[1].details[0].commissionAmount,3600);
 });
 test('Marketing conserva consultoría pero sólo cuenta conciliados y aplica cargos una vez',()=>{

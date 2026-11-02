@@ -288,14 +288,14 @@ test('Marketing toma el 5% del cash neto de todas las operaciones verificadas si
   });
 
   assert.equal(summary.label, 'Marketing');
-  assert.equal(summary.transactionCount, 3);
+  assert.equal(summary.transactionCount, 1);
   assert.equal(summary.ventasMeg, 1);
-  assert.equal(summary.ventasClub, 1);
-  assert.equal(summary.facturacion, 241000);
-  assert.equal(summary.cc, 280420);
+  assert.equal(summary.ventasClub, 0);
+  assert.equal(summary.facturacion, 120000);
+  assert.equal(summary.cc, 100000);
   assert.equal(summary.percentage, 0.05);
-  assert.equal(summary.gain, 14021);
-  assert.equal(summary.total, 14021);
+  assert.equal(summary.gain, 5000);
+  assert.equal(summary.total, 5000);
 });
 
 test('la tabla inferior muestra el área Marketing recibida desde el backend', () => {
@@ -306,8 +306,9 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
 
   assert.match(source, /dashboard\?\.areaCommissions/);
 
-  assert.match(source, /<th>Ventas Club<\/th>/);
-  assert.match(source, /row\.ventasClub/);
+  const areaTable = source.slice(source.indexOf('<table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">'), source.indexOf('</table>', source.indexOf('<table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">')));
+  assert.match(areaTable, /Cash collected neto ARS/);
+  assert.doesNotMatch(areaTable, /Ventas Club|Facturacion|Ganancia|Porcentaje/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.doesNotMatch(source, /label: 'VSL \+ RT'/);
   assert.match(html, /comisiones\.page\.js\?v=[^"\s]+/);
