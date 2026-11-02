@@ -100,3 +100,31 @@ test('Webinar: cobra cada acreditación del mes y respeta el porcentaje especial
  const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,settersRows:[],commissionOverrides:[{sale_id:sale,setter_pct:.04}]});
  const webinar=details.filter(d=>d.sector==='webinar');assert.equal(webinar.length,1);assert.equal(webinar[0].person,'Brenda Damato');assert.equal(webinar[0].commissionPct,.04);
 });
+
+test('Club no cobra el porcentaje webinar ni aumenta su tramo; cobranzas de Club vinculadas quedan fuera',()=>{
+ const clubId='10000000-0000-4000-8000-000000000099';
+ const sales=Array.from({length:11},(_,i)=>({...base,id:`meg-${i}`,ghlid:`g-${i}`,webinarSetters:['Brenda Damato']}));
+ const club={...base,id:clubId,ghlid:'club',producto_format:'Club',webinarSetters:['Brenda Damato']};
+ const payment={...club,id:'club-payment',tipo:'Cobranza',producto_format:'',venta_relacionada:clubId};
+ const details=run([...sales,club,payment]);
+ const webinar=details.filter(d=>d.sector==='webinar');
+ assert.equal(webinar.length,11);assert(webinar.every(d=>d.commissionPct===.03&&d.counters.agendas===11));
+ assert(details.some(d=>d.transactionId===clubId&&d.role==='Closer'));
+});
+test('Paula: suma una agenda APSET manual sin duplicar, cobra sólo el 3% especial y lo heredan las cobranzas',()=>{
+ const sale='10000000-0000-4000-8000-000000000098';
+ const rows=[{...base,id:sale,ghlid:'paula',origen_actual:'Webinar',primer_origen:'Instagram'},{...base,id:'payment',ghlid:'paula',tipo:'Cobranza',venta_relacionada:sale,origen_actual:'Webinar',primer_origen:'Instagram'}];
+ const override={sale_id:sale,setter_pct:.03,setter_eligible:true,agenda_month:'2026-10'};
+ for(const origen_actual of ['Webinar','APSET']){
+  const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,commissionOverrides:[override],settersRows:[],agendaRows:[{id:'lead',ghlid:'paula',setter:'Nahuel Iasci',fecha_agenda:'2026-10-23',agendo:'Agendo',aplica:'Aplica',origen_actual}]});
+  const setting=details.filter(d=>d.role==='Setter');assert.equal(setting.length,2);assert(setting.every(d=>d.commissionPct===.03&&d.counters.agendas===1));
+ }
+ assert.equal(run(rows).filter(d=>d.role==='Setter').length,0);
+});
+test('Sebastián: aparece en setting de Nahuel por webinar y respeta 3% especial',()=>{
+ const sale='10000000-0000-4000-8000-000000000097';
+ const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:[{...base,id:sale,setter:'',origen_actual:'Webinar',primer_origen:'WEBINAR 28/10',webinarSetters:['Nahuel Iasci']}],settersRows:[],commissionOverrides:[{sale_id:sale,setter_pct:.03}]});
+ const setting=details.filter(d=>d.role==='Setter');assert.equal(setting.length,1);assert.equal(setting[0].person,'Nahuel Iasci');assert.equal(setting[0].commissionPct,.03);
+ const fs=require('fs'),vm=require('vm');const source=fs.readFileSync('public/metricas-v2/js/views/comisiones.page.js','utf8');const start=source.indexOf('  function qualifiesForSettingCount('),end=source.indexOf('  function getSettingComprobantesForPerson(',start);
+ const qualifies=vm.runInNewContext(source.slice(start,end)+';qualifiesForSettingCount',{normalizeText:v=>String(v||'').toLowerCase()});assert.equal(qualifies(setting[0]),true);
+});

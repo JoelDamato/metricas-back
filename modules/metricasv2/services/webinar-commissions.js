@@ -5,7 +5,7 @@ function webinarSoldAgendaCounts(rows) {
   for (const row of rows) {
     const person = effectiveSetter(row);
     if (!row.webinarSetters?.length || !person || isNahuel(person)) continue;
-    if (key(row.tipo) !== 'venta') continue;
+    if (key(row.tipo) !== 'venta' || key(row.producto_format).includes('club')) continue;
     if (!counts.has(key(person))) counts.set(key(person), { person, agendas: 0 });
     const id = `${key(person)}:${row.ghlid || row.cliente || row.id}`;
     if (id && seen.has(id)) continue;

@@ -544,7 +544,8 @@
     if (webinar) return webinar.agendas;
     const normalizedPerson = normalizeText(person);
     if (!normalizedPerson) return 0;
-    return state.agendaRows.filter((row) => normalizeText(row.setter) === normalizedPerson && row.commissionQualified).length;
+    return state.agendaRows.filter((row) => normalizeText(row.setter) === normalizedPerson && row.commissionQualified).length
+      + (state.dashboard?.agendaCredits || []).filter(row => normalizeText(row.person) === normalizedPerson).reduce((sum,row) => sum + row.additionalCount, 0);
   }
 
   function isNahuelSetter(value) {
@@ -917,7 +918,7 @@
   }
 
   function qualifiesForSettingCount(detail, setterName = detail?.person) {
-    return matchesCommissionOrigins(detail?.origin, detail?.firstOrigin, setterName);
+    return detail?.role === 'Setter' && normalizeText(detail.person) === normalizeText(setterName) && detail.category === 'MEG';
   }
 
   function getSettingComprobantesForPerson(person) {
@@ -1209,7 +1210,7 @@
     const nahuelSheetAgendaCount = rows.find((row) => isNahuelSetter(row.person))?.agendas || 0;
     const nahuelAgendaCount = Math.max(
       Number(nahuelSheetAgendaCount || 0),
-      state.agendaRows.filter((row) => isNahuelSetter(row.setter) && row.commissionQualified).length
+      getAgendaRowsCountForPerson("Nahuel Iasci")
     );
     const uniqueTransactionRows = [...uniqueTransactions.values()];
     const clubOnly = isClubOnlyView(uniqueTransactionRows);
@@ -1307,7 +1308,7 @@
                       <td>${formatSheetInteger(row.ventasMeg)}</td>
                       <td>${formatSheetInteger(row.ventasClub)}</td>
                       <td>${renderSettingCountButton(row.person, row.ventasSetting) || formatSheetInteger(row.ventasSetting)}</td>
-                      <td>${buildAgendaCountButton(row.person, row.agendas)}</td>
+                      <td>${isNahuelSetter(row.person) ? buildAgendaCountButton(row.person, row.agendas) : ""}</td>
                       <td>${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
                       <td>${formatSheetCurrency(row.facturacion)}</td>
                       <td>${formatSheetCurrency(row.cc)}</td>
@@ -1323,7 +1324,7 @@
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasMeg, 0))}</td>
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasClub, 0))}</td>
                     <td>${formatInteger(rows.reduce((sum, row) => sum + row.ventasSetting, 0))}</td>
-                    <td>${formatInteger(rows.reduce((sum, row) => sum + row.agendas, 0))}</td>
+                    <td>${formatInteger(rows.filter(row => isNahuelSetter(row.person)).reduce((sum, row) => sum + row.agendas, 0))}</td>
                     <td></td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.facturacion, 0))}</td>
                     <td>${formatCurrency(rows.reduce((sum, row) => sum + row.cc, 0))}</td>
@@ -1417,7 +1418,7 @@
       detailNode.innerHTML = '';
       return;
     } else {
-      const agendaCountMarkup = person.agendas > 0
+      const agendaCountMarkup = !isNahuelSetter(person.person) ? '' : person.agendas > 0
         ? `<button class="comisiones-inline-link comisiones-agenda-kpi-link" type="button" data-agenda-person="${escapeHtml(person.person)}"><strong>${formatInteger(person.agendas)}</strong> agendas del mes</button>`
         : `<span><strong>${formatInteger(person.agendas)}</strong> agendas del mes</span>`;
       summaryNode.innerHTML = `
@@ -1555,7 +1556,8 @@
         <div class="comisiones-agendas-head">
           <div>
             <h3>${escapeHtml(setterLabel)}</h3>
-            <p>Base de agendas del mes por <strong>fecha_agenda</strong>. Los filtros permiten explorar todas las agendas y el panel marca cuántas son comisionables.</p>
+            <p>Agendas de Nahuel del mes por <strong>fecha_agenda</strong>. El panel marca cuántas suman para la escala.</p>
+            ${(state.dashboard?.agendaCredits || []).map(credit => `<p>Ajuste APSET del mes: ${escapeHtml(credit.clientName)} · +${formatInteger(credit.additionalCount)} agenda. La venta conserva su porcentaje especial.</p>`).join('')}
           </div>
           <div class="comisiones-agendas-period">
             <span>${escapeHtml(state.agendaFilters.from || '-')}</span>
@@ -1925,7 +1927,7 @@
 
   function loadAgendaRows(rows) {
     const { from, to } = getMonthRange(state.month);
-    state.agendaRows = normalizeAgendaRows(rows || [], { from, to });
+    state.agendaRows = normalizeAgendaRows(rows || [], { from, to }).filter(row => isNahuelSetter(row.setter));
     state.agendaFilters.from = from;
     state.agendaFilters.to = to;
     syncAgendaFilterControls();
@@ -1937,9 +1939,9 @@
     const details = (state.dashboard?.details || []).filter(row => row.sector === 'webinar');
     document.getElementById('commissionWebinarPanel').innerHTML = `
       <section class="card"><h2>Setters Webinar</h2>
-        <p>Agendas vendidas del mes · Hasta 11: 3%. Desde 12: 3,5% sobre el monto comisionable. Las cobranzas no suman ventas nuevas. Nahuel conserva sus reglas habituales.</p>
-        <div class="table-wrap"><table><thead><tr><th>Setter</th><th>Agendas vendidas</th><th>% comisión</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
-        <tbody>${people.map(person => `<tr><td>${escapeHtml(person.person)}</td><td>${formatInteger(person.agendas)}</td><td>${person.pct === null ? 'Pendiente de definir' : formatPercent(person.pct)}</td><td>${formatCurrency(person.cashArs)}</td><td>${person.pending ? 'Pendiente de definir' : formatCurrency(person.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="5">Sin movimientos webinar este mes.</td></tr>'}</tbody></table></div>
+        <p>Agendas vendidas del mes · Hasta 11: 3%. Desde 12: 3,5% sobre el monto comisionable. Club queda excluido del cálculo. Las cobranzas no suman ventas nuevas. Nahuel conserva sus reglas habituales.</p>
+        <div class="table-wrap"><table><thead><tr><th>Setter</th><th>% comisión</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
+        <tbody>${people.map(person => `<tr><td>${escapeHtml(person.person)}</td><td>${person.pct === null ? 'Pendiente de definir' : formatPercent(person.pct)}</td><td>${formatCurrency(person.cashArs)}</td><td>${person.pending ? 'Pendiente de definir' : formatCurrency(person.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="4">Sin movimientos webinar este mes.</td></tr>'}</tbody></table></div>
         <h3>Detalle de ventas y cobranzas</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Setter</th><th>Tipo</th><th>Producto</th><th>Monto comisionable</th><th>%</th><th>Comisión</th></tr></thead>
         <tbody>${details.map(row => `<tr><td>${escapeHtml(row.clientName)}</td><td>${escapeHtml(row.person)}</td><td>${escapeHtml(row.tipo)}</td><td>${escapeHtml(row.product)}</td><td>${formatCurrency(row.baseAmount)}</td><td>${row.pendingCommission ? 'Pendiente' : formatPercent(row.commissionPct)}</td><td>${row.pendingCommission ? 'Pendiente' : formatCurrency(row.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="7">Sin ventas ni cobranzas conciliadas.</td></tr>'}</tbody></table></div>
       </section>`;

@@ -1,3 +1,4 @@
+const { buildAgendaCredits } = require('./commission-agenda-credits');
 const { webinarSoldAgendaCounts, webinarPct, buildWebinarSummary } = require('./webinar-commissions');
 const { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, retryRead } = require('./webinar-setter.service');
 const saleOverrides = require('./commission-sale-overrides.service');
@@ -1127,11 +1128,15 @@ function resolveNahuelClubRule(row, saleNumber) {
 function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [], commissionOverrides = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const webinarSaleIndex = buildHistoricalSaleIndex(normalizedRows);
+  const sourceById = new Map(normalizedRows.map(row => [String(row.id), row]));
+  const overrideBySale = new Map(commissionOverrides.map(item => [item.sale_id, item]));
   for (const row of normalizedRows) {
     const inherited = normalizeText(row.tipo) === 'cobranza' ? findRelatedSale(row, webinarSaleIndex)?.webinarSetters : null;
     const webinarSetters = row.webinarSetters?.length ? row.webinarSetters : (inherited || []);
     row.webinarSetters = webinarSetters;
     row.setter = effectiveSetter(row);
+    const override = overrideBySale.get(saleOverrides.saleIdFor(row, sourceById));
+    row.setterEligibilityOverride = override?.setter_eligible === true && override.setter_pct != null;
   }
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase()));
   const activeRows = config.global.includeOnlyVerified
@@ -1143,6 +1148,14 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   for (const row of agendaRows) {
     const key = normalizeText(titleCaseName(row.setter));
     if (key && !liveAgendaCountMap.has(key)) liveAgendaCountMap.set(key, { setter: titleCaseName(row.setter), agendo: 0 });
+  }
+  const agendaCredits = buildAgendaCredits(commissionOverrides, normalizedRows, agendaRows, monthKey,
+    row => !!resolveAgendaDateForMonth(row.fecha_agenda, monthKey, row) && hasCommissionAgendaSignals(row));
+  for (const credit of agendaCredits) {
+    const key = normalizeText(credit.person);
+    const current = liveAgendaCountMap.get(key) || { setter: credit.person, agendo: 0 };
+    current.agendo += credit.additionalCount;
+    liveAgendaCountMap.set(key, current);
   }
   const settersMap = buildSettersMonthMap(settersRows, monthKey, liveAgendaCountMap);
   const saleIndex = buildHistoricalSaleIndex(normalizedRows);
@@ -1286,6 +1299,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     }
 
     if (row.webinarSetters?.length && setterName && !isNahuelSetter(setterName)) {
+      if (hasProductInReceiptChain(row, sourceById, isClubProduct)) return;
       const agendas = webinarCounts.get(normalizeText(setterName))?.agendas || 0;
       const pct = webinarPct(agendas);
       const baseAmount = row.commission_base_ars;
@@ -1369,7 +1383,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
 
     if (isClub) return;
 
-    if (isNahuelSetter(setterName) && !qualifiesForSettingTransaction({ ...row, webinarSetters }, setterName)) {
+    if (isNahuelSetter(setterName) && !row.setterEligibilityOverride && !qualifiesForSettingTransaction({ ...row, webinarSetters }, setterName)) {
       return;
     }
 
@@ -1750,7 +1764,7 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     }),
     fetchAgendaRowsForCommissions(safeMonth),
     settlements.list(safeMonth),
-    fetchAllRows('commission_sale_overrides', { select: 'sale_id,closer_pct,setter_pct,reason' })
+    fetchAllRows('commission_sale_overrides', { select: 'sale_id,closer_pct,setter_pct,reason,setter_eligible,agenda_month' })
   ]);
   const normalizedForLookup = normalizeComprobanteRows(rawComprobantesRows);
   const lookupSaleIndex = buildHistoricalSaleIndex(normalizedForLookup);
@@ -1782,6 +1796,8 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     ...summary,
     marketingArea,
     webinarSetters: buildWebinarSummary(details),
+    agendaCredits: buildAgendaCredits(commissionOverrides, comprobantesRows, enrichComprobanteOrigins(agendaRows, originLeadRows), safeMonth,
+      row => !!resolveAgendaDateForMonth(row.fecha_agenda, safeMonth, row) && hasCommissionAgendaSignals(row)),
     bonusCandidates: calculatedDetails.filter(d=>d.isBonus),
     movementRows,
     areaCommissions: buildAreaCommissionData(details, marketingArea, comprobantesRows, safeMonth, config),
