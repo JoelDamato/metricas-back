@@ -1580,8 +1580,7 @@ function canViewRow(row = {}, user = {}) {
 }
 
 function canEditRow(row = {}, user = {}) {
-  return (comprobantesLoaderService.canEditOthersComprobantes(user)
-    && comprobantesLoaderService._test.canEditComprobanteStatus(row)) || canManageRow(row, user);
+  return comprobantesLoaderService.canEditOthersComprobantes(user) || canManageRow(row, user);
 }
 
 async function getManagedRow(rawId, user, options = {}, action = 'edit') {
@@ -1594,9 +1593,7 @@ async function getManagedRow(rawId, user, options = {}, action = 'edit') {
     throw error;
   }
   if (!(action === 'delete' ? canManageRow(row, user) : canEditRow(row, user))) {
-    const message = action === 'edit' && comprobantesLoaderService.canEditOthersComprobantes(user)
-      ? 'Para editar un comprobante conciliado, primero pasalo a No conciliado.'
-      : 'Sólo quien cargó un comprobante no conciliado o rebotado puede realizar esta acción';
+    const message = 'Sólo quien cargó un comprobante no conciliado o rebotado puede realizar esta acción';
     const error = new Error(message);
     error.statusCode = 403;
     throw error;

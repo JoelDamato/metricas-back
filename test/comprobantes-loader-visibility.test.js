@@ -179,5 +179,6 @@ test('Nadia recibe edición de comprobantes ajenos pendientes, sin permiso de el
   const result = await comprobantesLoaderService.listMyComprobantes(NADIA);
   assert.equal(result.rows[0].canEdit, true);
   assert.equal(result.rows[0].canManage, false);
-  assert.equal(result.rows[1].canEdit, false);
+  assert.equal(result.rows[1].canEdit, true);
+  assert.equal(result.rows[1].canManage, false);
 });

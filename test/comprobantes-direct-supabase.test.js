@@ -902,7 +902,10 @@ test('Nadia edita un comprobante ajeno sin adquirir permiso de borrado', async (
   await assert.rejects(service.deleteEditableComprobante(row.id, NADIA, options), { statusCode: 403 });
   await assert.rejects(service.getEditableComprobante(row.id, MATI, options), { statusCode: 403 });
   row.estado = 'Conciliado';
-  await assert.rejects(service.updateEditableComprobante(row.id, salePayload(), NADIA, options), { statusCode: 403 });
+  await service.updateEditableComprobante(row.id, salePayload(), NADIA, options);
+  assert.equal(saved.expectedRow.estado, 'Conciliado');
+  assert.equal(Object.hasOwn(saved.patch, 'estado'), false);
+  await assert.rejects(service.deleteEditableComprobante(row.id, NADIA, options), { statusCode: 403 });
   row.rebotar_pago = true;
   assert.equal(service._test.canEditRow(row, NADIA), true);
 });

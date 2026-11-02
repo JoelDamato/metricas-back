@@ -233,7 +233,7 @@ function canEditOthersComprobantes(user = {}) {
 }
 
 function canEditComprobante(row = {}, user = {}) {
-  return (canEditOthersComprobantes(user) && canEditComprobanteStatus(row))
+  return canEditOthersComprobantes(user)
     || canManageOwnComprobante(row, user);
 }
 
