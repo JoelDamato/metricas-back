@@ -230,8 +230,8 @@
     if (row.source_system === 'supabase_direct') {
       actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-files-comprobante="${escapeHtml(row.id)}">Adjuntos</button>`);
     }
-    if (row.canManage === true) {
-      actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">Editar / borrar</button>`);
+    if (row.canEdit === true || row.canManage === true) {
+      actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">${row.canManage === true ? 'Editar / borrar' : 'Editar'}</button>`);
     }
     return actions.length ? actions.join(' ') : '<span class="mis-comprobantes-readonly">—</span>';
   }
@@ -301,6 +301,7 @@
         <div>
           <span class="carga-creating-kicker">Edición habilitada</span>
           <h2 id="misComprobantesEditorTitle">Editar comprobante</h2>
+          ${new URLSearchParams(window.location.search).get('desde') === 'conciliacion' ? '<a href="/views/conciliacion.html">Volver a Conciliación</a>' : ''}
           <p>${comprobante.isCheque ? 'Cheque individual: los cambios se aplican sólo a este comprobante.' : 'Podés corregir los datos operativos de este comprobante.'}</p>
         </div>
         <button type="button" class="mis-comprobantes-editor-close" data-editor-action="close" aria-label="Cerrar">×</button>
@@ -330,7 +331,7 @@
         <p id="misComprobantesEditorStatus" class="mis-comprobantes-editor-status">Revisá los datos antes de guardar.</p>
         <div class="mis-comprobantes-editor-actions">
           <button type="button" class="metricas-secondary-button" data-editor-action="close">Cancelar</button>
-          <button type="button" class="mis-comprobantes-delete-button" data-editor-action="delete">Eliminar comprobante</button>
+          ${comprobante.canDelete === true ? '<button type="button" class="mis-comprobantes-delete-button" data-editor-action="delete">Eliminar comprobante</button>' : ''}
           <button type="submit" class="metricas-primary-button">${isBounced ? 'Guardar y reenviar a conciliación' : 'Guardar cambios'}</button>
         </div>
       </form>
@@ -420,6 +421,9 @@
       renderAll();
       closeEditor();
       refs.hint.textContent = response.message || 'Cambios guardados.';
+      if (new URLSearchParams(window.location.search).get('desde') === 'conciliacion') {
+        refs.hint.innerHTML += ' <a href="/views/conciliacion.html">Volver a Conciliación</a>';
+      }
     } catch (error) {
       status.textContent = error.message || 'No pude guardar los cambios.';
       submit.disabled = false;
@@ -531,5 +535,8 @@
   });
 
   ensureDefaultMonth();
-  loadPage();
+  loadPage().then(() => {
+    const editId = new URLSearchParams(window.location.search).get('editar');
+    if (editId) openEditor(editId);
+  });
 })();

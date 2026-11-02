@@ -170,3 +170,14 @@ test('sólo quien creó un comprobante no conciliado o rebotado puede gestionarl
   assert.equal(canManageOwnComprobante({ info_comprobantes: 'Cargado por: Nahuel Iasci', estado: 'Conciliado', rebotar_pago: true }, creator), true);
   assert.equal(canManageOwnComprobante({ info_comprobantes: 'Cargado por: Otra persona', responsable_venta: 'Nahuel Iasci', estado: 'Sin conciliar' }, creator), false);
 });
+
+test('Nadia recibe edición de comprobantes ajenos pendientes, sin permiso de eliminación', async (t) => {
+  installSupabaseMock(t, [
+    { id: 'pendiente', responsable_venta: 'Mauro Gaitan', estado: null },
+    { id: 'conciliado', responsable_venta: 'Mauro Gaitan', estado: 'Conciliado' }
+  ]);
+  const result = await comprobantesLoaderService.listMyComprobantes(NADIA);
+  assert.equal(result.rows[0].canEdit, true);
+  assert.equal(result.rows[0].canManage, false);
+  assert.equal(result.rows[1].canEdit, false);
+});

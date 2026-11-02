@@ -51,7 +51,7 @@ test('Mis comprobantes acepta mes y filtro Solo Club desde el dashboard', () => 
   assert.match(script, /initialParams\.get\('mes'\)/);
   assert.match(script, /initialParams\.get\('club'\)/);
   assert.match(script, /\['all', 'exclude', 'only'\]/);
-  assert.match(html, /mis-comprobantes\.page\.js\?v=20261009-shared-note-1/);
+  assert.match(html, /mis-comprobantes\.page\.js\?v=20261102-nadia-edit/);
 });
 
 test('los clics en las pestañas actualizan el listado de comprobantes', async () => {
@@ -166,4 +166,25 @@ test('los clics en las pestañas actualizan el listado de comprobantes', async (
   reconciliationConciliated.click();
   assert.match(elements.misComprobantesTable.innerHTML, /No encontré comprobantes/);
   assert.equal(reconciliationConciliated.classList.values.has('is-active'), true);
+});
+
+test('el editor de Nadia permite guardar sin ofrecer eliminar y permite volver a conciliación', () => {
+  const vm = require('node:vm');
+  const body = script.slice(script.indexOf('  function renderEditor('), script.indexOf('  function closeEditor('));
+  const refs = { editorBody: { innerHTML: '' }, editor: { hidden: true } };
+  const context = {
+    refs, URLSearchParams, isBouncedRow: () => false,
+    window: { location: { search: '?desde=conciliacion' } },
+    escapeHtml: (value) => String(value ?? ''),
+    editorOption: () => '',
+    comprobante: { id: 'fixture', tipo: 'Venta', canDelete: false }
+  };
+  vm.runInNewContext(`${body}\nrenderEditor(comprobante);`, context);
+  assert.equal(refs.editor.hidden, false);
+  assert.match(refs.editorBody.innerHTML, /Guardar cambios/);
+  assert.match(refs.editorBody.innerHTML, /Volver a Conciliación/);
+  assert.doesNotMatch(refs.editorBody.innerHTML, /data-editor-action="delete"/);
+  context.comprobante.canDelete = true;
+  vm.runInNewContext('renderEditor(comprobante)', context);
+  assert.match(refs.editorBody.innerHTML, /data-editor-action="delete"/);
 });

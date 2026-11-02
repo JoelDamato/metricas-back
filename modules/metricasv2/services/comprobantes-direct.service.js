@@ -1579,7 +1579,12 @@ function canViewRow(row = {}, user = {}) {
     .some((value) => normalizeText(value) === person);
 }
 
-async function getManagedRow(rawId, user, options = {}) {
+function canEditRow(row = {}, user = {}) {
+  return (comprobantesLoaderService.canEditOthersComprobantes(user)
+    && comprobantesLoaderService._test.canEditComprobanteStatus(row)) || canManageRow(row, user);
+}
+
+async function getManagedRow(rawId, user, options = {}, action = 'edit') {
   assertOperationalAccess(user, options);
   const repository = options.repository || httpRepository;
   const row = await repository.getComprobante(validComprobanteId(rawId));
@@ -1588,8 +1593,11 @@ async function getManagedRow(rawId, user, options = {}) {
     error.statusCode = 404;
     throw error;
   }
-  if (!canManageRow(row, user)) {
-    const error = new Error('Sólo quien cargó un comprobante no conciliado o rebotado puede editarlo o eliminarlo');
+  if (!(action === 'delete' ? canManageRow(row, user) : canEditRow(row, user))) {
+    const message = action === 'edit' && comprobantesLoaderService.canEditOthersComprobantes(user)
+      ? 'Para editar un comprobante conciliado, primero pasalo a No conciliado.'
+      : 'Sólo quien cargó un comprobante no conciliado o rebotado puede realizar esta acción';
+    const error = new Error(message);
     error.statusCode = 403;
     throw error;
   }
@@ -1635,7 +1643,7 @@ function editableData(row = {}, bootstrap = {}) {
 async function getEditableComprobante(rawId, user, options = {}) {
   const { row } = await getManagedRow(rawId, user, options);
   const bootstrap = await getBootstrap(user, { ...options, allowOperationalUser: true });
-  return editableData(row, bootstrap);
+  return { ...editableData(row, bootstrap), canDelete: canManageRow(row, user) };
 }
 
 async function updateEditableComprobante(rawId, payload, user, options = {}) {
@@ -1754,7 +1762,7 @@ async function updateEditableComprobante(rawId, payload, user, options = {}) {
 
 async function deleteEditableComprobante(rawId, user, options = {}) {
   if (!options.bypassSafety) assertWritesEnabled();
-  const { row, repository } = await getManagedRow(rawId, user, options);
+  const { row, repository } = await getManagedRow(rawId, user, options, 'delete');
   const files = typeof repository.listFiles === 'function' ? await repository.listFiles(row.id) : [];
   const result = await repository.deleteComprobante({
     id: row.id,
@@ -1919,6 +1927,7 @@ module.exports = {
     addCalendarMonths,
     assertWritesEnabled,
     canManageRow,
+    canEditRow,
     canViewRow,
     editableData,
     parseGhlId,

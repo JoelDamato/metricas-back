@@ -228,6 +228,15 @@ function canViewAllComprobantes(user = {}) {
   return COMPROBANTES_GLOBAL_VIEWER_EMAILS.has(normalizeEmail(user?.email));
 }
 
+function canEditOthersComprobantes(user = {}) {
+  return normalizeEmail(user?.email) === 'nadia.cavallini@gmail.com';
+}
+
+function canEditComprobante(row = {}, user = {}) {
+  return (canEditOthersComprobantes(user) && canEditComprobanteStatus(row))
+    || canManageOwnComprobante(row, user);
+}
+
 function canSelectResponsibleVenta(user = {}) {
   return COMPROBANTES_DELEGATED_UPLOADER_EMAILS.has(normalizeEmail(user?.email));
 }
@@ -2478,7 +2487,7 @@ async function listMyComprobantes(user, options = {}) {
     const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {
       return !normalizedSelectedResponsible || resolvedResponsible === normalizedSelectedResponsible
-        ? [{ ...row, accessScope: 'all', canManage: canManageOwnComprobante(row, user) }]
+        ? [{ ...row, accessScope: 'all', canEdit: canEditComprobante(row, user), canManage: canManageOwnComprobante(row, user) }]
         : [];
     }
     const isOwnComprobante = resolvedResponsible === normalizedResponsibleName;
@@ -2505,6 +2514,8 @@ async function listMyComprobantes(user, options = {}) {
 }
 
 module.exports = {
+  canEditOthersComprobantes,
+  canEditComprobante,
   getBootstrap,
   lookupClientByGhlId,
   lookupRelatedSaleById,

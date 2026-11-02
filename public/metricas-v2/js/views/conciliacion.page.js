@@ -4,6 +4,7 @@
 
   const state = {
     rows: [],
+    canEditOthers: false,
     baseFilteredRows: [],
     filteredRows: [],
     statusFilter: 'not_conciliated',
@@ -249,7 +250,7 @@
               return `
                 <tr data-conciliacion-row="${escapeHtml(row.id)}">
                   <td>${renderContact(row)}</td>
-                  <td><button type="button" class="metricas-secondary-button conciliacion-open-file" data-open-files="${escapeHtml(row.id)}" aria-label="Ver comprobante de ${escapeHtml(row.cliente_format || 'cliente')}">Ver comprobante</button></td>
+                  <td><button type="button" class="metricas-secondary-button conciliacion-open-file" data-open-files="${escapeHtml(row.id)}" aria-label="Ver comprobante de ${escapeHtml(row.cliente_format || 'cliente')}">Ver comprobante</button>${state.canEditOthers && currentState !== 'conciliated' ? `<a class="metricas-secondary-button" href="/views/mis-comprobantes.html?editar=${encodeURIComponent(row.id)}&desde=conciliacion">Editar</a>` : ''}</td>
                   <td>${escapeHtml(row.dni_cuit || 'Sin informar')}</td>
                   <td>${row.mail ? `<a href="mailto:${escapeHtml(row.mail)}">${escapeHtml(row.mail)}</a>` : '—'}</td>
                   <td>${escapeHtml(row.responsable_venta || row.creado_por || '—')}</td>
@@ -313,6 +314,7 @@
     refs.reload.disabled = true;
     try {
       const response = await api.fetchReconciliationComprobantes();
+      state.canEditOthers = response.canEditOthers === true;
       state.rows = Array.isArray(response.rows) ? response.rows : [];
       state.dataSource = response.dataSource || 'notion_sync';
       if (refs.writeSourceChip) {

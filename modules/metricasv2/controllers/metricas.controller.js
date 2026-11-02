@@ -877,7 +877,8 @@ async function listReconciliationComprobantes(req, res, next) {
     res.json({
       ok: true,
       ...result,
-      dataSource: 'supabase_direct'
+      dataSource: 'supabase_direct',
+      canEditOthers: comprobantesLoaderService.canEditOthersComprobantes(req.authUser)
     });
   } catch (error) {
     next(error);

@@ -878,3 +878,31 @@ test('un fallo espera las subidas en curso antes de limpiar los archivos', async
   await assert.rejects(service.create(salePayload({attachmentFiles}),MATI,{repository,bypassSafety:true}),/fallo controlado/);
   assert.equal(cleaned,2);assert.equal(batches,0);
 });
+
+test('Nadia edita un comprobante ajeno sin adquirir permiso de borrado', async () => {
+  const row = {
+    id: '10000000-0000-4000-8000-000000000001', tipo: 'Venta',
+    responsable_venta: 'Otro Usuario', created_by_email: OTHER.email,
+    estado: null, f_venta: '2026-11-01', f_acreditacion: '2026-11-01'
+  };
+  let saved;
+  const repository = {
+    getComprobante: async () => row,
+    getConfig: async () => config(),
+    updateComprobante: async (payload) => { saved = payload; return { row }; },
+    deleteComprobante: async () => { throw Error('No debe borrar'); }
+  };
+  const options = { repository, bypassSafety: true, allowOperationalUser: true };
+  const editable = await service.getEditableComprobante(row.id, NADIA, options);
+  assert.equal(editable.canDelete, false);
+  await service.updateEditableComprobante(row.id, salePayload(), NADIA, options);
+  assert.equal(saved.actorEmail, NADIA.email);
+  assert.equal(saved.patch.cash_collected, 1000);
+  assert.equal(saved.expectedRow, row);
+  await assert.rejects(service.deleteEditableComprobante(row.id, NADIA, options), { statusCode: 403 });
+  await assert.rejects(service.getEditableComprobante(row.id, MATI, options), { statusCode: 403 });
+  row.estado = 'Conciliado';
+  await assert.rejects(service.updateEditableComprobante(row.id, salePayload(), NADIA, options), { statusCode: 403 });
+  row.rebotar_pago = true;
+  assert.equal(service._test.canEditRow(row, NADIA), true);
+});
