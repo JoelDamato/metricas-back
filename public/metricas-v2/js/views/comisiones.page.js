@@ -1339,9 +1339,9 @@
 
             <div class="comisiones-sheet-bottom">
               <table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">
-                <thead><tr><th>Área</th><th>Cash collected neto ARS</th></tr></thead>
+                <thead><tr><th>Área</th><th>Cash collected neto ARS</th><th>% comisión</th><th>Comisión del área ARS</th></tr></thead>
                 <tbody>
-                  ${commercialSummaryRows.map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${formatSheetCurrency(row.cc)}</td></tr>`).join('')}
+                  ${commercialSummaryRows.map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${formatSheetCurrency(row.cc)}</td><td>${formatPercent(row.percentage)}</td><td>${formatCurrency(row.gain)}</td></tr>`).join('')}
                 </tbody>
               </table>
               <p>Sin Club en todas las áreas. CSM también excluye Consultoría. Incluye ventas y cobranzas conciliadas del mes, independientemente del setter.</p>

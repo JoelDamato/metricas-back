@@ -308,6 +308,10 @@ test('la tabla inferior muestra el área Marketing recibida desde el backend', (
 
   const areaTable = source.slice(source.indexOf('<table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">'), source.indexOf('</table>', source.indexOf('<table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">')));
   assert.match(areaTable, /Cash collected neto ARS/);
+  assert.match(areaTable, /% comisión/);
+  assert.match(areaTable, /Comisión del área ARS/);
+  assert.match(areaTable, /formatPercent\(row.percentage\)/);
+  assert.match(areaTable, /formatCurrency\(row.gain\)/);
   assert.doesNotMatch(areaTable, /Ventas Club|Facturacion|Ganancia|Porcentaje/);
   assert.doesNotMatch(source, /label: 'VSL',/);
   assert.doesNotMatch(source, /label: 'VSL \+ RT'/);

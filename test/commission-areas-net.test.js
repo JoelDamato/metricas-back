@@ -37,3 +37,16 @@ test('Wally suma closer y Marketing, excluye Club y no duplica cash de operacion
  assert.equal(result.summary.clubSales,0);assert.equal(result.details.length,2);
  assert(result.details.every(d=>d.category!=='Club'));
 });
+
+test('el importe del área en Administración coincide con el resumen de su responsable sin incluir otras áreas',()=>{
+ const source=[{id:'meg',tipo:'Venta',producto_format:'MEG 2.1',estado:'Conciliado',f_acreditacion:'2026-10-04',cash_ar:121000,tc:1000,iva:21000,comisiones:10000},{id:'consult',tipo:'Venta',producto_format:'Consultoría',estado:'Conciliado',f_acreditacion:'2026-10-04',cash_ar:121000,tc:1000,iva:21000,comisiones:10000}];
+ const areas=service._test.buildAreaCommissionData([],null,source,'2026-10',config);
+ const dashboard={month:'2026-10',details:[],areaCommissions:areas,config};
+ for(const [email,label] of [['belenherrera.gestion@gmail.com','CSM'],['leonardoalaniz19@gmail.com','Comercial'],['walteralegre56@gmail.com','Marketing']]){
+  const result=service.buildUserCommercialArea(dashboard,{email});
+  const area=areas.find(a=>a.label===label);
+  assert.equal(result.summary.totalCommission,area.gain);
+  assert.equal(result.summary.cashArs,area.cc);
+  assert(result.details.every(d=>d.area===label));
+ }
+});
