@@ -1023,7 +1023,7 @@
       normalizeText(detail.tipo) === 'cobranza' && qualifiesForSettingCount(detail, person)
     ));
     const visibleDetails = [...sales, ...collections];
-    const settingChannelsLabel = isNahuelSetter(person) ? 'APSET / RT / VSL' : 'APSET / RT';
+    const settingChannelsLabel = 'de Setting';
     const totalCommission = visibleDetails.reduce((sum, detail) => sum + Number(detail.commissionAmount || 0), 0);
     const itemsHtml = visibleDetails.length
       ? `
@@ -1056,7 +1056,7 @@
     popup.innerHTML = `
       <div class="kpi-popup-card sales-analysis-detail-card">
         <h3>Setting · ${escapeHtml(person)}</h3>
-        <p>Se muestran únicamente las ventas y cobranzas que califican para Setting por Primer origen u Origen actual: ${settingChannelsLabel}.</p>
+        <p>Ventas y cobranzas asignadas a ${escapeHtml(person)}, incluidas las de webinar. Cada comprobante muestra su porcentaje y comisión correspondientes.</p>
         ${itemsHtml}
         <button id="commissionSettingDetailPopupClose" type="button">Cerrar</button>
       </div>
