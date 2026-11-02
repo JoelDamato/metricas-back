@@ -202,8 +202,11 @@
 
   function renderSummary() {
     refs.summary.hidden = false;
-    const totalFacturacion = state.filteredRows.reduce((sum, row) => sum + parseNumber(row.facturacion), 0);
-    const totalCashUsd = state.filteredRows.reduce((sum, row) => sum + resolveCashUsd(row), 0);
+    const clubOnly = refs.clubFilter?.value === 'only' || (state.filteredRows.length > 0 && state.filteredRows.every(isClubRow));
+    const usdRows = state.filteredRows.filter(row => !isClubRow(row));
+    const totalClubArs = state.filteredRows.filter(isClubRow).reduce((sum, row) => sum + resolveCashAr(row), 0);
+    const totalFacturacion = usdRows.reduce((sum, row) => sum + parseNumber(row.facturacion), 0);
+    const totalCashUsd = usdRows.reduce((sum, row) => sum + resolveCashUsd(row), 0);
     const totalCashArs = state.filteredRows.reduce((sum, row) => sum + resolveCashAr(row), 0);
 
     refs.summary.innerHTML = `
@@ -211,16 +214,17 @@
         <span>Comprobantes</span>
         <strong>${escapeHtml(String(state.filteredRows.length))}</strong>
       </article>
-      <article class="mis-comprobantes-summary-card">
-        <span>Facturación USD</span>
+      ${clubOnly ? '' : `<article class="mis-comprobantes-summary-card">
+        <span>Facturación USD (sin Club)</span>
         <strong>${escapeHtml(formatCurrency(totalFacturacion, 'USD'))}</strong>
       </article>
       <article class="mis-comprobantes-summary-card">
-        <span>Cash USD</span>
+        <span>Cash USD (sin Club)</span>
         <strong>${escapeHtml(formatCurrency(totalCashUsd, 'USD'))}</strong>
-      </article>
+      </article>`}
+      ${clubOnly || totalClubArs > 0 ? `<article class="mis-comprobantes-summary-card"><span>Vendido Club ARS</span><strong>${escapeHtml(formatCurrency(totalClubArs, 'ARS'))}</strong></article>` : ''}
       <article class="mis-comprobantes-summary-card">
-        <span>Cash AR</span>
+        <span>Cobrado ARS</span>
         <strong>${escapeHtml(formatCurrency(totalCashArs, 'ARS'))}</strong>
       </article>
     `;
@@ -241,6 +245,7 @@
   }
 
   function renderTable() {
+    const clubOnly = refs.clubFilter?.value === 'only' || (state.filteredRows.length > 0 && state.filteredRows.every(isClubRow));
     if (!state.filteredRows.length) {
       refs.table.innerHTML = '<div class="table-wrap csm-table-wrap"><div class="report-empty">No encontré comprobantes para ese filtro.</div></div>';
       return;
@@ -257,9 +262,9 @@
               <th>Tipo</th>
               <th>Producto</th>
               <th>Fecha de acreditación</th>
-              <th>Facturación USD</th>
-              <th>Cash USD</th>
-              <th>Cash AR</th>
+              <th>${clubOnly ? 'Vendido ARS' : 'Vendido (Club ARS / resto USD)'}</th>
+              ${clubOnly ? '' : '<th>Cash USD (sin Club)</th>'}
+              <th>Cobrado ARS</th>
               <th>Estado</th>
               <th>GHL ID</th>
               <th>Acciones</th>
@@ -274,8 +279,8 @@
                 <td>${escapeHtml(row.tipo || '-')}</td>
                 <td>${escapeHtml(row.producto_format || '-')}</td>
                 <td>${escapeHtml(formatDate(row.f_acreditacion))}</td>
-                <td>${escapeHtml(row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-')}</td>
-                <td>${escapeHtml(resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-')}</td>
+                <td>${escapeHtml(isClubRow(row) ? formatCurrency(resolveCashAr(row), 'ARS') : (row.facturacion ? formatCurrency(row.facturacion, 'USD') : '-'))}</td>
+                ${clubOnly ? '' : `<td>${escapeHtml(isClubRow(row) ? '—' : (resolveCashUsd(row) ? formatCurrency(resolveCashUsd(row), 'USD') : '-'))}</td>`}
                 <td>${escapeHtml(resolveCashAr(row) ? formatCurrency(resolveCashAr(row), 'ARS') : '-')}</td>
                 <td>${escapeHtml(row.estado || 'No conciliado')}${row.nota_conciliacion ? `<p style="white-space:pre-wrap;max-width:280px"><strong>Nota de conciliación:</strong> ${escapeHtml(row.nota_conciliacion)}${row.nota_conciliacion_autor ? `<br><small>${escapeHtml(row.nota_conciliacion_autor)}</small>` : ''}</p>` : ''}${isBouncedRow(row) ? `<p style="white-space:pre-wrap;max-width:280px"><strong>Motivo:</strong> ${escapeHtml(row.motivo_rebote || 'Sin motivo registrado')}</p>` : ''}</td>
                 <td>${escapeHtml(row.ghlid || '-')}</td>

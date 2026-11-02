@@ -32,7 +32,7 @@ test('el área de Nahuel incluye sus ventas Club, su cash y su facturación pers
     month: '2026-09',
     locked: false,
     details: [
-      { transactionId: 'club-1', area: 'Comercial', person: 'Nahuel Iasci', role: 'Setter', category: 'Club', tipo: 'Venta', commissionAmount: 12000, baseAmount: 30000, cashUsd: 40, facturacionUsd: 40, counters: { agendas: 0 } },
+      { transactionId: 'club-1', area: 'Comercial', person: 'Nahuel Iasci', role: 'Setter', category: 'Club', tipo: 'Venta', commissionAmount: 12000, baseAmount: 30000, cashArs: 40000, grossArs: 40000, cashUsd: 40, facturacionUsd: 40, counters: { agendas: 0 } },
       { transactionId: 'meg-1', area: 'Comercial', person: 'Nahuel Iasci', role: 'Setter', category: 'MEG', tipo: 'Cobranza', commissionAmount: 4500, baseAmount: 100000, cashUsd: 100, facturacionUsd: 500, counters: { agendas: 2 } },
       { transactionId: 'team-1', area: 'Comercial', person: 'Claudio Nicolini', role: 'Closer', category: 'MEG', tipo: 'Venta', commissionAmount: 8000, baseAmount: 100000, cashUsd: 100, facturacionUsd: 200, counters: { agendas: 0 } }
     ]
@@ -44,8 +44,9 @@ test('el área de Nahuel incluye sus ventas Club, su cash y su facturación pers
   });
 
   assert.equal(result.summary.totalCommission, 16500);
-  assert.equal(result.summary.cashUsd, 140);
-  assert.equal(result.summary.facturacionUsd, 40);
+  assert.equal(result.summary.cashUsd, 100);
+  assert.equal(result.summary.cashArs, 40000);
+  assert.equal(result.summary.facturacionUsd, 0);
   assert.equal(result.summary.salesCount, 1);
   assert.equal(result.summary.clubSales, 1);
   assert.equal(result.details.some((detail) => detail.category === 'Club'), true);

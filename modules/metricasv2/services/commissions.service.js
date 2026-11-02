@@ -661,6 +661,7 @@ function selectClubBase(row) {
 }
 
 function selectFacturacionArs(row) {
+  if (isClubProduct(row.producto_format)) return selectCashArValue(row);
   const ars = safeNumber(row.facturacion_ars);
   if (ars > 0) return ars;
   const pesos = safeNumber(row.monto_pesos);
@@ -1754,6 +1755,10 @@ async function getCommissionPersonDetail(monthKey, person) {
 function personalNetFinancials(detail) {
   if (detail.isBonus) return detail;
   const grossCashArs = safeNumber(detail.grossArs ?? detail.cashArs);
+  if (isClubProduct(detail.product) || normalizeText(detail.category) === 'club') {
+    return { ...detail, cashArs: grossCashArs, facturacionArs: grossCashArs,
+      grossCashArs, cashUsd: null, facturacionUsd: null, grossCashUsd: null, grossFacturacionUsd: null };
+  }
   const deductionsArs = safeNumber(detail.totalDeductionsArs
     ?? (safeNumber(detail.ivaArs) + safeNumber(detail.iibbArs)
       + safeNumber(detail.paymentFeesArs ?? detail.externalCommissionsArs)));

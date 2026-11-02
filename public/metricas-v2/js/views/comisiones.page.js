@@ -279,17 +279,35 @@
     return (rows || []).reduce((sum, row) => sum + Number(row?.[fieldName] || 0), 0);
   }
 
+  function isClubDetail(detail) {
+    return normalizeText(detail?.category) === 'club' || normalizeText(detail?.product).includes('club');
+  }
+
+  function isClubOnlyView(rows) {
+    return state.clubFilter === 'only' || (rows.length > 0 && rows.every(isClubDetail));
+  }
+
+  function displayedCashArs(detail) {
+    return Number((isClubDetail(detail) ? (detail.grossArs ?? detail.grossCashArs ?? detail.cashArs) : detail.cashArs) || 0);
+  }
+
+  function displayedSalesArs(detail) {
+    return isClubDetail(detail) ? displayedCashArs(detail) : Number(detail.facturacionArs || 0);
+  }
+
   function buildComprobantesFooterRow(rows) {
     const visibleRows = rows || [];
+    const clubOnly = isClubOnlyView(visibleRows);
+    const usdRows = visibleRows.filter(detail => !isClubDetail(detail));
     return `
       <tfoot>
         <tr class="comisiones-detail-total-row">
           <td colspan="9">Totales visibles (${escapeHtml(formatInteger(visibleRows.length))})</td>
-          <td>${formatCurrency(sumDetailRows(visibleRows, 'cashArs'))}</td>
-          <td>${formatUsd(sumDetailRows(visibleRows, 'cashUsd'))}</td>
-          <td>${formatUsd(sumDetailRows(visibleRows, 'facturacionUsd'))}</td>
+          <td>${formatCurrency(visibleRows.reduce((sum, detail) => sum + displayedSalesArs(detail), 0))}</td>
+          <td>${formatCurrency(visibleRows.reduce((sum, detail) => sum + displayedCashArs(detail), 0))}</td>
+          ${clubOnly ? '' : `<td>${formatUsd(sumDetailRows(usdRows, 'cashUsd'))}</td><td>${formatUsd(sumDetailRows(usdRows, 'facturacionUsd'))}</td>`}
           <td></td>
-          <td></td>
+          ${clubOnly ? '' : '<td></td>'}
           <td></td>
           <td></td>
           <td>${formatCurrency(sumDetailRows(visibleRows, 'ivaArs'))}</td>
@@ -316,7 +334,8 @@
       case 'paymentMethod': return normalizeText(detail?.paymentMethod);
       case 'clientName': return normalizeText(detail?.clientName);
       case 'closer': return normalizeText(detail?.closer);
-      case 'cashArs': return Number(detail?.cashArs || 0);
+      case 'cashArs': return displayedCashArs(detail);
+      case 'facturacionArs': return displayedSalesArs(detail);
       case 'cashUsd': return Number(detail?.cashUsd || 0);
       case 'facturacionUsd': return Number(detail?.facturacionUsd || 0);
       case 'commissionPct': return Number(detail?.commissionPct || 0);
@@ -1191,13 +1210,14 @@
       state.agendaRows.filter((row) => isNahuelSetter(row.setter) && row.commissionQualified).length
     );
     const uniqueTransactionRows = [...uniqueTransactions.values()];
+    const clubOnly = isClubOnlyView(uniqueTransactionRows);
     const totalFacturacionUsd = uniqueTransactionRows
-      .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
+      .filter((detail) => !isClubDetail(detail) && String(detail.tipo || '').trim().toLowerCase() === 'venta')
       .reduce((sum, detail) => sum + Number(detail.facturacionUsd || 0), 0);
     const totalFacturacionArs = uniqueTransactionRows
       .filter((detail) => String(detail.tipo || '').trim().toLowerCase() === 'venta')
       .reduce((sum, detail) => sum + Number(detail.facturacionArs || 0), 0);
-    const totalCashUsd = uniqueTransactionRows.reduce((sum, detail) => sum + Number(detail.cashUsd || 0), 0);
+    const totalCashUsd = uniqueTransactionRows.filter(detail => !isClubDetail(detail)).reduce((sum, detail) => sum + Number(detail.cashUsd || 0), 0);
     const totalCashArs = uniqueTransactionRows.reduce((sum, detail) => sum + Number(detail.cashArs || 0), 0);
 
     node.innerHTML = `
@@ -1228,12 +1248,12 @@
                 </article>
                 <article class="comisiones-overview-kpi is-agendas">
                   <span>Facturación</span>
-                  <strong>${formatUsd(totalFacturacionUsd)}</strong>
+                  <strong>${clubOnly ? formatCurrency(totalFacturacionArs) : formatUsd(totalFacturacionUsd)}</strong>
                   <p>${formatCurrency(totalFacturacionArs)} total facturado</p>
                 </article>
                 <article class="comisiones-overview-kpi is-meg">
                   <span>Cash Collected</span>
-                  <strong>${formatUsd(totalCashUsd)}</strong>
+                  <strong>${clubOnly ? formatCurrency(totalCashArs) : formatUsd(totalCashUsd)}</strong>
                   <p>${formatCurrency(totalCashArs)} cash del mes</p>
                 </article>
                 <article class="comisiones-overview-kpi is-agendas">
@@ -1396,6 +1416,7 @@
       : allDetails.filter((row) => normalizeText(row.closer) === normalizeText(state.selectedPerson));
     const displayDetails = buildDisplayComprobanteRows(details, true);
     const sortedDisplayDetails = sortComprobanteRows(displayDetails);
+    const clubOnly = isClubOnlyView(displayDetails);
     const uniqueTransactionCount = new Set(details.map((detail) => String(detail.transactionId || '').trim()).filter(Boolean)).size || displayDetails.length;
 
     if (isAllView) {
@@ -1448,16 +1469,16 @@
               <th>${renderComprobanteSortHeader('Medio de pago', 'paymentMethod')}</th>
               <th>${renderComprobanteSortHeader('Nombre cliente', 'clientName')}</th>
               <th>${renderComprobanteSortHeader('Responsable venta', 'closer')}</th>
-              <th>${renderComprobanteSortHeader('Cash neto AR', 'cashArs')}</th>
-              <th>${renderComprobanteSortHeader('Cash neto USD', 'cashUsd')}</th>
-              <th>${renderComprobanteSortHeader('Facturación USD', 'facturacionUsd')}</th>
+              <th>${renderComprobanteSortHeader('Vendido ARS', 'facturacionArs')}</th>
+              <th>${renderComprobanteSortHeader('Cobrado ARS', 'cashArs')}</th>
+              ${clubOnly ? '' : `<th>${renderComprobanteSortHeader('Cash neto USD (sin Club)', 'cashUsd')}</th><th>${renderComprobanteSortHeader('Facturación USD (sin Club)', 'facturacionUsd')}</th>`}
               <th>${renderComprobanteSortHeader('Porcentaje', 'commissionPct')}</th>
-              <th>${renderComprobanteSortHeader('TC', 'tc')}</th>
+              ${clubOnly ? '' : `<th>${renderComprobanteSortHeader('TC', 'tc')}</th>`}
               <th>${renderComprobanteSortHeader('Primer origen', 'firstOrigin')}</th>
               <th>${renderComprobanteSortHeader('Origen actual', 'origin')}</th>
-              <th>${renderComprobanteSortHeader('IVA', 'ivaArs')}</th>
-              <th>${renderComprobanteSortHeader('Comisiones', 'externalCommissionsArs')}</th>
-              <th>${renderComprobanteSortHeader('Total neto', 'netTotalArs')}</th>
+              <th>${renderComprobanteSortHeader('IVA ARS', 'ivaArs')}</th>
+              <th>${renderComprobanteSortHeader('Comisiones medio de pago ARS', 'externalCommissionsArs')}</th>
+              <th>${renderComprobanteSortHeader('Monto comisionable ARS', 'netTotalArs')}</th>
               <th>${renderComprobanteSortHeader('Comisión final ARS', 'commissionAmount')}</th>
               <th>${renderComprobanteSortHeader('Setter', 'setter')}</th>
               <th>${renderComprobanteSortHeader('% Setter', 'setterPct')}</th>
@@ -1481,11 +1502,11 @@
                   <td>${escapeHtml(formatDetailText(detail.paymentMethod))}</td>
                   <td>${escapeHtml(formatDetailText(detail.clientName))}</td>
                   <td>${escapeHtml(formatDetailText(detail.closer))}</td>
-                  <td>${formatDetailCurrency(detail.cashArs)}</td>
-                  <td>${formatDetailUsd(detail.cashUsd)}</td>
-                  <td>${formatDetailUsd(detail.facturacionUsd)}</td>
+                  <td>${formatDetailCurrency(displayedSalesArs(detail))}</td>
+                  <td>${formatDetailCurrency(displayedCashArs(detail))}</td>
+                  ${clubOnly ? '' : `<td>${isClubDetail(detail) ? '—' : formatDetailUsd(detail.cashUsd)}</td><td>${isClubDetail(detail) ? '—' : formatDetailUsd(detail.facturacionUsd)}</td>`}
                   <td>${formatDetailPercent(detail.commissionPct)}</td>
-                  <td>${formatDetailCurrency(detail.tc)}</td>
+                  ${clubOnly ? '' : `<td>${isClubDetail(detail) ? '—' : formatDetailCurrency(detail.tc)}</td>`}
                   <td>${escapeHtml(formatDetailText(detail.firstOrigin))}</td>
                   <td>${escapeHtml(formatDetailText(detail.origin))}</td>
                   <td>${formatDetailCurrency(detail.ivaArs)}</td>
@@ -1498,7 +1519,7 @@
                   <td>${notionUrl ? `<a class="comisiones-external-link" href="${escapeHtml(notionUrl)}" target="_blank" rel="noreferrer">${escapeHtml(detail.transactionId || '')}</a>` : ''}</td>
                 </tr>
               `;
-            }).join('') : `<tr><td colspan="24">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
+            }).join('') : `<tr><td colspan="${clubOnly ? 22 : 25}">${isAllView ? 'No hay comprobantes para este mes.' : 'No hay transacciones para esta persona.'}</td></tr>`}
           </tbody>
           ${buildComprobantesFooterRow(sortedDisplayDetails)}
         </table>
