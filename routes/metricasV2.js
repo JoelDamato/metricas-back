@@ -42,6 +42,7 @@ router.get('/diagnosticos/clientes-csm', controller.listDiagnosticoClients);
 router.post('/diagnosticos', controller.createDiagnostico);
 router.patch('/diagnosticos/:id', controller.updateDiagnostico);
 router.delete('/diagnosticos/:id', controller.deleteDiagnostico);
+router.use('/commission-sale-overrides', require('../modules/metricasv2/services/commission-sale-overrides.service').createRouter());
 router.get('/commissions/dashboard', controller.getCommissionsDashboard);
 router.get('/commissions/person', controller.getCommissionPersonDetail);
 router.get('/commercial-area', controller.getMyCommercialArea);

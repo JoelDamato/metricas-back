@@ -2418,6 +2418,7 @@ async function listMyComprobantes(user, options = {}) {
     return {
       responsibleName: '',
       canViewAll: allowAll,
+    canManageSaleCommissions: canEditOthersComprobantes(user),
       canViewBySetter: false,
       selectedResponsible: requestedResponsible || '',
       rows: []

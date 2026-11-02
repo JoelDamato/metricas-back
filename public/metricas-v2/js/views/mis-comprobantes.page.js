@@ -5,6 +5,7 @@
   const state = {
     ownerName: '',
     canViewAll: false,
+    canManageSaleCommissions: false,
     canViewBySetter: false,
     scope: 'mine',
     reconciliation: 'all',
@@ -232,6 +233,9 @@
     }
     if (row.canEdit === true || row.canManage === true) {
       actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-edit-comprobante="${escapeHtml(row.id)}">${row.canManage === true ? 'Editar / borrar' : 'Editar'}</button>`);
+    }
+    if (state.canManageSaleCommissions && ['venta', 'cobranza'].includes(String(row.tipo).toLowerCase())) {
+      actions.push(`<button type="button" class="mis-comprobantes-manage-button" data-sale-commission="${escapeHtml(row.id)}">Comisión especial</button>`);
     }
     return actions.length ? actions.join(' ') : '<span class="mis-comprobantes-readonly">—</span>';
   }
@@ -475,6 +479,7 @@
       });
       state.ownerName = String(response?.responsibleName || '').trim();
       state.canViewAll = response?.canViewAll === true;
+      state.canManageSaleCommissions = response?.canManageSaleCommissions === true;
       state.canViewBySetter = response?.canViewBySetter === true;
       if (!state.canViewBySetter) state.scope = 'mine';
       state.selectedResponsible = String(response?.selectedResponsible || '').trim();

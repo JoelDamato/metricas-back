@@ -1,3 +1,4 @@
+const saleOverrides = require('./commission-sale-overrides.service');
 const {isOwner,buildOwnerOverview}=require('./owner-overview');
 const { validateConfig } = require('./commission-config-validation');
 const settlements = require('../../settlements/service');
@@ -1116,7 +1117,7 @@ function resolveNahuelClubRule(row, saleNumber) {
   };
 }
 
-function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [] }) {
+function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [], commissionOverrides = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase()));
   const activeRows = config.global.includeOnlyVerified
@@ -1469,7 +1470,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     });
   });
 
-  return details.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || a.person.localeCompare(b.person, 'es'));
+  return saleOverrides.applyOverrides(details, normalizedRows, commissionOverrides).sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')) || a.person.localeCompare(b.person, 'es'));
 }
 
 function summarizeDetails(details) {
@@ -1685,14 +1686,15 @@ async function lockCommissionMonth(monthKey, user) {
 
 async function buildCommissionDashboard(monthKey, options = {}) {
   const safeMonth = normalizeMonthKey(monthKey);
-  const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows, movementRows] = await Promise.all([
+  const [{ config, locked }, rawComprobantesRows, settersRows, agendaRows, movementRows, commissionOverrides] = await Promise.all([
     getCommissionConfig(safeMonth),
     fetchComprobantesRowsForCommissions(),
     fetchAllRows('setters', {
       select: 'anio,mes,setter,agendo,venta_club'
     }),
     fetchAgendaRowsForCommissions(safeMonth),
-    settlements.list(safeMonth)
+    settlements.list(safeMonth),
+    fetchAllRows('commission_sale_overrides', { select: 'sale_id,closer_pct,setter_pct,reason' })
   ]);
   const originLeadRows = await fetchOriginLeadRowsForComprobantes(rawComprobantesRows);
   const comprobantesRows = enrichComprobanteOrigins(rawComprobantesRows, originLeadRows);
@@ -1701,7 +1703,8 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     config,
     comprobantesRows,
     settersRows,
-    agendaRows
+    agendaRows,
+    commissionOverrides
   });
 
   const details = [...calculatedDetails.filter(d=>!d.isBonus),...settlements.approvedBonusDetails(movementRows)];
