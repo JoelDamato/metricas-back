@@ -1,4 +1,4 @@
-const { webinarAgendaCounts, webinarPct, buildWebinarSummary } = require('./webinar-commissions');
+const { webinarSoldAgendaCounts, webinarPct, buildWebinarSummary } = require('./webinar-commissions');
 const { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, retryRead } = require('./webinar-setter.service');
 const saleOverrides = require('./commission-sale-overrides.service');
 const {isOwner,buildOwnerOverview}=require('./owner-overview');
@@ -1138,7 +1138,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     ? monthRows.filter((row) => row.verified_for_commissions)
     : monthRows;
 
-  const webinarCounts = webinarAgendaCounts(agendaRows, monthKey);
+  const webinarCounts = webinarSoldAgendaCounts(activeRows);
   const liveAgendaCountMap = buildLiveAgendaCountMap(agendaRows, monthKey);
   for (const row of agendaRows) {
     const key = normalizeText(titleCaseName(row.setter));
@@ -1300,7 +1300,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
         cashUsd: row.cash_usd, cashArs: row.cash_collected_ars, ...buildDetailFinancials(row),
         baseAmount, commissionPct: pct, commissionAmount: baseAmount * (pct || 0),
         pendingCommission: pct === null, bonusUsd: 0, bonusArs: 0, isBonus: false,
-        sourceRule: agendas <= 11 ? 'Setters Webinar: 0 a 11 agendas, 3%' : 'Setters Webinar: desde 12 agendas, 3,5%',
+        sourceRule: agendas <= 11 ? 'Setters Webinar: 0 a 11 agendas vendidas, 3%' : 'Setters Webinar: desde 12 agendas vendidas, 3,5%',
         counters: { agendas, clubSalesSequential: 0 }
       });
       return;
@@ -1781,7 +1781,7 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     config,
     ...summary,
     marketingArea,
-    webinarSetters: buildWebinarSummary(details, enrichComprobanteOrigins(agendaRows, originLeadRows), safeMonth),
+    webinarSetters: buildWebinarSummary(details),
     bonusCandidates: calculatedDetails.filter(d=>d.isBonus),
     movementRows,
     areaCommissions: buildAreaCommissionData(details, marketingArea, comprobantesRows, safeMonth, config),

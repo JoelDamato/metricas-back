@@ -1937,8 +1937,8 @@
     const details = (state.dashboard?.details || []).filter(row => row.sector === 'webinar');
     document.getElementById('commissionWebinarPanel').innerHTML = `
       <section class="card"><h2>Setters Webinar</h2>
-        <p>Agendas del mes según la fecha de agendamiento registrada · De 0 a 11 agendas: 3%. Desde 12 agendas: 3,5% sobre el monto comisionable. Nahuel conserva sus reglas habituales.</p>
-        <div class="table-wrap"><table><thead><tr><th>Setter</th><th>Agendas</th><th>%</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
+        <p>Agendas vendidas del mes · Hasta 11: 3%. Desde 12: 3,5% sobre el monto comisionable. Las cobranzas no suman ventas nuevas. Nahuel conserva sus reglas habituales.</p>
+        <div class="table-wrap"><table><thead><tr><th>Setter</th><th>Agendas vendidas</th><th>% comisión</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
         <tbody>${people.map(person => `<tr><td>${escapeHtml(person.person)}</td><td>${formatInteger(person.agendas)}</td><td>${person.pct === null ? 'Pendiente de definir' : formatPercent(person.pct)}</td><td>${formatCurrency(person.cashArs)}</td><td>${person.pending ? 'Pendiente de definir' : formatCurrency(person.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="5">Sin movimientos webinar este mes.</td></tr>'}</tbody></table></div>
         <h3>Detalle de ventas y cobranzas</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Setter</th><th>Tipo</th><th>Producto</th><th>Monto comisionable</th><th>%</th><th>Comisión</th></tr></thead>
         <tbody>${details.map(row => `<tr><td>${escapeHtml(row.clientName)}</td><td>${escapeHtml(row.person)}</td><td>${escapeHtml(row.tipo)}</td><td>${escapeHtml(row.product)}</td><td>${formatCurrency(row.baseAmount)}</td><td>${row.pendingCommission ? 'Pendiente' : formatPercent(row.commissionPct)}</td><td>${row.pendingCommission ? 'Pendiente' : formatCurrency(row.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="7">Sin ventas ni cobranzas conciliadas.</td></tr>'}</tbody></table></div>

@@ -74,16 +74,25 @@ test('el histórico Club personal tampoco incluye leads de otro setter webinar',
  assert.equal(months[9].sales,1);
 });
 
-test('sector Webinar: 11 agendas al 3%, 12 al 3,5%; sin doble asignación ni Nahuel',()=>{
- const agendas=Array.from({length:12},(_,i)=>({id:`a${i}`,ghlid:`g${i}`,fecha_agenda:'2026-10-28',agendo:'Agendo',origen_actual:'Webinar',setter:'Nahuel Iasci',webinarSetters:['Brenda Damato']}));
- const rows=[{...base,id:'brenda',webinarSetters:['Brenda Damato']},{...base,id:'nahuel',webinarSetters:['Nahuel Iasci']}];
- const build=a=>buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,agendaRows:a,settersRows:[]});
+test('sector Webinar: sólo agendas vendidas, 11 al 3% y 12 al 3,5%; sin contar cobranzas ni agendas sin venta',()=>{
+ const sales=Array.from({length:12},(_,i)=>({...base,id:`sale${i}`,ghlid:`g${i}`,webinarSetters:['Brenda Damato']}));
+ const agendas=Array.from({length:50},(_,i)=>({id:`agenda${i}`,fecha_agenda:'2026-10-28',agendo:'Agendo',webinarSetters:['Brenda Damato']}));
  for(const [count,pct] of [[11,.03],[12,.035]]){
-  const details=build(agendas.slice(0,count)),webinar=details.filter(d=>d.sector==='webinar');
-  assert.equal(webinar.length,1);assert.equal(webinar[0].person,'Brenda Damato');assert.equal(webinar[0].commissionPct,pct);assert.equal(webinar[0].commissionAmount,webinar[0].baseAmount*pct);
-  assert.equal(details.filter(d=>d.transactionId==='brenda'&&d.role==='Setter').length,1);
+  const rows=[...sales.slice(0,count),{...base,id:'payment',ghlid:'g0',tipo:'Cobranza',webinarSetters:['Brenda Damato']},{...base,id:'nahuel',webinarSetters:['Nahuel Iasci']}];
+  const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,agendaRows:agendas,settersRows:[]});
+  const webinar=details.filter(d=>d.sector==='webinar');
+  assert.equal(webinar.length,count+1);
+  assert(webinar.every(d=>d.commissionPct===pct&&d.counters.agendas===count));
   assert.equal(details.find(d=>d.transactionId==='nahuel'&&d.role==='Setter').commissionPct,.045);
  }
+});
+test('el resumen webinar omite setters sin ventas ni cobranzas y cuenta a Juan Pablo sin fecha de agenda',()=>{
+ const {buildWebinarSummary,webinarSoldAgendaCounts}=require('../modules/metricasv2/services/webinar-commissions');
+ const rows=[{...base,id:'juan',ghlid:'juan',webinarSetters:['Brenda Damato']},{...base,id:'second',ghlid:'juan',webinarSetters:['Brenda Damato']}];
+ assert.equal(webinarSoldAgendaCounts(rows).get('brenda damato').agendas,1);
+ const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,agendaRows:[{fecha_agenda:'2026-10-28',agendo:'Agendo',webinarSetters:['Otra Setter']}],settersRows:[]});
+ const summary=buildWebinarSummary(details);
+ assert.equal(summary.length,1);assert.equal(summary[0].person,'Brenda Damato');assert.equal(summary[0].agendas,1);
 });
 test('Webinar: cobra cada acreditación del mes y respeta el porcentaje especial de la venta',()=>{
  const sale='10000000-0000-4000-8000-000000000004';
