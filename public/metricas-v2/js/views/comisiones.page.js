@@ -1071,6 +1071,20 @@
     document.getElementById('commissionSettingDetailPopupClose')?.addEventListener('click', close);
   }
 
+  function getSetterSummaryPct(person, agendas, fallback) {
+    const webinar = state.dashboard?.webinarSetters?.find(row => normalizeText(row.person) === normalizeText(person));
+    if (webinar) return webinar.pct;
+    if (!isNahuelSetter(person) || !state.dashboard?.config) return fallback;
+    const config = state.dashboard.config;
+    const fixed = (config.setterFixedOverrides || []).find(row => row.enabled && normalizeText(row.person) === normalizeText(person));
+    if (fixed) return Number(fixed.pct);
+    let pct = Number(config.global?.minimumSetterPct ?? fallback);
+    [...(config.agendaScale || [])].sort((a,b) => Number(a.min) - Number(b.min)).forEach(tier => {
+      if (agendas >= Number(tier.min)) pct = Number(tier.pct);
+    });
+    return pct;
+  }
+
   function buildSheetRows(details) {
     const rowsMap = new Map();
 
@@ -1163,6 +1177,7 @@
     });
 
     rowsMap.forEach((row) => {
+      if (row.hasSetterRole) row.settingPct = getSetterSummaryPct(row.person, row.agendas, row.settingPct);
       if (row.hasCloserRole) {
         row.type = 'closers';
         row.role = 'Closers';
@@ -1354,7 +1369,7 @@
                       <td>${formatSheetInteger(row.ventasClub)}</td>
                       <td>${renderSettingCountButton(row.person, row.ventasSetting) || formatSheetInteger(row.ventasSetting)}</td>
                       <td>${isNahuelSetter(row.person) ? buildAgendaCountButton(row.person, row.agendas) : ""}</td>
-                      <td>${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
+                      <td title="Porcentaje general del mes. Cada comprobante conserva su regla o porcentaje especial.">${row.settingPct !== null ? formatSheetPercent(row.settingPct) : ''}</td>
                       <td>${formatSheetCurrency(row.facturacion)}</td>
                       <td>${formatSheetCurrency(row.cc)}</td>
                       <td>${formatSheetCurrency(row.comisionMegArs)}</td>
