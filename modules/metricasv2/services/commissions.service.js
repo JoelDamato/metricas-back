@@ -396,7 +396,7 @@ function extractWebinarSetters(fields = {}) {
   const names = [];
   for (const [key, field] of Object.entries(fields || {})) {
     const label = normalizeText(field?.label || key);
-    if (!label.includes('webinar') || !label.includes('setter') || /turno|whatsapp|asesor|telefono/.test(label)) continue;
+    if (!label.includes('webinar') || !/setter|setting/.test(label) || /turno|whatsapp|asesor|telefono/.test(label)) continue;
     const value = field?.value;
     for (const name of Array.isArray(value) ? value : [value]) {
       if (typeof name === 'string' && name.trim()) names.push(name.trim());
@@ -1135,6 +1135,13 @@ function resolveNahuelClubRule(row, saleNumber) {
 
 function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRows, agendaRows = [], commissionOverrides = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
+  const webinarSaleIndex = buildHistoricalSaleIndex(normalizedRows);
+  for (const row of normalizedRows) {
+    const inherited = normalizeText(row.tipo) === 'cobranza' ? findRelatedSale(row, webinarSaleIndex)?.webinarSetters : null;
+    const webinarSetters = row.webinarSetters?.length ? row.webinarSetters : (inherited || []);
+    row.webinarSetters = webinarSetters;
+    if (webinarSetters.length && webinarSetters.every(isNahuelSetter)) row.setter = 'Nahuel Iasci';
+  }
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase()));
   const activeRows = config.global.includeOnlyVerified
     ? monthRows.filter((row) => row.verified_for_commissions)

@@ -1286,7 +1286,7 @@
                     <th>Integrante</th>
                     <th>Meg</th>
                     <th>Club</th>
-                    <th>Setting</th>
+                    <th title="Para Nahuel también se incluyen sus asignaciones de Setting / Setter webinar.">Setting</th>
                     <th>Agendas</th>
                     <th>% Setting</th>
                     <th>Facturacion</th>

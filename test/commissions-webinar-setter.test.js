@@ -8,6 +8,7 @@ test('lee Setter webinar sin confundirlo con el turno o asesor de WhatsApp',()=>
  assert.deepEqual(extractWebinarSetters({'Setter':{value:'Nahuel Iasci'},'Webinar 28/10 Setter':{value:'Valentina Suarez'},'Webinar 28/10 - Turno setter':{value:'3'},'Webinar WhatsApp asesor':{value:'Nahuel Iasci'}}),['Valentina Suarez']);
  assert.deepEqual(extractWebinarSetters({abc:{label:'Setter Webinar',value:' Nahuel Iasci '}}),['Nahuel Iasci']);
  assert.deepEqual(extractWebinarSetters({'Webinar 28/10 Setter':{value:''}}),[]);
+ assert.deepEqual(extractWebinarSetters({setting:{label:'Setting webinar',value:'Nahuel Iasci'}}),['Nahuel Iasci']);
 });
 test('Nahuel sólo cobra setting cuando el setter webinar está vacío o es él; closer sigue igual',()=>{
  const rows=[{...base,id:'foreign',ghlid:'foreign'},{...base,id:'own',ghlid:'own',origen_actual:'Webinar'},{...base,id:'empty',ghlid:'empty'}];
@@ -27,4 +28,27 @@ test('una venta Club de otro setter webinar no cuenta en la escalera Club de Nah
  assert.equal(details.length,1);
  assert.equal(details[0].counters.clubSalesSequential,1);
  assert.equal(details[0].commissionPct,.5);
+});
+
+
+test('asigna a Nahuel el setting webinar aunque el setter común esté vacío o sea otro, sin duplicarlo',()=>{
+ const details=run([
+  {...base,id:'empty',setter:'',origen_actual:'Webinar',webinarSetters:['Nahuel Iasci']},
+  {...base,id:'other',setter:'Otro Setter',origen_actual:'Webinar',webinarSetters:['Nahuel Iasci']},
+  {...base,id:'same',setter:'Nahuel Iasci',webinarSetters:['Nahuel']},
+  {...base,id:'foreign',setter:'Nahuel Iasci',webinarSetters:['Otra persona']}
+ ]);
+ const setting=details.filter(d=>d.role==='Setter');
+ assert.deepEqual(setting.map(d=>d.transactionId).sort(),['empty','other','same']);
+ assert(setting.every(d=>d.person==='Nahuel Iasci'&&d.commissionAmount===d.baseAmount*d.commissionPct));
+ assert.equal(details.filter(d=>d.role==='Closer').length,4);
+});
+
+test('la cobranza hereda el setter webinar de la venta y conserva el porcentaje especial',()=>{
+ const saleId='10000000-0000-4000-8000-000000000001';
+ const rows=[{...base,id:saleId,cliente:'client',setter:'',webinarSetters:['Nahuel Iasci']},{...base,id:'payment',cliente:'client',tipo:'Cobranza',setter:'',origen_actual:'Webinar',venta_relacionada:saleId}];
+ const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,settersRows:[],commissionOverrides:[{sale_id:saleId,setter_pct:.07}]});
+ const setting=details.filter(d=>d.role==='Setter');
+ assert.equal(setting.length,2);
+ assert(setting.every(d=>d.person==='Nahuel Iasci'&&d.commissionPct===.07));
 });
