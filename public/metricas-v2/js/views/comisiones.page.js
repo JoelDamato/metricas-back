@@ -540,6 +540,8 @@
   }
 
   function getAgendaRowsCountForPerson(person) {
+    const webinar = state.dashboard?.webinarSetters?.find(row => normalizeText(row.person) === normalizeText(person));
+    if (webinar) return webinar.agendas;
     const normalizedPerson = normalizeText(person);
     if (!normalizedPerson) return 0;
     return state.agendaRows.filter((row) => normalizeText(row.setter) === normalizedPerson && row.commissionQualified).length;
@@ -1921,22 +1923,26 @@
     renderRulesEditor();
   }
 
-  async function loadAgendaRows() {
+  function loadAgendaRows(rows) {
     const { from, to } = getMonthRange(state.month);
-    const fetchTo = addDays(to, 1) || to;
-    const response = await window.metricasApi.fetchAllRows('leads_raw', {
-      select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,primer_origen,origen_actual,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
-      from,
-      to: fetchTo,
-      dateField: 'fecha_agenda',
-      orderBy: 'fecha_agenda',
-      orderDir: 'desc'
-    });
-    state.agendaRows = normalizeAgendaRows(response.rows || [], { from, to });
+    state.agendaRows = normalizeAgendaRows(rows || [], { from, to });
     state.agendaFilters.from = from;
     state.agendaFilters.to = to;
     syncAgendaFilterControls();
     renderAgendaPanel();
+  }
+
+  function renderWebinarPanel() {
+    const people = state.dashboard?.webinarSetters || [];
+    const details = (state.dashboard?.details || []).filter(row => row.sector === 'webinar');
+    document.getElementById('commissionWebinarPanel').innerHTML = `
+      <section class="card"><h2>Setters Webinar</h2>
+        <p>Agendas del mes según la fecha de agendamiento registrada · De 0 a 11 agendas: 3%. Desde 12 agendas: 3,5% sobre el monto comisionable. Nahuel conserva sus reglas habituales.</p>
+        <div class="table-wrap"><table><thead><tr><th>Setter</th><th>Agendas</th><th>%</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
+        <tbody>${people.map(person => `<tr><td>${escapeHtml(person.person)}</td><td>${formatInteger(person.agendas)}</td><td>${person.pct === null ? 'Pendiente de definir' : formatPercent(person.pct)}</td><td>${formatCurrency(person.cashArs)}</td><td>${person.pending ? 'Pendiente de definir' : formatCurrency(person.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="5">Sin movimientos webinar este mes.</td></tr>'}</tbody></table></div>
+        <h3>Detalle de ventas y cobranzas</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Setter</th><th>Tipo</th><th>Producto</th><th>Monto comisionable</th><th>%</th><th>Comisión</th></tr></thead>
+        <tbody>${details.map(row => `<tr><td>${escapeHtml(row.clientName)}</td><td>${escapeHtml(row.person)}</td><td>${escapeHtml(row.tipo)}</td><td>${escapeHtml(row.product)}</td><td>${formatCurrency(row.baseAmount)}</td><td>${row.pendingCommission ? 'Pendiente' : formatPercent(row.commissionPct)}</td><td>${row.pendingCommission ? 'Pendiente' : formatCurrency(row.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="7">Sin ventas ni cobranzas conciliadas.</td></tr>'}</tbody></table></div>
+      </section>`;
   }
 
   function refreshCommissionViews() {
@@ -1964,17 +1970,31 @@
     const response = await window.metricasApi.fetchCommissionsDashboard(requestedMonth);
     if (requestedMonth !== state.month) return;
     state.dashboard = response;
+    renderWebinarPanel();
+    loadAgendaRows(response.agendaRows);
     refreshCommissionViews();
     if (state.rulesDraft) renderRulesEditor();
     updateCommissionsStatus();
   }
 
+  const pendingPageLoads = new Map();
   async function loadPage() {
+    const month = state.month;
+    if (pendingPageLoads.has(month)) return pendingPageLoads.get(month);
+    const pending = loadPageForMonth(month);
+    pendingPageLoads.set(month, pending);
+    try { await pending; } finally { pendingPageLoads.delete(month); }
+  }
+
+  async function loadPageForMonth(month) {
     try {
-      await Promise.all([loadDashboard(), loadRulesConfig(), loadAgendaRows()]);
+      await Promise.all([loadDashboard(), loadRulesConfig().catch(error => {
+        if (state.month !== month) return;
+        document.getElementById('commissionRulesFeedback').textContent = error.message || 'No pude cargar la configuración.';
+      })]);
     } catch (error) {
       console.error(error);
-      setStatus(error.message || 'No pude cargar las comisiones.');
+      if (state.month === month) setStatus(error.message || 'No pude cargar las comisiones.');
     }
   }
 

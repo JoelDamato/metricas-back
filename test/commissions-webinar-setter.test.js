@@ -14,17 +14,17 @@ test('Nahuel sólo cobra setting cuando el setter webinar está vacío o es él;
  const rows=[{...base,id:'foreign',ghlid:'foreign'},{...base,id:'own',ghlid:'own',origen_actual:'Webinar'},{...base,id:'empty',ghlid:'empty'}];
  const enriched=enrichComprobanteOrigins(rows,[{ghlid:'foreign',webinarSetters:['Valentina Suarez']},{ghlid:'own',webinarSetters:['Nahuel Iasci']},{ghlid:'empty',webinarSetters:[]}]);
  const details=run(enriched);
- assert.deepEqual(details.filter(d=>d.role==='Setter').map(d=>d.transactionId).sort(),['empty','own']);
+ assert.deepEqual(details.filter(d=>d.role==='Setter'&&d.person==='Nahuel Iasci').map(d=>d.transactionId).sort(),['empty','own']);
  assert.equal(details.filter(d=>d.role==='Closer').length,3);
 });
 test('las cobranzas heredan la exclusión de la venta vinculada cuando falta el contacto',()=>{
  const details=run([{...base,id:'sale',webinarSetters:['Otra persona']},{...base,id:'payment',tipo:'Cobranza',venta_relacionada:'sale',webinarSetters:[]}]);
- assert.equal(details.filter(d=>d.role==='Setter').length,0);
+ assert.equal(details.filter(d=>d.role==='Setter'&&d.person==='Nahuel Iasci').length,0);
  assert.equal(details.filter(d=>d.role==='Closer').length,2);
 });
 test('una venta Club de otro setter webinar no cuenta en la escalera Club de Nahuel',()=>{
  const rows=Array.from({length:6},(_,i)=>({...base,id:`club-${i}`,producto_format:'Club',medios_de_pago:'Mercado Pago',webinarSetters:i<5?['Otra persona']:['Nahuel Iasci']}));
- const details=run(rows).filter(d=>d.role==='Setter');
+ const details=run(rows).filter(d=>d.role==='Setter'&&d.person==='Nahuel Iasci');
  assert.equal(details.length,1);
  assert.equal(details[0].counters.clubSalesSequential,1);
  assert.equal(details[0].commissionPct,.5);
@@ -38,7 +38,7 @@ test('asigna a Nahuel el setting webinar aunque el setter común esté vacío o 
   {...base,id:'same',setter:'Nahuel Iasci',webinarSetters:['Nahuel']},
   {...base,id:'foreign',setter:'Nahuel Iasci',webinarSetters:['Otra persona']}
  ]);
- const setting=details.filter(d=>d.role==='Setter');
+ const setting=details.filter(d=>d.role==='Setter'&&d.person==='Nahuel Iasci');
  assert.deepEqual(setting.map(d=>d.transactionId).sort(),['empty','other','same']);
  assert(setting.every(d=>d.person==='Nahuel Iasci'&&d.commissionAmount===d.baseAmount*d.commissionPct));
  assert.equal(details.filter(d=>d.role==='Closer').length,4);
@@ -48,7 +48,46 @@ test('la cobranza hereda el setter webinar de la venta y conserva el porcentaje 
  const saleId='10000000-0000-4000-8000-000000000001';
  const rows=[{...base,id:saleId,cliente:'client',setter:'',webinarSetters:['Nahuel Iasci']},{...base,id:'payment',cliente:'client',tipo:'Cobranza',setter:'',origen_actual:'Webinar',venta_relacionada:saleId}];
  const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,settersRows:[],commissionOverrides:[{sale_id:saleId,setter_pct:.07}]});
- const setting=details.filter(d=>d.role==='Setter');
+ const setting=details.filter(d=>d.role==='Setter'&&d.person==='Nahuel Iasci');
  assert.equal(setting.length,2);
  assert(setting.every(d=>d.person==='Nahuel Iasci'&&d.commissionPct===.07));
+});
+
+test('la agenda de Brenda no cuenta para Nahuel y elimina el contador histórico residual',()=>{
+ const agenda={setter:'Nahuel Iasci',fecha_agenda:'2026-10-28',agendo:'Agendo',aplica:'Aplica',origen_actual:'APSET',webinarSetters:['Brenda Damato']};
+ const counts=service._test.buildLiveAgendaCountMap([agenda],'2026-10');
+ assert.equal(counts.has('nahuel iasci'),false);
+ assert.equal(counts.get('brenda damato').agendo,1);
+ const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:[{...base,id:'own'}],agendaRows:[agenda],settersRows:[{anio:2026,mes:10,setter:'Nahuel Iasci',agendo:80}]});
+ assert.equal(details.find(d=>d.role==='Setter').counters.agendas,0);
+ assert.equal(details.some(d=>d.isBonus),false);
+});
+test('Brenda recibe la comisión de su lead con sus reglas configuradas',()=>{
+ const rules=service.normalizeConfig({...config,personRoles:[...config.personRoles,{person:'Brenda Damato',role:'Setter'}]});
+ const details=buildTransactionDetails({monthKey:'2026-10',config:rules,comprobantesRows:[{...base,id:'juan',webinarSetters:['Brenda Damato']}],settersRows:[]});
+ assert.equal(details.find(d=>d.role==='Setter').person,'Brenda Damato');
+ assert.equal(details.some(d=>d.person==='Nahuel Iasci'),false);
+});
+test('el histórico Club personal tampoco incluye leads de otro setter webinar',()=>{
+ const rows=[{...base,id:'foreign',producto_format:'Club',webinarSetters:['Brenda Damato']},{...base,id:'own',producto_format:'Club',setter:'',webinarSetters:['Nahuel Iasci']}];
+ const months=service._test.buildPersonalClubMonthly(rows,{email:'iascinahuel@gmail.com'},2026,false);
+ assert.equal(months[9].sales,1);
+});
+
+test('sector Webinar: 11 agendas al 3%, 12 al 3,5%; sin doble asignación ni Nahuel',()=>{
+ const agendas=Array.from({length:12},(_,i)=>({id:`a${i}`,ghlid:`g${i}`,fecha_agenda:'2026-10-28',agendo:'Agendo',origen_actual:'Webinar',setter:'Nahuel Iasci',webinarSetters:['Brenda Damato']}));
+ const rows=[{...base,id:'brenda',webinarSetters:['Brenda Damato']},{...base,id:'nahuel',webinarSetters:['Nahuel Iasci']}];
+ const build=a=>buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,agendaRows:a,settersRows:[]});
+ for(const [count,pct] of [[11,.03],[12,.035]]){
+  const details=build(agendas.slice(0,count)),webinar=details.filter(d=>d.sector==='webinar');
+  assert.equal(webinar.length,1);assert.equal(webinar[0].person,'Brenda Damato');assert.equal(webinar[0].commissionPct,pct);assert.equal(webinar[0].commissionAmount,webinar[0].baseAmount*pct);
+  assert.equal(details.filter(d=>d.transactionId==='brenda'&&d.role==='Setter').length,1);
+  assert.equal(details.find(d=>d.transactionId==='nahuel'&&d.role==='Setter').commissionPct,.045);
+ }
+});
+test('Webinar: cobra cada acreditación del mes y respeta el porcentaje especial de la venta',()=>{
+ const sale='10000000-0000-4000-8000-000000000004';
+ const rows=[{...base,ghlid:'same-client',id:sale,f_acreditacion:'2026-09-28',webinarSetters:['Brenda Damato']},{...base,ghlid:'same-client',id:'payment',tipo:'Cobranza',venta_relacionada:sale}];
+ const details=buildTransactionDetails({monthKey:'2026-10',config,comprobantesRows:rows,settersRows:[],commissionOverrides:[{sale_id:sale,setter_pct:.04}]});
+ const webinar=details.filter(d=>d.sector==='webinar');assert.equal(webinar.length,1);assert.equal(webinar[0].person,'Brenda Damato');assert.equal(webinar[0].commissionPct,.04);
 });

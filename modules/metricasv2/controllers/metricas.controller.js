@@ -137,7 +137,7 @@ async function getOperationalAlertsData(req, res, next) {
 
 async function getCommissionsDashboard(req, res, next) {
   try {
-    const data = await commissionsService.buildCommissionDashboard(req.query.month);
+    const data = await commissionsService.buildCommissionDashboard(req.query.month, { includeAgendaRows: true });
     res.json({
       ok: true,
       ...data

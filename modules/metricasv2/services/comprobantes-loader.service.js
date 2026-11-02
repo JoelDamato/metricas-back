@@ -1,3 +1,5 @@
+const { saleIdFor } = require('./commission-sale-overrides.service');
+const { attachWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter } = require('./webinar-setter.service');
 const axios = require('axios');
 const env = require('../config/env');
 const {
@@ -2414,6 +2416,7 @@ async function listMyComprobantes(user, options = {}) {
   const requestedResponsible = titleCaseName(optionalString(options.responsible));
   const allowAll = canViewAllComprobantes(user);
   const setterNames = allowAll ? [] : getComprobantesSetterNames(user);
+  const isNahuelViewer = !allowAll && String(user?.email || "").trim().toLowerCase() === "iascinahuel@gmail.com";
   if (!responsibleName && !allowAll && !setterNames.length) {
     return {
       responsibleName: '',
@@ -2428,7 +2431,7 @@ async function listMyComprobantes(user, options = {}) {
   const pageSize = Math.min(Math.max(Number(options.limit || 500), 1), 1000);
   const rows = [];
   let offset = 0;
-  const legacySelect = 'nota_conciliacion,nota_conciliacion_autor,nota_conciliacion_fecha,motivo_rebote,id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,rebotar_pago,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes';
+  const legacySelect = 'cliente,venta_relacionada,cobranza_relacionada,nota_conciliacion,nota_conciliacion_autor,nota_conciliacion_fecha,motivo_rebote,id,cliente_format,ghlid,tipo,producto_format,f_venta,f_acreditacion,fecha_creado,created_at,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,tc,estado,rebotar_pago,creado_por,responsable_venta,responsable_actual,setter,info_comprobantes';
 
   while (true) {
     const params = {
@@ -2440,7 +2443,7 @@ async function listMyComprobantes(user, options = {}) {
       offset
     };
 
-    if (!allowAll) {
+    if (!allowAll && !isNahuelViewer) {
       const visibilityFilters = [
         // Notion person/formula values can arrive with different casing in
         // Supabase (for example "nahuel iasci"). Keep the database filter as
@@ -2483,7 +2486,14 @@ async function listMyComprobantes(user, options = {}) {
     ? titleCaseName(requestedResponsible)
     : responsibleName;
   const normalizedSelectedResponsible = normalizeText(selectedResponsible);
-  const resolvedRows = rows.flatMap((row) => {
+  const visibleRows = isNahuelViewer ? await attachWebinarSetters(rows) : rows;
+  const visibleById = new Map(visibleRows.map(row => [row.id, row]));
+  const resolvedRows = visibleRows.flatMap((row) => {
+    if (isNahuelViewer) {
+      if (!row.webinarSetters?.length) row.webinarSetters = visibleById.get(saleIdFor(row, visibleById))?.webinarSetters || [];
+      if (belongsToOtherWebinarSetter(row)) return [];
+      row.setter = effectiveSetter(row);
+    }
     if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) row.source_system = 'supabase_direct';
     const resolvedResponsible = normalizeText(resolveComprobanteResponsibleVentaOnly(row));
     if (allowAll) {

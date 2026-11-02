@@ -295,7 +295,7 @@ async function listRows(resourceName, options = {}) {
   try {
     const response = await axios.get(url, {
       headers: buildHeaders(),
-      ...(agendaRead ? { timeout: 35000 } : {}),
+      ...(agendaRead ? { timeout: 35000 } : options.timeoutMs ? { timeout: options.timeoutMs } : {}),
       params
     });
 
@@ -304,6 +304,7 @@ async function listRows(resourceName, options = {}) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error consultando ${resource}: ${message}`);
     error.statusCode = err.response?.status || 500;
+    error.code = err.code;
     error.details = err.response?.data || null;
     throw error;
   }

@@ -1,3 +1,5 @@
+const { webinarAgendaCounts, webinarPct, buildWebinarSummary } = require('./webinar-commissions');
+const { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, retryRead } = require('./webinar-setter.service');
 const saleOverrides = require('./commission-sale-overrides.service');
 const {isOwner,buildOwnerOverview}=require('./owner-overview');
 const { validateConfig } = require('./commission-config-validation');
@@ -355,7 +357,7 @@ async function fetchComprobantesRowsForCommissions() {
 async function fetchAgendaRowsForCommissions(monthKey) {
   const bounds = getMonthBounds(monthKey);
   return fetchAllRows('leads_raw', {
-    select: 'id,nombre,setter,fecha_agenda,origen_actual,primer_origen,agendo,aplica',
+    select: 'id,nombre,ghlid,setter,closer,fecha_agenda,fecha_llamada,primer_origen,origen_actual,calidad_lead,estrategia_a,agendo,aplica,llamada_meg,producto_de_interes,producto_adq,embudo_meg,embudo_club,seguimiento_setting,mail,telefono,whatsapp',
     from: bounds.from,
     to: bounds.to,
     dateField: 'fecha_agenda',
@@ -375,34 +377,22 @@ async function fetchOriginLeadRowsForComprobantes(rows = []) {
     chunks.push(ghlIds.slice(index, index + 200));
   }
 
-  const responses = await Promise.all(chunks.map(async (chunk) => {
+  const responses = [];
+  for (const chunk of chunks) {
     const params = { ghlid: `in.(${chunk.map(value => `"${value}"`).join(',')})`, limit: 1000 };
-    const [leads, contacts] = await Promise.all([
+    const [leads, contacts] = await retryRead(() => Promise.all([
       axios.get(`${env.supabaseUrl}/rest/v1/leads_raw`, { headers: buildHeaders(), params: { ...params, select: 'ghlid,primer_origen,origen_actual,last_edited_time,created_time' }, timeout: 20000 }),
       axios.get(`${env.supabaseUrl}/rest/v1/leads_ghl_contacts`, { headers: buildHeaders(), params: { ...params, select: 'ghlid,fields' }, timeout: 20000 })
-    ]);
+    ]));
     const webinarById = new Map((contacts.data || []).map(contact => [String(contact.ghlid).toLowerCase(), extractWebinarSetters(contact.fields)]));
     const merged = (leads.data || []).map(lead => ({ ...lead, webinarSetters: webinarById.get(String(lead.ghlid).toLowerCase()) || [] }));
     const known = new Set(merged.map(lead => String(lead.ghlid).toLowerCase()));
     for (const contact of contacts.data || []) {
       if (!known.has(String(contact.ghlid).toLowerCase())) merged.push({ ghlid: contact.ghlid, webinarSetters: extractWebinarSetters(contact.fields) });
     }
-    return merged;
-  }));
-  return responses.flat();
-}
-
-function extractWebinarSetters(fields = {}) {
-  const names = [];
-  for (const [key, field] of Object.entries(fields || {})) {
-    const label = normalizeText(field?.label || key);
-    if (!label.includes('webinar') || !/setter|setting/.test(label) || /turno|whatsapp|asesor|telefono/.test(label)) continue;
-    const value = field?.value;
-    for (const name of Array.isArray(value) ? value : [value]) {
-      if (typeof name === 'string' && name.trim()) names.push(name.trim());
-    }
+    responses.push(merged);
   }
-  return [...new Set(names)];
+  return responses.flat();
 }
 
 function enrichComprobanteOrigins(rows = [], leadRows = []) {
@@ -424,11 +414,12 @@ async function fetchAllRows(resource, options = {}) {
   let offset = 0;
 
   while (true) {
-    const chunk = await supabaseService.listRows(resource, {
+    const chunk = await retryRead(() => supabaseService.listRows(resource, {
       ...options,
       limit: pageSize,
-      offset
-    });
+      offset,
+      timeoutMs: 20000
+    }));
 
     rows.push(...chunk);
     if (chunk.length < pageSize) break;
@@ -774,7 +765,7 @@ function resolveAgendaDateForMonth(rawDate, monthKey, row) {
 function buildLiveAgendaCountMap(agendaRows, monthKey) {
   const map = new Map();
   (agendaRows || []).forEach((row) => {
-    const setter = titleCaseName(row?.setter);
+    const setter = titleCaseName(effectiveSetter(row));
     if (!setter) return;
     const agendaDate = resolveAgendaDateForMonth(row?.fecha_agenda, monthKey, row);
     if (!agendaDate) return;
@@ -1140,14 +1131,19 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const inherited = normalizeText(row.tipo) === 'cobranza' ? findRelatedSale(row, webinarSaleIndex)?.webinarSetters : null;
     const webinarSetters = row.webinarSetters?.length ? row.webinarSetters : (inherited || []);
     row.webinarSetters = webinarSetters;
-    if (webinarSetters.length && webinarSetters.every(isNahuelSetter)) row.setter = 'Nahuel Iasci';
+    row.setter = effectiveSetter(row);
   }
   const monthRows = normalizedRows.filter((row) => matchesMonth(row.f_acreditacion_only, monthKey) && normalizeText(row.estado) === 'conciliado' && !['true','1'].includes(String(row.rebotar_pago || '').toLowerCase()));
   const activeRows = config.global.includeOnlyVerified
     ? monthRows.filter((row) => row.verified_for_commissions)
     : monthRows;
 
+  const webinarCounts = webinarAgendaCounts(agendaRows, monthKey);
   const liveAgendaCountMap = buildLiveAgendaCountMap(agendaRows, monthKey);
+  for (const row of agendaRows) {
+    const key = normalizeText(titleCaseName(row.setter));
+    if (key && !liveAgendaCountMap.has(key)) liveAgendaCountMap.set(key, { setter: titleCaseName(row.setter), agendo: 0 });
+  }
   const settersMap = buildSettersMonthMap(settersRows, monthKey, liveAgendaCountMap);
   const saleIndex = buildHistoricalSaleIndex(normalizedRows);
   const transactionIndex = buildHistoricalTransactionIndex(normalizedRows);
@@ -1159,7 +1155,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const nahuelClubSequence = new Map();
   activeRows
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .filter((row) => isNahuelSetter(row.responsable_venta || row.creado_por) || (isNahuelSetter(row.setter) && (!row.webinarSetters?.length || row.webinarSetters.every(isNahuelSetter))))
+    .filter((row) => !belongsToOtherWebinarSetter(row) && (isNahuelSetter(row.responsable_venta || row.creado_por) || isNahuelSetter(row.setter)))
     .sort(compareRowsByArrival)
     .forEach((row) => {
       if (!nahuelClubSequence.has(row.id)) nahuelClubSequence.set(row.id, nahuelClubSequence.size + 1);
@@ -1175,7 +1171,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterName = row.setter || '';
     const closerName = row.responsable_venta || row.creado_por || '';
 
-    if (closerName && (isRoleAllowed(roleMap, closerName, 'Closer') || (isClub && type === 'venta'))) {
+    if (!(isNahuelSetter(closerName) && belongsToOtherWebinarSetter(row)) && closerName && (isRoleAllowed(roleMap, closerName, 'Closer') || (isClub && type === 'venta'))) {
       const closerArea = getAreaForPerson(areaMap, closerName, 'Comercial');
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
@@ -1287,6 +1283,27 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
           });
         }
       }
+    }
+
+    if (row.webinarSetters?.length && setterName && !isNahuelSetter(setterName)) {
+      const agendas = webinarCounts.get(normalizeText(setterName))?.agendas || 0;
+      const pct = webinarPct(agendas);
+      const baseAmount = row.commission_base_ars;
+      if (baseAmount > 0) details.push({
+        id: `${row.id}:setter`, transactionId: row.id, person: setterName,
+        role: 'Setter', sector: 'webinar', area: 'Setters Webinar', category: isClub ? 'Club' : 'MEG',
+        tipo: row.tipo, product: row.producto_format, clientName: row.cliente_format, ghlid: row.ghlid,
+        setter: setterName, closer: closerName, origin: row.origen_actual, firstOrigin: row.primer_origen,
+        date: row.f_venta_only || row.f_acreditacion_only, acreditacionDate: row.f_acreditacion_only,
+        paymentMethod: row.medios_de_pago, status: row.estado, tc: row.tc, cheque: row.cheque,
+        facturacionUsd: row.facturacion, facturacionArs: row.facturacion_display_ars,
+        cashUsd: row.cash_usd, cashArs: row.cash_collected_ars, ...buildDetailFinancials(row),
+        baseAmount, commissionPct: pct, commissionAmount: baseAmount * (pct || 0),
+        pendingCommission: pct === null, bonusUsd: 0, bonusArs: 0, isBonus: false,
+        sourceRule: agendas <= 11 ? 'Setters Webinar: 0 a 11 agendas, 3%' : 'Setters Webinar: desde 12 agendas, 3,5%',
+        counters: { agendas, clubSalesSequential: 0 }
+      });
+      return;
     }
 
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
@@ -1439,6 +1456,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterName = setterInfo.setter || titleCaseName(setterKey);
     if (!setterName || !isRoleAllowed(roleMap, setterName, 'Setter')) return;
 
+    if (webinarCounts.has(normalizeText(setterName))) return;
     const setterAgendas = safeNumber(setterInfo.agendo);
     const bonusUsd = pickScaleBonusUsd(config.agendaScale, setterAgendas);
     if (bonusUsd <= 0) return;
@@ -1727,20 +1745,26 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     getCommissionConfig(safeMonth),
     fetchComprobantesRowsForCommissions(),
     fetchAllRows('setters', {
-      select: 'anio,mes,setter,agendo,venta_club'
+      select: 'anio,mes,setter,agendo,venta_club',
+      eqFilters: { anio: Number(safeMonth.slice(0, 4)), mes: Number(safeMonth.slice(5, 7)) }
     }),
     fetchAgendaRowsForCommissions(safeMonth),
     settlements.list(safeMonth),
     fetchAllRows('commission_sale_overrides', { select: 'sale_id,closer_pct,setter_pct,reason' })
   ]);
-  const originLeadRows = await fetchOriginLeadRowsForComprobantes(rawComprobantesRows);
+  const normalizedForLookup = normalizeComprobanteRows(rawComprobantesRows);
+  const lookupSaleIndex = buildHistoricalSaleIndex(normalizedForLookup);
+  const relevantRows = normalizedForLookup.filter(row => matchesMonth(row.f_acreditacion_only, safeMonth)
+    || (options.includeSourceRows && isClubProduct(row.producto_format) && String(row.f_acreditacion_only).startsWith(safeMonth.slice(0, 4))));
+  const relatedSales = relevantRows.map(row => findRelatedSale(row, lookupSaleIndex)).filter(Boolean);
+  const originLeadRows = await fetchOriginLeadRowsForComprobantes([...relevantRows, ...relatedSales, ...agendaRows]);
   const comprobantesRows = enrichComprobanteOrigins(rawComprobantesRows, originLeadRows);
   const calculatedDetails = buildTransactionDetails({
     monthKey: safeMonth,
     config,
     comprobantesRows,
     settersRows,
-    agendaRows,
+    agendaRows: enrichComprobanteOrigins(agendaRows, originLeadRows),
     commissionOverrides
   });
 
@@ -1757,11 +1781,13 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     config,
     ...summary,
     marketingArea,
+    webinarSetters: buildWebinarSummary(details, enrichComprobanteOrigins(agendaRows, originLeadRows), safeMonth),
     bonusCandidates: calculatedDetails.filter(d=>d.isBonus),
     movementRows,
     areaCommissions: buildAreaCommissionData(details, marketingArea, comprobantesRows, safeMonth, config),
     details: details.map(detail => { const net=personalNetFinancials(detail); return {...detail, cashArs:net.cashArs, cashUsd:net.cashUsd, grossCashArs:net.grossCashArs, grossCashUsd:net.grossCashUsd}; })
   };
+  if (options.includeAgendaRows === true) result.agendaRows = enrichComprobanteOrigins(agendaRows, originLeadRows).map(row => ({ ...row, setter: effectiveSetter(row) }));
   if (options.includeSourceRows === true) result.sourceComprobantesRows = comprobantesRows;
   return result;
 }
@@ -1869,6 +1895,8 @@ function buildPersonalClubMonthly(comprobantesRows, user = {}, year, includeOnly
 
   normalizeComprobanteRows(comprobantesRows).forEach((row) => {
     if (!row.id || uniqueRows.has(row.id)) return;
+    if (identities.has('nahuel iasci') && belongsToOtherWebinarSetter(row)) return;
+    row.setter = effectiveSetter(row);
     if (normalizeText(row.tipo) !== 'venta' || !isClubProduct(row.producto_format)) return;
     if (includeOnlyVerified && !row.verified_for_commissions) return;
     if (!identities.has(normalizeText(row.responsable_venta)) && !identities.has(normalizeText(row.setter))) return;
