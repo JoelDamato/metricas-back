@@ -1183,6 +1183,51 @@
     });
   }
 
+  function renderAreaAuditRows(area, query = '') {
+    const search = normalizeText(query);
+    const rows = (area.details || []).filter(row => !search || normalizeText([
+      row.clientName, row.transactionId, row.ghlid, row.tipo, row.product, row.closer, row.paymentMethod
+    ].join(' ')).includes(search)).sort((a,b) => String(b.acreditacionDate || '').localeCompare(String(a.acreditacionDate || '')) || String(a.clientName || '').localeCompare(String(b.clientName || ''), 'es'));
+    const sum = key => rows.reduce((total,row) => total + Number(row[key] || 0), 0);
+    return `<p role="status">${formatInteger(rows.length)} de ${formatInteger((area.details || []).length)} comprobantes mostrados</p>
+      <div class="commission-area-audit-table" tabindex="0" role="region" aria-label="Comprobantes del área">
+      <table class="csm-table"><thead><tr><th>Acreditación</th><th>Cliente / comprobante</th><th>Tipo / producto</th><th>Medio de pago</th><th>Cobrado ARS</th><th>Descuentos ARS</th><th>Cash neto ARS</th><th>%</th><th>Comisión ARS</th></tr></thead>
+      <tbody>${rows.map(row => {
+        const url = window.metricasGhl?.buildContactUrl?.(row.ghlid);
+        const client = url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(row.clientName || '-')}</a>` : escapeHtml(row.clientName || '-');
+        return `<tr><td>${escapeHtml(formatDetailDate(row.acreditacionDate) || '-')}</td>
+          <td>${client}<small>Comprobante: ${escapeHtml(row.transactionId)}</small><small>Closer: ${escapeHtml(row.closer || '-')}</small></td>
+          <td>${escapeHtml(row.tipo || '-')}<small>${escapeHtml(row.product || '-')}</small><small>${escapeHtml(row.status || 'Conciliado')}</small></td>
+          <td>${escapeHtml(row.paymentMethod || '-')}</td><td>${formatCurrency(row.grossCashArs ?? row.grossArs)}</td>
+          <td>${formatCurrency(row.totalDeductionsArs)}<small>IVA: ${formatCurrency(row.ivaArs)}</small><small>IIBB: ${formatCurrency(row.iibbArs)}</small><small>Medio de pago: ${formatCurrency(row.paymentFeesArs)}</small></td>
+          <td>${formatCurrency(row.cashArs)}</td><td>${formatPercent(row.commissionPct)}</td><td>${formatCurrency(row.commissionAmount)}</td></tr>`;
+      }).join('') || '<tr><td colspan="9">No hay comprobantes para esta búsqueda.</td></tr>'}</tbody>
+      <tfoot><tr><td colspan="4">Totales mostrados</td><td>${formatCurrency(sum('grossCashArs'))}</td><td>${formatCurrency(sum('totalDeductionsArs'))}</td><td>${formatCurrency(sum('cashArs'))}</td><td></td><td>${formatCurrency(sum('commissionAmount'))}</td></tr></tfoot></table></div>`;
+  }
+
+  function showAreaAudit(areaName) {
+    const area = state.dashboard?.areaCommissions?.find(row => row.label === areaName);
+    if (!area) return;
+    document.getElementById('commissionAreaAudit')?.close();
+    const returnFocus = document.activeElement;
+    const dialog = document.createElement('dialog');
+    dialog.id = 'commissionAreaAudit';
+    dialog.className = 'commission-area-audit';
+    dialog.setAttribute('aria-labelledby', 'commissionAreaAuditTitle');
+    dialog.innerHTML = `<header><div><h2 id="commissionAreaAuditTitle">Comprobantes · ${escapeHtml(area.label)}</h2><p>${escapeHtml(getMonthLabel(state.dashboard.month))}</p></div><button type="button" data-close-area>Cerrar</button></header>
+      <div class="comisiones-setting-summary"><span>Cash collected neto: <strong>${formatCurrency(area.cc)}</strong></span><span>Comisión ${formatPercent(area.percentage)}: <strong>${formatCurrency(area.gain)}</strong></span></div>
+      <p>Ventas y cobranzas conciliadas incluidas en este total. Sin Club${area.label === 'CSM' ? ' ni Consultoría' : ''}. Cada comprobante se cuenta una sola vez.</p>
+      <label class="commission-area-audit-search">Buscar cliente, comprobante, producto o closer<input type="search" data-area-search placeholder="Nombre o ID" /></label>
+      <div data-area-receipts>${renderAreaAuditRows(area)}</div>`;
+    dialog.querySelector('[data-area-search]').addEventListener('input', event => {
+      dialog.querySelector('[data-area-receipts]').innerHTML = renderAreaAuditRows(area, event.target.value);
+    });
+    dialog.querySelector('[data-close-area]').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => { dialog.remove(); if (returnFocus?.isConnected) returnFocus.focus(); }, { once: true });
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  }
+
   function renderSheetOverview(dashboard) {
     const node = document.getElementById('commissionsSheetOverview');
     const filteredDetails = getAllCommissionDetails();
@@ -1342,7 +1387,7 @@
               <table class="comisiones-sheet-summary comisiones-sheet-summary-commercial">
                 <thead><tr><th>Área</th><th>Cash collected neto ARS</th><th>% comisión</th><th>Comisión del área ARS</th></tr></thead>
                 <tbody>
-                  ${commercialSummaryRows.map(row => `<tr><td>${escapeHtml(row.label)}</td><td>${formatSheetCurrency(row.cc)}</td><td>${formatPercent(row.percentage)}</td><td>${formatCurrency(row.gain)}</td></tr>`).join('')}
+                  ${commercialSummaryRows.map(row => `<tr><td><button type="button" class="comisiones-inline-link" data-area-audit="${escapeHtml(row.label)}" aria-label="Ver comprobantes de ${escapeHtml(row.label)}">${escapeHtml(row.label)}</button></td><td>${formatSheetCurrency(row.cc)}</td><td>${formatPercent(row.percentage)}</td><td>${formatCurrency(row.gain)}</td></tr>`).join('')}
                 </tbody>
               </table>
               <p>Sin Club en todas las áreas. CSM también excluye Consultoría. Incluye ventas y cobranzas conciliadas del mes, independientemente del setter.</p>
@@ -1352,6 +1397,10 @@
         </div>
       </section>
     `;
+
+    node.querySelectorAll('[data-area-audit]').forEach(button => {
+      button.addEventListener('click', () => showAreaAudit(button.dataset.areaAudit));
+    });
 
     node.querySelectorAll('[data-person]').forEach((button) => {
       button.addEventListener('click', () => {

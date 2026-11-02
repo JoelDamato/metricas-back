@@ -1656,6 +1656,7 @@ function buildAreaCommissionData(details, marketingArea, sourceRows = [], monthK
   );
   const toDetail = row => ({transactionId:row.id, tipo:row.tipo, product:row.producto_format, category:'MEG',
     clientName:row.cliente_format, ghlid:row.ghlid, tc:row.tc, paymentMethod:row.medios_de_pago,
+    closer:row.responsable_venta || row.creado_por, status:row.estado, origin:row.origen_actual, firstOrigin:row.primer_origen,
     acreditacionDate:row.f_acreditacion_only, facturacionUsd:row.facturacion, facturacionArs:row.facturacion_display_ars,
     cashUsd:row.cash_usd, cashArs:row.cash_collected_ars, ...buildDetailFinancials(row)});
   const all = uniqueTransactions(eligible.map(toDetail));
