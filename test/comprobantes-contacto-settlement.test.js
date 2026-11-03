@@ -7,7 +7,7 @@ test('estado de contacto pagina todo el histórico e incluye cobranzas sin GHL p
  assert.equal(result.length,502);assert.equal(calls[1].id,'gt.00499');assert.ok(result.some(r=>r.id==='orphan'));assert.ok(result.some(r=>r.id==='new-direct'));assert.ok(calls.some(call=>call.cliente?.startsWith('in.')));
 });
 test('saldos separan cobrado conciliado, pendiente y rebotado',()=>{
- assert.deepEqual(totals([{tipo:'Venta',facturacion:1000,cash_collected:100,estado:'Conciliado'},{tipo:'Cobranza',cash_collected:200,estado:null},{tipo:'Cobranza',cash_collected:300,estado:'Rebotado'}]),{facturacion:1000,cobrado:100,pendiente:200,rebotado:300,cobradoBruto:100,saldo:900});
+ assert.deepEqual(totals([{tipo:'Venta',facturacion:1000,cash_collected:100,estado:'Conciliado'},{tipo:'Cobranza',cash_collected:200,estado:null},{tipo:'Cobranza',cash_collected:300,estado:'Rebotado'}]),{facturacion:1000,cobrado:100,pendiente:200,rebotado:300,cobradoBruto:100,cobradoAplicado:100,saldo:900});
 });
 test('únicamente conciliado genera comisión, incluso al desactivar el filtro de verificación',()=>{
  for(const includeOnlyVerified of [true,false])for(const estado of [null,'No conciliado','Rebotado','Conciliado']){
@@ -26,9 +26,9 @@ test('histórico preservado se suma una sola vez; pendientes y rebotes no altera
  const {openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
  const opening=openingBalance({ghl_opening_balance:{facturacion:1500,cash_collected:1500}});
  const rows=[{tipo:'Venta',facturacion:1975,cash_collected:1975,estado:'Conciliado'},{tipo:'Cobranza',cash_collected:100,estado:null}];
- assert.deepEqual(totals(rows,opening),{facturacion:3475,cobrado:3475,pendiente:100,rebotado:0,cobradoBruto:3475,saldo:0});
+ assert.deepEqual(totals(rows,opening),{facturacion:3475,cobrado:3475,pendiente:100,rebotado:0,cobradoBruto:3475,cobradoAplicado:3475,saldo:0});
  assert.equal(totals(rows,opening).facturacion,3475);
- assert.deepEqual(totals([],opening),{facturacion:1500,cobrado:1500,pendiente:0,rebotado:0,cobradoBruto:1500,saldo:0});
+ assert.deepEqual(totals([],opening),{facturacion:1500,cobrado:1500,pendiente:0,rebotado:0,cobradoBruto:1500,cobradoAplicado:1500,saldo:0});
  assert.equal(openingBalance({}),null);
  assert.throws(()=>openingBalance({ghl_opening_balance:{facturacion:100,cash_collected:200}}));
 });
@@ -40,4 +40,13 @@ test('histórico preservado se suma una sola vez; pendientes y rebotes no altera
  assert.equal(maria.cobrado,2991.25);assert.equal(maria.saldo,.01);
  const refund=totals([{tipo:'Venta',estado:'Conciliado',facturacion:100,cash_collected:121},{tipo:'Devolución',estado:'Conciliado',facturacion:50,cash_collected:60.5,iva:10.5,tc:1}]);
  assert.equal(refund.saldo,-10.5);assert.equal(refund.cobradoBruto,60.5);
+});
+
+test('cash explícitamente neto no vuelve a descontar IVA y distingue el recibido real',()=>{
+ const {cashWithoutIva,receivedCashArs,receivedCashUsd}=require('../modules/metricasv2/services/comprobantes-contacto.service');
+ const row={tipo:'Venta',estado:'Conciliado',facturacion:3450,cash_collected:3450,cash_ar:4830000,iva:838264.46,tc:1400,cash_amount_basis:'net_of_iva',received_gross_ars:5844300};
+ assert.equal(cashWithoutIva(row),3450);assert.equal(receivedCashArs(row),5844300);assert.equal(receivedCashUsd(row),4174.5);
+ const t=totals([row]);assert.equal(t.cobrado,3450);assert.equal(t.cobradoBruto,4174.5);assert.equal(t.saldo,0);
+ const unknown={...row,received_gross_ars:null};assert.equal(receivedCashArs(unknown),null);assert.equal(receivedCashUsd(unknown),null);assert.equal(totals([unknown]).cobradoBruto,null);
+ const gross={...row,cash_amount_basis:'gross',cash_ar:5844300,cash_collected:4174.5,iva:1014300};assert.equal(cashWithoutIva(gross),3450);
 });

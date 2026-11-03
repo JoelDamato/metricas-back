@@ -1,5 +1,5 @@
 const axios=require('axios');
-const COLUMNS='id,ghlid,cliente,cliente_format,mail,telefono,tipo,producto_format,cantidad_de_pagos,medios_de_pago_format,estado,rebotar_pago,f_venta,f_acreditacion,fecha_creado,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,iva,tc,comisiones,venta_relacionada';
+const COLUMNS='id,ghlid,cliente,cliente_format,mail,telefono,tipo,producto_format,cantidad_de_pagos,medios_de_pago_format,estado,rebotar_pago,f_venta,f_acreditacion,fecha_creado,facturacion,cash_collected,cash_ar,cash_collected_ar,cash_collected_ars,iva,tc,comisiones,venta_relacionada,cash_amount_basis,received_gross_ars';
 const quote=value=>'"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
 async function listContactReceipts(ghlid,clientIds=[],options={}) {
  const request=options.request||axios.get;
@@ -25,11 +25,20 @@ async function listContactReceipts(ghlid,clientIds=[],options={}) {
 }
 function cashWithoutIva(row) {
  const cash=Number(row.cash_collected||0),iva=Number(row.iva||0);
- if(!iva || !cash)return cash;
+ if(row.cash_amount_basis==='net_of_iva' || !iva || !cash)return cash;
  const ars=Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
  const tc=Number(row.tc)>0?Number(row.tc):(ars>0&&cash>0?ars/cash:0);
  if(!tc)throw Error('Un comprobante tiene IVA pero no un tipo de cambio válido para calcular el saldo sin IVA.');
  return Math.max(0,cash-iva/tc);
+}
+function receivedCashArs(row) {
+ if(row.received_gross_ars != null)return Number(row.received_gross_ars);
+ if(row.cash_amount_basis==='net_of_iva')return null;
+ return Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
+}
+function receivedCashUsd(row) {
+ if(row.received_gross_ars != null)return Number(row.tc)>0?Number(row.received_gross_ars)/Number(row.tc):null;
+ return row.cash_amount_basis==='net_of_iva'?null:Number(row.cash_collected||0);
 }
 function openingBalance(extra) {
  const opening=extra?.ghl_opening_balance;
@@ -38,5 +47,5 @@ function openingBalance(extra) {
  if (!Number.isFinite(facturacion)||!Number.isFinite(cash_collected)||facturacion<0||cash_collected<0||cash_collected>facturacion) throw Error('El saldo histórico del cliente requiere revisión.');
  return {facturacion,cash_collected};
 }
-function totals(rows,opening=null){const result={facturacion:opening?.facturacion||0,cobrado:opening?.cash_collected||0,pendiente:0,rebotado:0,cobradoBruto:opening?.cash_collected||0};for(const r of rows){const refunded=/^Devoluci[oó]n$/i.test(r.tipo),sign=refunded?-1:1;const bounced=String(r.estado).toLowerCase()==='rebotado'||String(r.rebotar_pago)==='true';const effective=!bounced&&String(r.estado).toLowerCase()==='conciliado';if(r.tipo==='Venta')result.facturacion+=Number(r.facturacion||0);else if(refunded&&effective)result.facturacion-=Number(r.facturacion||0);if(effective)result.cobradoBruto+=sign*Number(r.cash_collected||0);result[bounced?'rebotado':effective?'cobrado':'pendiente']+=sign*cashWithoutIva(r);}for(const key of Object.keys(result))result[key]=Math.round((result[key]+Number.EPSILON)*100)/100;result.saldo=Math.round((result.facturacion-result.cobradoBruto)*100)/100;return result;}
-module.exports={listContactReceipts,totals,cashWithoutIva,openingBalance};
+function totals(rows,opening=null){const result={facturacion:opening?.facturacion||0,cobrado:opening?.cash_collected||0,pendiente:0,rebotado:0,cobradoBruto:opening?.cash_collected||0,cobradoAplicado:opening?.cash_collected||0};for(const r of rows){const refunded=/^Devoluci[oó]n$/i.test(r.tipo),sign=refunded?-1:1;const bounced=String(r.estado).toLowerCase()==='rebotado'||String(r.rebotar_pago)==='true';const effective=!bounced&&String(r.estado).toLowerCase()==='conciliado';if(r.tipo==='Venta')result.facturacion+=Number(r.facturacion||0);else if(refunded&&effective)result.facturacion-=Number(r.facturacion||0);if(effective){result.cobradoAplicado+=sign*Number(r.cash_collected||0);const gross=receivedCashUsd(r);result.cobradoBruto=gross==null||result.cobradoBruto==null?null:result.cobradoBruto+sign*gross;}result[bounced?'rebotado':effective?'cobrado':'pendiente']+=sign*cashWithoutIva(r);}for(const key of Object.keys(result))if(result[key]!=null)result[key]=Math.round((result[key]+Number.EPSILON)*100)/100;result.saldo=Math.round((result.facturacion-result.cobradoAplicado)*100)/100;return result;}
+module.exports={listContactReceipts,totals,cashWithoutIva,receivedCashArs,receivedCashUsd,openingBalance};

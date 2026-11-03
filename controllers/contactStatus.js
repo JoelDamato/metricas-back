@@ -1,6 +1,6 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
 const {fetchContactMaterials,productsForContact,contractLabel,isDebtor} = require('../modules/csm/contact-materials');
-const {listContactReceipts,totals,cashWithoutIva,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
+const {listContactReceipts,totals,cashWithoutIva,receivedCashArs,receivedCashUsd,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 
@@ -117,7 +117,7 @@ async function fetchContactByGhlId(ghlId) {
   const historicalOpeningBalance=openingBalance(row.extra);
   const receiptTotals=totals(comprobantesRows,historicalOpeningBalance);
   contact.historicalOpeningBalance=historicalOpeningBalance;
-  contact.comprobantes=comprobantesRows.map(r=>({...r,cash_without_iva_usd:cashWithoutIva(r)}));
+  contact.comprobantes=comprobantesRows.map(r=>({...r,cash_without_iva_usd:cashWithoutIva(r),received_cash_ars:receivedCashArs(r),received_cash_usd:receivedCashUsd(r)}));
   contact.receiptTotals=receiptTotals;
   contact.facturacionTotal=receiptTotals.facturacion;
   contact.cashCollectedTotal=receiptTotals.cobrado;
