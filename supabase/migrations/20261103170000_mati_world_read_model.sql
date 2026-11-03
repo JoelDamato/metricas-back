@@ -18,8 +18,13 @@ with lead_keys as (
  from public.comprobantes c left join lead_keys l on l.id=c.cliente group by 1
 ), keys as (
  select person_key from leads where fecha_agenda >= (current_date-30) or fecha_llamada >= (current_date-30)::text
- union select person_key from clients
- union select person_key from receipts
+ union select person_key from clients where lower(acceso)='acceso' or lower(contrato)='pendiente' or lower(onboarding)='pendiente'
+ union select person_key from receipts where exists (
+   select 1 from jsonb_array_elements(items) item
+   where lower(coalesce(item->>'estado','')) <> 'conciliado'
+      or item->>'rebotar_pago'='true'
+      or (lower(item->>'tipo')='venta' and item->>'saleDate' >= (current_date-90)::text)
+ )
 ), ghl as materialized (
  select g.ghlid,g.fields->'calendar'->'value' as calendar,g.fields->'Webinar 28/10 Setter'->>'value' as webinar_setter,g.updated_at
  from public.leads_ghl_contacts g join keys k on k.person_key=g.ghlid
