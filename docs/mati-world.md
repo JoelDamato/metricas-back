@@ -20,7 +20,7 @@ Agendas de los últimos 30 días y futuras; ventas de los últimos 90 días. Pen
 
 Consulta automática cada 30 segundos mientras la pestaña está visible; caché del servidor de 20 segundos y una sola consulta concurrente. Se informa la última sincronización efectiva, errores y desconexión. Los datos anteriores permanecen visibles con aviso ante error. No hay actividad simulada ni escritura en fuentes.
 
-SVG original con cinco ambientes, avatares deterministas por ID, búsqueda, filtros, desplazamiento/zoom y ficha lateral. Hasta 18 personajes visibles por zona; el grupo restante abre un directorio paginado. Buscar centra y destaca, incluso si la persona estaba agrupada. Las transiciones responden a cambios reales; se respeta movimiento reducido.
+SVG original con cinco ambientes, avatares deterministas por ID, búsqueda, filtros, desplazamiento/zoom y ficha lateral. Hasta 9 personajes visibles por zona; el grupo restante abre un directorio paginado. Buscar centra y destaca, incluso si la persona estaba agrupada. Las transiciones responden a cambios reales; se respeta movimiento reducido.
 
 ## Limitaciones explícitas
 
@@ -40,3 +40,5 @@ Verificación publicada (3/11/2026): 463 personas, misma identidad y distribuci�
 ## Sede y oficinas exteriores
 
 El escenario incluye fachada abierta, entrada, escaleras exteriores e interiores y el logo existente de Matías Randazzo. Dos oficinas exteriores representan Dirección (Mati, CEO; Leo, director comercial; Walter, director de marketing) y Scalo (tres puestos de trabajo, computadoras y pantalla de análisis). Son ilustraciones fijas, separadas de los personajes de clientes y sus conteos; no indican presencia real. Los botones Edificio, Dirección y Scalo acercan la cámara a cada ambiente. Verificados visualmente en navegador.
+
+Encuadre inicial centrado y cercano a las cinco áreas, cabecera verde y logo. Las oficinas exteriores siguen accesibles con Dirección/Scalo y zoom. Scalo usa tonos negros. Nadia está representada en Contratos; Comercial ilustra a los responsables presentes en las agendas del mapa, sin modificar asignaciones ni contar ilustraciones como clientes.

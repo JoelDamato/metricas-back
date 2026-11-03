@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rooms={agendas:{x:740,y:190,wall:'#c3d9de',floor:'#dae7e2',accent:'#638b9b'},ventas:{x:1195,y:190,wall:'#e7d5b2',floor:'#f0e5ce',accent:'#b5894f'},administracion:{x:1650,y:190,wall:'#dfc1b6',floor:'#eddad0',accent:'#a86e59'},ingreso:{x:955,y:500,wall:'#d4c9df',floor:'#e8e1eb',accent:'#8d779b'},csm:{x:1480,y:500,wall:'#bcd4b7',floor:'#dce9ce',accent:'#62845b'}};
 let data=null,selected=null,filterRows=[],listMode=null,listPage=0,loading=false,timer=null,lastSuccess=null;
-let camera={x:-310,y:-12,k:1.24},drag=null,dragged=false,lastFocus=null;
+let camera={x:-691,y:-60,k:1.55},drag=null,dragged=false,lastFocus=null;
 const positions=new Map(),actors=new Map(),seen=new Map();
 function el(tag,attrs={},html=''){const n=document.createElementNS(svgNS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);if(html)n.innerHTML=html;return n;}
 const iso=(u,v,z=0)=>[(u-v)*26,(u+v)*13-z];
@@ -42,7 +42,6 @@ function building(){
  art+=poly([[1390,905],[1910,325],[1910,372],[1390,952]],'#91a88d');
  // Glass and timber front, intentionally open above so the operation remains visible.
  for(let n=0;n<8;n++){const x=560+n*67,y=558+n*28;art+=poly([[x,y],[x+50,y+21],[x+50,y+48],[x,y+27]],'#6c999b','#e8edda');}
- art+=`<g transform="translate(1100 39)"><rect x="-174" y="-68" width="348" height="84" rx="12" fill="#315444" stroke="#e4c67f" stroke-width="3"/><image href="/assets/mati-randazzo-logo-web.png" x="-154" y="-65" width="308" height="78"/><text y="38" text-anchor="middle" font-size="12" fill="#5e7459" letter-spacing="5">CASA CENTRAL</text></g>`;
  // Exterior garden paths leading to both standalone offices and the headquarters.
  art+=poly([[210,710],[470,650],[1180,1000],[1985,735],[2170,805],[1190,1120]],'#d7d4bd');
  art+=poly([[210,710],[470,635],[1180,980],[1985,720],[2170,790],[1190,1100]],'#f3efdc','#c9cfb8');
@@ -138,8 +137,8 @@ async function sync(){if(loading||document.hidden)return;loading=true;$('refresh
  finally{loading=false;$('refresh').disabled=false;schedule();}}
 $('refresh').onclick=sync;$('directory').onclick=()=>showList('');$('closePanel').onclick=()=>{selected=null;listMode=null;$('panel').hidden=true;draw();lastFocus?.focus?.();};
 let searchTimer;$('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(filter,220);});for(const id of ['area','owner','state'])$(id).onchange=filter;
-for(const [id,x,y,k]of [['visitBuilding',1218,465,1.24],['visitDirection',245,700,2.6],['visitScalo',2150,700,2.6]])$(id).onclick=()=>{const zoomLevel=id==='visitBuilding'?k:Math.min(6,k*Math.max(1,900/$('viewport').clientWidth));camera={x:1200-x*zoomLevel,y:565-y*zoomLevel,k:zoomLevel};applyCamera();};
-$('zoomIn').onclick=()=>zoom(1.2);$('zoomOut').onclick=()=>zoom(1/1.2);$('fit').onclick=()=>{camera={x:-310,y:-12,k:1.24};applyCamera();};
+for(const [id,x,y,k]of [['visitBuilding',1220,403,1.55],['visitDirection',245,700,2.6],['visitScalo',2150,700,2.6]])$(id).onclick=()=>{const zoomLevel=id==='visitBuilding'?k:Math.min(6,k*Math.max(1,900/$('viewport').clientWidth));camera={x:1200-x*zoomLevel,y:565-y*zoomLevel,k:zoomLevel};applyCamera();};
+$('zoomIn').onclick=()=>zoom(1.2);$('zoomOut').onclick=()=>zoom(1/1.2);$('fit').onclick=()=>{camera={x:-691,y:-60,k:1.55};applyCamera();};
 const viewport=$('viewport');viewport.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.08:1/1.08);},{passive:false});
 viewport.addEventListener('pointerdown',e=>{if(e.target.closest('.map-controls,.tour-controls'))return;drag={x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y};dragged=false;});
 viewport.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>6)dragged=true;if(!dragged)return;viewport.classList.add('dragging');const r=$('world').getBoundingClientRect(),scale=Math.min(r.width/$('world').viewBox.baseVal.width,r.height/$('world').viewBox.baseVal.height);camera.x=drag.cx+dx/scale;camera.y=drag.cy+dy/scale;applyCamera();});

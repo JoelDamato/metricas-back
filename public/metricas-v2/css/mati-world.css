@@ -8,3 +8,5 @@
 @media(max-width:700px){.world-header{height:66px}.world-shell{height:calc(100dvh - 240px);min-height:360px}}
 
 .closer-staff .staff>rect,.closer-staff .staff>text{opacity:0;pointer-events:none}.closer-staff:hover .staff>rect,.closer-staff:hover .staff>text,.closer-staff:focus .staff>rect,.closer-staff:focus .staff>text{opacity:1}
+
+.brand-logo{width:100px;height:38px;object-fit:contain;display:block}@media(max-width:700px){.brand-logo{width:65px;height:32px}}
