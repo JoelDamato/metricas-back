@@ -36,3 +36,7 @@ SVG original con cinco ambientes, avatares deterministas por ID, búsqueda, filt
 `node --test test/mati-world.test.js`: identidad, prioridad de pendientes, estados, condiciones CSM, ausencia de inferencias, datos vacíos, transiciones y permisos/API de sólo lectura. La migración es una vista sin cambios en registros de negocio. Verificar además carga real y búsqueda/ficha en navegador después de desplegar.
 
 Verificación publicada (3/11/2026): 463 personas, misma identidad y distribución antes/después de acotar la consulta SQL (de 2.102 filas fuente a 463; carga medida final 1,96 s). API anónima 401 y página sin sesión 302 a login. Mapa real conectado y conteos verificados en navegador. Los registros de prueba existentes en el CRM pueden aparecer si cumplen los criterios; la vista no crea datos de demostración ni clasifica por nombre.
+
+## Sede y oficinas exteriores
+
+El escenario incluye fachada abierta, entrada, escaleras exteriores e interiores y el logo existente de Matías Randazzo. Dos oficinas exteriores representan Dirección (Mati, CEO; Leo, director comercial; Walter, director de marketing) y Scalo (tres puestos de trabajo, computadoras y pantalla de análisis). Son ilustraciones fijas, separadas de los personajes de clientes y sus conteos; no indican presencia real. Los botones Edificio, Dirección y Scalo acercan la cámara a cada ambiente. Verificados visualmente en navegador.
