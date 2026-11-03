@@ -96,3 +96,18 @@ test('Las ventas posteriores no aumentan la comisión de las primeras: 16 ventas
   const percentages = rows.map((sale) => after.find((detail) => detail.transactionId === sale.id).commissionPct);
   assert.deepEqual(percentages, [.5, .5, .5, .5, .5, .55, .55, .55, .55, .55, .6, .6, .6, .6, .6, .65]);
 });
+
+test('Club vendido por Nahuel conserva comisión y escalera aunque el contacto tenga otro setter webinar', () => {
+  const rows = Array.from({ length: 6 }, (_, i) => sale(`club-${i}`, {
+    responsable_venta: 'Nahuel Iasci', setter: '', medios_de_pago: 'Mercado Pago',
+    webinarSetters: ['Maria Soliz']
+  }));
+  const details = calculate(rows);
+  assert.equal(details.length, 6);
+  assert.ok(details.every(row => row.person === 'Nahuel Iasci' && row.role === 'Closer' && row.product === 'Club del Costo'));
+  assert.equal(details[5].commissionPct, .55);
+  assert.equal(details[5].counters.clubSalesSequential, 6);
+  const { buildPersonalClubMonthly } = require('../modules/metricasv2/services/commissions.service')._test;
+  const months = buildPersonalClubMonthly(rows, {email:'iascinahuel@gmail.com'}, 2026, false);
+  assert.equal(months[9].sales, 6);
+});

@@ -1,6 +1,6 @@
 const { buildAgendaCredits } = require('./commission-agenda-credits');
 const { webinarSoldAgendaCounts, webinarPct, buildWebinarSummary } = require('./webinar-commissions');
-const { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, retryRead } = require('./webinar-setter.service');
+const { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, isNahuelClubSale, retryRead } = require('./webinar-setter.service');
 const saleOverrides = require('./commission-sale-overrides.service');
 const {isOwner,buildOwnerOverview}=require('./owner-overview');
 const { validateConfig } = require('./commission-config-validation');
@@ -1168,7 +1168,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
   const nahuelClubSequence = new Map();
   activeRows
     .filter((row) => normalizeText(row.tipo) === 'venta' && isClubProduct(row.producto_format))
-    .filter((row) => !belongsToOtherWebinarSetter(row) && (isNahuelSetter(row.responsable_venta || row.creado_por) || isNahuelSetter(row.setter)))
+    .filter((row) => (!belongsToOtherWebinarSetter(row) || isNahuelClubSale(row)) && (isNahuelSetter(row.responsable_venta || row.creado_por) || isNahuelSetter(row.setter)))
     .sort(compareRowsByArrival)
     .forEach((row) => {
       if (!nahuelClubSequence.has(row.id)) nahuelClubSequence.set(row.id, nahuelClubSequence.size + 1);
@@ -1184,7 +1184,7 @@ function buildTransactionDetails({ monthKey, config, comprobantesRows, settersRo
     const setterName = row.setter || '';
     const closerName = row.responsable_venta || row.creado_por || '';
 
-    if (!(isNahuelSetter(closerName) && belongsToOtherWebinarSetter(row)) && closerName && (isRoleAllowed(roleMap, closerName, 'Closer') || (isClub && type === 'venta'))) {
+    if (!(isNahuelSetter(closerName) && belongsToOtherWebinarSetter(row) && !isNahuelClubSale(row)) && closerName && (isRoleAllowed(roleMap, closerName, 'Closer') || (isClub && type === 'venta'))) {
       const closerArea = getAreaForPerson(areaMap, closerName, 'Comercial');
       if (isClub && type === 'venta') {
         const sequenceKey = `${normalizeText(closerName)}:${row.id}`;
@@ -1912,7 +1912,7 @@ function buildPersonalClubMonthly(comprobantesRows, user = {}, year, includeOnly
 
   normalizeComprobanteRows(comprobantesRows).forEach((row) => {
     if (!row.id || uniqueRows.has(row.id)) return;
-    if (identities.has('nahuel iasci') && belongsToOtherWebinarSetter(row)) return;
+    if (identities.has('nahuel iasci') && belongsToOtherWebinarSetter(row) && !isNahuelClubSale(row)) return;
     row.setter = effectiveSetter(row);
     if (normalizeText(row.tipo) !== 'venta' || !isClubProduct(row.producto_format)) return;
     if (includeOnlyVerified && !row.verified_for_commissions) return;

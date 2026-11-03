@@ -1,5 +1,5 @@
 const { saleIdFor } = require('./commission-sale-overrides.service');
-const { attachWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter } = require('./webinar-setter.service');
+const { attachWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, isNahuelClubSale } = require('./webinar-setter.service');
 const axios = require('axios');
 const env = require('../config/env');
 const {
@@ -2491,7 +2491,7 @@ async function listMyComprobantes(user, options = {}) {
   const resolvedRows = visibleRows.flatMap((row) => {
     if (isNahuelViewer) {
       if (!row.webinarSetters?.length) row.webinarSetters = visibleById.get(saleIdFor(row, visibleById))?.webinarSetters || [];
-      if (belongsToOtherWebinarSetter(row)) return [];
+      if (belongsToOtherWebinarSetter(row) && !isNahuelClubSale(row)) return [];
       row.setter = effectiveSetter(row);
     }
     if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) row.source_system = 'supabase_direct';

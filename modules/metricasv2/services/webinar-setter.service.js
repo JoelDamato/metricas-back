@@ -22,6 +22,11 @@ function effectiveSetter(row) {
   return unique.length === 1 ? unique[0] : '';
 }
 const belongsToOtherWebinarSetter = row => row.webinarSetters?.length > 0 && !row.webinarSetters.every(isNahuel);
+// Club has its own seller and commission. A webinar assignment on the contact
+// must not hide a Club sale explicitly recorded with Nahuel as its seller.
+const isNahuelClubSale = row => normalize(row.tipo) === 'venta'
+  && ['club', 'club del costo'].includes(normalize(row.producto_format))
+  && isNahuel(Object.hasOwn(row, 'responsable_venta_db') ? row.responsable_venta_db : row.responsable_venta);
 async function retryRead(read) {
   try { return await read(); } catch (error) {
     if (!/ECONNRESET|ETIMEDOUT|ECONNABORTED|socket hang up|timeout/i.test(`${error.code || ''} ${error.message || ''}`) && ![502,503,504].includes(error.response?.status || error.statusCode)) throw error;
@@ -40,4 +45,4 @@ async function attachWebinarSetters(rows) {
   }
   return rows.map(row => ({ ...row, webinarSetters: byId.get(String(row.ghlid || '').toLowerCase()) || row.webinarSetters || [] }));
 }
-module.exports = { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, attachWebinarSetters, retryRead, isNahuel };
+module.exports = { extractWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, isNahuelClubSale, attachWebinarSetters, retryRead, isNahuel };

@@ -16,3 +16,16 @@ test('Mis comprobantes excluye a Juan Pablo de Nahuel y admite su setting webina
  const result=await loader.listMyComprobantes({email:'iascinahuel@gmail.com',nombre:'Nahuel Iasci'});
  assert.deepEqual(result.rows.map(r=>r.id),['own']);assert.equal(result.rows[0].setter,'Nahuel Iasci');
 });
+
+test('Mis comprobantes muestra Club vendido por Nahuel sin apropiarse de ventas webinar ajenas',async t=>{
+ const original={supabaseUrl:env.supabaseUrl,supabaseKey:env.supabaseKey};Object.assign(env,{supabaseUrl:'https://test.invalid',supabaseKey:'test'});t.after(()=>Object.assign(env,original));
+ const base={ghlid:'contact',tipo:'Venta',producto_format:'Club',setter:'Nahuel Iasci'};
+ t.mock.method(axios,'get',async url=>({data:url.endsWith('/leads_ghl_contacts')?[
+  {ghlid:'contact',fields:{'Setter webinar':{value:'Maria Soliz'}}}
+ ]:[{...base,id:'club-own',responsable_venta:'Nahuel Iasci'},
+    {...base,id:'club-other',responsable_venta:'Patricia Conti'},
+    {...base,id:'meg-other',producto_format:'MEG',responsable_venta:'Nahuel Iasci'},
+    {...base,id:'creator-only',responsable_venta:null,creado_por:'Nahuel Iasci'}]}));
+ const result=await loader.listMyComprobantes({email:'iascinahuel@gmail.com',nombre:'Nahuel Iasci'});
+ assert.deepEqual(result.rows.map(r=>r.id),['club-own']);
+});
