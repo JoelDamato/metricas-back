@@ -1,5 +1,6 @@
 const {commissionAreaForUser} = require('../metricasv2/services/commission-area-identity');
 const PAGE_ROLE_ACCESS = {
+  'mati-world.html': ['total'],
   'tickets.html': ['total', 'comercial', 'csm'],
   'dashboard.html': ['total', 'comercial', 'csm'],
   'metricas.html': ['total', 'comercial', 'csm'],
@@ -494,6 +495,7 @@ function isTrainingOnlyUser(user) {
 
 function canAccessPageForUser(user, pageName) {
   pageName = canonicalPageName(pageName);
+  if (pageName === 'mati-world.html') return user?.role === 'total' && ['agendas-totales.html','comprobantes.html','csm-cuadro.html'].every(page => canAccessPageForUser(user,page));
   if (isTrainingOnlyUser(user)) return TRAINING_PAGES.has(pageName) && getAccessConfig(user).allowedPages.includes(pageName);
   if (pageName === 'entrenamiento-disc.html') return require('../training/router').canRead(user);
   if (['entrenamiento.html', 'guion-meg.html'].includes(pageName)) return Boolean(user);
