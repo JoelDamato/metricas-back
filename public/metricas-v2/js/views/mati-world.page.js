@@ -1,150 +1,183 @@
 (()=>{'use strict';
-const $=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const rooms={agendas:{x:740,y:190,wall:'#c3d9de',floor:'#dae7e2',accent:'#638b9b'},ventas:{x:1195,y:190,wall:'#e7d5b2',floor:'#f0e5ce',accent:'#b5894f'},administracion:{x:1650,y:190,wall:'#dfc1b6',floor:'#eddad0',accent:'#a86e59'},ingreso:{x:955,y:500,wall:'#d4c9df',floor:'#e8e1eb',accent:'#8d779b'},csm:{x:1480,y:500,wall:'#bcd4b7',floor:'#dce9ce',accent:'#62845b'}};
-let data=null,selected=null,filterRows=[],listMode=null,listPage=0,loading=false,timer=null,lastSuccess=null;
-let camera={x:-691,y:-60,k:1.55},drag=null,dragged=false,lastFocus=null;
-const positions=new Map(),actors=new Map(),seen=new Map();
-function el(tag,attrs={},html=''){const n=document.createElementNS(svgNS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);if(html)n.innerHTML=html;return n;}
-const iso=(u,v,z=0)=>[(u-v)*26,(u+v)*13-z];
-const pts=points=>points.map(p=>p.join(',')).join(' ');
-function poly(points,fill,stroke){return `<polygon points="${pts(points)}" fill="${fill}"${stroke?` stroke="${stroke}" stroke-width="1"`:''}/>`;}
-function box(u,v,w,d,h,top,left,right){const a=iso(u,v),b=iso(u+w,v),c=iso(u+w,v+d),e=iso(u,v+d),lift=p=>[p[0],p[1]-h];return poly([a,b,lift(b),lift(a)],right)+poly([e,c,lift(c),lift(e)],left)+poly([lift(a),lift(b),lift(c),lift(e)],top);}
-function plant(u,v){const [x,y]=iso(u,v);return `<g transform="translate(${x} ${y})">${box(0,0,.48,.48,13,'#b57c58','#80583e','#976548')}<path d="M0 -13V-44M0 -29L-12 -37M0 -22L12 -33" stroke="#527744" stroke-width="4"/><path d="M0 -37q-20 -20 -20 -3q8 12 20 8M0 -29q22 -22 24 -7q-4 14 -24 15M0 -43q-3 -19 9 -19q12 12 -9 28" fill="#7b9c62"/></g>`;}
-function desk(u,v,c){return box(u,v,1.8,.9,25,'#cfa87d','#9b7857','#b38b63')+box(u+.4,v+.12,.65,.12,45,c,'#354f4f','#41585a')+box(u+.2,v+.5,.7,.22,27,'#f3f0df','#d4c9b4','#bdb49f')+box(u+.65,v+1.2,.6,.6,14,c,'#47665c','#668573');}
-function staffAvatar(x,y,name,role,shirt,hair='#44352e'){
- return `<g class="staff" transform="translate(${x} ${y})" role="img" aria-label="${esc(name)} · ${esc(role)}. Representación del equipo, no presencia en vivo"><title>${esc(name)} · ${esc(role)}</title><ellipse cy="1" rx="16" ry="7" fill="#193b32" opacity=".15"/><g shape-rendering="crispEdges"><path d="M-9 -14h7V0h-9v-4h2M2 -14h7V0H0v-4h2" fill="#364451"/><path d="M-11 -32h22v20h-22z" fill="${shirt}"/><path d="M-15 -29h4v17h-4M11 -29h4v17h-4" fill="#d7a27c"/><path d="M-9 -49h18v19h-18z" fill="#e4b18b"/><path d="M-10 -50h20v8h-5v-4H-5v8h-5z" fill="${hair}"/><path d="M-5 -39h2M4 -39h2" stroke="#293d38" stroke-width="2"/></g><rect x="-72" y="-86" width="144" height="35" rx="7" fill="#fbfcf3" stroke="#bccab6"/><text y="-72" text-anchor="middle" font-size="11" font-weight="700" fill="#294d3c">${esc(name)}</text><text y="-59" text-anchor="middle" font-size="9" fill="#6c7d6b">${esc(role)}</text></g>`;
+const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const rooms={
+ agendas:{x:20,y:72,w:580,h:360,name:'Comercial',color:'#386f91',floor:'#a7bfcb',icon:'↗',door:[270,490]},
+ ventas:{x:620,y:72,w:360,h:360,name:'Ventas',color:'#b98929',floor:'#efd08c',icon:'▥',door:[790,490]},
+ administracion:{x:1000,y:72,w:580,h:360,name:'Administración',color:'#ae6048',floor:'#dfab91',icon:'▤',door:[1310,490]},
+ ingreso:{x:20,y:550,w:720,h:400,name:'Contratos',color:'#80649b',floor:'#c8b1d6',icon:'✎',door:[720,720]},
+ csm:{x:870,y:550,w:710,h:400,name:'Campus CSM',color:'#44794e',floor:'#c2d1a2',icon:'✓',door:[880,720]}
+};
+const offices={direction:{x:-620,y:590,w:550,h:430,name:'Dirección',color:'#315a42',floor:'#c4c6a2'},scalo:{x:1700,y:590,w:550,h:430,name:'Scalo',color:'#111315',floor:'#303138'}};
+let data=null,currentRoom=null,selected=null,listPage=0,loading=false,timer=null,lastSuccess=null,camera={x:0,y:0,k:1},drag=null,dragged=false;
+const actors=new Map(),positions=new Map(),changes=[],moving=new Map();let lastPeople=new Map(),paintedStaff='',nadiaFrame=null,nadiaStart=performance.now(),lastNadiaPaint=0;
+const el=(tag,attrs={},html='')=>{const n=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,v);n.innerHTML=html;return n;};
+function hash(s){let n=0;for(const c of String(s))n=(Math.imul(n,31)+c.charCodeAt(0))|0;return n>>>0;}
+const poly=(p,fill,stroke='#526044',width=1)=>`<polygon points="${p.map(v=>v.join(',')).join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${width}" stroke-linejoin="round"/>`;
+const rect=(x,y,w,h,fill,stroke='none',rx=0)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="${stroke}"/>`;
+const text=(x,y,value,size=12,fill='#243b2e',extra='')=>`<text x="${x}" y="${y}" font-size="${size}" fill="${fill}" font-family="DM Sans, sans-serif" ${extra}>${esc(value)}</text>`;
+function block(x,y,w,d,h,top='#dfb77b',front='#b08450',side='#91663e'){
+ return poly([[x,y-h],[x+w,y-h],[x+w+15,y+d-h],[x+15,y+d-h]],top,'#4c4438',1.2)+poly([[x+15,y+d-h],[x+w+15,y+d-h],[x+w+15,y+d],[x+15,y+d]],front,'#4c4438',1.2)+poly([[x+w,y-h],[x+w+15,y+d-h],[x+w+15,y+d],[x+w,y]],side,'#4c4438',1.2);
 }
-function teamOffice(x,y,scalo){
- const accent=scalo?'#111214':'#42664f';let art=box(0,0,9,7,14,'#ece7d4','#8d9e84','#b0bba2');
- for(let u=0;u<9;u++)for(let v=0;v<7;v++)art+=poly([iso(u,v,15),iso(u+1,v,15),iso(u+1,v+1,15),iso(u,v+1,15)],(u+v)%2?'#e7e8dc':'#f5f2e6','#dfdfd1');
- art+=poly([iso(0,0,15),iso(9,0,15),iso(9,0,105),iso(0,0,105)],scalo?'#bccdde':'#c0d0b3')+poly([iso(0,0,15),iso(0,7,15),iso(0,7,105),iso(0,0,105)],scalo?'#d1deea':'#dce4cf');
- if(scalo){
-  art+=`<g transform="translate(55 -42)"><rect width="108" height="60" rx="4" fill="#23394e"/><text x="10" y="14" fill="#b7d5e6" font-size="8" letter-spacing="2">SCALO / LAB</text><path d="M12 48h84M12 48V25" fill="none" stroke="#6c8393"/><path d="M18 42l14 -8 14 4 16 -15 13 5 15 -10" fill="none" stroke="#9ec9a1" stroke-width="3"/></g>`;
- }else art+=`<rect x="9" y="-78" width="198" height="63" rx="5" fill="#315444"/><image href="/assets/mati-randazzo-logo-web.png" x="13" y="-73" width="190" height="55"/>`;
- art+=plant(.7,.6)+plant(.6,6);
- for(const [i,u,v]of [[0,1,2],[1,6,1.3],[2,5,5]]){
-  art+=desk(u,v,accent);const [px,py]=iso(u+.65,v+1.6,15);
-  const names=scalo?['Scalo · 01','Scalo · 02','Scalo · 03']:['Mati','Leo','Walter'];
-  const roles=scalo?['Puesto de trabajo','Puesto de trabajo','Puesto de trabajo']:['CEO','Director comercial','Director de marketing'];
-  art+=staffAvatar(px,py,names[i],roles[i],scalo?['#587b9d','#8d9b65','#a17f9f'][i]:['#f0e5d1','#6e8aa1','#9d8069'][i]);
- }
- art+=`<g transform="translate(-60 -140)"><rect x="-50" y="-23" width="285" height="49" rx="11" fill="${accent}"/><text x="92" y="-2" text-anchor="middle" fill="#fffbed" font-size="16" font-weight="700">${scalo?'SCALO · OPERACIONES':'DIRECCIÓN · MATÍAS RANDAZZO'}</text><text x="92" y="15" text-anchor="middle" fill="#e3ead9" font-size="10">${scalo?'Computadoras · análisis · mediciones':'Mati / Leo / Walter'}</text></g>`;
- if(scalo){const palette={'#ece7d4':'#202124','#8d9e84':'#090a0b','#b0bba2':'#151618','#e7e8dc':'#222326','#f5f2e6':'#2b2c30','#dfdfd1':'#37383c','#bccdde':'#111214','#d1deea':'#1b1c1f','#cfa87d':'#25262a','#9b7857':'#0c0d0f','#b38b63':'#17181a','#f3f0df':'#44464b','#d4c9b4':'#242529','#bdb49f':'#323438','#47665c':'#17181b','#668573':'#292a2e','#23394e':'#08090b','#fbfcf3':'#161719','#bccab6':'#45474d','#294d3c':'#f4f4f4','#6c7d6b':'#c4c6ca'};for(const [from,to]of Object.entries(palette))art=art.split(from).join(to);}
- return `<g transform="translate(${x} ${y})" filter="url(#shadow)">${art}</g>`;
-}
-function building(){
- let art='';
- // A cutaway headquarters: connected floors, front facade and a broad entrance staircase.
- art+=poly([[475,265],[1120,-30],[1910,345],[1390,925],[470,540]],'#aab99c');
- art+=poly([[475,245],[1120,-50],[1910,325],[1390,905],[470,520]],'#edf0df','#c1cdb3');
- art+=poly([[470,520],[1390,905],[1390,952],[470,567]],'#b6c4a9');
- art+=poly([[1390,905],[1910,325],[1910,372],[1390,952]],'#91a88d');
- // Glass and timber front, intentionally open above so the operation remains visible.
- for(let n=0;n<8;n++){const x=560+n*67,y=558+n*28;art+=poly([[x,y],[x+50,y+21],[x+50,y+48],[x,y+27]],'#6c999b','#e8edda');}
- // Exterior garden paths leading to both standalone offices and the headquarters.
- art+=poly([[210,710],[470,650],[1180,1000],[1985,735],[2170,805],[1190,1120]],'#d7d4bd');
- art+=poly([[210,710],[470,635],[1180,980],[1985,720],[2170,790],[1190,1100]],'#f3efdc','#c9cfb8');
- // Entry staircase, each tread is a real isometric block.
- for(let i=0;i<6;i++){const x=1160-i*9,y=904+i*19;art+=poly([[x-100,y],[x+70,y-36],[x+105,y-19],[x-65,y+17]],'#f7f4e4','#bec6ac')+poly([[x-65,y+17],[x+105,y-19],[x+105,y-11],[x-65,y+25]],'#b5bea5');}
- art+=`<g transform="translate(1248 900)"><rect x="-42" y="-66" width="84" height="62" fill="#789d96" stroke="#e3eadb" stroke-width="5"/><path d="M0 -66v62M-7 -35v12M7 -35v12" stroke="#f2e9cc" stroke-width="3"/><rect x="-61" y="-91" width="122" height="25" rx="5" fill="#315444"/><text y="-74" text-anchor="middle" font-size="11" letter-spacing="2" fill="#fff8db">BIENVENIDOS</text></g>`;
- art+=plantAt(490,730)+plantAt(1830,850)+plantAt(1070,1055)+plantAt(1355,1015);
- return art;
-}
-function plantAt(x,y){return `<g transform="translate(${x} ${y}) scale(1.5)">${plant(0,0)}</g>`;}
-function architecture(){let html=building();
- html+=`<g transform="translate(400 0)" opacity=".8">${poly([[265,400],[815,125],[1440,430],[865,715]],'#c5d0bb')}${poly([[283,401],[815,142],[1420,429],[865,695]],'#f0ecdb')}${poly([[400,530],[720,371],[1310,665],[992,823]],'#eff0dc')}</g>`;
- // Indoor steps link the commercial floor with onboarding and the community.
- for(let i=0;i<7;i++)html+=`<g transform="translate(${1170-i*12} ${440+i*16})">${box(0,0,2.5,.7,9,'#e7dfc8','#a6b39a','#c1c8af')}</g>`;
- for(const [id,r]of Object.entries(rooms)){
- let art='';const w=9,d=7;
- art+=box(0,0,w,d,12,'#d8ddc9','#9ca78e','#b3bda4');
- for(let u=0;u<w;u++)for(let v=0;v<d;v++)art+=poly([iso(u,v,13),iso(u+1,v,13),iso(u+1,v+1,13),iso(u,v+1,13)],(u+v)%2?r.floor:'#f3f0df',r.floor);
- art+=poly([iso(0,0,13),iso(w,0,13),iso(w,0,90),iso(0,0,90)],r.wall)+poly([iso(0,0,13),iso(0,d,13),iso(0,d,90),iso(0,0,90)],r.wall);
- art+=poly([iso(0,0,90),iso(w,0,90),iso(w,0,96),iso(0,0,96)],'#f9f6e8')+poly([iso(0,0,90),iso(0,d,90),iso(0,d,96),iso(0,0,96)],'#fbf8ea');
- // Windows, wall art and handcrafted furniture in world coordinates.
- art+=poly([iso(.7,0,40),iso(2.8,0,40),iso(2.8,0,80),iso(.7,0,80)],'#f7f3df','#a8b7aa')+poly([iso(.85,0,43),iso(2.65,0,43),iso(2.65,0,76),iso(.85,0,76)],'#94b7bd');
- art+=`<path d="M${iso(1.75,0,43).join(' ')}L${iso(1.75,0,76).join(' ')}" stroke="#e6e7d4" stroke-width="3"/>`;
- if(id==='csm'){
- art+=box(3,.6,3,1.4,13,'#b5c58f','#80956b','#93a77b')+box(3,.6,3,.3,28,'#b6c998','#839a73','#99ad80');
- art+=box(.3,3,.6,2,48,'#e5c997','#ac956d','#c8af83');
- for(let v=3.1;v<4.8;v+=.35)art+=box(.32,v,.35,.2,52,'#9cbaaf','#637e74','#8aa39c');
- art+=box(4,2.6,1.5,.8,14,'#dbc395','#aa946f','#c5ad83');
- }else if(id==='ingreso'){
- art+=desk(4,.5,'#a29abb');art+=box(.3,3,.6,1.8,45,'#cdb8b4','#a68c87','#bfa6a0');
- art+=poly([iso(6.6,0,13),iso(8.1,0,13),iso(8.1,0,80),iso(6.6,0,80)],'#8fa78b','#6a8065');
- art+=`<circle cx="${iso(7.7,0,42)[0]}" cy="${iso(7.7,0,42)[1]}" r="3" fill="#f4d086"/>`;
- }else{art+=desk(3,.5,r.accent)+desk(6,.5,r.accent);
- if(id==='administracion')for(let n=0;n<3;n++)art+=box(.3,2+n*.6,.8,.45,22+n*5,'#f8f1d9','#d2c3a3','#e1d5b7');
- else art+=box(.3,3,.7,2,19,r.accent,'#6c8b7d','#8da699');}
- art+=plant(.7,.8)+plant(8.2,5.8);
- if(id==='ingreso'){const [nx,ny]=iso(4.7,2.1,14);art+=staffAvatar(nx,ny,'Nadia','Contratos / onboarding','#a18bb6');}
+function plant(x,y,s=1){return `<g transform="translate(${x} ${y}) scale(${s})">${block(-10,0,20,15,21,'#ecdfbb','#b78c59','#916c49')}<path d="M3 -14V-60M3 -30L-17 -47M3 -25L23 -45" fill="none" stroke="#31562d" stroke-width="4"/><path d="M3 -43Q-31 -78 -27 -47Q-19 -26 3 -34M3 -38Q30 -82 34 -49Q26 -24 3 -28M3 -53Q-8 -88 9 -85Q25 -65 3 -43" fill="#618f3a" stroke="#31562d" stroke-width="2"/><path d="M-20 -52l18 12M22 -51L6 -35M8 -72L4 -52" stroke="#a7bd59" stroke-width="3"/></g>`;}
+function windowArt(x,y,w=140,h=80){let s=rect(x,y,w,h,'#79aac1','#e9e6ce',4);s+=rect(x+6,y+6,w-12,h-12,'#b5d6da','#405d61');s+=poly([[x+7,y+h-10],[x+35,y+32],[x+65,y+h-15],[x+95,y+24],[x+w-8,y+h-8]],'#83a46a','none');s+=`<path d="M${x+w/2} ${y+5}v${h-10}M${x+5} ${y+h/2}h${w-10}" stroke="#f2edda" stroke-width="6"/>`;return s;}
+function shelf(x,y,w=75){let s=block(x,y,w,22,100,'#e0bf7d','#b48650','#835d38');s+=rect(x+8,y-91,w-10,82,'#694d37');for(let row=0;row<3;row++){for(let i=0;i<Math.floor(w/13)-1;i++)s+=rect(x+12+i*12,y-84+row*26,8,19,['#668c9b','#d7a956','#b96d57','#94a36a'][i%4],'#3f4437');s+=rect(x+8,y-61+row*26,w-10,4,'#d3a66a');}return s;}
+function monitor(x,y,dark=false){return `<g>${block(x,y,35,6,35,dark?'#181b1d':'#394e4b','#263936','#182d2b')}${rect(x+3,y-31,29,20,'#8eb8ad','#142b29')}${rect(x+6,y-28,12,3,'#c6dfb9')}${rect(x+6,y-22,21,2,'#bfd4bf')}${rect(x+11,y+2,24,4,'#243b36')}</g>`;}
+function desk(x,y,dark=false){return `<g>${block(x,y,85,36,24,dark?'#323438':'#e6bc7d',dark?'#17191b':'#b3844f',dark?'#0b0d0f':'#8d653c')}${monitor(x+40,y-10,dark)}${poly([[x+47,y+4],[x+74,y+4],[x+81,y+14],[x+54,y+14]],dark?'#575a60':'#f1e3bc','#766a50')}${poly([[x+12,y-12],[x+32,y-12],[x+38,y+1],[x+18,y+1]],'#fff6de','#b9aa8b')}${rect(x+19,y-8,12,1,'#ac9d7b')}${rect(x+20,y-4,11,1,'#ac9d7b')}</g>`;}
+function sofa(x,y,w=130,color='#668ea0'){return block(x,y,w,35,17,color,'#416377','#344a5c')+block(x,y-17,w,9,36,color,'#557b8d','#3b5b6c')+block(x-4,y,13,35,30,color,'#416377','#344a5c')+block(x+w-8,y,13,35,30,color,'#416377','#344a5c')+rect(x+25,y-32,24,21,'#d6c28b','#857758',3);}
+function table(x,y){return block(x,y,74,38,20,'#e2bd7c','#a87a42','#866234')+poly([[x+18,y-10],[x+41,y-10],[x+47,y+7],[x+24,y+7]],'#fff3d3','#baa782')+rect(x+23,y-6,14,2,'#9d9278');}
+function counter(x,y,w,color){return block(x,y,w,32,49,'#f2d5a0',color,'#765b43')+rect(x+22,y-29,w-40,19,'#eadabc','#b1a180',4);}
+function frame(x,y,label){y+=43;return rect(x,y,36,39,'#edd9ad','#7c6542',2)+rect(x+5,y+5,26,29,'#fff3d8','#c4b48c')+`<path d="M${x+11} ${y+13}h14M${x+11} ${y+18}h14M${x+11} ${y+23}h9" stroke="#a99a77" stroke-width="2"/>`;}
+function zoneIcon(id){if(id==='agendas'||id==='ventas')return '<path d="M4 29V18h6v11M15 29V11h6v18M26 29V3h6v26" fill="#ffe7ac"/>';if(id==='csm')return '<path d="M1 12L18 3 35 12 18 21Z M8 17v10q10 8 20 0V17M34 13v17" fill="none" stroke="#ffe7ac" stroke-width="3"/>';return '<path d="M7 3h17l7 7v24H7ZM24 3v8h7M12 17h13M12 23h13M12 28h8" fill="none" stroke="#ffe7ac" stroke-width="2.5"/>';}
+
+function roomShell(id,r){const dark=id==='scalo';let s='';
+ s+=poly([[0,110],[r.w,110],[r.w,r.h],[r.w-22,r.h+25],[20,r.h+25],[0,r.h]],dark?'#161719':'#cebd9a','#615e49',2);
+ s+=rect(0,110,r.w,r.h-110,r.floor,'#6d6d53');s+=rect(0,110,r.w,r.h-110,'url(#tile)');
+ s+=poly([[0,42],[r.w-35,42],[r.w,68],[r.w,160],[0,160]],r.color,dark?'#08090a':'#695d4d',2);
+ s+=poly([[0,42],[30,20],[30,150],[0,182]],dark?'#242629':'#e1d2b6','#685e4b',2);
+ s+=poly([[0,42],[30,20],[r.w-20,20],[r.w,42]],dark?'#494c51':'#fff0d9','#8f8065',2);
+ s+=poly([[0,r.h],[r.w,r.h],[r.w-22,r.h+25],[20,r.h+25]],dark?'#55585e':'#f6e4c5','#8c7d62',2);
+ s+=windowArt(r.w-155,62,125,82);
+ s+=text(52,100,r.name.toUpperCase(),21,dark?'#eee9df':'#fff1d4','font-weight="700" letter-spacing="2"');
  if(id==='agendas'){
- const closers=[...new Set(data.people.filter(p=>p.zone==='agendas'&&p.owners.commercial).map(p=>p.owners.commercial))].sort();
- closers.forEach((name,i)=>{const [sx,sy]=iso(1.7+(i%5)*1.45,1.5+Math.floor(i/5)*1.1,14);art+=`<g class="closer-staff" tabindex="0" aria-label="${esc(name)} · Closer">${staffAvatar(sx,sy,name,'Closer','#527e99')}</g>`;});
+ s+=counter(35,200,130,'#b68852')+monitor(115,162)+text(68,185,'MW',24,'#335e42','font-weight="700"');
+ s+=sofa(235,188,155,'#d4c4a0')+table(285,239)+rect(215,218,190,70,'#547e8b60','none',25);
+ s+=shelf(400,185,58)+frame(177,56,'↗');
+ s+=rect(45,115,50,28,'#7fb5d3')+rect(45,124,50,9,'#f9f1db')+text(70,134,'☀',12,'#d9ab38','text-anchor="middle"');
+ }else if(id==='ventas'){
+ s+=rect(140,170,190,145,'#c0984660','none',28)+table(190,211)+monitor(224,195);
+ s+=frame(40,60,'↗')+shelf(365,185,65);s+=text(300,127,'★',45,'#ffdd68','stroke="#8d6926" stroke-width="1"');
+ s+=desk(30,225)+desk(333,290);
+ }else if(id==='administracion'){
+ s+=counter(28,197,165,'#b66f4f')+monitor(132,160);
+ for(let i=0;i<3;i++)s+=block(38+i*28,158-i*4,22,13,8,'#f6eedb','#b6b4a3','#777f75');
+ s+=rect(325,116,168,160,'#f7d3b045','#e9cead',6)+text(409,137,'OFICINA DE NADIA',10,'#fff3d7','text-anchor="middle" font-weight="700"');
+ s+=desk(350,205)+shelf(452,223,40)+frame(230,66,'▤');
+ s+=block(218,215,50,28,60,'#e9dcc1','#d4c6ab','#a39780');for(let i=0;i<3;i++)s+=rect(232,166+i*17,31,11,'#e6dbc5','#8e8b75')+rect(243,170+i*17,10,2,'#767f75');
+ }else if(id==='ingreso'){
+ s+=counter(385,208,190,'#a48ab4')+monitor(480,172)+text(417,191,'Contratos',15,'#5a426d','font-weight="700"');
+ s+=shelf(35,222,80)+frame(156,62,'✎')+frame(223,62,'✓');
+ s+=table(165,235)+table(290,235)+desk(510,305)+plant(625,218);
+ s+=text(395,127,'INGRESO AL PROGRAMA',12,'#eee0f3','letter-spacing="1"');
+ }else if(id==='csm'){
+ s+=rect(80,186,280,145,'#7e806450','#87865d',58)+sofa(75,210,145,'#e1d8ba')+sofa(260,245,90,'#87a76c')+table(190,272);
+ s+=shelf(35,200,70)+desk(445,205)+desk(480,320)+frame(220,65,'✓');
+ s+=`<path d="M405 133v119h-18" stroke="#665f3c" stroke-width="4"/><path d="M382 134l12 -30h28l12 30Z" fill="#efd38d" stroke="#8a7545"/>`;
+ }else if(id==='direction'){
+ s+=`<image href="/assets/mati-randazzo-logo-web.png" x="45" y="108" width="180" height="45"/>`+desk(55,215)+desk(215,215)+desk(365,315)+sofa(360,195,120,'#788e61');
+ }else if(id==='scalo'){
+ s+=rect(75,112,210,78,'#080a0d','#5a6267',5)+text(90,130,'SCALO / ANÁLISIS',11,'#c6d7d7','letter-spacing="2"');
+ s+=`<path d="M90 173h175M90 173v-30" stroke="#53646a" fill="none"/><path d="M95 168l30 -12 22 6 32 -20 26 5 30 -13 24 6" stroke="#b4d1ba" stroke-width="3" fill="none"/>`;
+ s+=desk(48,250,true)+desk(225,250,true)+desk(390,320,true);
  }
- const title=id==='ingreso'?'Contratos':id==='agendas'?'Comercial':data?.zones.find(z=>z.id===id)?.name||id;
- art+=`<g class="room-label" role="button" tabindex="0" aria-label="Ver personas de ${esc(title)}" data-zone="${id}" transform="translate(-60 -115)"><rect x="-60" y="-21" width="260" height="42" rx="12" fill="#fbfbf1" stroke="#c8d3be"/><rect x="-52" y="-13" width="27" height="26" rx="6" fill="${r.accent}"/><text x="-39" y="5" text-anchor="middle" font-size="11" fill="white">${data?.zones.find(z=>z.id===id)?.mark||''}</text><text x="-14" y="4" font-size="13" font-weight="700" fill="#304e3d">${esc(title)}</text><text id="count-${id}" x="184" y="4" text-anchor="end" font-size="13" font-weight="700" fill="${r.accent}">0</text></g>`;
- html+=`<g transform="translate(${r.x} ${r.y}) scale(1.15)" filter="url(#shadow)">${art}</g>`;
- }
- html+=teamOffice(220,660,false)+teamOffice(2130,660,true);
- html+=`<g transform="translate(1200 1150)"><text fill="#879777" text-anchor="middle" font-size="12" font-family="monospace" letter-spacing="5">MATI WORLD</text><text y="22" fill="#8e9d80" text-anchor="middle" font-size="10">La operación, en perspectiva.</text></g>`;
- $('architecture').innerHTML=html;
- $('architecture').querySelectorAll('[data-zone]').forEach(n=>{const open=()=>showList(n.dataset.zone);n.addEventListener('click',open);n.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();open();}});});
+ s+=plant(25,r.h-20,1.05)+plant(r.w-45,r.h-25,1.2);
+ return `<g transform="translate(${r.x} ${r.y})" filter="url(#shadow)">${s}</g>`;
 }
-function hash(str){let n=0;for(const c of str)n=(Math.imul(n,31)+c.charCodeAt(0))|0;return n>>>0;}
-function character(p){const h=hash(p.id),shirts=['#5b8d9c','#af7d5d','#8d7fa3','#9a9d62','#629581','#ac7183'],skin=['#e2b18b','#b98058','#f1c9a8','#8f5e44'],hair=['#47382e','#6b4c35','#a67f49','#303736'];const mark=p.badge==='vigente'?'✓':p.issues.length?'!':p.badge==='venta'?'$':({upcoming:'↑',current:'◷',done:'✓',absent:'×',cancelled:'−'}[p.agenda?.code]||'?');const color=p.issues.length?'#bc7a45':p.badge==='vigente'?'#648661':'#7b9499';
- return `<title>${esc(p.name)} · ${esc(p.state)}</title><ellipse class="selection" cx="0" cy="-1" rx="22" ry="11"/><ellipse cx="0" cy="0" rx="14" ry="6" fill="#486944" opacity=".2"/><g shape-rendering="crispEdges"><path d="M-8 -13h7v14h-9v-5h2zM2 -13h7v14H0v-5h2z" fill="#34464a"/><path d="M-10 -29h20v18h-20z" fill="${shirts[h%shirts.length]}"/><path d="M-14 -26h4v14h-5v-8h1M10 -26h4v14h-4z" fill="${skin[h%4]}"/><path d="M-9 -45h18v18h-18z" fill="${skin[h%4]}"/><path d="M-10 -46h20v8h-4v-4H-5v6h-5z" fill="${hair[(h>>>2)%4]}"/><g class="blink" fill="#39352f"><rect x="-5" y="-36" width="2" height="2"/><rect x="4" y="-36" width="2" height="2"/></g><path d="M-2 -30h4" stroke="#985e46" stroke-width="1"/></g><g transform="translate(13 -48)"><circle r="8" fill="${color}" stroke="#fff7e7" stroke-width="2"/><text text-anchor="middle" y="3" fill="white" font-size="10" font-weight="700">${mark}</text></g><g class="name-tag" transform="translate(0 -75)"><rect x="-88" y="-13" width="176" height="27" rx="7" fill="#233e34"/><text x="0" y="5" text-anchor="middle" font-size="12" fill="#fffbee">${esc(p.name.length>23?p.name.slice(0,22)+'…':p.name)}</text></g>`;
+function architecture(){let s=rect(-1000,-1000,4600,3400,'url(#garden)');
+ s+=rect(-30,20,1660,1060,'#ae9672','#655b43',20)+rect(-20,18,1640,1032,'url(#wood)','#e7d1a7',14);
+ s+=rect(0,500,1600,55,'#ead6aa','#b79c6e')+rect(735,500,130,520,'#e4c898','#a38a60');
+ s+=rect(765,620,70,315,'#677a4b','#b9a06f',3)+rect(775,630,50,294,'none','#d6c088');
+ for(let i=0;i<5;i++)s+=rect(720-i*9,1020+i*13,160+i*18,13,'#d4c0a0','#9c8766');
+ s+=rect(739,979,122,39,'#517968','#d7c6a0',3)+text(800,1003,'MATI WORLD',12,'#f4dda0','text-anchor="middle" font-weight="700"');
+ s+=`<path d="M-50 785H-120M1600 785h100" stroke="#d9c394" stroke-width="50"/>`;
+ for(const [id,r]of Object.entries({...rooms,...offices}))s+=roomShell(id,r);
+ s+=`<image href="/assets/mati-world/office-background-v1.png" x="0" y="0" width="1600" height="1100" preserveAspectRatio="none"/>`;
+ s+=rect(739,1005,122,35,'#315a42','#e7d1a7',3)+text(800,1028,'MATÍAS RANDAZZO',10,'#f4dda0','text-anchor="middle" font-weight="700"');
+ $('architecture').innerHTML=s;
+ $('roomLabels').innerHTML=Object.entries(rooms).map(([id,r])=>`<g class="room-label" data-zone="${id}" role="button" tabindex="0" aria-label="Entrar a ${r.name}" transform="translate(${r.x+35} ${r.y-15})">${rect(0,0,r.w-70,48,r.color,'#fff3d7',12)}<g transform="translate(12 7)">${zoneIcon(id)}</g>${text(58,31,r.name,23,'#fff9e6','font-weight="700"')}${rect(r.w-150,9,65,30,'#fff2d5','none',12)}${text(r.w-117,31,'0',19,'#2d4934',`id="count-${id}" text-anchor="middle" font-weight="700"`)}</g>`).join('');
+ $('roomLabels').querySelectorAll('[data-zone]').forEach(n=>bindSvgButton(n,()=>enterRoom(n.dataset.zone)));
+ $('minimap').innerHTML=rect(4,4,312,202,'#dfcba6','#a99069',10)+Object.entries(rooms).map(([id,r])=>`<g data-zone="${id}" role="button" tabindex="0" aria-label="Ir a ${r.name}">${rect(r.x*.19+6,r.y*.17+8,r.w*.19,r.h*.17,r.color,'#fff1d0',5).replace('<rect ',`<rect id="mini-${id}" `)}${text(r.x*.19+r.w*.095+6,r.y*.17+r.h*.085+12,r.name==='Administración'?'Admin.':r.name==='Campus CSM'?'CSM':r.name,10,'#fff8df','text-anchor="middle" font-weight="700"')}</g>`).join('');
+ $('minimap').querySelectorAll('[data-zone]').forEach(n=>bindSvgButton(n,()=>enterRoom(n.dataset.zone)));
 }
-const searchKey=v=>String(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es');
-function filtered(){const q=searchKey($('search').value.trim()),area=$('area').value,owner=$('owner').value,state=$('state').value;return (data?.people||[]).filter(p=>(!q||searchKey(p.name).includes(q))&&(!area||p.zone===area)&&(!owner||(owner==='__none'?!p.owner:Object.values(p.owners).includes(owner)))&&(!state||p.state===state));}
-function draw(){if(!data)return;filterRows=filtered();const visible=new Set();positions.clear();$('empty').hidden=filterRows.length>0;$('total').textContent=data.people.length;$('visibleCount').textContent=`${filterRows.length} visibles`;
- $('characters').querySelectorAll('.cluster').forEach(n=>n.remove());
+function bindSvgButton(n,action){n.addEventListener('click',()=>{if(!dragged)action();});n.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();action();}});}
+function sprite(id,shirtOverride){const h=hash(id),skin=['#e8b48e','#bd835d','#f1ccaa','#8c5c43'][h%4],shirt=shirtOverride||['#588ea1','#b98256','#8d74a0','#a6a05b','#539079','#b86e7f'][h%6],hair=['#493526','#805132','#bc8c43','#282f32'][(h>>>2)%4];
+ let s=`<g class="body" shape-rendering="crispEdges" stroke="#30372e" stroke-width="1.3"><path d="M-10 -16h8V0h-12v-5h4M2 -16h8V0H-2v-5h4" fill="#344859"/><path d="M-13 -38h26l3 24H-16Z" fill="${shirt}"/><path d="M-8 -35v17M-6 -34h12" fill="none" stroke="#ffffff40"/><g class="hands"><path d="M-16 -33h5v18h-7v-8h2M11 -33h5v18h-6Z" fill="${skin}"/></g><path d="M-11 -60h22v25h-22Z" fill="${skin}"/><path d="M-13 -61h26v12H8v-7H-7v10h-6Z" fill="${hair}"/><path d="M-6 -46h3M4 -46h3" stroke="#25342e" stroke-width="2.5"/><path d="M-3 -39h6" stroke="#9c624b"/><path d="M-10 -53h18" stroke="#ffffff20"/></g>`;
+ if(h%3===0)s+=`<path d="M-9 -48h8v6h-8ZM2 -48h8v6H2ZM-1 -46h3" fill="none" stroke="#33423b" stroke-width="1.5"/>`;
+ if(h%4===0)s+=`<path d="M-13 -54q-7 -11 1 -13q5 -8 10 -2q9 -6 14 1q7 4 1 15" fill="${hair}" stroke="#3c372b" stroke-width="1.3"/>`;
+ if(h%5===0)s+=`<path d="M-18 -29h7v17h-8Z" fill="#b3a27b" stroke="#4b4c39"/><path d="M-13 -37v22" stroke="#635b41" stroke-width="3"/>`;
+ return s;
+}
+function nameTag(name,staff=false){const label=name.length>21?name.slice(0,20)+'…':name;return `<g class="name-tag" transform="translate(0 -89)">${rect(-79,-12,158,27,staff?'#e6edd1':'#203e2d',staff?'#65794c':'#e6d7ae',7)}${text(0,6,label,12,staff?'#26462e':'#fff4db','text-anchor="middle" font-weight="700"')}</g>`;}
+function marker(p){if(p.payment.pending||p.payment.rejected)return '▤';if(p.program.current)return '✓';if(p.zone==='ingreso')return '✎';if(p.sale.count)return '$';return {upcoming:'◷',current:'◷',done:'✓',absent:'×',cancelled:'−'}[p.agenda?.code]||'?';}
+function avatar(p){const mark=marker(p),badge=mark==='▤'?'<path d="M-5 -7h7l4 4V7H-5ZM2 -7v4h4M-2 0h5M-2 4h5" fill="none" stroke="#405338" stroke-width="1.5"/>':text(0,4,mark,14,'#405338','text-anchor="middle" font-weight="700"');return `<title>${esc(p.name)} · ${esc(p.state)}</title><ellipse class="selection" cy="1" rx="24" ry="11" fill="#f8df7c55" stroke="#fbca55" stroke-width="2"/><ellipse cy="2" rx="16" ry="6" fill="#263d2c" opacity=".23"/>${sprite(p.id)}<g transform="translate(18 -64)">${rect(-10,-12,21,22,p.issues.length?'#f1dca0':'#d9e8c5','#766a43',6)}${badge}</g>${nameTag(p.name)}`;}
+function staff(id,name,role,x,y,shirt){return `<g class="staff working" data-foot-y="${y}" transform="translate(${x} ${y})" role="img" aria-label="${esc(name)} · ${esc(role)} · ambientación"><title>${esc(name)} · ${esc(role)} · ilustración del equipo</title><ellipse cy="2" rx="19" ry="7" fill="#1d3a2a35"/>${sprite(id,shirt)}${nameTag(name,true)}${text(0,17,role,9,'#345737','text-anchor="middle" font-weight="700"')}</g>`;}
+function commercialOwners(){return [...new Set((data?.people||[]).filter(p=>p.zone==='agendas'&&p.owners.commercial).map(p=>p.owners.commercial))].sort();}
+function ownerStations(id){const r=rooms[id];if(id==='agendas')return commercialOwners().map((name,i)=>({name,x:r.x+75+i*(r.w-135)/Math.max(1,commercialOwners().length-1),y:r.y+220}));if(id==='csm'){const names=[...new Set(data.people.map(p=>p.owners.csm).filter(Boolean))].sort();return names.slice(0,3).map((name,i)=>({name,x:r.x+430+i*75,y:r.y+220}));}return [];}
+function paintTeam(){const key=commercialOwners().join('|')+'|'+[...new Set(data.people.map(p=>p.owners.csm).filter(Boolean))].join('|');if(key===paintedStaff)return;paintedStaff=key;let html='';
+ ownerStations('agendas').forEach((s,i)=>{html+=staff('staff:'+s.name,s.name,'Closer',s.x,s.y,'#5d8fa6');});
+ ownerStations('csm').forEach(s=>{html+=staff('staff:'+s.name,s.name,'CSM',s.x,s.y,'#5c9364');});
+ html+=staff('mati','Mati','CEO',-525,860,'#e4d4ae')+staff('leo','Leo','Director comercial',-365,860,'#6c8aa0')+staff('walter','Walter','Director de marketing',-210,960,'#a17b55');
+ html+=staff('scalo1','Scalo · 01','Equipo',1780,900,'#638594')+staff('scalo2','Scalo · 02','Equipo',1960,900,'#85966a')+staff('scalo3','Scalo · 03','Equipo',2130,970,'#987da1');
+ html+=`<g id="nadia" class="staff working" role="img" aria-label="Nadia · Administración y Contratos · recorrido ilustrativo"><title>Nadia · Administración y Contratos · ambientación, no presencia real</title><ellipse cy="2" rx="20" ry="7" fill="#213d2b35"/>${sprite('nadia','#a288ad')}${nameTag('Nadia',true)}${text(0,17,'Administración / Contratos',9,'#3d4a32','text-anchor="middle" font-weight="700"')}</g>`;
+ $('actors').querySelectorAll(':scope > .staff').forEach(n=>n.remove());$('actors').insertAdjacentHTML('beforeend',html);paintDepth();animateNadia(performance.now());
+}
+// Closed corridor route. Dwells represent ambient writing; they are not business events.
+const nadiaRoute=[{x:1460,y:270,t:0},{x:1460,y:270,t:8},{x:1325,y:300,t:11},{x:1275,y:445,t:14},{x:800,y:495,t:21},{x:800,y:745,t:25},{x:730,y:745,t:27},{x:580,y:780,t:30},{x:580,y:780,t:40},{x:730,y:745,t:43},{x:800,y:745,t:45},{x:800,y:495,t:49},{x:1275,y:445,t:56},{x:1325,y:300,t:59},{x:1460,y:270,t:62},{x:1460,y:270,t:64}];
+function animateNadia(now){cancelAnimationFrame(nadiaFrame);const node=$('nadia');if(!node)return;
+ if(reduced.matches){node.setAttribute('transform','translate(1460 270)');node.classList.remove('walking');node.dataset.footY='270';paintDepth();return;}
+ if(!document.hidden&&now-lastNadiaPaint>32){lastNadiaPaint=now;const t=((now-nadiaStart)/1000)%64;let i=0;while(i<nadiaRoute.length-2&&nadiaRoute[i+1].t<t)i++;const a=nadiaRoute[i],b=nadiaRoute[i+1],f=(t-a.t)/(b.t-a.t),walk=a.x!==b.x||a.y!==b.y;node.setAttribute('transform',`translate(${a.x+(b.x-a.x)*f} ${a.y+(b.y-a.y)*f})`);node.classList.toggle('walking',walk);node.classList.toggle('working',!walk);node.dataset.footY=String(a.y+(b.y-a.y)*f);paintDepth();}
+ if(!document.hidden)nadiaFrame=requestAnimationFrame(animateNadia);
+}
+function paintDepth(){const parent=$('actors'),sorted=[...parent.children].filter(n=>n.classList.contains('actor')||n.classList.contains('staff')).sort((a,b)=>Number(a.dataset.footY||0)-Number(b.dataset.footY||0));sorted.forEach((n,i)=>{if(parent.children[i]!==n)parent.insertBefore(n,parent.children[i]||null);});}
+function filtered(){const q=norm($('search').value.trim()),area=$('area').value,owner=$('owner').value,state=$('state').value;return (data?.people||[]).filter(p=>(!q||norm(p.name).includes(q))&&(!area||p.zone===area)&&(!owner||(owner==='__none'?!p.owner:Object.values(p.owners).includes(owner)))&&(!state||p.state===state));}
+function roomPeople(id){return filtered().filter(p=>p.zone===id).sort((a,b)=>(a.owner||'').localeCompare(b.owner||'','es')||a.name.localeCompare(b.name,'es'));}
+function slotsFor(id){const slots={agendas:[[140,435],[350,435],[520,435],[280,285],[400,285],[550,285]],ventas:[[650,415],[790,435],[945,415],[645,285],[950,285],[790,195]],administracion:[[1090,350],[1260,350],[1450,350],[1090,425],[1280,425],[1480,425]],ingreso:[[140,865],[300,865],[460,865],[650,865],[140,940],[300,940],[460,940],[650,940]],csm:[[950,850],[1120,850],[1300,850],[1480,850],[950,940],[1120,940],[1300,940],[1480,940]]};return slots[id].map(([x,y])=>({x,y}));}
+function distribute(id,people){const free=slotsFor(id),stations=ownerStations(id),out=[];for(const p of people){const owner=stations.find(s=>s.name===p.owner||s.name===p.owners.commercial||s.name===p.owners.csm);let i=0;if(owner)for(let j=1;j<free.length;j++)if(Math.abs(free[j].x-owner.x)<Math.abs(free[i].x-owner.x))i=j;out.push([p,free.splice(i,1)[0]]);}return out;}
+function draw(){if(!data)return;const visible=new Set(),oldPositions=new Map(positions);positions.clear();$('actors').querySelectorAll('.more-people').forEach(n=>n.remove());let shown=0;const rows=filtered();
  for(const [id,r]of Object.entries(rooms)){
- const all=filterRows.filter(p=>p.zone===id).sort((a,b)=>a.id.localeCompare(b.id));const chosen=all.slice(0,9);const chosenPerson=all.find(p=>p.id===selected);if(chosenPerson&&!chosen.some(p=>p.id===selected))chosen[chosen.length-1]=chosenPerson;
- $(`count-${id}`).textContent=all.length;
- chosen.forEach((p,i)=>{visible.add(p.id);const u=2+(i%3)*2,v=3.8+Math.floor(i/3)*1.05,[dx,dy]=iso(u,v,14),x=r.x+dx*1.15,y=r.y+dy*1.15;positions.set(p.id,{x,y});
- let actor=actors.get(p.id);if(!actor){actor=el('g',{'class':'actor',role:'button',tabindex:'0'});actor.addEventListener('click',()=>{if(!dragged)select(p.id);});actor.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(p.id);}});$('characters').append(actor);actors.set(p.id,actor);}
- actor.setAttribute('aria-label',`${p.name}. ${p.state}. ${p.owner||'Sin responsable'}`);actor.innerHTML=character(p);actor.classList.toggle('selected',p.id===selected);
- const previous=seen.get(p.id);actor.classList.toggle('fresh',previous!=null&&p.sale.count>previous);seen.set(p.id,p.sale.count);
- actor.style.transform=`translate(${x}px,${y}px)`;});
- if(all.length>9){const [dx,dy]=iso(6.8,6.1,17);const group=el('g',{class:'cluster',role:'button',tabindex:'0',transform:`translate(${r.x+dx*1.15} ${r.y+dy*1.15})`,'aria-label':`Ver las ${all.length} personas de ${data.zones.find(z=>z.id===id).name}`},`<rect x="-32" y="-19" width="64" height="32" rx="10" fill="${r.accent}" stroke="#f6f3e5" stroke-width="2"/><text y="2" text-anchor="middle" font-size="13" font-weight="700" fill="white">+${all.length-9}</text>`);const open=()=>showList(id);group.addEventListener('click',open);group.addEventListener('keydown',e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();open();}});$('characters').append(group);}
+ const all=roomPeople(id),limit=currentRoom===id?slotsFor(id).length:4;const priority=all.filter(p=>p.id===selected||(moving.has(p.id)&&moving.get(p.id).until>Date.now())).slice(0,limit);let chosen=priority.concat(all.filter(p=>!priority.includes(p)).slice(0,limit-priority.length));
+ $('count-'+id).textContent=data.zones.find(z=>z.id===id)?.count||0;
+ for(const [p,pos]of distribute(id,chosen)){visible.add(p.id);positions.set(p.id,pos);shown++;let n=actors.get(p.id);if(!n){n=el('g',{class:'actor',role:'button',tabindex:'0'});bindSvgButton(n,()=>select(p.id));actors.set(p.id,n);$('actors').append(n);}n.innerHTML=avatar(p);n.setAttribute('aria-label',`${p.name}. ${p.state}. ${p.owner||'Sin responsable'}`);n.classList.toggle('selected',p.id===selected);n.classList.toggle('fresh',moving.has(p.id));n.dataset.footY=String(pos.y);n.style.transform=`translate(${pos.x}px,${pos.y}px)`;
+ const old=oldPositions.get(p.id),move=moving.get(p.id);if(old&&move&&!move.animated&&!reduced.matches){move.animated=true;const a=rooms[move.from]?.door||[old.x,old.y],b=rooms[p.zone].door;n.animate([{transform:`translate(${old.x}px,${old.y}px)`},{transform:`translate(${a[0]}px,${a[1]}px)`},{transform:`translate(800px,525px)`},{transform:`translate(${b[0]}px,${b[1]}px)`},{transform:`translate(${pos.x}px,${pos.y}px)`}],{duration:2600,easing:'ease-in-out'});}
  }
- for(const [id,node]of actors)if(!visible.has(id)){node.remove();actors.delete(id);}
- // Painter order: lower feet remain in front of higher feet.
- [...actors].sort((a,b)=>positions.get(a[0]).y-positions.get(b[0]).y).forEach(([,node])=>$('characters').append(node));
- if(listMode!==null)renderList();else if(selected){const p=data.people.find(p=>p.id===selected);if(p)renderPerson(p);else{$('panelBody').innerHTML='<h2>La persona salió de esta vista</h2><p>Su situación cambió en la última sincronización.</p>';}}
+ if(all.length){const label=`${chosen.length} de ${all.length}${all.length>chosen.length?` · +${all.length-chosen.length} por explorar`:''}`;const g=el('g',{class:'more-people',role:'button',tabindex:'0',transform:`translate(${r.x+r.w/2} ${r.y+r.h+10})`,'aria-label':`${r.name}: ${label}. Ver personas`},rect(-140,-12,280,28,'#fff4d9','#9b8760',9)+text(0,7,label,12,'#3d5338','text-anchor="middle" font-weight="700"'));bindSvgButton(g,()=>{enterRoom(id);showDirectory();});$('actors').append(g);}
+ }
+ for(const [id,n]of actors)if(!visible.has(id)){n.remove();actors.delete(id);}
+ paintDepth();
+ $('total').textContent=data.people.length;$('visibleCount').textContent=`${shown} personajes representados · ${rows.length} personas en los filtros`;$('empty').hidden=rows.length>0;
+ $('world').classList.toggle('room-view',!!currentRoom);for(const id of Object.keys(rooms))$('mini-'+id).classList.toggle('active-room',id===currentRoom);
+ if(rooms[currentRoom]){$('roomCount').textContent=`${roomPeople(currentRoom).length} personas · hasta ${slotsFor(currentRoom).length} visibles a la vez`;}
+ paintTeam();if(selected){const p=data.people.find(p=>p.id===selected);if(p)renderPerson(p);else{$('panelBody').innerHTML='<h2>La situación cambió</h2><p>Esta persona ya no está en la vista operativa.</p>';}}else renderDirectory();
 }
-function date(value,time=false){if(!value)return 'Sin información';if(!time)return String(value).slice(0,10).split('-').reverse().join('/');return new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(value));}
-const pair=(label,value)=>`<dt>${esc(label)}</dt><dd>${esc(value||'Sin información')}</dd>`;
-function renderPerson(p){const a=p.agenda;$('panelBody').innerHTML=`<span class="eyebrow">${esc(data.zones.find(z=>z.id===p.zone).name)}</span><div class="avatar-card" style="margin-top:18px">${esc(p.name.split(/\s+/).map(x=>x[0]).slice(0,2).join(''))}</div><h2>${esc(p.name)}</h2><span class="chip">${esc(p.state)}</span><p class="reason">${esc(p.reason)}</p><h3>Pendientes y señales</h3>${p.issues.length?`<ul>${p.issues.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<p class="reason">Sin pendientes detectados en los datos disponibles.</p>'}<h3>Responsables</h3><dl>${pair('Comercial',p.owners.commercial||'Sin responsable')}${pair('Setter',p.owners.setter||'Sin responsable')}${pair('Administración',p.owners.administration||'Sin asignación registrada')}${pair('CSM',p.owners.csm||'Sin responsable')}</dl><h3>Agenda relevante</h3><dl>${pair('Fecha y hora',a?(a.start?date(a.start,true):`${date(a.date)} · hora sin información`):null)}${pair('Calendario',a?.calendar)}${pair('Estado registrado',a?.raw)}</dl><h3>Venta y conciliación</h3><dl>${pair('Ventas registradas',String(p.sale.count))}${pair('Última venta',date(p.sale.date))}${pair('Productos',p.sale.products.join(' · '))}${pair('Comprobantes',`${p.payment.conciliated} conciliados · ${p.payment.pending} pendientes · ${p.payment.rejected} rebotados`)}${pair('Primer pendiente: creado el',date(p.payment.waitingSince,true))}</dl><h3>Ingreso al programa</h3><dl>${pair('Contrato',p.contract.status)}${pair('Firma',p.contract.signature)}${pair('Acceso',p.program.access)}${pair('Soporte',p.program.support)}${pair('Fin de programa',date(p.program.end))}${pair('Onboarding',p.program.onboarding)}${pair('Fecha de onboarding',date(p.program.onboardingDate))}</dl><p class="reason">Importes, datos de contacto y documentación se consultan en la ficha autorizada.</p>${p.profileUrl?`<a class="profile" href="${esc(p.profileUrl)}" target="_blank" rel="noopener">Abrir ficha del contacto ↗</a>`:'<p class="reason">Sin ID GHL: no hay enlace de ficha disponible.</p>'}`;}
-function select(id,center=true){const p=data?.people.find(p=>p.id===id);if(!p)return;lastFocus=document.activeElement;selected=id;listMode=null;$('panel').hidden=false;draw();renderPerson(p);if(center)focusPerson(id);}
-function showList(zone=''){lastFocus=document.activeElement;selected=null;listMode=zone;listPage=0;$('panel').hidden=false;draw();renderList();}
-function renderList(){const rows=filterRows.filter(p=>!listMode||p.zone===listMode),pages=Math.max(1,Math.ceil(rows.length/20));listPage=Math.min(listPage,pages-1);$('panelBody').innerHTML=`<span class="eyebrow">Personas en el mundo</span><h2>${esc(data.zones.find(z=>z.id===listMode)?.name||'Directorio')}</h2><p class="reason">${rows.length} personas · elegí una para encontrarla en el mapa.</p><ul class="person-list">${rows.slice(listPage*20,listPage*20+20).map(p=>`<li><button data-person="${esc(p.id)}">${esc(p.name)}<small>${esc(p.owner||'Sin responsable')} · ${esc(p.state)}</small></button></li>`).join('')||'<li>No hay coincidencias.</li>'}</ul><div class="pager"><button class="outline" id="prevPage" ${listPage===0?'disabled':''}>Anterior</button><span>${listPage+1} / ${pages}</span><button class="outline" id="nextPage" ${listPage>=pages-1?'disabled':''}>Siguiente</button></div>`;$('panelBody').querySelectorAll('[data-person]').forEach(n=>n.onclick=()=>select(n.dataset.person));$('prevPage').onclick=()=>{listPage--;renderList();};$('nextPage').onclick=()=>{listPage++;renderList();};}
+function portrait(p){return `<svg viewBox="-38 -82 76 88" aria-hidden="true">${sprite(p.id)}</svg>`;}
+const pair=(k,v)=>`<dt>${esc(k)}</dt><dd>${esc(v||'Sin información')}</dd>`;
+function date(v,time=false){if(!v)return 'Sin información';if(!time)return String(v).slice(0,10).split('-').reverse().join('/');return new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(v));}
+function renderPerson(p){$('panelContext').textContent=rooms[p.zone].name.toUpperCase();const a=p.agenda;$('panelBody').innerHTML=`<div class="portrait">${portrait(p)}</div><h2>${esc(p.name)}</h2><span class="chip">${esc(p.state)}</span><p>${esc(p.reason)}</p>${p.profileUrl?`<a class="profile" href="${esc(p.profileUrl)}" target="_blank" rel="noopener">Ver ficha ↗</a>`:'<p>Sin ID GHL: ficha no disponible.</p>'}<h3>Pendientes</h3>${p.issues.length?`<ul>${p.issues.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>`:'<p>Sin pendientes detectados en los datos disponibles.</p>'}<h3>Responsables</h3><dl>${pair('Comercial',p.owners.commercial||'Sin responsable')}${pair('Setter',p.owners.setter||'Sin responsable')}${pair('Administración',p.owners.administration||'Sin asignación registrada')}${pair('CSM',p.owners.csm||'Sin responsable')}</dl><h3>Agenda relevante</h3><dl>${pair('Fecha',a?(a.start?date(a.start,true):date(a.date)+' · hora sin información'):null)}${pair('Calendario',a?.calendar)}${pair('Estado registrado',a?.raw)}</dl><h3>Venta y comprobantes</h3><dl>${pair('Ventas registradas',String(p.sale.count))}${pair('Última venta',date(p.sale.date))}${pair('Productos',p.sale.products.join(' · '))}${pair('Conciliación',`${p.payment.conciliated} conciliados · ${p.payment.pending} pendientes · ${p.payment.rejected} rebotados`)}${pair('Primer pendiente: creado el',date(p.payment.waitingSince,true))}</dl><h3>Contrato y programa</h3><dl>${pair('Contrato',p.contract.status)}${pair('Firma',p.contract.signature)}${pair('Acceso',p.program.access)}${pair('Soporte',p.program.support)}${pair('Fin de programa',date(p.program.end))}${pair('Onboarding',p.program.onboarding)}${pair('Fecha onboarding',date(p.program.onboardingDate))}</dl><p>Importes y documentación disponibles en la ficha autorizada.</p>`;}
+function directoryRows(){const rows=filtered();return rooms[currentRoom]&&!$('search').value.trim()?rows.filter(p=>p.zone===currentRoom):rows;}
+function renderDirectory(){if(offices[currentRoom]){$('panelContext').textContent='OFICINA DEL EQUIPO';$('panelBody').innerHTML=`<span class="eyebrow">Ambiente secundario</span><h2>${offices[currentRoom].name}</h2><p>${currentRoom==='direction'?'Mati · CEO<br>Leo · Director comercial<br>Walter · Director de marketing':'Tres puestos de Scalo, computadoras y pantalla de análisis.'}</p><p>Los personajes del equipo son ilustraciones. No indican conexión ni actividad real.</p><p>Usá Vista general o el minimapa para volver al recorrido de leads y clientes.</p>`;return;}const rows=directoryRows(),pages=Math.max(1,Math.ceil(rows.length/20));listPage=Math.min(listPage,pages-1);$('panelContext').textContent='EXPLORAR PERSONAS';$('panelBody').innerHTML=`<span class="eyebrow">${currentRoom?esc((rooms[currentRoom]||offices[currentRoom])?.name||'Oficina'):'Tu oficina'}</span><h2>${rooms[currentRoom]?rooms[currentRoom].name:'Cada persona,<br>su próximo paso.'}</h2><p>${rows.length} personas disponibles. El mapa muestra un subconjunto; esta lista y la búsqueda permiten encontrar a todas.</p><ul class="person-list">${rows.slice(listPage*20,listPage*20+20).map(p=>`<li><button data-person="${esc(p.id)}"><span class="mini-avatar">${portrait(p)}</span><span>${esc(p.name)}<small>${esc(p.owner||'Sin responsable')} · ${esc(p.state)}</small></span></button></li>`).join('')||'<li>No hay coincidencias.</li>'}</ul><div class="pager"><button id="prevPage" ${listPage===0?'disabled':''}>← Anterior</button><span>${listPage+1} / ${pages}</span><button id="nextPage" ${listPage>=pages-1?'disabled':''}>Siguiente →</button></div>`;$('panelBody').querySelectorAll('[data-person]').forEach(n=>n.onclick=()=>select(n.dataset.person));$('prevPage').onclick=()=>{listPage--;renderDirectory();$('panelBody').scrollTop=0;};$('nextPage').onclick=()=>{listPage++;renderDirectory();$('panelBody').scrollTop=0;};}
+function showDirectory(){selected=null;listPage=0;document.body.classList.add('panel-open');draw();}
 function applyCamera(){$('scene').setAttribute('transform',`translate(${camera.x} ${camera.y}) scale(${camera.k})`);}
-function focusPerson(id){const p=positions.get(id);if(!p)return;const rect=$('world').getBoundingClientRect(),vb=$('world').viewBox.baseVal,mobile=rect.width<700,k=mobile?Math.min(6,1800/rect.width):1.5,scale=Math.min(rect.width/vb.width,rect.height/vb.height);const targetY=mobile?vb.y+(rect.height*.23-(rect.height-vb.height*scale)/2)/scale:500;camera={k,x:1200-p.x*k,y:targetY-p.y*k};applyCamera();}
-function zoom(factor){const k=Math.max(.55,Math.min(6,camera.k*factor)),ratio=k/camera.k;camera.x=1200-(1200-camera.x)*ratio;camera.y=565-(565-camera.y)*ratio;camera.k=k;applyCamera();}
-function filter(){selected=null;listMode=null;$('panel').hidden=true;draw();if($('search').value.trim()&&filterRows.length){select(filterRows[0].id);if(filterRows.length>1){listMode='';renderList();}}}
-function updateOptions(id,values){const node=$(id),current=node.value;node.querySelectorAll('option[data-value]').forEach(n=>n.remove());for(const value of values){const o=document.createElement('option');o.value=value;o.textContent=value;o.dataset.value='1';node.append(o);}node.value=values.includes(current)||['','__none'].includes(current)?current:'';}
-function schedule(seconds=30){clearTimeout(timer);if(!document.hidden)timer=setTimeout(sync,seconds*1000);}
+function focusRect(x,y,w,h){const r=$('world').getBoundingClientRect(),baseScale=Math.min(r.width/1600,r.height/1100),k=Math.min(5,Math.min(r.width/(w+65),r.height/(h+80))/baseScale);camera={k,x:800-(x+w/2)*k,y:550-(y+h/2)*k};applyCamera();}
+function enterRoom(id,openList=true){const r=rooms[id]||offices[id];if(!r)return;currentRoom=id;selected=null;listPage=0;$('roomContext').hidden=false;$('roomTitle').textContent=r.name;$('roomCount').textContent=rooms[id]?'':'Oficina del equipo · ambientación';$('roomDirectory').hidden=!rooms[id];focusRect(r.x,r.y-35,r.w,r.h+85);if(openList&&innerWidth>800)document.body.classList.add('panel-open');draw();}
+function overview(){currentRoom=null;selected=null;listPage=0;camera={x:0,y:0,k:1};applyCamera();$('roomContext').hidden=true;document.body.classList.remove('panel-open');draw();}
+function select(id){const p=data?.people.find(p=>p.id===id);if(!p)return;const changed=currentRoom!==p.zone;enterRoom(p.zone,false);selected=id;document.body.classList.add('panel-open');draw();renderPerson(p);$('panelBody').scrollTop=0;
+ if(innerWidth<=800){const pos=positions.get(id),r=$('world').getBoundingClientRect(),scale=Math.min(r.width/1600,r.height/1100),k=Math.min(5,1.4/scale),targetY=(r.height*.23-(r.height-1100*scale)/2)/scale;camera={k,x:800-pos.x*k,y:targetY-pos.y*k};applyCamera();}else if(!changed){/* preserve a readable room framing */}}
+function zoom(f){const k=Math.max(.65,Math.min(6,camera.k*f)),ratio=k/camera.k;camera={k,x:800-(800-camera.x)*ratio,y:550-(550-camera.y)*ratio};applyCamera();}
+function recordChanges(next){const now=new Date();for(const p of next.people){const prev=lastPeople.get(p.id);if(!prev)continue;let message=null;
+ if(p.zone!==prev.zone){message=`${p.name}: ${rooms[prev.zone].name} → ${rooms[p.zone].name}`;moving.set(p.id,{from:prev.zone,until:Date.now()+6000});}
+ else if(p.program.current&&!prev.program.current)message=`${p.name}: acceso y soporte vigentes detectados`;
+ else if(p.sale.count>prev.sale.count)message=`${p.name}: nueva venta registrada detectada`;
+ else if(p.payment.conciliated>prev.payment.conciliated)message=`${p.name}: aumentaron los comprobantes conciliados`;
+ if(message){changes.unshift({id:p.id,message,at:now.toISOString()});if(p.sale.count>prev.sale.count)moving.set(p.id,{from:prev.zone,until:Date.now()+6000});}}
+ changes.splice(12);lastPeople=new Map(next.people.map(p=>[p.id,p]));for(const [id,m]of moving)if(m.until<Date.now())moving.delete(id);
+ $('eventCount').textContent=changes.length;$('eventList').innerHTML=changes.length?changes.map(e=>`<li><button data-event-person="${esc(e.id)}">${esc(e.message)}<time>Detectado ${esc(date(e.at,true))}</time></button></li>`).join(''):'<li>Todavía no se detectaron cambios durante esta visita.</li>';$('eventList').querySelectorAll('[data-event-person]').forEach(n=>n.onclick=()=>{if(data.people.some(p=>p.id===n.dataset.eventPerson)){select(n.dataset.eventPerson);$('events').hidden=true;}});
+}
+function options(id,values){const n=$(id),v=n.value;n.querySelectorAll('option[data-dynamic]').forEach(o=>o.remove());for(const value of values){const o=document.createElement('option');o.value=value;o.textContent=value;o.dataset.dynamic='1';n.append(o);}n.value=values.includes(v)||['','__none'].includes(v)?v:'';}
+function schedule(){clearTimeout(timer);if(!document.hidden)timer=setTimeout(sync,30000);}
 async function sync(){if(loading||document.hidden)return;loading=true;$('refresh').disabled=true;$('connection').textContent='Actualizando…';
- try{const response=await fetch('/api/metricas/mati-world',{cache:'no-store',signal:AbortSignal.timeout(40000)});if(response.status===401){location.href='/login.html';return;}if(response.status===403){location.href='/unauthorized.html';return;}if(!response.ok)throw Error('No se pudo sincronizar');const result=await response.json();if(!Array.isArray(result.people)||!Array.isArray(result.zones))throw Error('Respuesta incompleta');
- const first=!data;data=result;lastSuccess=new Date();if(first){$('area').insertAdjacentHTML('beforeend',data.zones.map(z=>`<option value="${z.id}">${esc(z.name)}</option>`).join(''));architecture();}
- updateOptions('owner',[...new Set(data.people.flatMap(p=>Object.values(p.owners)).filter(Boolean))].sort());updateOptions('state',[...new Set(data.people.map(p=>p.state))].sort());
- $('mappingBody').innerHTML='<p>La ubicación prioriza conciliación pendiente, requisitos de ingreso, soporte vigente, ventas y agendas. Los estados simultáneos permanecen en la ficha.</p><ul>'+data.limitations.map(s=>`<li>${esc(s)}</li>`).join('')+'</ul><p>Las oficinas de Dirección y Scalo son ilustraciones del equipo, no indicadores de presencia. Actualización automática cada 30 segundos. Sin movimientos ni cambios en los sistemas de origen.</p>';
- draw();$('loading').hidden=true;$('connection').dataset.status='ok';$('connection').textContent='● Conectado';$('lastSync').textContent=`Datos sincronizados ${date(data.syncedAt,true)}`;
- }catch(error){$('connection').dataset.status='error';$('connection').textContent='! Error de sincronización';$('lastSync').textContent=lastSuccess?`Último éxito ${date(lastSuccess.toISOString(),true)}`:'No se pudieron obtener los datos';if(!data){$('loading').innerHTML='<strong>No pudimos abrir la oficina</strong><p>La fuente de datos no respondió. Usá Actualizar para reintentar.</p>';}}
+ try{const r=await fetch('/api/metricas/mati-world',{cache:'no-store',signal:AbortSignal.timeout(40000)});if(r.status===401){location.href='/login.html';return;}if(r.status===403){location.href='/unauthorized.html';return;}if(!r.ok)throw Error('No se pudo sincronizar');const next=await r.json();if(!Array.isArray(next.people)||!Array.isArray(next.zones))throw Error('Datos incompletos');const first=!data;recordChanges(next);data=next;lastSuccess=next.syncedAt||next.generatedAt;
+ if(first){$('area').insertAdjacentHTML('beforeend',Object.entries(rooms).map(([id,z])=>`<option value="${id}">${z.name}</option>`).join(''));architecture();}
+ options('owner',[...new Set(data.people.flatMap(p=>Object.values(p.owners)).filter(Boolean))].sort());options('state',[...new Set(data.people.map(p=>p.state))].sort());draw();if(first&&innerWidth<=800)enterRoom('agendas',false);$('loading').hidden=true;$('connection').textContent='● En vivo';$('lastSync').textContent=`Sincronizado ${date(lastSuccess,true)}`;
+ $('mappingBody').innerHTML='<p>Datos reales, sólo lectura. Actualización cada 30 segundos. La ubicación prioriza pendientes administrativos y requisitos de ingreso; vender no implica acceso activo.</p><ul>'+data.limitations.map(s=>`<li>${esc(s)}</li>`).join('')+'</ul><p>Vista general: hasta 4 personas por área. Habitación: hasta 6 u 8, según el espacio. Los conteos, el directorio y la búsqueda incluyen a todas. Equipo ilustrado: los movimientos de Nadia y las poses de escritura son ambientación, no presencia ni actividad real. El feed muestra cambios detectados desde que abriste esta página, no un historial completo.</p>';
+ }catch(e){$('connection').textContent='! Sin sincronizar';$('lastSync').textContent=lastSuccess?`Últimos datos: ${date(lastSuccess,true)}`:'No se pudieron obtener los datos';if(!data)$('loading').innerHTML='<strong>No pudimos cargar la oficina</strong><span>Usá el botón de actualización para reintentar.</span>';}
  finally{loading=false;$('refresh').disabled=false;schedule();}}
-$('refresh').onclick=sync;$('directory').onclick=()=>showList('');$('closePanel').onclick=()=>{selected=null;listMode=null;$('panel').hidden=true;draw();lastFocus?.focus?.();};
-let searchTimer;$('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(filter,220);});for(const id of ['area','owner','state'])$(id).onchange=filter;
-for(const [id,x,y,k]of [['visitBuilding',1220,403,1.55],['visitDirection',245,700,2.6],['visitScalo',2150,700,2.6]])$(id).onclick=()=>{const zoomLevel=id==='visitBuilding'?k:Math.min(6,k*Math.max(1,900/$('viewport').clientWidth));camera={x:1200-x*zoomLevel,y:565-y*zoomLevel,k:zoomLevel};applyCamera();};
-$('zoomIn').onclick=()=>zoom(1.2);$('zoomOut').onclick=()=>zoom(1/1.2);$('fit').onclick=()=>{camera={x:-691,y:-60,k:1.55};applyCamera();};
-const viewport=$('viewport');viewport.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.08:1/1.08);},{passive:false});
-viewport.addEventListener('pointerdown',e=>{if(e.target.closest('.map-controls,.tour-controls'))return;drag={x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y};dragged=false;});
-viewport.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>6)dragged=true;if(!dragged)return;viewport.classList.add('dragging');const r=$('world').getBoundingClientRect(),scale=Math.min(r.width/$('world').viewBox.baseVal.width,r.height/$('world').viewBox.baseVal.height);camera.x=drag.cx+dx/scale;camera.y=drag.cy+dy/scale;applyCamera();});
-window.addEventListener('pointerup',()=>{drag=null;viewport.classList.remove('dragging');setTimeout(()=>{dragged=false;},0);});window.addEventListener('pointercancel',()=>{drag=null;viewport.classList.remove('dragging');});
-viewport.addEventListener('keydown',e=>{if(e.target!==viewport)return;const delta={ArrowLeft:[60,0],ArrowRight:[-60,0],ArrowUp:[0,60],ArrowDown:[0,-60]}[e.key];if(delta){e.preventDefault();camera.x+=delta[0];camera.y+=delta[1];applyCamera();}else if(['+','=','-'].includes(e.key)){e.preventDefault();zoom(e.key==='-'?1/1.2:1.2);}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('panel').hidden)$('closePanel').click();});document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(document.hidden){$('connection').textContent='Actualización en pausa';}else sync();});window.addEventListener('online',sync);window.addEventListener('offline',()=>{$('connection').textContent='Sin conexión';$('connection').dataset.status='error';});
-applyCamera();
-sync();
+$('overview').onclick=overview;$('fit').onclick=overview;$('miniOverview').onclick=overview;$('visitDirection').onclick=()=>enterRoom('direction');$('visitScalo').onclick=()=>enterRoom('scalo');$('roomDirectory').onclick=showDirectory;$('directory').onclick=showDirectory;$('closePanel').onclick=()=>{selected=null;document.body.classList.remove('panel-open');draw();};$('refresh').onclick=sync;$('zoomIn').onclick=()=>zoom(1.2);$('zoomOut').onclick=()=>zoom(1/1.2);
+$('eventsToggle').onclick=()=>{$('events').hidden=!$('events').hidden;};$('closeEvents').onclick=()=>{$('events').hidden=true;};
+let searchTimer;$('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{selected=null;listPage=0;$('area').value='';$('owner').value='';$('state').value='';const matches=filtered();if($('search').value.trim()&&matches.length){select(matches[0].id);if(matches.length>1){selected=null;renderDirectory();}}else{overview();document.body.classList.add('panel-open');}},200);});
+$('area').onchange=()=>{selected=null;listPage=0;if($('area').value)enterRoom($('area').value);else overview();};for(const id of ['owner','state'])$(id).onchange=()=>{selected=null;listPage=0;draw();};
+const viewport=$('viewport');viewport.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.08:1/1.08);},{passive:false});viewport.addEventListener('pointerdown',e=>{if(e.target.closest('button,.room-context,.tour'))return;drag={x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y};dragged=false;});viewport.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>6)dragged=true;if(!dragged)return;viewport.classList.add('dragging');const r=$('world').getBoundingClientRect(),scale=Math.min(r.width/1600,r.height/1100);camera.x=drag.cx+dx/scale;camera.y=drag.cy+dy/scale;applyCamera();});
+window.addEventListener('pointerup',()=>{drag=null;viewport.classList.remove('dragging');setTimeout(()=>{dragged=false;},0);});window.addEventListener('pointercancel',()=>{drag=null;viewport.classList.remove('dragging');});viewport.addEventListener('keydown',e=>{if(e.target!==viewport)return;const d={ArrowLeft:[60,0],ArrowRight:[-60,0],ArrowUp:[0,60],ArrowDown:[0,-60]}[e.key];if(d){e.preventDefault();camera.x+=d[0];camera.y+=d[1];applyCamera();}else if(['+','=','-'].includes(e.key)){e.preventDefault();zoom(e.key==='-'?1/1.2:1.2);}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('events').hidden=true;selected=null;document.body.classList.remove('panel-open');draw();}});document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(document.hidden){cancelAnimationFrame(nadiaFrame);$('connection').textContent='En pausa';}else{animateNadia(performance.now());sync();}});reduced.addEventListener('change',()=>animateNadia(performance.now()));window.addEventListener('online',sync);window.addEventListener('offline',()=>{$('connection').textContent='Sin conexión';});window.addEventListener('resize',()=>{if(currentRoom){const r=rooms[currentRoom]||offices[currentRoom];focusRect(r.x,r.y-35,r.w,r.h+85);}});
+architecture();applyCamera();sync();
 })();
