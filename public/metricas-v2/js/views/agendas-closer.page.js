@@ -1,5 +1,4 @@
 const RESOURCE = 'agenda_detalle_por_origen_closer';
-const TOTALS_RESOURCE = 'agenda_totales';
 const CASH_FIELDS = [
   'cash_collected_real_mes',
   'cash_collected_otros_meses',
@@ -249,13 +248,13 @@ const AGENDA_CLOSER_ROW_INFO = {
   },
   costoAgendaCloser: {
     title: 'Costo total x closer',
-    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_totales" + "agenda_detalle_por_origen_closer"',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
     logic: 'Agarra el costo por agenda y lo multiplica por la cantidad de agendas de ese closer.'
   },
   costoVentaCloser: {
     title: 'Costo por venta',
-    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_totales" + "agenda_detalle_por_origen_closer"',
+    viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + ventas por "fecha_de_agendamiento"',
     logic: 'Agarra el costo total por closer y lo divide por la cantidad de ventas.'
   }
@@ -1026,7 +1025,7 @@ async function loadAgendaCloser() {
       () => window.metricasApi.fetchAllRows(RESOURCE, query),
       () => fetchAovDia1ForFilters(yearRange, filters),
       () => fetchInvestmentForFilters(yearRange, filters),
-      () => window.metricasApi.fetchAllRows(TOTALS_RESOURCE, totalsQuery)
+      () => window.metricasApi.fetchAllRows(RESOURCE, totalsQuery)
     ], () => revision === agendaLoadRevision);
     if (revision !== agendaLoadRevision) return;
 
@@ -1040,9 +1039,9 @@ async function loadAgendaCloser() {
       filters
     );
     const totalsBaseRows = sanitizeRowsForYear(normalizeCloserRows(totalsResponse.rows || []), selectedYear);
-    const totalsRows = filters.closer
-      ? rows
-      : applyLocalFilters(totalsBaseRows, filters);
+    // The matrix and its cost denominator use the same origin attribution as
+    // the closer detail. agenda_totales uses a different current-origin rule.
+    const totalsRows = rows;
 
     const aovDia1Data = {
       total: Number(totalAovDia1Response?.aovDia1 || 0),
