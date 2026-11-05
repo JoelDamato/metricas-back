@@ -1,0 +1,19 @@
+/* Fit the content width after the navigation sidebar has taken its space. */
+body.mag-sistema-agendas-page .mag-theme-shell{width:calc(100% - 24px);max-width:1840px;min-width:0;margin-inline:auto}
+body.mag-sistema-agendas-page :is(.tab-content,.two-col,.strike-grid,.rg,.tbl-wrap,.strike-table-wrap,.ops-case-table-wrap){min-width:0;max-width:100%}
+body.mag-sistema-agendas-page :is(.two-col,.strike-grid){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+body.mag-sistema-agendas-page .rg{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.mag-sistema-agendas-page :is(.two-col,.strike-grid,.rg)>*{min-width:0}
+body.mag-sistema-agendas-page .wk-pills{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));overflow:visible}
+body.mag-sistema-agendas-page .wkp{min-width:0}
+body.mag-sistema-agendas-page .tabs{flex-wrap:wrap;overflow:visible;padding-inline:12px}
+body.mag-sistema-agendas-page .tb{white-space:normal;max-width:100%}
+body.mag-sistema-agendas-page :is(.bonus-config-field,.bonus-config-actions){min-width:0}
+body.mag-sistema-agendas-page :is(input,select){min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .ops-alert-grid{grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr))}
+body.mag-sistema-agendas-page :is(.mbar-right,.rank-cal){min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .mtbl{min-width:0;table-layout:fixed}
+body.mag-sistema-agendas-page .mtbl :is(th,td){min-width:0;white-space:normal;overflow-wrap:anywhere;padding:9px 6px}
+body.mag-sistema-agendas-page .wi{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:1100px){body.mag-sistema-agendas-page :is(.two-col,.strike-grid,.rg){grid-template-columns:minmax(0,1fr)}body.mag-sistema-agendas-page .strike-form{grid-template-columns:minmax(0,1fr)}body.mag-sistema-agendas-page .strike-row{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){body.mag-sistema-agendas-page .mag-theme-shell{width:calc(100% - 16px)}body.mag-sistema-agendas-page .hdr{padding-inline:14px}body.mag-sistema-agendas-page .mtbl{min-width:650px}body.mag-sistema-agendas-page .scale-outer{margin-inline:25px}body.mag-sistema-agendas-page .ops-alert-row{grid-template-columns:27px minmax(0,1fr) auto 12px}body.mag-sistema-agendas-page .ops-alert-bar{display:none}}

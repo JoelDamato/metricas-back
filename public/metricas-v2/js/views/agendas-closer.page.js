@@ -696,7 +696,9 @@ function buildExecutionMetricGroups(metrics) {
     .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
+let lastMatrixArgs = null;
 function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, agendaBaseData = {}) {
+  lastMatrixArgs = [rows, filters, aovDia1Data, investmentData, agendaBaseData];
   const container = document.getElementById('tableContainer');
   const currentMonth = new Date().getMonth() + 1;
   const selectedYear = Number(filters?.anio);
@@ -707,7 +709,9 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
   }
 
   const { byMonth, totals } = aggregateByMonth(rows, selectedYear);
-  const months = MONTHS.map((month) => month.value);
+  const displayMonth = document.getElementById('displayMonth')?.value || String(currentMonth);
+  const months = displayMonth === 'all' ? MONTHS.map(month => month.value) : [Number(displayMonth)];
+  container.classList.toggle('agenda-annual-view', displayMonth === 'all');
   const totalMetrics = metricRowsFor(
     totals,
     Number(investmentData.total || 0),
@@ -828,7 +832,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
               <tr>
                 <th>Mes</th>
                 ${headerMonths}
-                <th>Total</th>
+                <th>Total anual</th>
               </tr>
             </thead>
             <tbody>
@@ -990,6 +994,7 @@ async function loadAgendaCloser() {
   const status = document.getElementById('status');
   const filters = getFilters();
   const revision = ++agendaLoadRevision;
+  lastMatrixArgs = null;
   document.getElementById('kpiContainer').replaceChildren();
   document.getElementById('tableContainer').replaceChildren();
   setAgendaLoading(true);
@@ -1088,6 +1093,11 @@ async function initPage() {
     setAgendaLoading(false);
   }
 }
+
+const displayMonthSelect = document.getElementById('displayMonth');
+displayMonthSelect.innerHTML = MONTHS.map(month => `<option value="${month.value}">${month.label}</option>`).join('') + '<option value="all">Todo el año (tabla ampliada)</option>';
+displayMonthSelect.value = String(new Date().getMonth() + 1);
+displayMonthSelect.addEventListener('change', () => { if (lastMatrixArgs) buildMatrixTable(...lastMatrixArgs); });
 
 document.getElementById('reload').addEventListener('click', loadAgendaCloser);
 initPage().catch(error => { document.getElementById('status').textContent = `No se pudieron cargar los filtros: ${error.message}. Recargá la página para reintentar.`; });

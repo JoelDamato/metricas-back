@@ -53,3 +53,16 @@
 @keyframes agenda-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (max-width: 600px) { :root body.agenda-page.agenda-modern .agenda-loading-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } :root body.agenda-page.agenda-modern .agenda-loading-cards span:last-child { grid-column: 1 / -1; } }
 @media (prefers-reduced-motion: reduce) { :root body.agenda-page.agenda-modern .agenda-spinner, :root body.agenda-page.agenda-modern :is(.agenda-loading-cards, .agenda-loading-table) span { animation: none; } }
+
+/* Size to the available content area, including an expanded sidebar. */
+:root body.agenda-page.agenda-modern .container{width:100%;max-width:1680px;min-width:0;box-sizing:border-box;padding-inline:clamp(12px,2vw,32px)}
+:root body.agenda-page.agenda-modern :is(#tableContainer,.agenda-table-panel,.table-wrap){min-width:0;max-width:100%}
+:root body.agenda-page.agenda-modern table{min-width:0;table-layout:fixed}
+:root body.agenda-page.agenda-modern :is(th,td){white-space:normal;overflow-wrap:anywhere}
+:root body.agenda-page.agenda-modern :is(th,td):first-child{position:static;width:40%;min-width:0;max-width:none}
+:root body.agenda-page.agenda-modern .agenda-annual-view table{min-width:1450px;table-layout:auto}
+:root body.agenda-page.agenda-modern .agenda-annual-view :is(th,td):first-child{position:sticky;width:190px;min-width:190px}
+:root body.agenda-page.agenda-modern .agenda-display-controls{display:flex;align-items:end;flex-wrap:wrap;gap:16px;margin:0 0 20px}
+:root body.agenda-page.agenda-modern .agenda-display-controls label{display:grid;gap:8px;max-width:100%;font-size:13px}
+:root body.agenda-page.agenda-modern .agenda-display-controls p{flex:1 1 240px;color:var(--agenda-muted);font-size:13px;line-height:1.5;margin:0}
+@media(max-width:600px){:root body.agenda-page.agenda-modern :is(th,td){padding:12px 8px}:root body.agenda-page.agenda-modern .agenda-display-controls label{width:100%}}

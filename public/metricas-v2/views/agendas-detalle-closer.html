@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/agendas-closer.css?v=20261019-loading-1" />
+    <link rel="stylesheet" href="/css/agendas-closer.css?v=20261105-responsive" />
   </head>
   <body class="ranking-page agenda-page agenda-modern premium-navy-background">
     <main class="container">
@@ -42,6 +42,7 @@
         <div class="agenda-loading-table"><span></span><span></span><span></span><span></span></div>
       </div>
       <section id="kpiContainer" class="cards"></section>
+      <div class="agenda-display-controls"><label for="displayMonth">Mes visible en las tablas <select id="displayMonth"></select></label><p>Compará el mes elegido con el total anual. Los indicadores superiores corresponden al año filtrado.</p></div>
       <section id="tableContainer"></section>
 
     </main>
@@ -49,6 +50,6 @@
     <script src="/js/api/http.js?v=20260804-1"></script>
     <script src="/js/api/metricas.api.js?v=20260513-1"></script>
     <script src="/js/auth-shell.js?v=20261009-release-1"></script>
-    <script src="/js/views/agendas-closer.page.js?v=20261105-webinar-2"></script>
+    <script src="/js/views/agendas-closer.page.js?v=20261105-responsive"></script>
   </body>
 </html>
