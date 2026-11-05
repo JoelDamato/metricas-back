@@ -994,7 +994,7 @@
           Primer origen: ${escapeHtml(detail.firstOrigin || '-')} · Origen actual: ${escapeHtml(detail.origin || '-')}
         </span>
         <span class="sales-analysis-detail-meta">
-          Cash neto: ${escapeHtml(formatDetailCurrency(detail.baseAmount) || '$ 0,00')} · Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · <strong>${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}</strong>
+          Cash collected neto: ${escapeHtml(formatDetailCurrency(detail.baseAmount) || '$ 0,00')} · Comisión ${escapeHtml(person)}: ${escapeHtml(formatDetailPercent(detail.commissionPct) || '0,00%')} · <strong>${escapeHtml(formatDetailCurrency(detail.commissionAmount) || '$ 0,00')}</strong>
         </span>
       </li>
     `;
@@ -1206,7 +1206,7 @@
     const sum = key => rows.reduce((total,row) => total + Number(row[key] || 0), 0);
     return `<p role="status">${formatInteger(rows.length)} de ${formatInteger((area.details || []).length)} comprobantes mostrados</p>
       <div class="commission-area-audit-table" tabindex="0" role="region" aria-label="Comprobantes del área">
-      <table class="csm-table"><thead><tr><th>Acreditación</th><th>Cliente / comprobante</th><th>Tipo / producto</th><th>Medio de pago</th><th>Cobrado ARS</th><th>Descuentos ARS</th><th>Cash neto ARS</th><th>%</th><th>Comisión ARS</th></tr></thead>
+      <table class="csm-table"><thead><tr><th>Acreditación</th><th>Cliente / comprobante</th><th>Tipo / producto</th><th>Medio de pago</th><th>Cash collected ARS</th><th>Descuentos ARS</th><th>Cash collected neto ARS</th><th>%</th><th>Comisión ARS</th></tr></thead>
       <tbody>${rows.map(row => {
         const url = window.metricasGhl?.buildContactUrl?.(row.ghlid);
         const client = url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(row.clientName || '-')}</a>` : escapeHtml(row.clientName || '-');
@@ -1315,7 +1315,7 @@
                   <p>${formatCurrency(totalFacturacionArs)} total facturado</p>
                 </article>
                 <article class="comisiones-overview-kpi is-meg">
-                  <span>Cash Collected</span>
+                  <span>Cash collected</span>
                   <strong>${clubOnly ? formatCurrency(totalCashArs) : formatUsd(totalCashUsd)}</strong>
                   <p>${formatCurrency(totalCashArs)} cash del mes</p>
                 </article>
@@ -1352,8 +1352,8 @@
                     <th title="Para Nahuel también se incluyen sus asignaciones de Setting / Setter webinar.">Setting</th>
                     <th>Agendas</th>
                     <th>% Setting</th>
-                    <th>Facturacion</th>
-                    <th>CC NETO</th>
+                    <th>Facturación</th>
+                    <th>Cash collected neto</th>
                     <th>Comisión<br>Meg</th>
                     <th>Comisión<br>Club</th>
                     <th>Comisión<br>Setting</th>
@@ -1514,9 +1514,9 @@
               <th>${renderComprobanteSortHeader('Medio de pago', 'paymentMethod')}</th>
               <th>${renderComprobanteSortHeader('Nombre cliente', 'clientName')}</th>
               <th>${renderComprobanteSortHeader('Responsable venta', 'closer')}</th>
-              <th>${renderComprobanteSortHeader('Vendido ARS', 'facturacionArs')}</th>
-              <th>${renderComprobanteSortHeader('Cobrado ARS', 'cashArs')}</th>
-              ${clubOnly ? '' : `<th>${renderComprobanteSortHeader('Cash neto USD (sin Club)', 'cashUsd')}</th><th>${renderComprobanteSortHeader('Facturación USD (sin Club)', 'facturacionUsd')}</th>`}
+              <th>${renderComprobanteSortHeader('Facturación ARS', 'facturacionArs')}</th>
+              <th>${renderComprobanteSortHeader('Cash collected ARS', 'cashArs')}</th>
+              ${clubOnly ? '' : `<th>${renderComprobanteSortHeader('Cash collected neto USD (sin Club)', 'cashUsd')}</th><th>${renderComprobanteSortHeader('Facturación USD (sin Club)', 'facturacionUsd')}</th>`}
               <th>${renderComprobanteSortHeader('Porcentaje', 'commissionPct')}</th>
               ${clubOnly ? '' : `<th>${renderComprobanteSortHeader('TC', 'tc')}</th>`}
               <th>${renderComprobanteSortHeader('Primer origen', 'firstOrigin')}</th>

@@ -219,12 +219,12 @@
         <strong>${escapeHtml(formatCurrency(totalFacturacion, 'USD'))}</strong>
       </article>
       <article class="mis-comprobantes-summary-card">
-        <span>Cash USD (sin Club)</span>
+        <span>Cash collected USD (sin Club)</span>
         <strong>${escapeHtml(formatCurrency(totalCashUsd, 'USD'))}</strong>
       </article>`}
-      ${clubOnly || totalClubArs > 0 ? `<article class="mis-comprobantes-summary-card"><span>Vendido Club ARS</span><strong>${escapeHtml(formatCurrency(totalClubArs, 'ARS'))}</strong></article>` : ''}
+      ${clubOnly || totalClubArs > 0 ? `<article class="mis-comprobantes-summary-card"><span>Facturación Club ARS</span><strong>${escapeHtml(formatCurrency(totalClubArs, 'ARS'))}</strong></article>` : ''}
       <article class="mis-comprobantes-summary-card">
-        <span>Cobrado ARS</span>
+        <span>Cash collected ARS</span>
         <strong>${escapeHtml(formatCurrency(totalCashArs, 'ARS'))}</strong>
       </article>
     `;
@@ -262,9 +262,9 @@
               <th>Tipo</th>
               <th>Producto</th>
               <th>Fecha de acreditación</th>
-              <th>${clubOnly ? 'Vendido ARS' : 'Vendido (Club ARS / resto USD)'}</th>
-              ${clubOnly ? '' : '<th>Cash USD (sin Club)</th>'}
-              <th>Cobrado ARS</th>
+              <th>${clubOnly ? 'Facturación ARS' : 'Facturación (Club ARS / resto USD)'}</th>
+              ${clubOnly ? '' : '<th>Cash collected USD (sin Club)</th>'}
+              <th>Cash collected ARS</th>
               <th>Estado</th>
               <th>GHL ID</th>
               <th>Acciones</th>
@@ -331,7 +331,7 @@
           <label class="carga-field"><span>DNI / CUIT</span><input name="dniCuit" value="${escapeHtml(comprobante.dniCuit)}" required /></label>
           <label class="carga-field"><span>Medio de pago</span><select name="medioPago" required>${paymentOptions.map((item) => editorOption(item, comprobante.medioPago)).join('')}</select></label>
           <label class="carga-field"><span>Tasa de cambio</span><input name="tc" inputmode="decimal" value="${escapeHtml(comprobante.tc)}" required /></label>
-          <label class="carga-field"><span>Cash AR</span><input name="cashCollectedArs" inputmode="decimal" value="${escapeHtml(comprobante.cashCollectedArs)}" required /></label>
+          <label class="carga-field"><span>Cash collected ARS</span><input name="cashCollectedArs" inputmode="decimal" value="${escapeHtml(comprobante.cashCollectedArs)}" required /></label>
           ${isVenta ? `<label class="carga-field carga-field--full"><span>Producto adquirido</span><select name="productName" required>${productOptions.map((item) => editorOption(item, comprobante.productName)).join('')}</select></label>` : ''}
           ${(isVenta || isDevolucion) ? `<label class="carga-field"><span>Facturación USD</span><input name="facturacionUsd" inputmode="decimal" value="${escapeHtml(comprobante.facturacionUsd)}" ${isVenta ? 'required' : ''} /></label>` : ''}
           ${isVenta && !comprobante.isCheque ? `<label class="carga-field"><span>Cantidad de pagos</span><select name="cantidadPagos" required>${paymentCountOptions.map((item) => editorOption(item, comprobante.cantidadPagos)).join('')}</select></label>` : ''}

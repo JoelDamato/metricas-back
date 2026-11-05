@@ -234,8 +234,8 @@
               <th>Acreditación</th>
               <th>Medio</th>
               <th>Facturación USD</th>
-              <th>Cash USD</th>
-              <th>Cash AR</th>
+              <th>Cash collected USD</th>
+              <th>Cash collected ARS</th>
               <th>TC (ARS / USD)</th>
               <th>Estado actual</th>
               <th>Nota para el closer</th>
