@@ -38,10 +38,9 @@ test('la página exige acceso total a las tres áreas, nunca acceso público o p
  assert.equal(access.canAccessPageForUser({role:'total',email:'matirandazzo@gmail.com'},'mati-world.html'),true);
  assert.equal(access.canAccessPageForUser({role:'total',email:'a@example.com',access_config:{useCustomAccess:true,allowedPages:['mati-world.html']}},'mati-world.html'),false);
 });
-test('API rechaza anónimos, permisos parciales y escrituras; el payload no filtra datos sensibles',async()=>{
- const express=require('express'),{createRouter}=require('../modules/mati-world/router');let user=null,calls=0;const app=express();app.use((req,res,next)=>{req.authUser=user;next();});app.use('/world',createRouter(async()=>{calls++;return [{...active,mail:'secret',cash:9000,phone:'123',receipts:[{...sale,cash_collected:999}]}];}));
+test('Mati World desactivado no consulta la base ni entrega datos',async()=>{
+ const express=require('express'),{createRouter}=require('../modules/mati-world/router');let user=null,calls=0;const app=express();app.use((req,res,next)=>{req.authUser=user;next();});app.use('/world',createRouter(async()=>{calls++;return [];}));
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const url=`http://127.0.0.1:${server.address().port}/world`;
- try{assert.equal((await fetch(url)).status,401);user={role:'comercial'};assert.equal((await fetch(url)).status,403);user={role:'total',email:'matirandazzo@gmail.com'};assert.equal((await fetch(url,{method:'POST'})).status,405);
- const response=await fetch(url);assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/);const result=await response.text();assert(!result.includes('secret'));assert(!result.includes('cash_collected'));assert(!result.includes('999'));await fetch(url);assert.equal(calls,1);
+ try{assert.equal((await fetch(url)).status,401);user={role:'total'};for(const method of ['GET','POST']){const r=await fetch(url,{method});assert.equal(r.status,410);assert.equal((await r.json()).disabled,true);}assert.equal(calls,0);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
