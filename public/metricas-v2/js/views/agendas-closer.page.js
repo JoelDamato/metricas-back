@@ -37,7 +37,7 @@ const AGENDA_CLOSER_KPI_INFO = {
     title: 'Total Agendados',
     viewLabel: '"agenda_detalle_por_origen_closer"',
     dateLabel: '"fecha_agenda"',
-    logic: 'Lee "total_agendados" de "agenda_detalle_por_origen_closer". La base mensual sale del mes de "fecha_agenda" y queda segmentada por "origen" y "closer".'
+    logic: 'Lee "total_agendados" de "agenda_detalle_por_origen_closer". La base mensual usa "fecha_agenda". Desde octubre de 2026, Webinar también admite "fecha_llamada" si falta la fecha de agenda y hay un closer comercial. Webinar agrupa la atribución en origen, origen actual, primer origen o Setter Webinar; un formulario sin fecha no suma agenda.'
   },
   total_ventas: {
     title: 'Total Ventas',
