@@ -1030,14 +1030,14 @@ async function loadAgendaCloser() {
       () => window.metricasApi.fetchAllRows(RESOURCE, query),
       () => fetchAovDia1ForFilters(yearRange, filters),
       () => fetchInvestmentForFilters(yearRange, filters),
-      () => window.metricasApi.fetchAllRows(RESOURCE, totalsQuery)
+      ...(filters.closer ? [() => window.metricasApi.fetchAllRows(RESOURCE, totalsQuery)] : [])
     ], () => revision === agendaLoadRevision);
     if (revision !== agendaLoadRevision) return;
 
     const response = responses[0];
     const totalAovDia1Response = responses[1];
     const totalInvestmentResponse = responses[2];
-    const totalsResponse = responses[3];
+    const totalsResponse = responses[3] || response;
 
     const rows = applyLocalFilters(
       sanitizeRowsForYear(normalizeCloserRows(response.rows || []), selectedYear),

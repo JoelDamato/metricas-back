@@ -4,6 +4,8 @@ const requestData = require('./request-data-cache');
 const {isClientSession} = require('../../../public/metricas-v2/js/marketing-cohort');
 const env = require('../config/env');
 const csmCheckpoints = require('./csm-checkpoints.service');
+const reportReads = require('./report-read-cache').createReportReadCache();
+const CACHED_REPORTS = new Set(['agenda_totales', 'agenda_detalle_por_origen_closer', 'kpi_marketing_diario']);
 
 function requiredEnv() {
   if (!env.supabaseUrl || !env.supabaseKey) {
@@ -294,13 +296,16 @@ async function listRows(resourceName, options = {}) {
   const url = `${env.supabaseUrl}/rest/v1/${agendaRpc ? `rpc/${agendaRpc}` : source}`;
 
   try {
-    const response = await axios.get(url, {
+    const load = async () => (await axios.get(url, {
       headers: buildHeaders(),
       ...(agendaRpc ? { timeout: 35000 } : options.timeoutMs ? { timeout: options.timeoutMs } : {}),
       params
-    });
-
-    return response.data;
+    })).data;
+    // Include every normalized filter, column and page in the key. Authorization
+    // runs before this service; all calls here use the same service-role identity.
+    return CACHED_REPORTS.has(resource)
+      ? await reportReads.read(JSON.stringify([url, Object.entries(params).sort(([a], [b]) => a.localeCompare(b))]), load)
+      : await load();
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error consultando ${resource}: ${message}`);
