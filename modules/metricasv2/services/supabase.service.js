@@ -289,13 +289,14 @@ async function listRows(resourceName, options = {}) {
   // would disappear from its old month without being retrieved in its new month.
   const source = resource === 'comprobantes' && options.dateField === 'fecha_de_agendamiento'
     ? 'comprobantes_agenda_metricas' : resource;
-  const agendaRead = resource === 'agenda_totales';
-  const url = `${env.supabaseUrl}/rest/v1/${agendaRead ? 'rpc/agenda_totales_read' : source}`;
+  const agendaRpc = resource === 'agenda_totales' ? 'agenda_totales_read'
+    : resource === 'agenda_detalle_por_origen_closer' ? 'closer_agendas_read' : null;
+  const url = `${env.supabaseUrl}/rest/v1/${agendaRpc ? `rpc/${agendaRpc}` : source}`;
 
   try {
     const response = await axios.get(url, {
       headers: buildHeaders(),
-      ...(agendaRead ? { timeout: 35000 } : options.timeoutMs ? { timeout: options.timeoutMs } : {}),
+      ...(agendaRpc ? { timeout: 35000 } : options.timeoutMs ? { timeout: options.timeoutMs } : {}),
       params
     });
 

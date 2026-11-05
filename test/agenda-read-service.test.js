@@ -10,5 +10,9 @@ test('agenda RPC conserva filtros, orden y paginación sin afectar otras vistas'
   assert.equal(calls[0].config.timeout,35000);
   assert.deepEqual(calls[0].config.params,{select:'*',limit:250,offset:500,order:'mes.asc',anio:'eq.2026',estrategia_a:'eq.A'});
   await service.listRows('csm');assert.match(calls[1].url,/\/csm$/);assert.equal(calls[1].config.timeout,undefined);
+  await service.listRows('agenda_detalle_por_origen_closer',{limit:1000,eqFilters:{anio:2026,origen:'Webinar'}});
+  assert.match(calls[2].url,/rpc\/closer_agendas_read$/);
+  assert.equal(calls[2].config.timeout,35000);
+  assert.deepEqual(calls[2].config.params,{select:'*',limit:1000,offset:0,anio:'eq.2026',origen:'eq.Webinar'});
  }finally{axios.get=original;}
 });
