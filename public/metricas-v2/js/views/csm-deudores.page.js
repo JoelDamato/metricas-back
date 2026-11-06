@@ -9,8 +9,8 @@
   const fin = r => r.fecha_final ? `${date(r.fecha_final)} (${r.dias_para_fin < 0 ? `venció hace ${-r.dias_para_fin} d` : r.dias_para_fin === 0 ? 'hoy' : `en ${r.dias_para_fin} d`})` : '—';
   function table(section, rows) {
     if (!rows.length) return '<p>Sin clientes en esta lista.</p>';
-    return `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Closer</th><th>Producto</th><th>Fecha final</th><th>Próx. contacto CSM</th></tr></thead><tbody>${
-      rows.map(r => `<tr><td>${esc(r.nombre)}</td><td>${esc(r.telefono || '—')}</td><td>${esc(r.closer || '—')}</td><td>${esc(r.producto || '—')}</td><td>${esc(fin(r))}</td><td>${esc(date(r.proximo_contacto_csm))}</td></tr>`).join('')
+    return `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Closer</th><th>Producto</th><th>Fecha final</th><th>Próx. contacto CSM</th><th>Detalle</th></tr></thead><tbody>${
+      rows.map(r => `<tr><td>${esc(r.nombre)}</td><td>${esc(r.telefono || '—')}</td><td>${esc(r.closer || '—')}</td><td>${esc(r.producto || '—')}</td><td>${esc(fin(r))}</td><td>${esc(date(r.proximo_contacto_csm))}</td><td>${r.ghlid ? `<a href="/contacto-estado/?ghlId=${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener" aria-label="Ver estado de ${esc(r.nombre || 'contacto')} (abre en otra pestaña)">Ver estado del contacto ↗</a>` : 'Sin ID de GHL'}</td></tr>`).join('')
     }</tbody></table></div>`;
   }
   async function load() {
