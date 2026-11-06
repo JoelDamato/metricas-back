@@ -1,6 +1,7 @@
 const axios = require('axios');
 const env = require('../metricasv2/config/env');
 const access = require('../auth/access');
+const cache = require('../metricasv2/services/report-read-cache').createReportReadCache({ttlMs: 60000, maxEntries: 2, concurrency: 1});
 const RECEIPT_FIELDS = 'id,ghlid,cliente_format,responsable_venta,creado_por,tipo,producto_format,f_venta,f_acreditacion,estado,rebotar_pago,facturacion,cash_collected,cash_collected_neto,cash_collected_total,cash_collected_neto_total';
 async function readAll(table, params = {}) {
   const rows = [];
@@ -41,7 +42,7 @@ async function list(req,res,next){
     if(!req.authUser || !access.canAccessPageForUser(req.authUser,'csm-renovaciones.html') ||
       !['csm','comprobantes','leads_raw'].every(resource=>access.canAccessResourceForUser(req.authUser,resource)))
       return res.status(403).json({message:'Sin acceso a Renovaciones'});
-    res.set('Cache-Control','no-store').json(await load());
+    res.set('Cache-Control','no-store').json(await cache.read('renewal-data',load));
   }catch(error){next(error);}
 }
 module.exports={list,load};

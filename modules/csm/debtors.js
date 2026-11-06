@@ -1,6 +1,7 @@
 const axios = require('axios');
 const env = require('../metricasv2/config/env');
 const access = require('../auth/access');
+const cache = require('../metricasv2/services/report-read-cache').createReportReadCache({ttlMs: 90000, maxEntries: 4, concurrency: 1});
 const COLUMNS = 'ghlid,nombre,telefono,mail,closer,estado_pago,fecha_final,fecha_final_renovacion,productos_adquiridos,ultimo_producto_adquirido,actividad,abandono,pausa,proximo_contacto_csm,ultima_respuesta';
 const DAY = 86400000;
 const norm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -56,14 +57,18 @@ async function list(req, res, next) {
   try {
     if (!req.authUser || !access.canAccessPageForUser(req.authUser, 'csm-deudores.html') || !access.canAccessResourceForUser(req.authUser, 'csm'))
       return res.status(403).json({message: 'Sin acceso a Deudores y renovaciones'});
-    const today = new Date().toISOString().slice(0, 10);
-    const from = new Date(Date.now() - 16 * DAY).toISOString().slice(0, 10), to = new Date(Date.now() + 31 * DAY).toISOString().slice(0, 10);
-    const [flagged, renewing] = await Promise.all([
-      readAll({estado_pago: 'in.(Deudor,Apurar)'}),
-      readAll({and: `(fecha_final.gte.${from},fecha_final.lte.${to})`})
-    ]);
-    const rows = [...new Map([...flagged, ...renewing].map(r => [r.ghlid || r.nombre, r])).values()];
-    res.set('Cache-Control', 'no-store').json({generado: new Date().toISOString(), ...classify(rows, today)});
+    // Una sola lectura cada 90 s para todos los usuarios; los permisos se validan antes, siempre en vivo.
+    const data = await cache.read('csm-deudores', async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const from = new Date(Date.now() - 16 * DAY).toISOString().slice(0, 10), to = new Date(Date.now() + 31 * DAY).toISOString().slice(0, 10);
+      const [flagged, renewing] = await Promise.all([
+        readAll({estado_pago: 'in.(Deudor,Apurar)'}),
+        readAll({and: `(fecha_final.gte.${from},fecha_final.lte.${to})`})
+      ]);
+      const rows = [...new Map([...flagged, ...renewing].map(r => [r.ghlid || r.nombre, r])).values()];
+      return {generado: new Date().toISOString(), ...classify(rows, today)};
+    });
+    res.set('Cache-Control', 'no-store').json(data);
   } catch (error) { next(error); }
 }
 
