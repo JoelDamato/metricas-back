@@ -30,6 +30,7 @@ const PAGE_OPTIONS = [
   { value: 'csm-tiempo.html', label: 'CSM por tiempo' },
   { value: 'csm-situacion.html', label: 'CSM por situacion' },
   { value: 'csm-cuadro.html', label: 'Cuadros individuales CSM' },
+  { value: 'csm-deudores.html', label: 'Deudores y renovaciones CSM' },
   { value: 'csm-renovaciones.html', label: 'Renovaciones' },
   { value: 'view.html', label: 'Vista interna' }
 ];

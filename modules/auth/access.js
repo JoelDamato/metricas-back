@@ -43,6 +43,7 @@ const PAGE_ROLE_ACCESS = {
   'csm-rendimiento.html': ['total', 'csm'],
   'diagnostico.html': ['total', 'csm'],
   'csm-renovaciones.html': ['total', 'comercial'],
+  'csm-deudores.html': ['total', 'csm'],
   'herramientas.html': ['total', 'comercial', 'csm'],
   'generador-params.html': ['total', 'comercial', 'csm'],
   'area-comercial.html': ['total', 'comercial'],

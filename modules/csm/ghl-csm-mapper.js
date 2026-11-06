@@ -10,7 +10,7 @@ const TEXT_FIELDS = {
  modelo_negocio:['Modelo de negocio','FV - (2) ¿Cuál es tu modelo de negocio?','¿Cuál es tu modelo de negocio?'],
  insatisfecho:['Insatisfecho'], solicito_devolucion:['Solicito devolucion'], abandono:['Abandono'],
  despedida:['Despedida'], engagement:['Engagement','Engagement CSM','Engang'],
- pago_a_onbo:['Pago a onbo'],pago_a_diagnostico:['Pago a diagnostico'],diagnostico_7dias:['Diagnostico en 7 dias'],
+ estado_pago:['Estado de pago','estado_de_pago'],pago_a_onbo:['Pago a onbo'],pago_a_diagnostico:['Pago a diagnostico'],diagnostico_7dias:['Diagnostico en 7 dias'],
  proximo_renovar_15d:['Proximo a renovar 15D'],proximo_renovar_30d:['Proximo a renovar 30D']
 };
 const DATE_FIELDS={f_onboarding:['F. Onboarding'],fecha_final:['Fecha final'],proximo_contacto_csm:['Proximo contacto CSM'],
