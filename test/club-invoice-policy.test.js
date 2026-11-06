@@ -238,7 +238,8 @@ test('credenciales ARCA contemplan la ubicación oficial de Secret Files en Rend
 
   assert.equal(candidates[0], '/ruta/explicita/certificado.crt');
   assert.equal(candidates[1], '/etc/secrets/certificado.crt');
-  assert.match(resolveCredentialPath('matias-randazzo-wsfe-produccion.crt'), /secrets\/arca\/matias-randazzo-wsfe-produccion\.crt$/);
+  // El certificado real no se versiona: la ruta local sólo se resuelve si existe, pero siempre es candidata.
+  assert.ok(credentialPathCandidates('matias-randazzo-wsfe-produccion.crt').some(p => /secrets\/arca\/matias-randazzo-wsfe-produccion\.crt$/.test(p)));
 });
 
 test('credenciales ARCA detectan certificados y claves aunque Render cambie sus nombres', () => {

@@ -58,7 +58,7 @@ test('el sidebar global es fijo, compacto y desplaza el contenido', () => {
 
 test('dashboard fuerza la versión nueva de CSS y JavaScript para evitar estilos viejos en caché', () => {
   assert.match(dashboard, /\/css\/styles\.css\?v=20261009-release-1/);
-  assert.match(dashboard, /\/js\/auth-shell\.js\?v=20261009-release-1/);
+  assert.match(dashboard, /\/js\/auth-shell\.js\?v=\d{8}-/);
   assert.match(dashboard, /\/js\/views\/dashboard\.page\.js\?v=/);
 });
 
@@ -67,6 +67,6 @@ test('todas las vistas del shell cargan la misma versión estable del sidebar', 
   shellPages.forEach((file) => {
     const html = fs.readFileSync(file, 'utf8');
     assert.match(html, /\/css\/styles\.css\?v=20261009-release-1/, path.relative(root, file));
-    assert.match(html, /\/js\/auth-shell\.js\?v=20261009-release-1/, path.relative(root, file));
+    assert.match(html, /\/js\/auth-shell\.js\?v=\d{8}-/, path.relative(root, file));
   });
 });

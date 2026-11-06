@@ -61,7 +61,7 @@ test('tabla y totales Club no muestran USD ni TC y conservan bruto, IVA, comisio
  const row={transactionId:'club',category:'Club',tipo:'Venta',product:'Club',role:'Closer',cashArs:90000,grossArs:121000,cashUsd:80,facturacionUsd:999,facturacionArs:1498500,tc:1500,ivaArs:21000,externalCommissionsArs:10000,netTotalArs:90000,commissionAmount:36000,commissionPct:.4};
  const html=tableContext([row]);
  assert.doesNotMatch(html,/USD|<th>TC<\/th>/);
- assert.match(html,/Vendido ARS/);assert.match(html,/Cobrado ARS/);assert.match(html,/Monto comisionable ARS/);
+ assert.match(html,/Facturación ARS/);assert.match(html,/Cash collected ARS/);assert.match(html,/Monto comisionable ARS/);
  assert.equal((html.match(/ARS 121000/g)||[]).length,4);
  assert.match(html,/ARS 21000/);assert.match(html,/ARS 10000/);assert.match(html,/ARS 90000/);
  const mixed=tableContext([row,{...row,transactionId:'meg',product:'MEG',category:'MEG',cashUsd:200,facturacionUsd:1000}], '');
