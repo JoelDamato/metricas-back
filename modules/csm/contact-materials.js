@@ -28,7 +28,7 @@ function linksFromNotes(notes) {
 
 function sessionLabel(title, calendarName) {
   const text = normalize(`${title} ${calendarName}`);
-  if (/diagnost/.test(text)) return /final/.test(text) ? 'Diagnóstico final' : 'Diagnóstico';
+  if (/diagnost/.test(text)) return /final/.test(text) ? 'Diagnóstico final' : /intermedi/.test(text) ? 'Diagnóstico intermedio' : 'Diagnóstico';
   if (/onboard|bienvenida/.test(text)) return 'Onboarding';
   if (/costo/.test(text)) return 'Costos';
   if (/cash\s*flow/.test(text)) return 'Cashflow';
@@ -44,11 +44,13 @@ function mapAppointments(events, calendarNames = {}) {
   return events.filter(event => !event.deleted).flatMap(event => {
     const links = linksFromNotes(event.notes);
     const label = sessionLabel(event.title, calendarNames[event.calendarId]);
+    const sessionText = normalize(`${event.title || ''} ${calendarNames[event.calendarId] || ''}`);
+    const costsSecond = label === 'Costos' && /(?:n[º°o.]?\s*2\b|segunda\s+sesi[oó]n|costos?\s*2\b)/.test(sessionText);
     if (['Traffiker', 'Coaching'].includes(label)) return [];
     // Keep unclassified material instead of silently dropping it.
     if (!label && !links.length) return [];
     return [{
-      id: event.id, label: label || 'Otras sesiones', title: event.title || calendarNames[event.calendarId] || 'Sesión',
+      id: event.id, ...(costsSecond ? {costsSecond:true} : {}), label: label || 'Otras sesiones', title: event.title || calendarNames[event.calendarId] || 'Sesión',
       date: String(event.startTime || '').slice(0, 10),
       status: event.appointmentStatus || event.appoinmentStatus || '',
       links

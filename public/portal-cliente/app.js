@@ -8,7 +8,7 @@
     if (!response.ok || !data.ok) throw Error(data.message || 'No pudimos cargar tu portal.');
     const portal = data.portal;
     document.getElementById('clientName').textContent = portal.name;
-    document.title = `${portal.name} · Mi portal MEG`;
+    document.title = `${portal.name} · Mi portal`;
     const roadmap = document.getElementById('rumbo');
     roadmap.innerHTML = '<p class="card-kicker">TU DIRECCIÓN</p><h2 id="roadmapTitle">Carta de rumbo</h2>';
     if (portal.roadmapUrl) {

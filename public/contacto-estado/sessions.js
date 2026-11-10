@@ -21,20 +21,20 @@ function renderSessions(contact, clientView = false) {
     'Onboarding','Diagnóstico','Costos','EERR económico','EERR financiero','Cashflow'
   ].map(label => ({label})))].filter(active);
   for (const appointment of appointments) {
-    if (!sessions.some(session => session.label === appointment.label)) sessions.push({label:appointment.label});
+    if (!sessions.some(session => session.key ? session.key === appointment.sessionKey : session.label === appointment.label)) sessions.push({key:appointment.sessionKey,label:appointment.label});
   }
   const statuses = {confirmed:'Confirmada',cancelled:'Cancelada',showed:'Asistió',noshow:'No asistió',new:'Nueva',invalid:'Inválida'};
   return `<section class="csm-appointments" aria-label="Sesiones por cita">
     <p class="card-kicker">ACOMPAÑAMIENTO · CITAS</p><h3>${clientView?'Tus sesiones':'Sesiones del cliente'}</h3>
-    <p>Abrí cada sesión para ver sus citas, grabaciones e informes.</p>
+    <p>${clientView && contact.csmProgress?.program ? `${csmEscape(contact.csmProgress.program)} · ${csmEscape(contact.csmProgress.total)} sesiones. ` : ''}Abrí cada sesión para ver sus citas, grabaciones e informes.</p>
     ${!materials.available ? '<p class="materials-warning" role="status">Los materiales no están disponibles temporalmente. Volvé a cargar la página para reintentar.</p>' : ''}
-    <div class="csm-appointment-grid">${sessions.map(session => {
-      const rows = appointments.filter(a => a.label === session.label);
+    <div class="csm-appointment-grid">${sessions.map((session,index) => {
+      const rows = appointments.filter(a => session.key ? a.sessionKey === session.key : a.label === session.label);
       const date = session.date || (rows.find(a => a.date)?.date ? formatSessionDate(rows.find(a => a.date).date) : null);
       const count = rows.reduce((total,a) => total + safeMaterialLinks(a.links).length, 0);
       return `<details class="csm-appointment ${date?'has-date':''}">
         <summary><span class="csm-calendar-icon" aria-hidden="true">${date?'✓':'▦'}</span>
-          <span class="csm-session-summary"><span class="csm-session-title">${csmEscape(session.label)}</span>
+          <span class="csm-session-summary"><span class="csm-session-title">${clientView && session.key && !session.historical ? `${index+1}. ` : ''}${csmEscape(session.label)}</span>${clientView && session.owner ? `<small>${csmEscape(session.owner)} · ${csmEscape(session.program)}</small>` : ''}
             <strong>${csmEscape(date || 'Sin fecha registrada')}</strong>
             <small>${csmEscape(session.status || (date?'Fecha de cita registrada':'Sin sesión registrada'))}</small>
             <span class="session-toggle">${count ? `${count} ${count===1?'material':'materiales'}` : 'Ver detalle'} <span aria-hidden="true">⌄</span></span>

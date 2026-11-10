@@ -20,3 +20,7 @@ body.client-portal { margin:0; background:#07101e; color:#e9f3ff; font-family:Ar
 .portal-shell a:focus-visible,.portal-shell summary:focus-visible { outline:3px solid #80c9ff; outline-offset:5px; }
 @media(max-width:600px) { .portal-shell { width:calc(100% - 24px); } .portal-header { gap:16px; } .portal-header nav { gap:12px; } .portal-header nav a { font-size:12px; } .portal-welcome { padding:36px 8px 24px; } .portal-roadmap { padding:20px; } .roadmap-disclosure iframe { height:650px; } }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+.portal-header{flex-wrap:wrap}
+.portal-brand{font-size:clamp(22px,4vw,30px);overflow-wrap:anywhere}
+.csm-session-summary{min-width:0}
+.csm-session-title{overflow-wrap:anywhere}
