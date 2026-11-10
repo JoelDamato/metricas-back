@@ -1,0 +1,26 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const express=require('express');
+const supabase=require('../modules/metricasv2/services/supabase.service'),commissions=require('../modules/metricasv2/services/commissions.service'),auth=require('../modules/auth/service'),ledger=require('../modules/settlements/service'),router=require('../modules/settlements/router');
+test('Leo aprueba cada bono por separado; se recalcula, respeta historial y pasa a liquidación',async t=>{
+ const leo={email:'leonardoalaniz19@gmail.com',nombre:'Leonardo Alaniz'},person={email:'charliecarlostu@gmail.com',nombre:'Carlos Tu',role:'comercial',activo:true};
+ const dashboard={config:{personRoles:[{person:'Carlos Tu',role:'Closer'}]},details:[],bonusCandidates:[],locked:false,movementRows:[]};
+ t.mock.method(commissions,'getCommissionConfig',async()=>({config:dashboard.config,locked:dashboard.locked}));t.mock.method(ledger,'list',async()=>dashboard.movementRows);
+ t.mock.method(auth,'listUsers',async()=>[person]);t.mock.method(commissions,'buildCommissionDashboard',async()=>dashboard);
+ t.mock.method(supabase,'listAllRows',async resource=>resource==='comprobantes'?[{responsable_venta:'Carlos Tu',producto_format:'MEG',f_acreditacion:'2026-11-04',estado:'Conciliado',cash_collected_neto:40000}]:[{closer:'Carlos Tu',anio:2026,mes:11,aplica_agenda:10,efectuadas_agenda:10,tasa_cierre:1}]);
+ t.mock.method(supabase,'getAgendaBonusRules',async()=>({}));t.mock.method(supabase,'getReportesPremioConfig',async()=>({cash_collected_premio_pct:1}));t.mock.method(supabase,'getKpiCloserRules',async()=>({}));t.mock.method(supabase,'getAgendaCheckpoints',async()=>({entries:[]}));
+ t.mock.method(ledger,'write',async(action,user,payload)=>{const row={...payload,id:'saved',created_by:user.email,status:'approved',amount_ars:payload.amount*payload.exchange_rate};dashboard.movementRows.push(row);return row;});
+ const app=express();app.use(express.json());app.use((req,res,next)=>{req.authUser=req.headers['x-user']==='leo'?leo:person;next();});app.use(router);app.use((err,req,res,next)=>res.status(err.statusCode||500).json({message:err.message}));
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));t.after(()=>new Promise(r=>server.close(r)));const base='http://127.0.0.1:'+server.address().port;
+ const rows=(await (await fetch(base+'/agenda-bonuses?month=2026-11',{headers:{'x-user':'leo'}})).json()).candidates;
+ assert.equal(rows.length,4);assert.equal(new Set(rows.map(r=>r.source_key)).size,4);
+ const c=rows.find(r=>r.source_key==='sistema-agendas:kpis-50');assert.equal(c.amount,400);
+ const payload={month:'2026-11',email:person.email,sourceKey:c.source_key,expectedAmount:400,exchangeRate:1400,requestKey:'00000000-0000-4000-8000-000000000021'};
+ const approve=(who,p=payload)=>fetch(base+'/approve',{method:'POST',headers:{'Content-Type':'application/json','x-user':who},body:JSON.stringify(p)});
+ dashboard.locked=true;assert.equal((await approve('leo')).status,409);dashboard.locked=false;
+ assert.equal((await approve('closer')).status,403);assert.equal((await approve('leo',{...payload,expectedAmount:500})).status,409);
+ assert.equal((await approve('leo')).status,200);assert.equal((await approve('leo')).status,409);
+ const totals=ledger.calculate({summary:{totalCommission:100},details:[]},dashboard.movementRows);
+ assert.equal(totals.bonuses,560000);assert.equal(totals.total,560100);
+ dashboard.movementRows.push({person_email:person.email,source_key:'sistema-agendas',status:'approved',amount:440,currency:'USD',exchange_rate:1400});
+ const legacy=await router._test.candidates('2026-11',dashboard,await router._test.users(dashboard));
+ for(const c of legacy.filter(c=>['sistema-agendas:periodos','sistema-agendas:concentracion'].includes(c.source_key)))assert(c.movement,'No duplicar el bono agrupado aprobado anteriormente');
+});

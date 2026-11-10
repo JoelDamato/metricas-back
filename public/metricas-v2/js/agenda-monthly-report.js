@@ -498,13 +498,32 @@
     return recommendations;
   }
 
+  function buildPerformanceBonus(cash, kpiRows, kpiRules, entries, year, month) {
+    const kpis = buildKpiRows(kpiRows, kpiRules, { year, month });
+    const scores = buildScoreRows(entries);
+    return cash.distributions.map((row) => {
+      const kpi = kpis.find((k) => k.name === row.name);
+      const score = scores.find((k) => k.name === row.name);
+      const eligible = cash.teamTotal > 0 && row.sharePct >= 50
+        && kpi?.tasaAsistenciaOk && kpi?.tasaCierreOk && score?.strikeCount === 0;
+      return { name: row.name, sharePct: row.sharePct, amount: eligible ? roundMoney(row.cash * 0.01) : 0 };
+    });
+  }
+
   function buildReportModel(input = {}) {
     const year = Number(input.year);
     const month = Number(input.month);
     const scores = buildScoreRows(input.checkpointEntries || []);
     const kpis = buildKpiRows(input.kpiRows || [], input.kpiRules || {}, { year, month });
     const cash = buildCashAndBonus(input.cashRows || [], input.bonusRules || {}, year, month, input.now || new Date());
-    const bonusTotal = cash.weeklyBonusTotal + cash.monthlyBonusTotal;
+    const performance = buildPerformanceBonus(cash, input.kpiRows || [], input.kpiRules || {}, input.checkpointEntries || [], year, month);
+    cash.performanceBonusTotal = 0;
+    cash.distributions.forEach((row) => {
+      row.performanceBonus = performance.find((item) => item.name === row.name)?.amount || 0;
+      row.bonus += row.performanceBonus;
+      cash.performanceBonusTotal += row.performanceBonus;
+    });
+    const bonusTotal = cash.weeklyBonusTotal + cash.monthlyBonusTotal + cash.performanceBonusTotal;
     const isCurrent = monthKey(year, month) === monthKey((input.now || new Date()).getFullYear(), (input.now || new Date()).getMonth() + 1);
     const model = {
       year,
@@ -540,6 +559,7 @@
     buildScoreRows,
     eligibleCashRows,
     buildCashAndBonus,
-    buildReportModel
+    buildReportModel,
+    buildPerformanceBonus
   });
 });

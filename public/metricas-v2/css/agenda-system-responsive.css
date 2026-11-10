@@ -17,3 +17,23 @@ body.mag-sistema-agendas-page .mtbl :is(th,td){min-width:0;white-space:normal;ov
 body.mag-sistema-agendas-page .wi{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 @media(max-width:1100px){body.mag-sistema-agendas-page :is(.two-col,.strike-grid,.rg){grid-template-columns:minmax(0,1fr)}body.mag-sistema-agendas-page .strike-form{grid-template-columns:minmax(0,1fr)}body.mag-sistema-agendas-page .strike-row{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){body.mag-sistema-agendas-page .mag-theme-shell{width:calc(100% - 16px)}body.mag-sistema-agendas-page .hdr{padding-inline:14px}body.mag-sistema-agendas-page .mtbl{min-width:650px}body.mag-sistema-agendas-page .scale-outer{margin-inline:25px}body.mag-sistema-agendas-page .ops-alert-row{grid-template-columns:27px minmax(0,1fr) auto 12px}body.mag-sistema-agendas-page .ops-alert-bar{display:none}}
+
+/* Size against the available content area, including an expanded sidebar. */
+body.mag-sistema-agendas-page{box-sizing:border-box;min-width:0;width:auto}
+body.mag-sistema-agendas-page .mag-theme-shell{box-sizing:border-box;width:calc(100% - 24px);max-width:1840px}
+body.mag-sistema-agendas-page .strike-summary{grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr))}
+body.mag-sistema-agendas-page :is(.strike-form,.strike-row){grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))}
+body.mag-sistema-agendas-page :is(.strike-form,.strike-row,.strike-summary)>*{min-width:0;max-width:100%}
+body.mag-sistema-agendas-page :is(.strike-table-wrap,.tbl-wrap,.ops-case-table-wrap){overflow-x:auto}
+body.mag-sistema-agendas-page :is(.mbar,.ph,.strike-head){flex-wrap:wrap}
+body.mag-sistema-agendas-page textarea{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
+body.mag-sistema-agendas-page iframe{min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .nw-grid{grid-template-columns:repeat(auto-fit,minmax(min(155px,100%),1fr))}
+body.mag-sistema-agendas-page :is(.nw-card,.panel,.strike-panel){min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .rname{min-width:0;overflow-wrap:anywhere}
+body.mag-sistema-agendas-page :is(.ops-alert-head,.ops-alert-actions,.ops-alert-period){flex-wrap:wrap;min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .ops-alert-head>*{min-width:0;max-width:100%}
+body.mag-sistema-agendas-page .strike-list-head{flex-wrap:wrap}
+body.mag-sistema-agendas-page .strike-meta{min-width:0;max-width:100%;overflow-wrap:anywhere}
+body.mag-sistema-agendas-page .bsr{flex-wrap:wrap;gap:8px}
+body.mag-sistema-agendas-page .bsr>*{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}

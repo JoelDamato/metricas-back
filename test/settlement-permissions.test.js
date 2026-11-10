@@ -26,6 +26,8 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
  t.mock.method(commissions,'buildCommissionDashboard',async()=>dashboard);
  t.mock.method(commissions,'buildUserCommercialArea',()=>({summary:{totalCommission:1000},details:[]}));
  t.mock.method(supabase,'listAllRows',async()=>[]);
+ t.mock.method(supabase,'getKpiCloserRules',async()=>({}));
+ t.mock.method(supabase,'getAgendaCheckpoints',async()=>({entries:[]}));
  t.mock.method(supabase,'getAgendaBonusRules',async()=>({}));
  t.mock.method(supabase,'getReportesPremioConfig',async()=>({cash_collected_premio_pct:0}));
  t.mock.method(ledger,'firstWithdrawalMonth',async()=>null);

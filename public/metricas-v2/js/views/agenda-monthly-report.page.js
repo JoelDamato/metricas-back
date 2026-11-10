@@ -167,10 +167,10 @@
       <div class="bonus-callouts">
         <div class="callout"><span>Bonus ${periodLabel}</span><strong>${formatCurrency(model.cash.weeklyBonusTotal)}</strong></div>
         <div class="callout"><span>Bonus mensual 40%</span><strong>${formatCurrency(model.cash.monthlyBonusTotal)}</strong></div>
-        <div class="callout gold"><span>Total oficial</span><strong>${formatCurrency(model.bonusTotal)}</strong></div>
+        <div class="callout gold"><span>Total calculado · requiere aprobación</span><strong>${formatCurrency(model.bonusTotal)}</strong></div>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Closer</th><th class="right">Cash oficial</th><th class="right">Participación</th><th class="right">Bonus ${periodLabel}</th><th class="right">Bonus mensual</th><th class="right">Total</th></tr></thead><tbody>
-        ${model.cash.distributions.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td class="right">${formatCurrency(row.cash)}</td><td class="right">${formatPercent(row.sharePct)}</td><td class="right">${formatCurrency(row.weeklyBonus)}</td><td class="right">${formatCurrency(row.monthlyBonus)}</td><td class="right bonus-text"><strong>${formatCurrency(row.bonus)}</strong></td></tr>`).join('')}
+      <div class="table-wrap"><table><thead><tr><th>Closer</th><th class="right">Cash oficial</th><th class="right">Participación</th><th class="right">Bonus ${periodLabel}</th><th class="right">Bonus mensual</th><th class="right">KPIs + 50% cash</th><th class="right">Total</th></tr></thead><tbody>
+        ${model.cash.distributions.map((row) => `<tr><td><strong>${escapeHtml(row.name)}</strong></td><td class="right">${formatCurrency(row.cash)}</td><td class="right">${formatPercent(row.sharePct)}</td><td class="right">${formatCurrency(row.weeklyBonus)}</td><td class="right">${formatCurrency(row.monthlyBonus)}</td><td class="right">${formatCurrency(row.performanceBonus)}</td><td class="right bonus-text"><strong>${formatCurrency(row.bonus)}</strong></td></tr>`).join('')}
       </tbody></table></div>
       <p class="footnote">La distribución ${periodLabel} se hace por aporte real al cash de cada período. El mínimo individual del 10% no excluye a una persona del bonus.${roundingDiff >= 0.009 ? ` La diferencia de ${formatCurrency(roundingDiff)} surge del redondeo individual; se respeta el total oficial del sistema.` : ''}</p>
     `;
@@ -210,7 +210,7 @@
         </div>
         <div class="summary-grid">
           <article class="stat"><span>Cash oficial del mes</span><strong>${formatCurrency(model.cash.teamTotal)}</strong></article>
-          <article class="stat"><span>Bonus total pagable</span><strong>${formatCurrency(model.bonusTotal)}</strong></article>
+          <article class="stat"><span>Bonus calculado</span><strong>${formatCurrency(model.bonusTotal)}</strong></article>
           <article class="stat"><span>Mejor ${periodName}</span><strong>${executive.bestWeek ? `${periodPrefix}${executive.bestWeek.index + 1}` : '—'}</strong></article>
           <article class="stat"><span>${periodName.charAt(0).toUpperCase()+periodName.slice(1)} menor</span><strong>${executive.worstWeek ? `${periodPrefix}${executive.worstWeek.index + 1}` : '—'}</strong></article>
           <article class="stat"><span>${periodNamePlural} con bonus</span><strong>${bonusWeekCount}</strong></article>
@@ -266,6 +266,11 @@
     try {
       currentModel = await fetchReportData(year, month);
       renderReport(currentModel);
+      const approvals = document.createElement('section');
+      approvals.className = 'section panel';
+      approvals.dataset.downloadIgnore = '';
+      root.appendChild(approvals);
+      window.loadAgendaBonusApprovals(approvals, selected);
       status.textContent = `Reporte ${currentModel.status.toLowerCase()} actualizado con datos reales.`;
     } catch (error) {
       console.error(error);
