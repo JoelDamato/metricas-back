@@ -696,6 +696,17 @@ function buildExecutionMetricGroups(metrics) {
     .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
+const NEW_CLOSER_METRIC_KEYS = ['costoAgendaCloser', 'aov'];
+const CLOSER_METRICS_RELEASE = Date.parse('2026-11-11T00:00:00-03:00');
+const CLOSER_METRICS_NEW_UNTIL = CLOSER_METRICS_RELEASE + 25 * 24 * 60 * 60 * 1000;
+
+function closerMetricNewBadge(key, now = Date.now()) {
+  return NEW_CLOSER_METRIC_KEYS.includes(key)
+    && now >= CLOSER_METRICS_RELEASE && now < CLOSER_METRICS_NEW_UNTIL
+    ? '<span class="agenda-metric-new" aria-label="Métrica nueva">NEW</span>'
+    : '';
+}
+
 let lastMatrixArgs = null;
 function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, agendaBaseData = {}) {
   lastMatrixArgs = [rows, filters, aovDia1Data, investmentData, agendaBaseData];
@@ -813,7 +824,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
 
         return `
           <tr>
-            <td><button type="button" class="metric-info-trigger metric-label" data-metric-key="${metric.key}"><strong>${metric.label}</strong></button></td>
+            <td><button type="button" class="metric-info-trigger metric-label" data-metric-key="${metric.key}"><strong>${metric.label}</strong>${closerMetricNewBadge(metric.key)}</button></td>
             ${monthCells}
             <td><strong>${formatValue(totalMetrics[metric.key], metric.format)}</strong></td>
           </tr>
@@ -854,7 +865,11 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
   const firstBreakIndex = metricDefinitions.findIndex((metric) => metric.key === 'tasaCierre');
   const secondBreakIndex = metricDefinitions.findIndex((metric) => metric.key === 'factTotalMes');
 
-  const firstTableMetrics = firstBreakIndex === -1 ? metricDefinitions : metricDefinitions.slice(0, firstBreakIndex + 1);
+  const firstTableBase = firstBreakIndex === -1 ? metricDefinitions : metricDefinitions.slice(0, firstBreakIndex + 1);
+  const firstTableMetrics = [
+    ...firstTableBase.filter((metric) => !NEW_CLOSER_METRIC_KEYS.includes(metric.key)),
+    ...NEW_CLOSER_METRIC_KEYS.map((key) => firstTableBase.find((metric) => metric.key === key)).filter(Boolean)
+  ];
   const secondTableMetricsBase = firstBreakIndex === -1
     ? []
     : secondBreakIndex === -1

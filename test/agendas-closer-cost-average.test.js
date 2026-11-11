@@ -56,4 +56,24 @@ test('tabla mensual muestra costo por closer y promedio de venta con total anual
   assert.match(rendered, /3\.000,00/);
   assert.match(rendered, /250,00/);
   assert.match(rendered, /Total anual/);
+  const firstTable = rendered.split('</table>')[0];
+  const keys = [...firstTable.matchAll(/data-metric-key="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(keys.slice(-2), ['costoAgendaCloser', 'aov']);
+  assert.equal(keys.filter((key) => key === 'aov').length, 1);
+  assert.equal(keys.filter((key) => key === 'costoAgendaCloser').length, 1);
+});
+
+test('NEW dura 25 días desde el lanzamiento y no reaparece al cambiar filtros', () => {
+  const { context: c } = page();
+  const start = Date.parse('2026-11-11T00:00:00-03:00');
+  const end = Date.parse('2026-12-06T00:00:00-03:00');
+  assert.equal(end - start, 25 * 86400000);
+  for (const key of ['costoAgendaCloser', 'aov']) {
+    assert.equal(c.closerMetricNewBadge(key, start - 1), '');
+    assert.match(c.closerMetricNewBadge(key, start), />NEW</);
+    assert.match(c.closerMetricNewBadge(key, end - 1), />NEW</);
+    assert.equal(c.closerMetricNewBadge(key, end), '');
+    assert.equal(c.closerMetricNewBadge(key, end + 86400000), '');
+  }
+  assert.equal(c.closerMetricNewBadge('ventas', start), '');
 });
