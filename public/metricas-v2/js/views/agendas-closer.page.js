@@ -247,10 +247,10 @@ const AGENDA_CLOSER_ROW_INFO = {
     logic: 'Agarra la inversión total de marketing y la divide por la cantidad total de agendas.'
   },
   costoAgendaCloser: {
-    title: 'Costo total x closer',
+    title: 'Costo de marketing por closer',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
-    logic: 'Agarra el costo por agenda y lo multiplica por la cantidad de agendas de ese closer.'
+    logic: 'Distribuye la inversión de marketing según las agendas del closer: inversión del período y origen × agendas del closer / agendas de todos los closers del mismo período y origen. No incluye sueldos ni comisiones.'
   },
   costoVentaCloser: {
     title: 'Costo por venta',
@@ -361,10 +361,10 @@ function getAgendaCloserMetricInfo(metricKey, label) {
 
   if (metricKey === 'aov') {
     return {
-      title: 'AOV',
+      title: 'Promedio de venta',
       viewLabel: 'Cálculo frontend sobre "agenda_detalle_por_origen_closer"',
-      dateLabel: 'Mixta: "f_venta" y "fecha_de_agendamiento"',
-      logic: 'Se calcula como "facturacion_total_mes" dividido "total_ventas".'
+      dateLabel: '"fecha_de_agendamiento"',
+      logic: 'Facturación de las ventas de esas agendas ("facturacion_f_agenda") dividida por su cantidad de ventas ("total_ventas"), para el mismo closer, origen y período. El total anual divide la facturación anual por las ventas anuales; no promedia los promedios mensuales. No representa el primer pago ni incluye Club.'
     };
   }
 
@@ -638,7 +638,7 @@ function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
     pctVendidas: safeDiv(ven * 100, ef),
     paidUpfront: paid,
     pctPaidUpfront: safeDiv(paid * 100, fact),
-    aov: safeDiv(fact, ven),
+    aov: safeDiv(acc.facturacion_f_agenda, ven),
     tasaCierre: safeDiv(ven * 100, ag),
     ccne,
     pctCcne: safeDiv(ccne * 100, apl),
@@ -747,12 +747,13 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
     { key: 'pctEfectuadas', label: '% Efectuadas', format: 'percent' },
     { key: 'ventas', label: 'Ventas', format: 'number' },
     { key: 'pctVendidas', label: '% Vendidas', format: 'percent' },
+    { key: 'aov', label: 'Promedio de venta', format: 'currency' },
     { key: 'paidUpfront', label: 'Paid Upfront', format: 'currency' },
     { key: 'pctPaidUpfront', label: '% Paid Upfront', format: 'percent' },
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
     { key: 'inversionTotalMkt', label: 'Inversión total en MKT', format: 'currency' },
     { key: 'costoAgenda', label: 'Costo por agenda', format: 'currency' },
-    { key: 'costoAgendaCloser', label: 'Costo total x closer', format: 'currency' },
+    { key: 'costoAgendaCloser', label: 'Costo de marketing por closer', format: 'currency' },
     { key: 'costoVentaCloser', label: 'Costo por venta', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
