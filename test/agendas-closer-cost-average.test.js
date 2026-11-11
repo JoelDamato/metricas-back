@@ -52,7 +52,7 @@ test('tabla mensual muestra costo por closer y promedio de venta con total anual
   { total: 1000, byMonth: { 1: 1000 } }, { totalAgendados: 40, byMonth: { 1: 40 } });
   const rendered = elements.tableContainer.innerHTML;
   assert.match(rendered, /Promedio de venta/);
-  assert.match(rendered, /Costo de marketing por closer/);
+  assert.match(rendered, /Costo por closer/);
   assert.match(rendered, /3\.000,00/);
   assert.match(rendered, /250,00/);
   assert.match(rendered, /Total anual/);

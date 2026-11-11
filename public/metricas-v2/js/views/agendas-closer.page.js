@@ -247,7 +247,7 @@ const AGENDA_CLOSER_ROW_INFO = {
     logic: 'Agarra la inversión total de marketing y la divide por la cantidad total de agendas.'
   },
   costoAgendaCloser: {
-    title: 'Costo de marketing por closer',
+    title: 'Costo por closer',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
     logic: 'Distribuye la inversión de marketing según las agendas del closer: inversión del período y origen × agendas del closer / agendas de todos los closers del mismo período y origen. No incluye sueldos ni comisiones.'
@@ -753,7 +753,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
     { key: 'inversionTotalMkt', label: 'Inversión total en MKT', format: 'currency' },
     { key: 'costoAgenda', label: 'Costo por agenda', format: 'currency' },
-    { key: 'costoAgendaCloser', label: 'Costo de marketing por closer', format: 'currency' },
+    { key: 'costoAgendaCloser', label: 'Costo por closer', format: 'currency' },
     { key: 'costoVentaCloser', label: 'Costo por venta', format: 'currency' },
     { key: 'tasaCierre', label: 'Tasa de Cierre', format: 'percent' },
     { key: 'ccne', label: 'CCNE', format: 'number' },
