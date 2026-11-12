@@ -25,6 +25,8 @@ test('promedio de venta usa facturación de las mismas agendas aunque se vendan 
   assert.equal(metrics.costoAgenda, 25);
   assert.equal(metrics.costoAgendaCloser, 250);
   assert.equal(metrics.costoVentaCloser, 125);
+  assert.equal(metrics.rentabilidadPromedio, 2875);
+  assert.equal(metrics.rentabilidadTotal, 5750);
 });
 
 test('reparto de inversión conserva el total y promedio anual se pondera por ventas', () => {
@@ -42,6 +44,39 @@ test('reparto de inversión conserva el total y promedio anual se pondera por ve
   const empty = c.metricRowsFor(c.emptyAccumulator(), 0, 0);
   assert.equal(empty.aov, 0);
   assert.equal(empty.costoVentaCloser, 0);
+  assert.equal(empty.rentabilidadPromedio, null);
+});
+
+test('rentabilidad conserva pérdidas y costos sin ventas', () => {
+  const { context: c } = page();
+  const zeroSales = c.metricRowsFor({ ...c.emptyAccumulator(), total_agendados: 10 }, 800, 40);
+  assert.equal(zeroSales.rentabilidadTotal, -200);
+  assert.equal(zeroSales.rentabilidadPromedio, null);
+  const loss = c.metricRowsFor({ ...c.emptyAccumulator(), total_agendados: 10,
+    total_ventas: 2, facturacion_f_agenda: 100 }, 800, 40);
+  assert.equal(loss.rentabilidadTotal, -100);
+  assert.equal(loss.rentabilidadPromedio, -50);
+});
+
+test('costo y rentabilidad anuales suman asignaciones mensuales aunque cambie la participación', () => {
+  const { context: c, elements } = page();
+  const rows = [
+    { mes: 1, total_agendados: 10, total_ventas: 2, facturacion_f_agenda: 6000 },
+    { mes: 2, total_agendados: 30, total_ventas: 1, facturacion_f_agenda: 3000 }
+  ];
+  const render = () => c.buildMatrixTable(rows, { anio: 2026, closer: 'Carlos Tu' }, {},
+    { total: 1000, byMonth: { 1: 800, 2: 200 } },
+    { totalAgendados: 80, byMonth: { 1: 40, 2: 40 } });
+  render();
+  const values = (key) => elements.tableContainer.innerHTML.match(
+    new RegExp('data-metric-key="' + key + '"[\\s\\S]*?</tr>'))[0];
+  // 800*10/40 + 200*30/40 = 350, no 1000*40/80 = 500.
+  assert.match(values('costoAgendaCloser'), /350,00/);
+  assert.match(values('rentabilidadTotal'), /8\.650,00/);
+  assert.match(values('rentabilidadPromedio'), /2\.883,33/);
+  elements.displayMonth.value = 'all';
+  render();
+  assert.match(values('rentabilidadTotal'), /5\.800,00[\s\S]*2\.850,00[\s\S]*8\.650,00/);
 });
 
 test('tabla mensual muestra costo por closer y promedio de venta con total anual', () => {
@@ -58,7 +93,7 @@ test('tabla mensual muestra costo por closer y promedio de venta con total anual
   assert.match(rendered, /Total anual/);
   const firstTable = rendered.split('</table>')[0];
   const keys = [...firstTable.matchAll(/data-metric-key="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(keys.slice(-2), ['costoAgendaCloser', 'aov']);
+  assert.deepEqual(keys.slice(-4), ['costoAgendaCloser', 'aov', 'rentabilidadPromedio', 'rentabilidadTotal']);
   assert.equal(keys.filter((key) => key === 'aov').length, 1);
   assert.equal(keys.filter((key) => key === 'costoAgendaCloser').length, 1);
 });
@@ -68,7 +103,7 @@ test('NEW dura 25 días desde el lanzamiento y no reaparece al cambiar filtros',
   const start = Date.parse('2026-11-11T00:00:00-03:00');
   const end = Date.parse('2026-12-06T00:00:00-03:00');
   assert.equal(end - start, 25 * 86400000);
-  for (const key of ['costoAgendaCloser', 'aov']) {
+  for (const key of ['costoAgendaCloser', 'aov', 'rentabilidadPromedio', 'rentabilidadTotal']) {
     assert.equal(c.closerMetricNewBadge(key, start - 1), '');
     assert.match(c.closerMetricNewBadge(key, start), />NEW</);
     assert.match(c.closerMetricNewBadge(key, end - 1), />NEW</);

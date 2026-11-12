@@ -250,13 +250,25 @@ const AGENDA_CLOSER_ROW_INFO = {
     title: 'Costo por closer',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + agendas por "fecha_de_agendamiento"',
-    logic: 'Distribuye la inversión de marketing según las agendas del closer: inversión del período y origen × agendas del closer / agendas de todos los closers del mismo período y origen. No incluye sueldos ni comisiones.'
+    logic: 'Distribuye la inversión de marketing según las agendas del closer: inversión del mes y origen × agendas del closer / agendas de todos los closers del mismo mes y origen. El total anual suma los costos asignados de cada mes. No incluye sueldos ni comisiones.'
   },
   costoVentaCloser: {
     title: 'Costo por venta',
     viewLabel: 'Cálculo frontend sobre "marketing/inversion" + "agenda_detalle_por_origen_closer"',
     dateLabel: 'Mixta: inversión por rango + ventas por "fecha_de_agendamiento"',
     logic: 'Agarra el costo total por closer y lo divide por la cantidad de ventas.'
+  },
+  rentabilidadPromedio: {
+    title: 'Rentabilidad promedio',
+    viewLabel: 'Facturación de agendas y costo asignado al closer',
+    dateLabel: 'Mes de agenda, mismo origen y closer',
+    logic: 'Promedio de venta menos costo por venta del closer: (facturación de las agendas − costo total del closer) / ventas. Sin ventas se muestra —. El anual usa importes y ventas anuales, no el promedio simple de los meses. Es el resultado después de publicidad, sin descontar sueldos, comisiones u otros costos.'
+  },
+  rentabilidadTotal: {
+    title: 'Rentabilidad total',
+    viewLabel: 'Facturación de agendas y costo asignado al closer',
+    dateLabel: 'Mes de agenda, mismo origen y closer',
+    logic: 'Facturación de las ventas de esas agendas menos costo total del closer. El total anual suma los resultados mensuales. Conserva resultados negativos y costos de meses sin ventas. No descuenta sueldos, comisiones u otros costos.'
   }
 };
 
@@ -603,7 +615,7 @@ function aggregateByMonth(rows, year) {
   return { byMonth, totals };
 }
 
-function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
+function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0, allocatedCost) {
   const ag = acc.total_agendados;
   const apl = acc.total_aplica;
   const resp = acc.total_respondio;
@@ -617,7 +629,8 @@ function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
   const ccne = acc.ccne;
   const cce = acc.cce;
   const costoAgenda = safeDiv(investmentTotalMkt, agendaBaseTotal);
-  const costoAgendaCloser = costoAgenda * ag;
+  const costoAgendaCloser = allocatedCost ?? costoAgenda * ag;
+  const rentabilidadTotal = Number(acc.facturacion_f_agenda || 0) - costoAgendaCloser;
 
   return {
     agendados: ag,
@@ -672,7 +685,9 @@ function metricRowsFor(acc, investmentTotalMkt = 0, agendaBaseTotal = 0) {
     inversionTotalMkt: investmentTotalMkt,
     costoAgenda,
     costoAgendaCloser,
-    costoVentaCloser: safeDiv(costoAgendaCloser, ven)
+    costoVentaCloser: safeDiv(costoAgendaCloser, ven),
+    rentabilidadTotal,
+    rentabilidadPromedio: ven > 0 ? rentabilidadTotal / ven : null
   };
 }
 
@@ -696,7 +711,7 @@ function buildExecutionMetricGroups(metrics) {
     .filter((metric) => metric.type === 'separator' || keySet.has(metric.key));
 }
 
-const NEW_CLOSER_METRIC_KEYS = ['costoAgendaCloser', 'aov'];
+const NEW_CLOSER_METRIC_KEYS = ['costoAgendaCloser', 'aov', 'rentabilidadPromedio', 'rentabilidadTotal'];
 const CLOSER_METRICS_RELEASE = Date.parse('2026-11-11T00:00:00-03:00');
 const CLOSER_METRICS_NEW_UNTIL = CLOSER_METRICS_RELEASE + 25 * 24 * 60 * 60 * 1000;
 
@@ -723,10 +738,18 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
   const displayMonth = document.getElementById('displayMonth')?.value || String(currentMonth);
   const months = displayMonth === 'all' ? MONTHS.map(month => month.value) : [Number(displayMonth)];
   container.classList.toggle('agenda-annual-view', displayMonth === 'all');
+  // Allocate each month's spend before adding the year: the closer's share
+  // of agendas can change from month to month, independently of spend.
+  const annualCloserCost = MONTHS.reduce((sum, { value: month }) => sum + metricRowsFor(
+    byMonth.get(month) || emptyAccumulator(),
+    Number(investmentData.byMonth?.[month] || 0),
+    Number(agendaBaseData.byMonth?.[month] || 0)
+  ).costoAgendaCloser, 0);
   const totalMetrics = metricRowsFor(
     totals,
     Number(investmentData.total || 0),
-    Number(agendaBaseData.totalAgendados || 0)
+    Number(agendaBaseData.totalAgendados || 0),
+    annualCloserCost
   );
   totalMetrics.aovDia1 = Number(aovDia1Data.total || 0);
 
@@ -759,6 +782,8 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
     { key: 'ventas', label: 'Ventas', format: 'number' },
     { key: 'pctVendidas', label: '% Vendidas', format: 'percent' },
     { key: 'aov', label: 'Promedio de venta', format: 'currency' },
+    { key: 'rentabilidadPromedio', label: 'Rentabilidad promedio', format: 'currency' },
+    { key: 'rentabilidadTotal', label: 'Rentabilidad total', format: 'currency' },
     { key: 'paidUpfront', label: 'Paid Upfront', format: 'currency' },
     { key: 'pctPaidUpfront', label: '% Paid Upfront', format: 'percent' },
     { key: 'aovDia1', label: 'AOV día 1', format: 'currency' },
@@ -793,6 +818,7 @@ function buildMatrixTable(rows, filters, aovDia1Data = {}, investmentData = {}, 
   ];
 
   const formatValue = (value, type) => {
+    if (value === null) return '—';
     if (type === 'currency') return formatCurrency(value);
     if (type === 'percent') return formatPercent(value);
     return formatNumber(value);
