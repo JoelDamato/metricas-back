@@ -23,9 +23,10 @@ async function listContactReceipts(ghlid,clientIds=[],options={}) {
  for(let i=0;i<sales.length;i+=50)await pages({venta_relacionada:`in.(${sales.slice(i,i+50).map(quote).join(',')})`});
  return [...rows.values()].sort((a,b)=>String(b.f_acreditacion||b.fecha_creado||b.f_venta||'').localeCompare(String(a.f_acreditacion||a.fecha_creado||a.f_venta||''))||String(b.id).localeCompare(String(a.id)));
 }
+// cash_collected ya se carga sin IVA: sólo se descuenta si el comprobante está marcado explícitamente como bruto.
 function cashWithoutIva(row) {
  const cash=Number(row.cash_collected||0),iva=Number(row.iva||0);
- if(row.cash_amount_basis==='net_of_iva' || !iva || !cash)return cash;
+ if(row.cash_amount_basis!=='gross' || !iva || !cash)return cash;
  const ars=Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
  const tc=Number(row.tc)>0?Number(row.tc):(ars>0&&cash>0?ars/cash:0);
  if(!tc)throw Error('Un comprobante tiene IVA pero no un tipo de cambio válido para calcular el saldo sin IVA.');

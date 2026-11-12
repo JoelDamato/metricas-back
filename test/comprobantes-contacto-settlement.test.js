@@ -17,10 +17,10 @@ test('únicamente conciliado genera comisión, incluso al desactivar el filtro d
  }
 });
 test('saldo usa el recibido completo; el indicador sin IVA conserva su desglose',()=>{
- const result=totals([{tipo:'Venta',facturacion:1210,cash_collected:1210,cash_ar:1210000,iva:210000,tc:1000,comisiones:50000,estado:'Conciliado'}]);
+ const result=totals([{tipo:'Venta',facturacion:1210,cash_collected:1210,cash_ar:1210000,iva:210000,tc:1000,comisiones:50000,estado:'Conciliado',cash_amount_basis:'gross'}]);
  assert.equal(result.cobrado,1000);assert.equal(result.saldo,0);
  const historical=totals([{tipo:'Venta',facturacion:1210,cash_collected:1210,cash_ar:1210000,iva:210000,estado:'Conciliado'}]);assert.equal(historical.saldo,0);
- const pending=totals([{tipo:'Venta',facturacion:1210,cash_collected:1210,iva:210000,tc:1000,estado:'No conciliado'}]);assert.equal(pending.cobrado,0);assert.equal(pending.pendiente,1000);assert.equal(pending.saldo,1210);
+ const pending=totals([{tipo:'Venta',facturacion:1210,cash_collected:1210,iva:210000,tc:1000,estado:'No conciliado',cash_amount_basis:'gross'}]);assert.equal(pending.cobrado,0);assert.equal(pending.pendiente,1000);assert.equal(pending.saldo,1210);
 });
 test('histórico preservado se suma una sola vez; pendientes y rebotes no alteran el saldo inicial',()=>{
  const {openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
@@ -35,11 +35,13 @@ test('histórico preservado se suma una sola vez; pendientes y rebotes no altera
 
  test('IVA no genera deuda en los casos de Martín y María; respeta devoluciones y sobrepagos',()=>{
  const martin=totals([{tipo:'Venta',estado:'Conciliado',facturacion:3450,cash_collected:3450,iva:838264.46,tc:1400}]);
- assert.equal(martin.cobrado,2851.24);assert.equal(martin.cobradoBruto,3450);assert.equal(martin.saldo,0);
- const maria=totals([{tipo:'Venta',estado:'Conciliado',facturacion:3550,cash_collected:330.57},{tipo:'Cobranza',estado:'Conciliado',cash_collected:3219.42,iva:790620.37,tc:1415}]);
- assert.equal(maria.cobrado,2991.25);assert.equal(maria.saldo,.01);
+ // cash_collected sin marca ya viene sin IVA: no se vuelve a descontar (Nadia, 12-11, caso María Madroñero).
+ assert.equal(martin.cobrado,3450);assert.equal(martin.cobradoBruto,3450);assert.equal(martin.saldo,0);
+ const maria=totals([{tipo:'Venta',estado:'Conciliado',facturacion:3550,cash_collected:330.57},{tipo:'Cobranza',estado:'Conciliado',cash_collected:3219.42,cash_ar:4555479.30,iva:790620.37,tc:1415}]);
+ assert.equal(maria.cobrado,3549.99);assert.equal(maria.saldo,.01);
  const refund=totals([{tipo:'Venta',estado:'Conciliado',facturacion:100,cash_collected:121},{tipo:'Devolución',estado:'Conciliado',facturacion:50,cash_collected:60.5,iva:10.5,tc:1}]);
  assert.equal(refund.saldo,-10.5);assert.equal(refund.cobradoBruto,60.5);
+ const gross=totals([{tipo:'Cobranza',estado:'Conciliado',cash_collected:3450,iva:838264.46,tc:1400,cash_amount_basis:'gross'}]);assert.equal(gross.cobrado,2851.24);
 });
 
 test('cash explícitamente neto no vuelve a descontar IVA y distingue el recibido real',()=>{
