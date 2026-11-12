@@ -35,11 +35,17 @@ function cashWithoutIva(row) {
 function receivedCashArs(row) {
  if(row.received_gross_ars != null)return Number(row.received_gross_ars);
  if(row.cash_amount_basis==='net_of_iva')return null;
- return Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
+ const ars=Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
+ // Sin marca, cash_ar se cargó sin IVA: lo recibido con IVA es cash_ar + iva.
+ if(row.cash_amount_basis!=='gross'&&Number(row.iva)>0&&ars>0)return ars+Number(row.iva);
+ return ars;
 }
 function receivedCashUsd(row) {
  if(row.received_gross_ars != null)return Number(row.tc)>0?Number(row.received_gross_ars)/Number(row.tc):null;
- return row.cash_amount_basis==='net_of_iva'?null:Number(row.cash_collected||0);
+ if(row.cash_amount_basis==='net_of_iva')return null;
+ const cash=Number(row.cash_collected||0),ars=receivedCashArs(row),base=Number(row.cash_ar??row.cash_collected_ar??row.cash_collected_ars??0);
+ if(row.cash_amount_basis!=='gross'&&ars!==base){const tc=Number(row.tc)>0?Number(row.tc):(base>0&&cash>0?base/cash:0);return tc?ars/tc:cash;}
+ return cash;
 }
 function openingBalance(extra) {
  const opening=extra?.ghl_opening_balance;

@@ -52,3 +52,12 @@ test('cash explícitamente neto no vuelve a descontar IVA y distingue el recibid
  const unknown={...row,received_gross_ars:null};assert.equal(receivedCashArs(unknown),null);assert.equal(receivedCashUsd(unknown),null);assert.equal(totals([unknown]).cobradoBruto,null);
  const gross={...row,cash_amount_basis:'gross',cash_ar:5844300,cash_collected:4174.5,iva:1014300};assert.equal(cashWithoutIva(gross),3450);
 });
+
+test('sin marca: recibido con IVA = cash_ar + iva (caso María Madroñero)', () => {
+ const assert=require('node:assert/strict');
+ const {cashWithoutIva,receivedCashArs,receivedCashUsd}=require('../modules/metricasv2/services/comprobantes-contacto.service');
+ const row={cash_collected:3219.42,cash_ar:4555479.3,iva:790620.37,tc:null,cash_amount_basis:null};
+ assert.equal(cashWithoutIva(row),3219.42);
+ assert.equal(Math.round(receivedCashArs(row)*100)/100,5346099.67);
+ assert.equal(Math.round(receivedCashUsd(row)*100)/100,3778.16);
+});
