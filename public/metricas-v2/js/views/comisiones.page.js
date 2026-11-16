@@ -2000,15 +2000,51 @@
 
   function renderWebinarPanel() {
     const people = state.dashboard?.webinarSetters || [];
+    const nahuel = state.dashboard?.webinarNahuel || { cashArs: 0, pct: 0, commissionAmount: 0 };
+    const disabled = state.dashboard?.locked ? 'disabled' : '';
     const details = (state.dashboard?.details || []).filter(row => row.sector === 'webinar');
     document.getElementById('commissionWebinarPanel').innerHTML = `
       <section class="card"><h2>Setters Webinar</h2>
         <p>Agendas vendidas del mes · Hasta 11: 3%. Desde 12: 3,5% sobre el monto comisionable. Club queda excluido del cálculo. Las cobranzas no suman ventas nuevas. Nahuel conserva sus reglas habituales.</p>
         <div class="table-wrap"><table><thead><tr><th>Setter</th><th>% comisión</th><th>Monto comisionable</th><th>Comisión</th></tr></thead>
         <tbody>${people.map(person => `<tr><td>${escapeHtml(person.person)}</td><td>${person.pct === null ? 'Pendiente de definir' : formatPercent(person.pct)}</td><td>${formatCurrency(person.cashArs)}</td><td>${person.pending ? 'Pendiente de definir' : formatCurrency(person.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="4">Sin movimientos webinar este mes.</td></tr>'}</tbody></table></div>
-        <h3>Detalle de ventas y cobranzas</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Setter</th><th>Tipo</th><th>Producto</th><th>Monto comisionable</th><th>%</th><th>Comisión</th></tr></thead>
+        <h3>Nahuel Randazzo</h3>
+        <p>Porcentaje sobre todo el cash collected del webinar en ARS, del mes seleccionado. Incluye ventas y cobranzas conciliadas con los filtros de verificación del mes.</p>
+        <div class="table-wrap"><table><thead><tr><th>Persona</th><th>% comisión</th><th>Cash collected webinar</th><th>Comisión</th></tr></thead>
+        <tbody><tr><td>Nahuel Randazzo</td><td><input id="commissionWebinarNahuelPct" aria-label="Porcentaje de comisión de Nahuel Randazzo" type="number" min="0" max="100" step="0.01" required value="${Number((nahuel.pct * 100).toFixed(8))}" ${disabled}></td><td>${formatCurrency(nahuel.cashArs)}</td><td id="commissionWebinarNahuelAmount">${formatCurrency(nahuel.commissionAmount)}</td></tr></tbody></table></div>
+        <button type="button" id="saveWebinarNahuelPct" ${disabled}>Guardar porcentaje del mes</button>
+        <p id="commissionWebinarNahuelFeedback" role="status">${disabled ? 'Mes cerrado: el porcentaje no se puede modificar.' : ''}</p>
+        <h3>Detalle de ventas y cobranzas de setters</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Setter</th><th>Tipo</th><th>Producto</th><th>Monto comisionable</th><th>%</th><th>Comisión</th></tr></thead>
         <tbody>${details.map(row => `<tr><td>${escapeHtml(row.clientName)}</td><td>${escapeHtml(row.person)}</td><td>${escapeHtml(row.tipo)}</td><td>${escapeHtml(row.product)}</td><td>${formatCurrency(row.baseAmount)}</td><td>${row.pendingCommission ? 'Pendiente' : formatPercent(row.commissionPct)}</td><td>${row.pendingCommission ? 'Pendiente' : formatCurrency(row.commissionAmount)}</td></tr>`).join('') || '<tr><td colspan="7">Sin ventas ni cobranzas conciliadas.</td></tr>'}</tbody></table></div>
       </section>`;
+    const input = document.getElementById('commissionWebinarNahuelPct');
+    const button = document.getElementById('saveWebinarNahuelPct');
+    const feedback = document.getElementById('commissionWebinarNahuelFeedback');
+    input.addEventListener('input', () => {
+      document.getElementById('commissionWebinarNahuelAmount').textContent = input.validity.valid
+        ? formatCurrency(nahuel.cashArs * Number(input.value) / 100) : '—';
+      feedback.textContent = 'Cambios sin guardar';
+    });
+    button.addEventListener('click', async () => {
+      if (state.dashboard?.locked || button.disabled || !input.reportValidity()) return;
+      button.disabled = true;
+      input.disabled = true;
+      monthInput.disabled = true;
+      feedback.textContent = 'Guardando…';
+      try {
+        await window.metricasApi.saveCommissionConfig({ month: state.month, config: {
+          global: { webinarNahuelRandazzoPct: Number(input.value) / 100 }
+        } });
+        await loadPage();
+        document.getElementById('commissionWebinarNahuelFeedback').textContent = 'Porcentaje guardado para este mes.';
+      } catch (error) {
+        feedback.textContent = error.message || 'No pude guardar el porcentaje.';
+      } finally {
+        button.disabled = Boolean(state.dashboard?.locked);
+        input.disabled = Boolean(state.dashboard?.locked);
+        monthInput.disabled = false;
+      }
+    });
   }
 
   function refreshCommissionViews() {

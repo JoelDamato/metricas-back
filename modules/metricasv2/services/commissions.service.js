@@ -256,6 +256,7 @@ function normalizeConfig(rawConfig = {}) {
   return {
     version: 1,
     global: {
+      webinarNahuelRandazzoPct: Number(config.global?.webinarNahuelRandazzoPct ?? 0),
       minimumSetterPct: Number(config.global?.minimumSetterPct ?? DEFAULT_CONFIG.global.minimumSetterPct),
       clubTransferPct: Number(config.global?.clubTransferPct ?? DEFAULT_CONFIG.global.clubTransferPct),
       clubMercadoPagoPct: Number(config.global?.clubMercadoPagoPct ?? DEFAULT_CONFIG.global.clubMercadoPagoPct),
@@ -1603,6 +1604,27 @@ function hasProductInReceiptChain(row, byId, predicate) {
   return false;
 }
 
+function buildWebinarNahuelSummary({ monthKey, config, comprobantesRows = [] }) {
+  const rows = normalizeComprobanteRows(comprobantesRows);
+  const sales = buildHistoricalSaleIndex(rows);
+  const unique = new Map();
+  const isWebinar = row => row && (row.webinarSetters?.length > 0
+    || /webinar/i.test(`${row.origen_actual} ${row.primer_origen}`));
+  for (const row of rows) {
+    if (!row.id || unique.has(row.id)) continue;
+    if (!['venta', 'cobranza'].includes(normalizeText(row.tipo))) continue;
+    if (!matchesMonth(row.f_acreditacion_only, monthKey)) continue;
+    if (normalizeText(row.estado) !== 'conciliado' || ['true', '1'].includes(String(row.rebotar_pago || '').toLowerCase())) continue;
+    if (config.global.includeOnlyVerified && !row.verified_for_commissions) continue;
+    const sale = normalizeText(row.tipo) === 'cobranza' ? findRelatedSale(row, sales) : null;
+    if (!isWebinar(row) && !isWebinar(sale)) continue;
+    unique.set(row.id, row);
+  }
+  const cashArs = [...unique.values()].reduce((sum, row) => sum + safeNumber(row.cash_collected_ars), 0);
+  const pct = config.global.webinarNahuelRandazzoPct;
+  return { person: 'Nahuel Randazzo', cashArs, pct, commissionAmount: cashArs * pct, transactions: unique.size };
+}
+
 function buildMarketingAreaSummary({ monthKey, config, comprobantesRows = [] }) {
   const normalizedRows = normalizeComprobanteRows(comprobantesRows);
   const uniqueRows = new Map();
@@ -1797,6 +1819,7 @@ async function buildCommissionDashboard(monthKey, options = {}) {
     ...summary,
     marketingArea,
     webinarSetters: buildWebinarSummary(details),
+    webinarNahuel: buildWebinarNahuelSummary({ monthKey: safeMonth, config, comprobantesRows }),
     agendaCredits: buildAgendaCredits(commissionOverrides, comprobantesRows, enrichComprobanteOrigins(agendaRows, originLeadRows), safeMonth,
       row => !!resolveAgendaDateForMonth(row.fecha_agenda, safeMonth, row) && hasCommissionAgendaSignals(row)),
     bonusCandidates: calculatedDetails.filter(d=>d.isBonus),
@@ -2011,6 +2034,7 @@ module.exports = {
     buildTransactionDetails,
     computeClubNetBreakdown,
     buildMarketingAreaSummary,
+    buildWebinarNahuelSummary,
     buildAreaCommissionData,
     buildMarketingCloserPersonalArea,
     buildPersonalCommercialArea,
