@@ -562,6 +562,7 @@ async function loadAgendaData(range) {
     }),
     window.metricasApi.fetchAllRows('leads_raw', {
       limit: 1000,
+      select: 'closer,agendo,aplica,llamada_meg',
       from: range.from,
       to: range.to,
       dateField: 'fecha_llamada'

@@ -252,6 +252,11 @@ function applyDateFilter(params, from, to, dateField) {
   params[field] = `${toOperator}.${safeTo}`;
 }
 
+const MATERIALIZED_VIEWS = {
+  ranking_closers_mensual: { source: 'mv_ranking_closers_mensual', order: 'anio.desc,mes.desc,ranking_posicion.asc' },
+  setters: { source: 'mv_setters' }
+};
+
 async function listRows(resourceName, options = {}) {
   const resource = normalizeResourceName(resourceName);
   if (!resource) {
@@ -289,8 +294,11 @@ async function listRows(resourceName, options = {}) {
 
   // Resolve the current agenda before filtering/pagination; otherwise a moved sale
   // would disappear from its old month without being retrieved in its new month.
+  // Vistas pesadas servidas desde su copia materializada (pg_cron la refresca cada 10 min).
+  const materialized = MATERIALIZED_VIEWS[resource];
+  if (materialized && !params.order && materialized.order) params.order = materialized.order;
   const source = resource === 'comprobantes' && options.dateField === 'fecha_de_agendamiento'
-    ? 'comprobantes_agenda_metricas' : resource;
+    ? 'comprobantes_agenda_metricas' : (materialized ? materialized.source : resource);
   const agendaRpc = resource === 'agenda_totales' ? 'agenda_totales_read'
     : resource === 'agenda_detalle_por_origen_closer' ? 'closer_agendas_read' : null;
   const url = `${env.supabaseUrl}/rest/v1/${agendaRpc ? `rpc/${agendaRpc}` : source}`;
