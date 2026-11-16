@@ -1,7 +1,8 @@
 // Caché de lecturas de métricas (vistas de Supabase): se guarda en IndexedDB del navegador
-// por unas horas para no recalcular las vistas pesadas en cada carga de página.
+// 15 minutos para no recalcular las vistas pesadas en cada carga de página.
 // Se vacía al entrar al login (cambio de cuenta o sesión vencida) y con cualquier escritura.
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000;
+// Abajo a la derecha se muestra «Actualizado hace X min» con un botón para traer lo último.
+const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_DB = 'metricas-cache';
 const CACHE_STORE = 'respuestas';
 const CACHE_PREFIXES = ['/api/metricas/views/'];
@@ -44,13 +45,58 @@ async function cacheOp(mode, fn) {
   });
 }
 
+let oldestShownAt = null;
+
+function markShown(savedAt) {
+  oldestShownAt = oldestShownAt === null ? savedAt : Math.min(oldestShownAt, savedAt);
+  renderFreshness();
+}
+
+function freshnessLabel() {
+  const minutes = Math.floor((Date.now() - oldestShownAt) / 60000);
+  if (minutes < 1) return 'Actualizado recién';
+  return `Actualizado hace ${minutes} min`;
+}
+
+function renderFreshness() {
+  if (oldestShownAt === null || !document.body) return;
+  let box = document.getElementById('metricasFreshness');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'metricasFreshness';
+    box.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;align-items:center;gap:10px;'
+      + 'padding:8px 10px 8px 14px;border-radius:999px;background:#fff;border:1px solid rgba(120,175,238,.42);'
+      + 'box-shadow:0 4px 16px rgba(23,57,96,.12);font-family:inherit;font-size:13px;font-weight:500;line-height:1.2;color:#5c7ba4';
+    const label = document.createElement('span');
+    label.id = 'metricasFreshnessLabel';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = 'Actualizar';
+    button.style.cssText = 'border:0;border-radius:999px;padding:6px 12px;background:#2b73d2;color:#fff;font-family:inherit;font-size:13px;font-weight:600;line-height:1;cursor:pointer';
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      button.textContent = 'Actualizando…';
+      await clearCache();
+      window.location.reload();
+    });
+    box.append(label, button);
+    document.body.appendChild(box);
+    window.setInterval(() => { label.textContent = freshnessLabel(); }, 30000);
+  }
+  document.getElementById('metricasFreshnessLabel').textContent = freshnessLabel();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderFreshness);
+
 async function readCache(url) {
   const entry = await cacheOp('readonly', (store) => store.get(url));
   if (!entry || Date.now() - entry.savedAt > CACHE_TTL_MS) return null;
+  markShown(entry.savedAt);
   return entry.data;
 }
 
 function writeCache(url, data) {
+  markShown(Date.now());
   return cacheOp('readwrite', (store) => store.put({ savedAt: Date.now(), data }, url));
 }
 
