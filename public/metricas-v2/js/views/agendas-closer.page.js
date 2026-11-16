@@ -974,6 +974,7 @@ async function initFilters() {
   status.textContent = 'Cargando opciones de filtros...';
 
   const response = await window.metricasApi.fetchAllRows(RESOURCE, {
+    select: 'anio,origen,closer',
     limit: 1000,
     orderBy: 'anio',
     orderDir: 'desc'

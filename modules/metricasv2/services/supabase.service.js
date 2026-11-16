@@ -254,7 +254,8 @@ function applyDateFilter(params, from, to, dateField) {
 
 const MATERIALIZED_VIEWS = {
   ranking_closers_mensual: { source: 'mv_ranking_closers_mensual', order: 'anio.desc,mes.desc,ranking_posicion.asc' },
-  setters: { source: 'mv_setters' }
+  setters: { source: 'mv_setters' },
+  agenda_detalle_por_origen_closer: { source: 'mv_agenda_detalle_por_origen_closer' }
 };
 
 async function listRows(resourceName, options = {}) {
