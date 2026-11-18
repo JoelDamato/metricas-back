@@ -34,3 +34,25 @@ test('el historial de ventas identifica el pase aunque el producto actual sea ME
  const p=publicPortal('id',{nombre:'Cliente',productos_adquiridos:'MEG'}, {available:true,fields:{},appointments:[]},false,[{tipo:'Venta',producto_format:'Costos Rentables',mail:'private',facturacion:9000}]);
  assert.equal(p.csmProgress.total,8);assert.doesNotMatch(JSON.stringify(p),/private|9000|facturacion/);
 });
+test('el nombre del producto en el título no manda la cita a Costos: decide el calendario',()=>{
+ const cal={eco:'Estado de Resultados Económico - Belén Herrera',c1:'Sesión de Costos 1 a 1 - (Nº1)',dx:'Sesión de Diagnóstico - Valeria Calmet',mid:'Diagnóstico Intermedio - Valeria Calmet'};
+ const ev=(id,c,title,date,status='showed')=>({id,calendarId:c,title,startTime:date,appointmentStatus:status,notes:id==='eco3'?'https://fathom.video/share/x https://docs.google.com/doc/y':''});
+ const events=mapAppointments([
+  ev('dx','dx','Cliente | Costos Rentables · Diagnóstico inicial','2026-09-07 16:30:00'),
+  ev('c1','c1','Cliente | Costos Rentables · Sesión de Costos','2026-09-25 10:00:00'),
+  ev('eco1','eco','Cliente | Costos Rentables · Estado de Resultados Económico','2026-10-09 10:00:00'),
+  ev('eco2','eco','Cliente | Costos Rentables, Meg 2.1 · Estado de Resultados Económico','2026-11-12 10:00:00','cancelled'),
+  ev('eco3','eco','Cliente | Costos Rentables, Meg 2.1 · Estado de Resultados Económico','2026-11-17 10:00:00'),
+  ev('mid','mid','Cliente | Costos Rentables, Meg 2.1 · Diagnóstico intermedio','2026-11-20 16:30:00','confirmed')
+ ],cal);
+ assert.deepEqual(events.map(e=>e.label),['Diagnóstico','Costos','EERR económico','EERR económico','EERR económico','Diagnóstico intermedio']);
+ const j=buildJourney({f_eerr_economico:'2026-11-17',eerr_economico:'Asistio'},events,['Costos Rentables','Meg 2.1']);
+ assert.deepEqual(j.appointments.map(a=>a.sessionKey),['initial','costs1','costs2','economic','economic','intermediate']);
+ const eco=j.sessions.find(s=>s.key==='economic');assert.equal(eco.date,'17/11/2026');
+ assert.equal(j.appointments.find(a=>a.id==='eco3').links.length,2);
+ assert.equal(j.sessions.find(s=>s.key==='costs2').date,'09/10/2026');
+});
+test('Costos Rentables solo sigue mostrando la cita del calendario económico como segunda de costos',()=>{
+ const events=mapAppointments([{id:'e',calendarId:'eco',title:'Cliente | Costos Rentables · Estado de Resultados Económico',startTime:'2026-10-09'}],{eco:'Estado de Resultados Económico - Belén Herrera'});
+ const j=buildJourney({},events,['Costos Rentables']);assert.equal(j.appointments[0].sessionKey,'costs2');assert.equal(j.total,4);
+});

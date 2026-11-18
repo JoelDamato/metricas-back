@@ -36,8 +36,11 @@ function buildJourney(row,appointments,products){
     if(!canceled(a))costsIndex=Math.max(costsIndex,key==='costs2'?2:1);
    }
   }else if(label==='eerr economico'){
-   // The economic calendar was historically reused for Costos 2.
-   key=program==='costs'||(program==='upgrade'&&row.f_costos_2&&day(a.date)===day(row.f_costos_2))?'costs2':'economic';
+   // The economic calendar was historically reused for Costos 2. In an upgrade,
+   // until the second costs session exists, the economic calendar is that session.
+   const upgradeSecond=program==='upgrade'&&(row.f_costos_2?day(a.date)===day(row.f_costos_2):costsIndex<2);
+   key=program==='costs'||upgradeSecond?'costs2':'economic';
+   if(upgradeSecond&&!canceled(a))costsIndex=2;
   }else if(label==='eerr financiero')key='financial';
   else if(label==='cashflow')key='cash';
   const session=sessions.find(s=>s.key===key);

@@ -1,5 +1,6 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
 const {fetchContactMaterials,productsForContact,contractLabel,isDebtor} = require('../modules/csm/contact-materials');
+const {buildJourney} = require('../modules/csm/program-journey');
 const {listContactReceipts,totals,cashWithoutIva,receivedCashArs,receivedCashUsd,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
 const NodeCache = require('node-cache');
@@ -88,7 +89,7 @@ async function fetchContactByGhlId(ghlId) {
     axios.get(`${supabaseUrl}/rest/v1/csm`, {
       headers: buildHeaders(),
       params: {
-        select: ['id','crm_2_0','nombre','mail','telefono','ghlid','ultimo_producto_adquirido','closer',...csmContactSummary.fields].join(','),
+        select: ['id','crm_2_0','nombre','mail','telefono','ghlid','ultimo_producto_adquirido','closer','f_costos_2','costos_2',...csmContactSummary.fields].join(','),
         ghlid: `eq.${ghlId}`,
         order: 'updated_at.desc',
         limit: 5
@@ -126,6 +127,17 @@ async function fetchContactByGhlId(ghlId) {
   contact.csmMaterials = materials;
   contact.deudor = isDebtor(materials.fields);
   contact.products = productsForContact(csmRow, materials.fields, comprobantesRows);
+  // Same journey as the client portal: Costos Rentables (4 sessions), MEG (7) or the upgrade (8),
+  // so each appointment lands on its own card instead of the MEG-only layout.
+  const journey = csmRow ? buildJourney(csmRow, materials.appointments, contact.products) : null;
+  if (journey) {
+    // Onboarding is not one of the program sessions, but the team still follows it on this page.
+    const onboarding = (contact.csmProgress?.sessions || []).find(s => s.label === 'Onboarding');
+    const sessions = journey.sessions.filter(s => s.key !== 'history:Onboarding');
+    if (onboarding?.date || journey.appointments.some(a => a.sessionKey === 'history:Onboarding')) sessions.unshift({...onboarding, key: 'history:Onboarding', label: 'Onboarding', owner: '', program: ''});
+    contact.csmProgress = {...contact.csmProgress, sessions, program: journey.program, sessionTotal: journey.total};
+    contact.csmMaterials = {...materials, appointments: journey.appointments};
+  }
   const dateValue = value => csmContactSummary.dateLabel(value) || 'Sin fecha registrada';
   const programDetails = [
     {label:'Pausa',value:materials.fields.pause || csmRow?.pausa || 'Sin pausa registrada'},
