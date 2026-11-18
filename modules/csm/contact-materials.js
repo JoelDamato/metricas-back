@@ -26,8 +26,17 @@ function linksFromNotes(notes) {
   });
 }
 
+// The calendar says which session it is; titles carry the product names
+// («Costos Rentables, Meg 2.1 · Estado de Resultados Económico»), so «costos»
+// in a title cannot decide the session. Calendar first, then the title without products.
 function sessionLabel(title, calendarName) {
-  const text = normalize(`${title} ${calendarName}`);
+  return labelFromText(calendarName) ||
+    labelFromText(normalize(title).replace(/(?:sistema\s+de\s+)?costos?\s+rentables?/g, ' '));
+}
+
+function labelFromText(value) {
+  const text = normalize(value);
+  if (!text.trim()) return null;
   if (/diagnost/.test(text)) return /final/.test(text) ? 'Diagnóstico final' : /intermedi/.test(text) ? 'Diagnóstico intermedio' : 'Diagnóstico';
   if (/onboard|bienvenida/.test(text)) return 'Onboarding';
   if (/costo/.test(text)) return 'Costos';
@@ -44,7 +53,7 @@ function mapAppointments(events, calendarNames = {}) {
   return events.filter(event => !event.deleted).flatMap(event => {
     const links = linksFromNotes(event.notes);
     const label = sessionLabel(event.title, calendarNames[event.calendarId]);
-    const sessionText = normalize(`${event.title || ''} ${calendarNames[event.calendarId] || ''}`);
+    const sessionText = normalize(`${event.title || ''} ${calendarNames[event.calendarId] || ''}`).replace(/costos?\s+rentables?/g, ' ');
     const costsSecond = label === 'Costos' && /(?:n[º°o.]?\s*2\b|segunda\s+sesi[oó]n|costos?\s*2\b)/.test(sessionText);
     if (['Traffiker', 'Coaching'].includes(label)) return [];
     // Keep unclassified material instead of silently dropping it.
