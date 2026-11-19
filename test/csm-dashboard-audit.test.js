@@ -32,6 +32,33 @@ function metric(page, key) {
   return page.metrics.find((item) => item.key === key);
 }
 
+test('segmentos filtran con/sin dato por dimensión, conservan origen y deduplican',()=>{
+ const api=loadInternals();const source=[
+  {ghlid:'a',nombre:'Ana',modelo_negocio:'  Reventa  ',rubro:'  '},
+  {ghlid:'b',nombre:'Belén',modelo_negocio:'Sin modelo informado',rubro:'Alimentos'},
+  {ghlid:'c',nombre:'Carla',modelo_negocio:null,rubro:'Sin rubro'},
+  {ghlid:'d',nombre:'Daniel',modelo_negocio:'Servicios',rubro:'Tecnología'},
+ ];const before=JSON.stringify(source);
+ const rows=api.buildBusinessSegmentRows(source,[{ghlid:'a',rubro:'Textil'}]);
+ assert.equal(rows[0].modelo,'Reventa');assert.equal(rows[0].rubro,'Textil');
+ assert.equal(api.filterBusinessSegmentRows(rows,{presence:'present'}).length,2);
+ assert.equal(api.filterBusinessSegmentRows(rows,{presence:'missing'}).length,2);
+ assert.equal(api.filterBusinessSegmentRows(rows,{dimension:'rubro',presence:'missing'})[0].ghlid,'c');
+ assert.equal(api.filterBusinessSegmentRows(rows,{dimension:'rubro',presence:'present',query:' BELÉN '})[0].ghlid,'b');
+ assert.equal(api.filterBusinessSegmentRows(rows,{selected:'__missing__'}).length,2);
+ assert.equal(api.filterBusinessSegmentRows(rows,{selected:'Reventa'})[0].ghlid,'a');
+ assert.equal(JSON.stringify(source),before);
+ assert.equal(api.buildBusinessSegmentRows([...source,source[0]]).length,4);
+});
+
+test('segmentos enlazan estado de contacto sin fabricar enlaces vacíos y escapan contenido',()=>{
+ const api=loadInternals();const html=api.renderBusinessSegmentTable([{ghlid:'a/b',nombre:'<img src=x>',modelo:'<b>mal</b>',rubro:''},{nombre:'Sin id'}]);
+ assert.match(html,/href="\/contacto-estado\/a%2Fb"/);
+ assert.match(html,/Sin ficha vinculada/);assert.match(html,/Sin rubro informado/);
+ assert.doesNotMatch(html,/<img|<b>mal/);assert.match(html,/&lt;img/);
+ assert.match(api.renderBusinessSegmentTable([]),/Sin clientes con esos filtros/);
+});
+
 test('CSM usa acceso = Acceso como estado activo y deduplica por GHL', () => {
   const api = loadInternals();
   const rows = api.enrichRows([
