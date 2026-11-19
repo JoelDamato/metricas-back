@@ -203,15 +203,28 @@
     </table>`;
   }
 
+  function filteredEntries() {
+    const member = $('detail-member').value;
+    return state.entries.filter(entry => !member || entry.closer_nombre === member);
+  }
+
+  function renderMemberFilter() {
+    const field = $('detail-member'), selected = field.value;
+    const members = [...new Set([...state.rules.members, ...state.entries.map(entry => entry.closer_nombre)].filter(Boolean))];
+    field.innerHTML = '<option value="">Todas las personas</option>' + members.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
+    field.value = members.includes(selected) ? selected : '';
+  }
+
   function renderDetail() {
-    $('detail-count').textContent = `${state.entries.length} registro${state.entries.length === 1 ? '' : 's'}`;
-    $('detail-history').innerHTML = state.entries.length
+    const entries = filteredEntries();
+    $('detail-count').textContent = `${entries.length} registro${entries.length === 1 ? '' : 's'}`;
+    $('detail-history').innerHTML = entries.length
       ? `<table class="table detail-table">
           <thead><tr>
             <th>Fecha</th><th>Persona</th><th>Tipo</th><th>Categoría</th>
             <th>Detalle de la situación</th><th>Cargado por</th><th></th>
           </tr></thead>
-          <tbody>${state.entries.map((entry) => `<tr>
+          <tbody>${entries.map((entry) => `<tr>
             <td>${esc(entry.fecha || String(entry.created_at || '').slice(0, 10) || '—')}</td>
             <td><strong>${esc(entry.closer_nombre)}</strong></td>
             <td><span class="type-badge ${esc(entry.tipo)}">${esc(entry.tipo)}</span></td>
@@ -230,6 +243,7 @@
     renderCards();
     renderMonthlyReport();
     renderBonusRules();
+    renderMemberFilter();
     renderDetail();
     setFormEnabled(state.canEdit);
   }
@@ -333,13 +347,13 @@
       ['Reporte CSM', monthLabel(selected.anio, selected.mes)],
       [],
       ['Persona', 'Checks', 'Strikes', 'Resultado', 'Fijo USD', 'Bono USD', 'Total USD'],
-      ...currentRows().map((row) => [
+      ...currentRows().filter(row => !$('detail-member').value || row.name === $('detail-member').value).map((row) => [
         row.name, row.checks, row.strikes, row.score,
         row.baseSalaryUsd, row.bonusUsd, row.totalUsd
       ]),
       [],
       ['Fecha', 'Persona', 'Tipo', 'Categoría', 'Detalle', 'Cargado por'],
-      ...state.entries.map((entry) => [
+      ...filteredEntries().map((entry) => [
         entry.fecha || String(entry.created_at || '').slice(0, 10),
         entry.closer_nombre,
         entry.tipo,
@@ -379,6 +393,7 @@
     $('type').addEventListener('change', renderCategoryOptions);
     $('movement-form').addEventListener('submit', save);
     $('export').addEventListener('click', exportCsv);
+    $('detail-member').addEventListener('change', renderDetail);
     $('detail-history').addEventListener('click', (event) => {
       const id = event.target.dataset.delete;
       if (id) remove(id);

@@ -41,7 +41,8 @@
   ];
   const RESULT_SELECT_FIELDS = [
     { key: 'comoCalculaRentabilidad', label: '¿Cómo calculás tu rentabilidad?', options: ['No lo sé / no lo calculo', 'Creo que gané o perdí, sin cálculo', 'Ventas menos compras', 'Ventas menos todos los costos, a mano', 'Ventas menos costos, con Excel/sistema'] },
-    { key: 'ivaRentabilidadGeneral', label: '¿Tenés en cuenta el IVA al calcular tu rentabilidad general?', options: ['Sí', 'No'] },
+    { key: 'ivaMontosRentabilidad', label: '¿Cómo cargás los montos al calcular tu rentabilidad?', options: ['Ventas y costos sin IVA', 'Ventas y costos con IVA', 'Mezclado / no sé'] },
+    { key: 'ivaRentabilidadGeneral', legacy: true, label: '¿Tenés en cuenta el IVA al calcular tu rentabilidad general?', options: ['Sí', 'No'] },
     { key: 'mezclaCostosFinancierosFijos', label: '¿Mezcla cuotas de créditos o IVA dentro de los costos fijos económicos?', options: ['No', 'Sí'] }
   ];
   const FINANCE_NUM_FIELDS = [
@@ -152,7 +153,7 @@
       item.numFields.forEach((field) => { areas[item.key].nums[field.key] = ''; });
       item.selectFields.forEach((field) => { areas[item.key].selects[field.key] = ''; });
     });
-    return { date: '', csm: '', riesgo: '', patterns: [], otroDetalle: '', areas };
+    return { date: '', csm: '', fiscalCondition: '', riesgo: '', patterns: [], otroDetalle: '', areas };
   }
 
   function emptyData(csmName = '') {
@@ -203,6 +204,7 @@
         checkpoint.areas[item.key] = area;
         migrateValues(area, item);
       });
+      checkpoint.fiscalCondition = ['monotributista', 'responsable_inscripto'].includes(checkpoint.fiscalCondition) ? checkpoint.fiscalCondition : '';
       checkpoint.date = String(checkpoint.date || '');
       checkpoint.csm = normalizeCsmName(checkpoint.csm || csmName);
       checkpoint.riesgo = String(checkpoint.riesgo || '');
@@ -228,9 +230,22 @@
     const keys = areaKey === 'costos'
       ? ['costosOcultosNivel', 'entiendeMargenReal', 'trasladoFinanciero', 'trasladoImpositivo', 'ivaEsCosto']
       : areaKey === 'resultados'
-        ? ['comoCalculaRentabilidad', 'ivaRentabilidadGeneral', 'mezclaCostosFinancierosFijos']
+        ? ['comoCalculaRentabilidad', selections.ivaMontosRentabilidad ? 'ivaMontosRentabilidad' : 'ivaRentabilidadGeneral', 'mezclaCostosFinancierosFijos']
         : ['conoceSituacionFinanciera', 'tieneFondoEmergencia', 'tieneFondoInversiones'];
-    const scores = keys.map((key) => SCORE_MAPS[key]?.[selections[key]]).filter((score) => score !== undefined);
+    const scores = keys.map((key) => {
+      const condition = checkpoint.fiscalCondition;
+      const knownFiscal = condition === 'monotributista' || condition === 'responsable_inscripto';
+      if (key === 'ivaMontosRentabilidad') {
+        if (!knownFiscal) return undefined;
+        const correct = condition === 'monotributista' ? 'Ventas y costos con IVA' : 'Ventas y costos sin IVA';
+        return selections[key] === correct ? 5 : ['Ventas y costos con IVA', 'Ventas y costos sin IVA', 'Mezclado / no sé'].includes(selections[key]) ? 1 : undefined;
+      }
+      if (knownFiscal && ['ivaEsCosto', 'ivaRentabilidadGeneral'].includes(key)) {
+        if (!['Sí', 'No'].includes(selections[key])) return undefined;
+        return selections[key] === (condition === 'monotributista' ? 'Sí' : 'No') ? 5 : 1;
+      }
+      return SCORE_MAPS[key]?.[selections[key]];
+    }).filter((score) => score !== undefined);
     if (!scores.length) return null;
     return Math.floor(scores.reduce((sum, score) => sum + score, 0) / scores.length);
   }
@@ -238,7 +253,7 @@
   function applyAutoScores(checkpoint) {
     ['costos', 'resultados', 'finanzas'].forEach((key) => {
       const score = computeAutoScore(checkpoint, key);
-      if (score !== null && checkpoint?.areas?.[key]) checkpoint.areas[key].score = score;
+      if ((score !== null || checkpoint.fiscalCondition || checkpoint?.areas?.resultados?.selects?.ivaMontosRentabilidad) && checkpoint?.areas?.[key]) checkpoint.areas[key].score = score;
     });
     return checkpoint;
   }
@@ -424,6 +439,24 @@
       : formatField(metric.key, data.checkpoints[stage].areas[metric.area].nums[metric.key]) || '—';
   }
 
+  function routeMetricChanges(data, metric) {
+    const percent = metric.calculated || PERCENT_FIELDS.has(metric.key);
+    const values = STAGES.map(stage => {
+      const cp = data.checkpoints[stage];
+      const value = metric.calculated ? calculateStage(cp)[metric.key]
+        : (percent ? parsePercent : parseMoney)(cp.areas[metric.area].nums[metric.key]);
+      return value !== null && value !== undefined && Number.isFinite(value) ? value : null;
+    });
+    return [[0, 1, 'Inicial → Intermedio'], [1, 2, 'Intermedio → Final'], [0, 2, 'Inicial → Final']].map(([from, to, label]) => {
+      const delta = values[from] === null || values[to] === null ? null : values[to] - values[from];
+      const rounded = delta === null ? null : Number(delta.toFixed(2));
+      const value = rounded === null ? 'Pendiente' : percent
+        ? `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('es-AR', {maximumFractionDigits: 2})} pp`
+        : `${rounded > 0 ? '+' : ''}${formatMoney(rounded)}`;
+      return {label, delta, value};
+    });
+  }
+
   function compareDiagnostics(items, from = 'inicial', to = 'final') {
     if (!STAGES.includes(from) || !STAGES.includes(to) || from === to) return [];
     return items.map((item) => {
@@ -465,7 +498,7 @@
   }
 
   return {
-    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS, ROUTE_METRICS, routeMetricValue, compareDiagnostics, diagnosticComparisonCsv,
+    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS, ROUTE_METRICS, routeMetricValue, routeMetricChanges, compareDiagnostics, diagnosticComparisonCsv,
     emptyData, normalizeData, computeAutoScore, applyAutoScores, getPatternScore,
     computeSummary, band, bandLabel, parseMoney, parsePercent, formatMoneyInput,
     formatPercentInput, formatField, marginContributionFromMarkup, autofillDerivedMargins,

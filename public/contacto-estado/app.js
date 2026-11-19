@@ -98,7 +98,7 @@ function renderReceipts(contact) {
     <p>Ventas, cobranzas y devoluciones anteriores y nuevas. Sólo lo conciliado cuenta como cobrado. El importe recibido y el importe sin IVA se muestran por separado. Cuando el cash ya está cargado sin IVA, no se vuelve a descontar.</p>
     ${contact.historicalOpeningBalance?`<p>Histórico anterior incluido en los totales: facturación <b>${escapeHtml(money(contact.historicalOpeningBalance.facturacion))}</b> · cobrado <b>${escapeHtml(money(contact.historicalOpeningBalance.cash_collected))}</b>. Sin comprobantes individuales disponibles.</p>`:''}
     <div class="receipt-summary"><span>Recibido conciliado con IVA: <b>${escapeHtml(money(contact.receiptTotals?.cobradoBruto))}</b></span><span>Cobrado conciliado sin IVA: <b>${escapeHtml(money(contact.receiptTotals?.cobrado))}</b></span><span>Pendiente sin IVA: <b>${escapeHtml(money(contact.receiptTotals?.pendiente))}</b></span><span>Rebotado sin IVA: <b>${escapeHtml(money(contact.receiptTotals?.rebotado))}</b></span><span>Saldo: <b>${escapeHtml(money(contact.receiptTotals?.saldo))}</b></span></div>
-    ${rows.length?`<div class="receipt-scroll" tabindex="0" role="region" aria-label="Historial de comprobantes"><table><thead><tr><th>Fecha</th><th>Tipo / producto</th><th>Medio</th><th>Recibido con IVA ARS</th><th>Recibido con IVA USD</th><th>Sin IVA USD</th><th>Estado</th><th>Referencia</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(String(r.f_acreditacion||r.fecha_creado||r.f_venta||'').slice(0,10)||'Sin fecha')}</td><td><strong>${escapeHtml(r.tipo||'Sin tipo')}</strong><small>${escapeHtml(r.producto_format||'')}</small></td><td>${escapeHtml(r.medios_de_pago_format||'Sin dato')}</td><td>${escapeHtml(money(r.received_cash_ars,'ARS'))}</td><td>${escapeHtml(money(r.received_cash_usd))}</td><td>${escapeHtml(money(r.cash_without_iva_usd))}</td><td><span class="receipt-state">${escapeHtml(String(r.rebotar_pago)==='true'?'Rebotado':r.estado||'No conciliado')}</span></td><td><details><summary>Ver ID</summary><code>${escapeHtml(r.id)}</code>${r.venta_relacionada?`<small>Venta: ${escapeHtml(r.venta_relacionada)}</small>`:''}</details></td></tr>`).join('')}</tbody></table></div>`:'<p>Este cliente todavía no tiene comprobantes.</p>'}
+    ${rows.length?`<div class="receipt-scroll" tabindex="0" role="region" aria-label="Historial de comprobantes"><table><thead><tr><th>Fecha</th><th>Tipo / producto</th><th>Cuotas pactadas</th><th>Medio</th><th>Recibido con IVA ARS</th><th>Recibido con IVA USD</th><th>Sin IVA USD</th><th>Estado</th><th>Referencia</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtml(String(r.f_acreditacion||r.fecha_creado||r.f_venta||'').slice(0,10)||'Sin fecha')}</td><td><strong>${escapeHtml(r.tipo||'Sin tipo')}</strong><small>${escapeHtml(r.producto_format||'')}</small></td><td>${escapeHtml(r.cantidad_de_pagos||'Sin registrar')}</td><td>${escapeHtml(r.medios_de_pago_format||'Sin dato')}</td><td>${escapeHtml(money(r.received_cash_ars,'ARS'))}</td><td>${escapeHtml(money(r.received_cash_usd))}</td><td>${escapeHtml(money(r.cash_without_iva_usd))}</td><td><span class="receipt-state">${escapeHtml(String(r.rebotar_pago)==='true'?'Rebotado':r.estado||'No conciliado')}</span></td><td><details><summary>Ver ID</summary><code>${escapeHtml(r.id)}</code>${r.venta_relacionada?`<small>Venta: ${escapeHtml(r.venta_relacionada)}</small>`:''}</details></td></tr>`).join('')}</tbody></table></div>`:'<p>Este cliente todavía no tiene comprobantes.</p>'}
   </section>`;
 }
 
@@ -111,6 +111,12 @@ function renderCsmProgress(progress) {
     <div class="csm-module-steps">${progress.modules.map(m=>`<div class="csm-module-step ${m.completed?'is-complete':m.number===progress.current?'is-current':''}" ${m.number===progress.current?'aria-current="step"':''}><b>${m.completed?'✓ ':''}M${m.number}</b><span>${m.invalid?'Revisar fechas':m.completed?'Finalizado':m.start?'Iniciado':'Sin registro'}</span><small>${m.completed?'Fin: '+escapeHtml(m.end):m.start?'Inicio: '+escapeHtml(m.start):'—'}</small></div>`).join('')}</div>
     <p class="csm-progress-note">La barra cuenta módulos con fecha de finalización. Iniciar un módulo no marca los anteriores como completados.${progress.platformProgress?` Avance informado por la plataforma: ${escapeHtml(progress.platformProgress)}.`:''}</p>
   </section>`;
+}
+
+function renderNps(nps) {
+  if (!nps) return '';
+  const number = value => new Intl.NumberFormat('es-AR', {maximumFractionDigits: 2}).format(value);
+  return `<section class="csm-learning" aria-label="Satisfacción por unidad"><p class="card-kicker">NPS · SATISFACCIÓN</p><h3>Promedio: ${nps.average === null ? 'Sin respuestas' : escapeHtml(number(nps.average)) + ' / 10'}</h3><p>${nps.count} respuestas registradas. Las unidades sin respuesta no se incluyen en el promedio.</p><div class="csm-module-steps">${nps.units.map(unit => `<div class="csm-module-step"><b>Unidad ${unit.number}</b><span>${unit.score === null ? 'Sin respuesta' : escapeHtml(number(unit.score)) + ' / 10'}</span></div>`).join('')}</div></section>`;
 }
 
 function setupPortalLink(contact) {
@@ -210,6 +216,7 @@ function renderContact(contact) {
       </dl>
 
       ${renderCsmProgress(contact.csmProgress)}
+      ${renderNps(contact.csmProgress?.nps)}
       <section class="portal-link-panel" aria-label="Portal del cliente">
         <div><p class="card-kicker">PARA COMPARTIR CON EL CLIENTE</p><h3>Un portal para todo su recorrido</h3><p>Carta de rumbo, grabaciones e informes de sus sesiones en un único enlace.</p></div>
         <div class="portal-link-actions"><a href="${escapeHtml(contact.portalUrl)}" target="_blank" rel="noopener">Abrir portal del cliente ↗</a><button id="copyPortalLink" type="button">Copiar enlace del portal</button></div>

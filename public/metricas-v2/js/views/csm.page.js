@@ -1409,11 +1409,30 @@ function renderPeopleFollowup(source) {
  function update(){const selected=session?[CSM_SESSION_DEFINITIONS.find(s=>s.field===session)]:CSM_SESSION_DEFINITIONS;const filtered=rows.filter(r=>String(r.nombre||'').toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es'))).filter(r=>status==='all'||(status==='done'?selected.every(s=>parseDate(r[s.field])):selected.some(s=>!parseDate(r[s.field])))).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));target.querySelector('[data-person-table]').innerHTML=`<p>${filtered.length} clientes</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th>${CSM_SESSION_DEFINITIONS.map(s=>`<th>${escapeHtml(s.label)}</th>`).join('')}</tr></thead><tbody>${filtered.map(r=>`<tr><td>${r.ghlid?`<a target="_blank" rel="noopener noreferrer" href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}">${escapeHtml(r.nombre||'Sin nombre')} ↗</a>`:escapeHtml(r.nombre||'Sin nombre')}</td>${CSM_SESSION_DEFINITIONS.map(s=>`<td><span class="csm-duration-tone ${parseDate(r[s.field])?'green':'yellow'}">${parseDate(r[s.field])?formatDate(r[s.field]):'Pendiente'}</span></td>`).join('')}</tr>`).join('')||'<tr><td colspan="6">Sin clientes con esos filtros</td></tr>'}</tbody></table></div>`;}
  target.querySelector('[data-person-query]').oninput=e=>{query=e.target.value;update();};target.querySelector('[data-person-session]').onchange=e=>{session=e.target.value;update();};target.querySelector('[data-person-status]').onchange=e=>{status=e.target.value;update();};update();
 }
+function businessSegmentValue(value) {
+ const text=typeof value==='string'?value.trim():'';
+ return !text || /^(sin (rubro|modelo)( informado)?|sin informar|no informado|n\/a|-)$/i.test(text) ? '' : text;
+}
+function buildBusinessSegmentRows(source, profiles=[]) {
+ const byId=new Map(profiles.map(p=>[p.ghlid,p]));
+ return dedupeClientRows(source).map(r=>({...r,
+  rubro:businessSegmentValue(r.rubro)||businessSegmentValue(byId.get(r.ghlid)?.rubro),
+  modelo:businessSegmentValue(r.modelo_negocio)}));
+}
+function filterBusinessSegmentRows(rows,{dimension='modelo',presence='all',selected='',query=''}={}) {
+ const dim=dimension==='rubro'?'rubro':'modelo';
+ return rows.filter(r=>(presence==='all'||(presence==='present'?!!r[dim]:!r[dim]))
+  &&(!selected||(r[dim]||'__missing__')===selected)
+  &&String(r.nombre||'').toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es')));
+}
+function renderBusinessSegmentTable(rows) {
+ return `<div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th><th>Ficha</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.ghlid?`<a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a>`:escapeHtml(r.nombre||'Sin nombre')}</td><td>${escapeHtml(r.modelo||'Sin modelo informado')}</td><td>${escapeHtml(r.rubro||'Sin rubro informado')}</td><td>${r.ghlid?`<a href="/contacto-estado/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">Ver estado del contacto ↗</a>`:'Sin ficha vinculada'}</td></tr>`).join('')||'<tr><td colspan="4">Sin clientes con esos filtros</td></tr>'}</tbody></table></div>`;
+}
 async function renderBusinessSegments(source) {
  const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');target.innerHTML='<p>Cargando segmentos…</p>';
- try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json(),byId=new Map(profiles.map(p=>[p.ghlid,p]));const rows=dedupeClientRows(source).map(r=>({...r,rubro:r.rubro||byId.get(r.ghlid)?.rubro||'Sin rubro informado',modelo:r.modelo_negocio||'Sin modelo informado'}));let dimension='modelo',selected='',query='';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
- function update(){const counts=new Map();rows.forEach(r=>counts.set(r[dimension],(counts.get(r[dimension])||0)+1));target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([label,count])=>`<button type="button" data-segment="${escapeHtml(label)}" aria-pressed="${selected===label}"><strong>${escapeHtml(label)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=rows.filter(r=>(!selected||r[dimension]===selected)&&String(r.nombre||'').toLowerCase().includes(query.toLowerCase()));target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected||'Todos los segmentos')}</p><div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th></tr></thead><tbody>${filtered.map(r=>`<tr><td><a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid||'')}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a></td><td>${escapeHtml(r.modelo)}</td><td>${escapeHtml(r.rubro)}</td></tr>`).join('')}</tbody></table></div>`;}
- target.querySelector('[data-segment-dimension]').onchange=e=>{dimension=e.target.value;selected='';update();};target.querySelector('[data-segment-search]').oninput=e=>{query=e.target.value;update();};update();
+ try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json();const rows=buildBusinessSegmentRows(source,profiles);let dimension='modelo',selected='',query='',presence='all';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Dato informado<select data-segment-presence><option value="all">Todos</option><option value="present">Con dato informado</option><option value="missing">Sin dato informado</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
+ function update(){const missingLabel=dimension==='rubro'?'Sin rubro informado':'Sin modelo informado';const counts=new Map();filterBusinessSegmentRows(rows,{dimension,presence,query}).forEach(r=>{const key=r[dimension]||'__missing__';counts.set(key,(counts.get(key)||0)+1);});target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([key,count])=>`<button type="button" data-segment="${escapeHtml(key)}" aria-pressed="${selected===key}"><strong>${escapeHtml(key==='__missing__'?missingLabel:key)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=filterBusinessSegmentRows(rows,{dimension,presence,selected,query});target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected==='__missing__'?missingLabel:selected||'Todos los segmentos')}</p>${renderBusinessSegmentTable(filtered)}`;}
+ target.querySelector('[data-segment-dimension]').onchange=e=>{dimension=e.target.value;selected='';update();};target.querySelector('[data-segment-presence]').onchange=e=>{presence=e.target.value;selected='';update();};target.querySelector('[data-segment-search]').oninput=e=>{query=e.target.value;update();};update();
  }catch(e){target.textContent=e.message;}
 }
 
@@ -3359,6 +3378,10 @@ async function initCsmPage() {
 
 if (typeof window !== 'undefined') {
   window.csmPageInternals = {
+    buildBusinessSegmentRows,
+    filterBusinessSegmentRows,
+    renderBusinessSegmentTable,
+    renderBusinessSegments,
     enrichRows,
     filterRowsByDatePeriod,
     dedupeClientRows,
