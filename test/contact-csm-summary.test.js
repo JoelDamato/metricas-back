@@ -22,3 +22,11 @@ test('Estado de contacto muestra una sola sesión Costos incluso con Costos 2 hi
  assert.equal(summary(row).filter(s=>s.label.startsWith('Costos')).length,1);
  assert.equal(row.f_costos_2,'2026-09-10');
 });
+
+test('NPS por unidad conserva el cero y excluye respuestas vacías o inválidas del promedio',()=>{
+ const {progress,fields}=require('../modules/csm/contact-summary');
+ const nps=progress({nps_1:0,nps_2:'10',nps_3:'',nps_4:null,nps_5:11,nps_6:false,nps_7:'7.5',nps_8:'  '}).nps;
+ assert.equal(nps.count,2);assert.equal(nps.average,5);assert.equal(nps.units[0].score,0);
+ assert.equal(nps.units[4].score,null);assert.equal(progress({}).nps.average,null);
+ for(let i=1;i<=10;i++)assert(fields.includes(`nps_${i}`));
+});

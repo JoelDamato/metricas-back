@@ -6,7 +6,7 @@ const SESSIONS = [
  ['EERR financiero','f_eerr_financiero','eerr_financiero'],
  ['Cashflow','f_cashflow','cashflow']
 ];
-const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta','productos_adquiridos','pausa','fecha_final','fecha_final_renovacion',...Array.from({length:10},(_,i)=>[`modulo_${i+1}`,`modulo_${i+1}_fin`]).flat()])];
+const fields = [...new Set([...SESSIONS.flatMap(([,date,status])=>[date,status]).filter(Boolean),'acceso','actividad','progreso_curso','proximo_contacto_csm','ultima_respuesta','productos_adquiridos','pausa','fecha_final','fecha_final_renovacion',...Array.from({length:10},(_,i)=>[`modulo_${i+1}`,`modulo_${i+1}_fin`,`nps_${i+1}`]).flat()])];
 function dateLabel(value){
  const raw=String(value||'').slice(0,10);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)||Number.isNaN(Date.parse(raw))||new Date(raw).toISOString().slice(0,10)!==raw)return null;
@@ -25,6 +25,11 @@ function summary(row){
   {label:'Última respuesta',value:dateLabel(row.ultima_respuesta)||'Sin fecha registrada'},
   ...Array.from({length:10},(_,i)=>({label:`Módulo ${i+1}`,value:dateLabel(row[`modulo_${i+1}`])||row[`modulo_${i+1}`]||'Sin avance registrado'}))];
 }
+function npsSummary(row) {
+ const units=Array.from({length:10},(_,i)=>{const raw=row[`nps_${i+1}`];const value=typeof raw==='number'||typeof raw==='string'&&raw.trim()!==''?Number(raw):NaN;return {number:i+1,score:Number.isInteger(value)&&value>=0&&value<=10?value:null};});
+ const scores=units.filter(unit=>unit.score!==null).map(unit=>unit.score);
+ return {units,count:scores.length,average:scores.length?scores.reduce((sum,value)=>sum+value,0)/scores.length:null};
+}
 function progress(row) {
  if(!row)return null;
  const modules=Array.from({length:10},(_,i)=>{
@@ -33,7 +38,7 @@ function progress(row) {
   return {number:i+1,start,end,completed:Boolean(end&&!invalid),invalid};
  });
  const current=modules.filter(m=>m.start||m.completed).at(-1)?.number||null;
- return {modules,current,completed:modules.filter(m=>m.completed).length,total:modules.length,
+ return {nps:npsSummary(row),modules,current,completed:modules.filter(m=>m.completed).length,total:modules.length,
   platformProgress:row.progreso_curso||null,
   sessions:SESSIONS.map(([label,date,status])=>({label,date:dateLabel(row[date]),status:status?String(row[status]||'').trim():''}))};
 }
