@@ -250,7 +250,7 @@
     const metricCards = ROUTE_METRICS.map((metric) => {
       const values = core.STAGES.map((stage) => core.routeMetricValue(current.data, stage, metric));
       if (values.every((value) => value === '—')) return '';
-      return `<article class="route-card ${metric.highlight ? 'highlight' : ''}"><h3>${escapeHtml(metric.label)}</h3><div class="route-values">${core.STAGES.map((stage, index) => `<div class="route-value"><span>${stage}</span><strong>${escapeHtml(values[index])}</strong></div>${index < 2 ? '<b>→</b>' : ''}`).join('')}</div></article>`;
+      return `<article class="route-card ${metric.highlight ? 'highlight' : ''}"><h3>${escapeHtml(metric.label)}</h3><div class="route-values">${core.STAGES.map((stage, index) => `<div class="route-value"><span>${stage}</span><strong>${escapeHtml(values[index] === '—' ? 'Pendiente' : values[index])}</strong></div>${index < 2 ? '<b>→</b>' : ''}`).join('')}</div><div class="route-values">${core.routeMetricChanges(current.data, metric).map(change => `<div class="route-value"><span>${escapeHtml(change.label)}</span><strong>${escapeHtml(change.value)}</strong></div>`).join('')}</div></article>`;
     }).filter(Boolean).join('');
     const scoreCards = ['costos', 'resultados', 'finanzas'].map((areaKey) => {
       const item = core.STAGE_ITEMS.inicial.find((area) => area.key === areaKey);

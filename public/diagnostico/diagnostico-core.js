@@ -424,6 +424,24 @@
       : formatField(metric.key, data.checkpoints[stage].areas[metric.area].nums[metric.key]) || '—';
   }
 
+  function routeMetricChanges(data, metric) {
+    const percent = metric.calculated || PERCENT_FIELDS.has(metric.key);
+    const values = STAGES.map(stage => {
+      const cp = data.checkpoints[stage];
+      const value = metric.calculated ? calculateStage(cp)[metric.key]
+        : (percent ? parsePercent : parseMoney)(cp.areas[metric.area].nums[metric.key]);
+      return value !== null && value !== undefined && Number.isFinite(value) ? value : null;
+    });
+    return [[0, 1, 'Inicial → Intermedio'], [1, 2, 'Intermedio → Final'], [0, 2, 'Inicial → Final']].map(([from, to, label]) => {
+      const delta = values[from] === null || values[to] === null ? null : values[to] - values[from];
+      const rounded = delta === null ? null : Number(delta.toFixed(2));
+      const value = rounded === null ? 'Pendiente' : percent
+        ? `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('es-AR', {maximumFractionDigits: 2})} pp`
+        : `${rounded > 0 ? '+' : ''}${formatMoney(rounded)}`;
+      return {label, delta, value};
+    });
+  }
+
   function compareDiagnostics(items, from = 'inicial', to = 'final') {
     if (!STAGES.includes(from) || !STAGES.includes(to) || from === to) return [];
     return items.map((item) => {
@@ -465,7 +483,7 @@
   }
 
   return {
-    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS, ROUTE_METRICS, routeMetricValue, compareDiagnostics, diagnosticComparisonCsv,
+    STAGES, STAGE_ITEMS, PATTERNS, PERCENT_FIELDS, TEXT_FIELDS, CSM_OPTIONS, ROUTE_METRICS, routeMetricValue, routeMetricChanges, compareDiagnostics, diagnosticComparisonCsv,
     emptyData, normalizeData, computeAutoScore, applyAutoScores, getPatternScore,
     computeSummary, band, bandLabel, parseMoney, parsePercent, formatMoneyInput,
     formatPercentInput, formatField, marginContributionFromMarkup, autofillDerivedMargins,
