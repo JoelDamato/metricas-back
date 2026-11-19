@@ -31,7 +31,11 @@ function validate(kind,body){
   if(!Array.isArray(body.vacations)||body.vacations.length>100)fail('Vacaciones: máximo 100 períodos');
   const vacations=body.vacations.map(v=>{if(!v||typeof v!=='object')fail('Período inválido');const from=day(v.from,'Inicio de vacaciones'),to=day(v.to,'Fin de vacaciones');if(!from||!to||to<from)fail('Revisá las fechas de vacaciones');return {from,to,note:text(v.note,'Nota de vacaciones',300)};}).sort((a,b)=>a.from.localeCompare(b.from));
   for(let i=1;i<vacations.length;i++)if(vacations[i].from<=vacations[i-1].to)fail('Los períodos de vacaciones no pueden superponerse');
-  return {name:text(body.name,'Nombre',160,true),area:text(body.area,'Área',100,true),position:text(body.position,'Cargo',160,true),email,birthday,startDate,vacationAllowance:allowance,vacationYear:year,vacations,notes:text(body.notes,'Notas',4000),fileUrl:webUrl(body.fileUrl)};
+  const bankAccount=text(body.bankAccount,'CBU / CVU',40).replace(/[\s-]/g,'');
+  if(bankAccount&&!/^\d{22}$/.test(bankAccount))fail('CBU / CVU: tiene que tener 22 números');
+  const taxId=text(body.taxId,'CUIT / CUIL',20).replace(/[\s.-]/g,'');
+  if(taxId&&!/^\d{11}$/.test(taxId))fail('CUIT / CUIL: tiene que tener 11 números');
+  return {name:text(body.name,'Nombre',160,true),area:text(body.area,'Área',100,true),position:text(body.position,'Cargo',160,true),email,birthday,startDate,vacationAllowance:allowance,vacationYear:year,vacations,notes:text(body.notes,'Notas',4000),fileUrl:webUrl(body.fileUrl),bankAccount,taxId};
 }
 function createStore(request=axios){
   const config=()=>{if(!process.env.SUPABASE_URL||!process.env.SUPABASE_SERVICE_ROLE_KEY)fail('Falta configuración de almacenamiento',503);return{url:`${process.env.SUPABASE_URL}/rest/v1/administration_resources`,headers:{apikey:process.env.SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,Prefer:'return=representation'}};};

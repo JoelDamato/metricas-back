@@ -3,6 +3,17 @@ const commissions=require('../metricasv2/services/commissions.service'),supabase
 const loader=require('../metricasv2/services/comprobantes-loader.service');
 const report=require('../../public/metricas-v2/js/agenda-monthly-report');
 const {commissionRecipients}=require('./recipients');
+const administration=require('../administration/service');
+// Datos bancarios desde la ficha de equipo. Sólo se devuelven a quien administra liquidaciones.
+async function bankDetails(people,store=administration.createStore()){
+ let legajos=[];try{legajos=(await store.list('team')).filter(r=>!r.archived);}catch(e){console.error('[settlements] ficha de equipo:',e.message);return {};}
+ const out={};
+ for(const p of people){
+  const l=legajos.find(r=>String(r.data?.email||'').trim().toLowerCase()===p.email)||legajos.find(r=>norm(r.data?.name)&&[p.nombre,p.raw?.nombre].some(n=>norm(n)===norm(r.data.name)));
+  if(l)out[p.email]={name:l.data.name||p.nombre||'',bankAccount:l.data.bankAccount||'',taxId:l.data.taxId||''};
+ }
+ return out;
+}
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
 async function users(dashboard){return commissionRecipients(await auth.listUsers(),dashboard).map(u=>({email:ledger.email(u),nombre:u.nombre,role:u.role,raw:u}));}
@@ -42,7 +53,8 @@ router.get('/',wrap(async(req,res)=>{
  const selected=manage?all:all.filter(u=>u.email===ledger.email(req.authUser));
  const firstMonth=await ledger.firstWithdrawalMonth(month,manage?null:ledger.email(req.authUser));
  const balances=await ledger.openingBalances(month,selected,firstMonth,commissions.buildCommissionDashboard,commissions.buildUserCommercialArea);
- const rows=selected.map(u=>{const personal=commissions.buildUserCommercialArea(dashboard,u.raw);return {email:u.email,name:u.nombre,...ledger.calculate(personal,dashboard.movementRows.filter(e=>e.person_email===u.email),balances[u.email])};});
+ const banks=manage?await bankDetails(selected):{};
+ const rows=selected.map(u=>{const personal=commissions.buildUserCommercialArea(dashboard,u.raw);return {email:u.email,name:u.nombre,...(manage?{bank:banks[u.email]||null}:{}),...ledger.calculate(personal,dashboard.movementRows.filter(e=>e.person_email===u.email),balances[u.email])};});
  res.json({month,locked:dashboard.locked,canManage:manage,canApprove:approve,rows,candidates:approve?await candidates(month,dashboard,all):[]});
 }));
 router.post('/',wrap(async(req,res)=>{
@@ -67,4 +79,4 @@ router.post('/:id/void',wrap(async(req,res)=>{
  if(!ledger.canManage(req.authUser)&&!ledger.canApprove(req.authUser))return res.status(403).json({message:'Tu liquidación es de sólo lectura'});
  res.json(await ledger.write('void',req.authUser,{id:req.params.id,reason:req.body.reason}));}));
 module.exports=router;
-module.exports._test={users,candidates,personForName};
+module.exports._test={users,candidates,personForName,bankDetails};

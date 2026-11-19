@@ -38,7 +38,7 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
  const request=(user,url='',method='GET',body)=>fetch(base+url,{method,headers:{'x-test-user':user.email,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
  for(const user of people){
   const response=await request(user,'?month=2026-10&email=nadia.cavallini%40gmail.com&person_email=otro%40example.com&canManage=true');
-  assert.equal(response.status,200);const data=await response.json();assert.equal(data.canManage,false);assert.equal(data.rows.length,1);assert.equal(data.rows[0].email,user.email);assert(data.rows[0].entries.every(e=>e.person_email===user.email));
+  assert.equal(response.status,200);const data=await response.json();assert.equal(data.canManage,false);assert.equal(data.rows.length,1);assert.equal(data.rows[0].email,user.email);assert(data.rows[0].entries.every(e=>e.person_email===user.email));assert(!('bank' in data.rows[0]),'los datos bancarios no se mandan a quien no administra liquidaciones');
   assert.equal(access.canAccessCommissionsForUser(user),false);
   for(const email of [user.email,people[0].email])assert.equal((await request(user,'','POST',{email,month:'2026-10',kind:'adelanto',amount:100,currency:'ARS'})).status,403);
   if(user.email!=='leonardoalaniz19@gmail.com'){
@@ -47,7 +47,7 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
    assert.deepEqual(data.candidates,[]);
   }
  }
- for(const manager of managers){const res=await request(manager,'?month=2026-10');const data=await res.json();assert.equal(res.status,200);assert.equal(data.rows.length,9);assert.equal(data.canManage,true);}
+ for(const manager of managers){const res=await request(manager,'?month=2026-10');const data=await res.json();assert.equal(res.status,200);assert.equal(data.rows.length,9);assert.equal(data.canManage,true);assert(data.rows.every(r=>'bank' in r));}
  assert.equal((await fetch(base+'?month=2026-10')).status,401);assert.equal(writes,0);
  dashboard.bonusCandidates=[{id:'test',person:'Carlos Tu',bonusUsd:100}];
  dashboard.movementRows.push({id:'bonus',kind:'bono',person_email:people[1].email,source_key:'agendas-setter:test',status:'approved',amount:100,currency:'USD',exchange_rate:1500,concept:'private concept',void_reason:'private reason'});
@@ -60,4 +60,18 @@ test('nueve comisionistas ven sólo su liquidación y no pueden cargar ni anular
  assert.equal((await request(people[1],'','POST',manual)).status,403);
  assert.equal((await request(managers[0],'/approve','POST',manual)).status,403);
  assert.equal((await request(managers[0],'','POST',{...manual,email:'unknown@example.com'})).status,400);
+});
+
+test('datos bancarios: se cruzan por email o nombre con la ficha de equipo y se ignoran los archivados',async()=>{
+ const store={list:async kind=>{assert.equal(kind,'team');return [
+  {archived:false,data:{name:'Carlos TU',email:'CharlieCarlosTu@gmail.com',bankAccount:'0000003100000000000001',taxId:'20111111112'}},
+  {archived:false,data:{name:'Walter Alegre',email:'',bankAccount:'0000003100000000000002',taxId:''}},
+  {archived:true,data:{name:'Patricia Conti',email:'posadaelmontecito@gmail.com',bankAccount:'0000003100000000000003'}}
+ ];}};
+ const all=people.map(u=>({email:u.email,nombre:u.nombre,raw:u}));
+ const out=await router._test.bankDetails(all,store);
+ assert.equal(out['charliecarlostu@gmail.com'].bankAccount,'0000003100000000000001');
+ assert.equal(out['walteralegre56@gmail.com'].bankAccount,'0000003100000000000002');
+ assert.equal(out['posadaelmontecito@gmail.com'],undefined);
+ assert.deepEqual(await router._test.bankDetails(all,{list:async()=>{throw Error('sin conexión');}}),{});
 });

@@ -14,6 +14,11 @@ test('facturas emitidas conservan la condición autorizada y desconocidas no se 
 });
 test('valida fechas reales, períodos sin superposición y enlaces web seguros',()=>{
  assert.equal(validate('team',team).name,team.name);
+ const bank=validate('team',{...team,bankAccount:'0000003 100000000000001',taxId:'20-11111111-2'});
+ assert.equal(bank.bankAccount,'0000003100000000000001');assert.equal(bank.taxId,'20111111112');
+ assert.throws(()=>validate('team',{...team,bankAccount:'123'}),/22 números/);
+ assert.throws(()=>validate('team',{...team,taxId:'30111111'}),/11 números/);
+ assert.equal(validate('team',team).bankAccount,'');
  assert.throws(()=>validate('team',{...team,birthday:'2026-02-30'}),/fecha inválida/);
  assert.throws(()=>validate('team',{...team,vacations:[{from:'2026-12-01',to:'2026-12-07'},{from:'2026-12-07',to:'2026-12-09'}]}),/superponerse/);
  assert.throws(()=>validate('tutorials',{title:'T',area:'Admin',url:'javascript:alert(1)'}),/enlace/i);
