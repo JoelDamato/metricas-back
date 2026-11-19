@@ -200,9 +200,10 @@
   }
 
   function selectFields(item, area, stage) {
-    const rows = item.selectFields.map((field) => {
+    const rows = item.selectFields.filter(field => !field.legacy || area.selects?.[field.key]).map((field) => {
       const value = area.selects?.[field.key] || '';
       const options = ['<option value="">— Elegir —</option>', ...field.options.map((option) => `<option value="${escapeHtml(option)}" ${value === option ? 'selected' : ''}>${escapeHtml(option)}</option>`)].join('');
+      if (field.legacy) return `<div class="field"><span>${escapeHtml(field.label)} · respuesta anterior</span><strong>${escapeHtml(value)}</strong></div>`;
       const input = `<div class="field"><span>${escapeHtml(field.label)}</span><select data-stage="${stage}" data-area="${item.key}" data-selectfield="${field.key}">${options}</select></div>`;
       if (!item.compareStage) return input;
       return `<div class="compare-row"><span class="compare-label">${escapeHtml(field.label)}</span><span class="previous">${escapeHtml(compareValue(item, field, 'select'))}</span><span class="arrow">→</span>${input}</div>`;
@@ -241,7 +242,7 @@
   function stageHtml(stage) {
     const checkpoint = current.data.checkpoints[stage];
     const labels = { inicial: 'Antes de empezar', medio: 'Unidades 2, 3 y 4', final: 'Unidades 6 y 7' };
-    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${csmOptions(checkpoint.csm || current.csmName || '')}</select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
+    return `${summaryHtml(checkpoint, stage)}<div class="meta-row"><div class="field"><span>Fecha del checkpoint</span><input type="date" data-meta="date" data-stage="${stage}" value="${escapeHtml(checkpoint.date)}"/></div><div class="field"><span>CSM responsable en esta etapa</span><select data-meta="csm" data-stage="${stage}">${csmOptions(checkpoint.csm || current.csmName || '')}</select></div><div class="field"><span>Condición fiscal en este diagnóstico</span><select data-meta="fiscalCondition" data-stage="${stage}"><option value="">— Confirmar condición —</option><option value="monotributista" ${checkpoint.fiscalCondition === 'monotributista' ? 'selected' : ''}>Monotributista</option><option value="responsable_inscripto" ${checkpoint.fiscalCondition === 'responsable_inscripto' ? 'selected' : ''}>Responsable inscripto</option></select></div><span class="stage-label">${labels[stage]}</span></div>${core.STAGE_ITEMS[stage].map((item) => areaHtml(item, checkpoint, stage)).join('')}${patternsHtml(checkpoint, stage)}<div class="save-bar"><span id="stageStatus" class="status"></span><button class="btn" type="button" data-save-stage="${stage}">Guardar checkpoint</button></div>`;
   }
 
   const ROUTE_METRICS = core.ROUTE_METRICS;
@@ -319,7 +320,7 @@
       };
     });
     $('#stageContent').querySelectorAll('[data-note]').forEach((textarea) => { textarea.oninput = () => { checkpoint.areas[textarea.dataset.area].note = textarea.value; }; });
-    $('#stageContent').querySelectorAll('[data-meta]').forEach((input) => { const sync = () => { checkpoint[input.dataset.meta] = input.value; }; input.oninput = sync; input.onchange = sync; });
+    $('#stageContent').querySelectorAll('[data-meta]').forEach((input) => { const sync = () => { checkpoint[input.dataset.meta] = input.value; if (input.dataset.meta === 'fiscalCondition') refreshComputed(stage); }; input.oninput = sync; input.onchange = sync; });
     $('#stageContent').querySelectorAll('[data-pattern]').forEach((checkbox) => {
       checkbox.onchange = () => {
         checkpoint.patterns = checkbox.checked ? [...new Set([...checkpoint.patterns, checkbox.dataset.pattern])] : checkpoint.patterns.filter((key) => key !== checkbox.dataset.pattern);
@@ -383,6 +384,9 @@
     try {
       if (button) { button.disabled = true; button.textContent = 'Guardando...'; }
       setStatus('Guardando cambios...');
+      if (core.STAGES.some(stage => current.data.checkpoints[stage].areas.resultados.selects.ivaMontosRentabilidad && !current.data.checkpoints[stage].fiscalCondition)) {
+        throw new Error('Confirmá la condición fiscal en cada diagnóstico donde respondiste cómo cargás los montos con IVA.');
+      }
       current.data = core.normalizeData(current.data, $('#csmName').value);
       const selected = clients.find((client) => client.ghlId === current.clientGhlId);
       const response = await request(`/api/metricas/diagnosticos/${current.id}`, {
