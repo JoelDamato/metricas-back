@@ -17,7 +17,8 @@ test('valida fechas reales, períodos sin superposición y enlaces web seguros',
  const bank=validate('team',{...team,bankAccount:'0000003 100000000000001',taxId:'20-11111111-2'});
  assert.equal(bank.bankAccount,'0000003100000000000001');assert.equal(bank.taxId,'20111111112');
  assert.throws(()=>validate('team',{...team,bankAccount:'123'}),/22 números/);
- assert.throws(()=>validate('team',{...team,taxId:'30111111'}),/11 números/);
+ assert.equal(validate('team',{...team,taxId:'30.111.111'}).taxId,'30111111');
+ assert.throws(()=>validate('team',{...team,taxId:'301111'}),/11 números/);
  assert.equal(validate('team',team).bankAccount,'');
  assert.throws(()=>validate('team',{...team,birthday:'2026-02-30'}),/fecha inválida/);
  assert.throws(()=>validate('team',{...team,vacations:[{from:'2026-12-01',to:'2026-12-07'},{from:'2026-12-07',to:'2026-12-09'}]}),/superponerse/);

@@ -34,7 +34,7 @@ function validate(kind,body){
   const bankAccount=text(body.bankAccount,'CBU / CVU',40).replace(/[\s-]/g,'');
   if(bankAccount&&!/^\d{22}$/.test(bankAccount))fail('CBU / CVU: tiene que tener 22 números');
   const taxId=text(body.taxId,'CUIT / CUIL',20).replace(/[\s.-]/g,'');
-  if(taxId&&!/^\d{11}$/.test(taxId))fail('CUIT / CUIL: tiene que tener 11 números');
+  if(taxId&&!/^(\d{11}|\d{7,8})$/.test(taxId))fail('CUIT / CUIL: tiene que tener 11 números (o 7 u 8 si es un DNI)');
   return {name:text(body.name,'Nombre',160,true),area:text(body.area,'Área',100,true),position:text(body.position,'Cargo',160,true),email,birthday,startDate,vacationAllowance:allowance,vacationYear:year,vacations,notes:text(body.notes,'Notas',4000),fileUrl:webUrl(body.fileUrl),bankAccount,taxId};
 }
 function createStore(request=axios){
