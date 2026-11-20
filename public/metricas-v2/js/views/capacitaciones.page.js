@@ -43,7 +43,7 @@
       ['El grupo · Identificar pecados capitales','Identificar los siete pecados capitales de los dueños de negocios durante la revisión de llamadas.'],
       ['El grupo · Entregar tarea','Finalizar las actividades y el análisis de llamadas antes del miércoles a las 16:00, hora Argentina.']
     ]},
-    {id:4,materials:[],materialSummary:'Grabación de Matías Randazzo en Fathom',title:'Cómo hacer una auditoría',videoUrl:'https://fathom.video/share/uZ6MzG7H_Jj_-oYykAxqrbqQqAfxCDQ4',teaser:'Matías Randazzo explica cómo hacer una auditoría.',summary:'Clase de Matías Randazzo sobre cómo hacer una auditoría, disponible para el equipo en formación.',topics:[],tasks:[]}
+    {id:4,materials:[],materialSummary:'Diagnóstico de rentabilidad · 26 minutos + clase complementaria de Matías',title:'Cómo hacer una auditoría',videoUrl:'https://fathom.video/share/VSK73Lyx8WKYutxmuiHzwY63jqFd-avb',teaser:'Carlos explica cómo utilizar la herramienta de diagnóstico de rentabilidad.',summary:'Empezá por la capacitación de Carlos y profundizá con la clase complementaria de Matías Randazzo.',topics:[],tasks:[]}
   ];
   const resources = [
     {id:'contact',title:'Dejar mis datos',description:'Completá tu WhatsApp y correo electrónico en la planilla de la clase 1 para obtener acceso a los materiales de trabajo.',url:'https://docs.google.com/spreadsheets/d/1862opbnr8OS9efcGyBLXni2c9DGHUR0uS8nHLMcueTM/edit?usp=sharing',icon:'✎',external:true},
@@ -62,11 +62,53 @@
   const selected = new URLSearchParams(location.search).get('clase');
   const lesson = classes.find(c=>String(c.id)===selected);
   const content = document.getElementById('campusContent');
-  if (new URLSearchParams(location.search).get('tab') === 'lanzamiento') {
+  if (new URLSearchParams(location.search).get('tab') === 'reclutamiento') {
+    document.title = 'Reclutamiento | Centro de entrenamiento';
+    document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
+    document.getElementById('recruitmentTab').setAttribute('aria-current', 'page');
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Formación de closers · Reclutamiento</p><h1>Herramientas para tus llamadas comerciales</h1><p class="campus-intro">Aprendé a preparar propuestas y utilizar el diagnóstico de rentabilidad con estas capacitaciones prácticas.</p></div><div class="campus-stats"><div><strong>02</strong><span>Capacitaciones</span></div></div></section>
+    <section class="materials-section" aria-labelledby="recruitmentProposalsTitle">
+      <div class="campus-section-title"><h2 id="recruitmentProposalsTitle">Capacitación de Closers | Herramienta de propuestas comerciales</h2></div>
+      <div class="lesson-panel lesson-recording"><p class="campus-eyebrow">22 minutos</p><p>En esta capacitación aprenderás a utilizar la herramienta de generación de propuestas comerciales para presentar profesionalmente las condiciones de inversión y financiación de los programas.</p><a class="campus-button" href="https://fathom.video/share/b1Gr1j9NRYbQ_QxfyfNGQ3xsMHk5st12" target="_blank" rel="noopener noreferrer">Ver capacitación en Fathom ↗</a><p class="lesson-deadline">Descarga de la herramienta: próximamente.</p></div>
+      <details class="lesson-panel launch-setter-guide"><summary>Ver contenidos, momentos importantes y recomendaciones</summary>
+        <h3>¿Qué vas a aprender?</h3><ul>
+          <li>Crear propuestas económicas personalizadas.</li><li>Configurar precios, monedas, tipo de cambio e IVA.</li><li>Aplicar descuentos por pago único.</li><li>Establecer fechas de vencimiento y cuentas regresivas.</li><li>Calcular señas y reservas de cupo.</li><li>Configurar cuotas, fechas de vencimiento y saldos pendientes.</li><li>Descargar propuestas en HTML y enviarlas por WhatsApp.</li><li>Utilizar los accesos rápidos de Windows y Mac.</li>
+        </ul><h3>Momentos importantes del video</h3><ul>
+          <li><strong>Min. 0–7:</strong> explicación de la herramienta y sus modalidades de pago.</li><li><strong>Min. 7–14:</strong> envío de propuestas, funcionamiento y atajos de teclado.</li><li><strong>Min. 14–20:</strong> simulacro práctico de generación de una propuesta con pago inicial y cuotas.</li><li><strong>Min. 20–22:</strong> aclaraciones sobre financiación, funcionalidades y versiones disponibles.</li>
+        </ul><p class="lesson-deadline"><strong>Importante:</strong> La herramienta permite personalizar múltiples condiciones, pero siempre deberán respetarse los precios, descuentos y límites de financiación vigentes y autorizados por la dirección comercial.</p><p><strong>Recomendación:</strong> Descargá la herramienta y su manual antes de comenzar. Reproducí los ejemplos mientras ves la capacitación para familiarizarte con su funcionamiento.</p>
+      </details>
+    </section>
+    <section class="materials-section" aria-labelledby="recruitmentProfitTitle">
+      <div class="campus-section-title"><h2 id="recruitmentProfitTitle">Capacitación de Closers | Herramienta de diagnóstico de rentabilidad</h2></div>
+      <div class="lesson-panel lesson-recording"><p class="campus-eyebrow">26 minutos · Carlos</p><p>En esta capacitación, Carlos explica cómo utilizar una herramienta de diagnóstico económico durante una llamada comercial para identificar problemas de rentabilidad, analizar el punto de equilibrio y detectar oportunidades de mejora en el negocio del prospecto.</p><a class="campus-button" href="https://fathom.video/share/VSK73Lyx8WKYutxmuiHzwY63jqFd-avb" target="_blank" rel="noopener noreferrer">Ver capacitación en Fathom ↗</a><p class="lesson-deadline">Descarga de la herramienta: próximamente.</p></div>
+      <details class="lesson-panel launch-setter-guide"><summary>Ver contenidos, paso a paso y momentos importantes</summary>
+        <h3>¿Qué vas a aprender?</h3><ul>
+          <li><strong>Preparación de la reunión:</strong> qué datos solicitar al prospecto antes de la llamada.</li>
+          <li><strong>Uso de la herramienta:</strong> cómo ingresar facturación, marcación y costos fijos para realizar un diagnóstico preliminar.</li>
+          <li><strong>Markup y margen de contribución:</strong> cómo diferenciarlos e interpretar correctamente los resultados.</li>
+          <li><strong>Punto de equilibrio:</strong> cómo calcular y explicar cuánto necesita facturar un negocio para cubrir sus costos.</li>
+          <li><strong>Análisis de rentabilidad:</strong> cómo identificar pérdidas, baja utilidad y oportunidades de optimización.</li>
+          <li><strong>Preguntas comerciales:</strong> cómo profundizar cuando el prospecto presenta buenos o malos resultados.</li>
+          <li><strong>Manejo de objeciones:</strong> qué hacer cuando el cliente no coincide con los números.</li>
+          <li><strong>Criterios de aplicación:</strong> en qué negocios conviene utilizar el diagnóstico y cuándo es preferible evitarlo.</li>
+        </ul><h3>Paso a paso para utilizar el diagnóstico</h3><ol>
+          <li><strong>Evaluá si corresponde utilizarlo.</strong> Priorizá prospectos de alto nivel y negocios cuyos costos variables y fijos puedan identificarse con claridad.</li>
+          <li><strong>Solicitá los datos antes de la llamada.</strong> Pedí facturación mensual sin IVA, marcación promedio y costos fijos mensuales.</li>
+          <li><strong>Cargá los valores en la herramienta.</strong> Utilizá los datos proporcionados por el prospecto, aclarando que se trata de una estimación inicial.</li>
+          <li><strong>Analizá los resultados.</strong> Revisá el margen de contribución, los costos fijos, la rentabilidad estimada y el punto de equilibrio.</li>
+          <li><strong>Explicá qué significan los números.</strong> Mostrá cómo se relacionan las ventas, los costos y el resultado económico del negocio.</li>
+          <li><strong>Profundizá con preguntas.</strong> Investigá si el prospecto reconoce esos resultados, qué dificultades enfrenta y qué desea mejorar.</li>
+          <li><strong>Conectá el diagnóstico con sus objetivos.</strong> Identificá posibles oportunidades de mejora y evaluá si el programa puede ayudarlo.</li>
+        </ol><h3>Momentos importantes del video</h3><ul>
+          <li><strong>Min. 0–4:</strong> presentación de la herramienta y datos necesarios.</li><li><strong>Min. 4–8:</strong> explicación de markup y margen de contribución.</li><li><strong>Min. 8–16:</strong> simulación de rentabilidad y punto de equilibrio.</li><li><strong>Min. 16–20:</strong> manejo de resultados favorables y desacuerdos del prospecto.</li><li><strong>Min. 20–26:</strong> análisis de costos adicionales y negocios donde conviene o no utilizar la herramienta.</li>
+        </ul><h3>Recomendación</h3><p>Antes de aplicar esta herramienta con un prospecto real, practicá con distintos escenarios y asegurate de comprender cada indicador.</p><p class="lesson-deadline"><strong>Importante:</strong> El diagnóstico es preliminar y no sustituye un análisis financiero completo. Si no conocés cómo se calculan los costos del negocio, no improvises resultados.</p><p><strong>El objetivo no es demostrarle al prospecto que su negocio está mal, sino ayudarlo a comprender sus números e identificar oportunidades reales de mejora.</strong></p>
+      </details>
+    </section>`;
+  } else if (new URLSearchParams(location.search).get('tab') === 'lanzamiento') {
     document.title = 'Lanzamiento | Centro de entrenamiento';
     document.querySelectorAll('.campus-nav a').forEach(a => a.removeAttribute('aria-current'));
     document.getElementById('launchTab').setAttribute('aria-current','page');
-    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Closers junior · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>06</strong><span>Clases de lanzamiento</span></div></div></section>
+    content.innerHTML = `<section class="campus-hero"><div><p class="campus-eyebrow">Equipo comercial · Lanzamiento</p><h1>Prepará tu lanzamiento</h1><p class="campus-intro">Mirá las clases de lanzamiento y completá las actividades de cada encuentro.</p></div><div class="campus-stats"><div><strong>07</strong><span>Clases de lanzamiento</span></div></div></section>
     <div class="lesson-layout"><section aria-labelledby="launchClassTitle"><a class="class-card" href="https://fathom.video/share/x2mDCbc-F9kRt-UWs2_AjNrECKigSTL9" target="_blank" rel="noopener noreferrer"><div class="class-art"><span class="class-label">Clase de lanzamiento</span><span class="class-number" aria-hidden="true">01</span><span class="class-play" aria-hidden="true">▶</span></div><div class="class-body"><h3 id="launchClassTitle">Clase de lanzamiento</h3><p>La grabación para esta etapa de la capacitación de closers junior.</p><span class="class-cta">Ver clase en Fathom <span aria-hidden="true">↗</span></span></div></a></section>
     <aside class="lesson-aside"><section class="lesson-panel"><p class="campus-eyebrow">Después de la clase</p><h2>Actividades</h2><p>Consultá las consignas y realizá las actividades indicadas por Leo.</p><div class="lesson-task-link"><a class="campus-button" href="https://docs.google.com/document/d/1iOsZjyBgJoC8qY1GoTSjNFS6qo9W9DdCPq1psDUxuD8/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir actividades ↗</a></div></section></aside></div>`;
     content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchFollowupTitle">
@@ -183,6 +225,90 @@
       <iframe class="lesson-video" src="https://drive.google.com/file/d/1xV2aYU5NATfAVItZlep492GN-CeXq_dH/preview" title="Clase 06 de lanzamiento" loading="lazy" allow="fullscreen" allowfullscreen></iframe>
       <div class="lesson-video-note"><p>Si el video no se reproduce, abrilo directamente en Drive.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/1xV2aYU5NATfAVItZlep492GN-CeXq_dH/view" target="_blank" rel="noopener noreferrer">Ver clase en Drive ↗</a></div>
     </section>`);
+    content.insertAdjacentHTML('beforeend', `<section class="materials-section" aria-labelledby="launchSetterTitle">
+      <div class="campus-section-title"><h2 id="launchSetterTitle">Clase 07 · Capacitación de Setters | Proceso de atención y gestión de leads</h2></div>
+      <div class="lesson-panel lesson-recording">
+        <p class="campus-eyebrow">Capacitación de setters · 61 minutos</p>
+        <p>En esta capacitación se resuelven dudas operativas y se realiza un simulacro práctico del circuito de atención de leads durante un lanzamiento.</p>
+        <a class="campus-button" href="https://fathom.video/share/Pv3Ryr2igdG5645UrPkAq-Yntszx6Syn" target="_blank" rel="noopener noreferrer">Ver capacitación en Fathom ↗</a>
+      </div>
+      <details class="lesson-panel launch-setter-guide">
+        <summary>Ver de qué habla el video y el paso a paso operativo</summary>
+        <h3>¿Qué vas a aprender en este video?</h3>
+        <ul>
+          <li>Recepción y asignación de leads mediante Discord.</li>
+          <li>Uso de GoHighLevel (GHL) para consultar información y registrar interacciones.</li>
+          <li>Calificación y priorización de prospectos según su facturación.</li>
+          <li>Primer contacto, seguimiento y gestión de conversaciones por WhatsApp.</li>
+          <li>Entrega de recursos gratuitos y gestión de comunidades.</li>
+          <li>Agendamiento de llamadas con los closers.</li>
+          <li>Manejo de objeciones y prácticas comerciales.</li>
+        </ul>
+        <h3>Paso a paso operativo del setter</h3>
+        <ol>
+          <li><h4>Recibir el lead en Discord</h4><ul>
+            <li>Ingresá al canal personal donde llegan las notificaciones de tus leads asignados.</li>
+            <li>Identificá el nombre y los datos del prospecto.</li>
+            <li>No marques la notificación como gestionada hasta haber realizado el contacto.</li>
+          </ul></li>
+          <li><h4>Revisar el prospecto en GoHighLevel</h4><ul>
+            <li>Ingresá a GHL y buscá el contacto asignado.</li>
+            <li>Abrí su ficha y buscá la sección Additional Info (Información adicional).</li>
+            <li>Revisá las respuestas del formulario, especialmente la facturación mensual declarada.</li>
+          </ul></li>
+          <li><h4>Calificar y priorizar</h4><ul>
+            <li>Más de USD 50.000 mensuales: prioridad alta.</li>
+            <li>Entre USD 30.000 y USD 50.000: prioridad media.</li>
+            <li>Menos de USD 10.000: prioridad baja; evaluar si corresponde otra oferta.</li>
+          </ul><p>Estos rangos se utilizan como referencia inicial de priorización, no como única condición para descartar un prospecto.</p></li>
+          <li><h4>Verificar si está en la comunidad de WhatsApp</h4><ul>
+            <li>Buscá al prospecto en las comunidades correspondientes.</li>
+            <li>Si todavía no ingresó, enviale el enlace de invitación.</li>
+            <li>Recordá que no se lo puede agregar manualmente según lo probado durante la capacitación.</li>
+          </ul></li>
+          <li><h4>Realizar el primer contacto por WhatsApp</h4><ul>
+            <li>Presentate como asesor del equipo de Matías Randazzo.</li>
+            <li>Iniciá una conversación breve y personalizada.</li>
+            <li>Consultá si pudo ingresar a la comunidad.</li>
+            <li>Utilizá las preguntas de calificación del procedimiento comercial.</li>
+          </ul></li>
+          <li><h4>Registrar la gestión</h4><ul>
+            <li>Agregá una nota en GoHighLevel indicando qué acción realizaste y el estado del prospecto.</li>
+            <li>Colocá la etiqueta correspondiente en WhatsApp para identificar su nivel de calificación.</li>
+            <li>Volvé a Discord y reaccioná a la notificación una vez realizado el contacto.</li>
+          </ul></li>
+          <li><h4>Gestionar los recursos gratuitos</h4><ul>
+            <li>Seguí el cronograma de videos y materiales indicado en Miro.</li>
+            <li>Compartí los contenidos correspondientes dentro de la comunidad.</li>
+            <li>Cuando un prospecto solicite un recurso por privado, aprovechá la conversación para realizar preguntas de calificación antes de entregarlo.</li>
+            <li>Tené en cuenta las condiciones de acceso de cada herramienta.</li>
+          </ul></li>
+          <li><h4>Realizar seguimiento</h4><ul>
+            <li>Priorizá a los prospectos de mayor calificación y a quienes mostraron interés.</li>
+            <li>Revisá los registros anteriores antes de volver a contactar.</li>
+            <li>Mantené las notas y etiquetas actualizadas.</li>
+            <li>Evitá mensajes masivos indiscriminados y respetá las políticas vigentes de WhatsApp.</li>
+          </ul></li>
+          <li><h4>Gestionar el agendamiento con un closer</h4><ul>
+            <li>Cuando el prospecto esté calificado y corresponda avanzar, compartí el enlace de agendamiento.</li>
+            <li>La asignación de closers se realiza automáticamente según la configuración y disponibilidad.</li>
+            <li>Si no encuentra horarios disponibles, coordiná internamente con los closers.</li>
+            <li>Registrá la gestión y el resultado en el CRM.</li>
+          </ul></li>
+        </ol>
+        <h3>¿Para qué te sirve esta capacitación?</h3>
+        <p>Este video te permitirá comprender el circuito operativo que debe realizar un setter, desde la recepción de un lead hasta su calificación, seguimiento y agendamiento comercial.</p>
+        <h3>Momentos importantes del video</h3>
+        <ul>
+          <li><strong>Minuto 0–17:</strong> dudas operativas, recursos, comunidades y agendamiento.</li>
+          <li><strong>Minuto 20–31:</strong> simulacro práctico con Discord, GHL y WhatsApp.</li>
+          <li><strong>Minuto 32–45:</strong> objeciones comerciales, experiencias y entrenamiento.</li>
+          <li><strong>Minuto 48–60:</strong> práctica de identificación, calificación y registro de leads.</li>
+        </ul>
+        <p><strong>Recomendación:</strong> Mirá el video con Discord, GoHighLevel, WhatsApp y el procedimiento de Miro abiertos para poder replicar el circuito mientras se explica.</p>
+        <p class="lesson-deadline"><strong>Importante:</strong> Esta grabación corresponde a un lanzamiento específico. Para trabajar con nuevos prospectos, seguí siempre el SOP, los mensajes, los enlaces, los criterios de calificación y las condiciones comerciales vigentes.</p>
+      </details>
+    </section>`);
     content.insertAdjacentHTML('beforeend', `<section class="materials-section launch-gifts" aria-labelledby="launchGiftsTitle"><div class="campus-section-title"><h2 id="launchGiftsTitle">Regalos del lanzamiento</h2><p>Guía de entrega para asesores</p></div><div class="lesson-panel"><h3>La clave se comparte sólo si el lead la solicita.</h3><p>Cada regalo permite 7 usos. Después, la herramienta pide una clave que el lead debe solicitar a su asesor. Entregá el enlace el día indicado y compartí la clave únicamente cuando te la pidan, para continuar la interacción.</p></div><div id="launchGiftList" class="class-grid"><p role="status">Cargando regalos…</p></div></section>`);
     window.http.getJson('/api/metricas/launch-gifts').then(({gifts}) => {
       document.getElementById('launchGiftList').innerHTML = gifts.map(gift => `<article class="lesson-panel launch-gift"><p class="campus-eyebrow">Regalo ${esc(gift.number)} · Día ${esc(gift.day)}</p><h3>${esc(gift.title)}</h3><p>7 usos antes de solicitar la clave.</p><a class="campus-button secondary" href="${esc(gift.url)}" target="_blank" rel="noopener noreferrer">Abrir regalo ↗</a><p class="launch-gift-url">${esc(gift.url)}</p><details><summary>Ver clave para el asesor</summary><p>Compartila sólo si el lead la solicita.</p><code>${esc(gift.key)}</code></details></article>`).join('');
@@ -192,7 +318,7 @@
   } else if (lesson) {
     document.title=`Clase ${lesson.id} · ${lesson.title} | Central MR`;
     content.innerHTML=`<a class="campus-back" href="/views/entrenamiento.html">← Todas las capacitaciones</a><header class="lesson-heading"><p class="campus-eyebrow">Capacitación comercial · Clase ${String(lesson.id).padStart(2,'0')}</p><h1>${lesson.title}</h1><p class="campus-intro">${lesson.summary}</p></header>
-    <div class="lesson-layout"><div>${lesson.videoUrl ? `<section class="lesson-panel lesson-recording"><span class="lesson-recording-play" aria-hidden="true">▶</span><p class="campus-eyebrow">Clase grabada · Matías Randazzo</p><h2>Cómo hacer una auditoría</h2><p>Mirá la explicación de Mati en Fathom. La grabación se abre en una pestaña nueva para que puedas volver a este centro de entrenamiento.</p><a class="campus-button" href="${esc(lesson.videoUrl)}" target="_blank" rel="noopener noreferrer">Ver clase en Fathom ↗</a></section>` : `<iframe class="lesson-video" src="https://drive.google.com/file/d/${lesson.video}/preview" title="Video de la clase ${lesson.id}: ${lesson.title}" allow="fullscreen; autoplay" allowfullscreen></iframe><div class="lesson-video-note"><p>Si el video solicita acceso, abrilo en Drive con tu cuenta autorizada.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/${lesson.video}/view?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir video en Drive ↗</a></div>`}
+    <div class="lesson-layout"><div>${lesson.videoUrl ? `<section class="lesson-panel lesson-recording"><span class="lesson-recording-play" aria-hidden="true">▶</span><p class="campus-eyebrow">Capacitación principal · Carlos · 26 minutos</p><h2>Herramienta de diagnóstico de rentabilidad</h2><p>Empezá por esta capacitación: cómo analizar la rentabilidad, el punto de equilibrio y las oportunidades de mejora durante una llamada comercial.</p><a class="campus-button" href="${esc(lesson.videoUrl)}" target="_blank" rel="noopener noreferrer">Ver capacitación principal ↗</a><p class="lesson-deadline">Descarga de la herramienta: próximamente.</p></section><section class="lesson-panel lesson-recording"><p class="campus-eyebrow">Material complementario · Matías Randazzo</p><h2>Cómo hacer una auditoría</h2><p>La clase anterior queda disponible para complementar el diagnóstico.</p><a class="campus-button secondary" href="https://fathom.video/share/uZ6MzG7H_Jj_-oYykAxqrbqQqAfxCDQ4" target="_blank" rel="noopener noreferrer">Ver clase complementaria ↗</a></section>` : `<iframe class="lesson-video" src="https://drive.google.com/file/d/${lesson.video}/preview" title="Video de la clase ${lesson.id}: ${lesson.title}" allow="fullscreen; autoplay" allowfullscreen></iframe><div class="lesson-video-note"><p>Si el video solicita acceso, abrilo en Drive con tu cuenta autorizada.</p><a class="campus-button secondary" href="https://drive.google.com/file/d/${lesson.video}/view?usp=sharing" target="_blank" rel="noopener noreferrer">Abrir video en Drive ↗</a></div>`}
     ${lesson.materials.length ? `<section id="materiales" class="lesson-panel lesson-materials" aria-labelledby="lessonMaterialsTitle"><h2 id="lessonMaterialsTitle">Materiales de la clase ${lesson.id}</h2><p class="lesson-materials-intro">${lesson.id === 1 ? 'Dejá tus datos de contacto para acceder a los materiales del programa.' : lesson.id === 3 ? 'Usá estos tres materiales para estudiar el guion y la presentación, y analizar las llamadas de esta clase.' : 'Completá el test de perfil indicado en las actividades de esta clase.'}</p>${resourcesMarkup(lesson)}</section>` : ''}
     ${lesson.topics.length ? `<section class="lesson-panel"><h2>Qué vas a trabajar</h2>${lesson.topics.map(([title,text])=>`<div class="lesson-topic"><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`).join('')}</section>` : ''}
     ${lesson.decisions?`<section class="lesson-panel"><h2>Acuerdos del programa</h2>${listMarkup(lesson.decisions)}</section>`:''}
