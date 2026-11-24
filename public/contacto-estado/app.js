@@ -138,9 +138,10 @@ function setupPortalLink(contact) {
 function renderContact(contact) {
   const container = document.getElementById('cardContainer');
   const isDebtor = contact.deudor === true;
-  const statusTone = isDebtor ? 'tone-debtor' : getStatusTone(contact.estado);
+  const isApurar = !isDebtor && contact.apurar === true;
+  const statusTone = isDebtor ? 'tone-debtor' : isApurar ? 'tone-apurar' : getStatusTone(contact.estado);
   const safeName = escapeHtml(contact.nombre || 'Sin nombre');
-  const safeStatus = escapeHtml(isDebtor ? 'Deudor' : contact.estado || 'Sin estado');
+  const safeStatus = escapeHtml(isDebtor ? 'Deudor' : isApurar ? 'Apurar' : contact.estado || 'Sin estado');
   const safeGhlId = escapeHtml(contact.ghlId || 'Sin dato');
   const safeEmail = escapeHtml(contact.email || 'Sin dato');
   const safePhone = escapeHtml(contact.telefono || 'Sin dato');
@@ -171,7 +172,7 @@ function renderContact(contact) {
   }).join('');
 
   container.innerHTML = `
-    <article class="contact-card${isDebtor ? ' is-debtor' : ''}">
+    <article class="contact-card${isDebtor ? ' is-debtor' : isApurar ? ' is-apurar' : ''}">
       <div class="card-hero">
         <div class="avatar-badge">${escapeHtml(getInitials(contact.nombre))}</div>
         <div class="card-copy">

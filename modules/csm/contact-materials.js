@@ -76,6 +76,11 @@ function isDebtor(fields) {
   return normalize(fields?.paymentStatus).trim() === 'deudor';
 }
 
+// «Apurar» es la primera instancia de la escala de mora (antes de «Deudor»): se ve en amarillo.
+function isApurar(fields) {
+  return normalize(fields?.paymentStatus).trim() === 'apurar';
+}
+
 async function fetchContactMaterials(contactId, options = {}) {
   const key = options.key ?? process.env.GHL_API_KEY;
   const locationId = options.locationId || process.env.GHL_LOCATION_ID || 'WU2z8kl23Dr3IyBW1hv5';
@@ -144,4 +149,4 @@ function contractLabel(type, receipts) {
   return count > 0 ? `${type} · ${count} ${count === 1 ? 'cuota' : 'cuotas'}` : `${type} · Cantidad de cuotas sin registrar`;
 }
 
-module.exports = {fetchContactMaterials, linksFromNotes, mapAppointments, mapFields, productsForContact, contractLabel, isDebtor};
+module.exports = {fetchContactMaterials, linksFromNotes, mapAppointments, mapFields, productsForContact, contractLabel, isDebtor, isApurar};

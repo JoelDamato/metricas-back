@@ -221,6 +221,12 @@ code {
 .status-pill.tone-debtor { color: #fff; background: #b91c1c; border-color: #fca5a5; }
 .contact-card.is-debtor .card-kicker,
 .contact-card.is-debtor .card-subcopy { color: #fff1f2; }
+.contact-card.is-apurar { border-color: #fde68a; }
+.contact-card.is-apurar .card-hero { background: #eab308; border-radius: 18px; padding: 20px; }
+.status-pill.tone-apurar { color: #422006; background: #fde047; border-color: #854d0e; }
+.contact-card.is-apurar .card-kicker,
+.contact-card.is-apurar .card-subcopy,
+.contact-card.is-apurar .card-hero h2 { color: #1c1917; }
 
 .metric-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
 

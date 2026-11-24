@@ -1,5 +1,5 @@
 const csmContactSummary = require('../modules/csm/contact-summary');
-const {fetchContactMaterials,productsForContact,contractLabel,isDebtor} = require('../modules/csm/contact-materials');
+const {fetchContactMaterials,productsForContact,contractLabel,isDebtor,isApurar} = require('../modules/csm/contact-materials');
 const {buildJourney} = require('../modules/csm/program-journey');
 const {listContactReceipts,totals,cashWithoutIva,receivedCashArs,receivedCashUsd,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
@@ -126,6 +126,7 @@ async function fetchContactByGhlId(ghlId) {
   contact.csmProgress = csmContactSummary.progress(csmRow);
   contact.csmMaterials = materials;
   contact.deudor = isDebtor(materials.fields);
+  contact.apurar = !contact.deudor && isApurar(materials.fields);
   contact.products = productsForContact(csmRow, materials.fields, comprobantesRows);
   // Same journey as the client portal: Costos Rentables (4 sessions), MEG (7) or the upgrade (8),
   // so each appointment lands on its own card instead of the MEG-only layout.
