@@ -25,3 +25,4 @@
 
 .csm-module-durations [data-client-results] > p { color: #d3e3f7; margin: 12px 0; }
 .csm-segment-editor{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.csm-segment-editor select{border:1px solid #45617e;background:#142b42;color:#f0f6ff;border-radius:8px;padding:7px;max-width:210px}.csm-segment-editor button{border:1px solid #45617e;border-radius:8px;padding:7px 10px;background:#244a70;color:#e5edf6;cursor:pointer}.csm-segment-editor button:disabled{opacity:.45;cursor:default}.csm-segment-editor small{flex-basis:100%;font-size:11px;color:#a6bed4}
+.csm-segment-code{font-family:ui-monospace,monospace;font-weight:600;letter-spacing:.02em}

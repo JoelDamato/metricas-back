@@ -1419,7 +1419,7 @@ function buildBusinessSegmentRows(source, profiles=[], segments=[]) {
  return dedupeClientRows(source).map(r=>{const seg=segById.get(r.ghlid);return {...r,
   rubro:businessSegmentValue(seg?.rubro)||businessSegmentValue(r.rubro)||businessSegmentValue(byId.get(r.ghlid)?.rubro),
   modelo:businessSegmentValue(seg?.modelo)||businessSegmentValue(r.modelo_negocio),
-  listaModelo:seg?.modelo||'',listaRubro:seg?.rubro||'',listaPor:seg?.source==='panel'?(seg.updated_by||''):''};});
+  listaModelo:seg?.modelo||'',listaRubro:seg?.rubro||'',listaCodigo:seg?.rubro_codigo||'',listaPor:seg?.source==='panel'?(seg.updated_by||''):''};});
 }
 function filterBusinessSegmentRows(rows,{dimension='modelo',presence='all',selected='',query=''}={}) {
  const dim=dimension==='rubro'?'rubro':'modelo';
@@ -1430,7 +1430,7 @@ function filterBusinessSegmentRows(rows,{dimension='modelo',presence='all',selec
 function renderBusinessSegmentEditor(r, catalog) {
  if(!r.ghlid||!catalog)return '<span>Sin ficha en GHL</span>';
  const modelos=Object.keys(catalog);const rubros=r.listaModelo?catalog[r.listaModelo]||[]:[];
- return `<div class="csm-segment-editor" data-segment-editor="${escapeHtml(r.ghlid)}"><select data-edit-modelo aria-label="Modelo de negocio de ${escapeHtml(r.nombre||'cliente')}"><option value="">Modelo…</option>${modelos.map(m=>`<option value="${escapeHtml(m)}" ${m===r.listaModelo?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select><select data-edit-rubro aria-label="Rubro de ${escapeHtml(r.nombre||'cliente')}" ${rubros.length?'':'disabled'}><option value="">Rubro…</option>${rubros.map(o=>`<option value="${escapeHtml(o)}" ${o===r.listaRubro?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select><button type="button" data-edit-save disabled>Guardar</button><small data-edit-status>${r.listaModelo&&r.listaRubro?(r.listaPor?`Cargado por ${escapeHtml(r.listaPor)}`:'Cargado en GHL'):''}</small></div>`;
+ return `<div class="csm-segment-editor" data-segment-editor="${escapeHtml(r.ghlid)}"><select data-edit-modelo aria-label="Modelo de negocio de ${escapeHtml(r.nombre||'cliente')}"><option value="">Modelo…</option>${modelos.map(m=>`<option value="${escapeHtml(m)}" ${m===r.listaModelo?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select><select data-edit-rubro aria-label="Rubro de ${escapeHtml(r.nombre||'cliente')}" ${rubros.length?'':'disabled'}><option value="">Rubro…</option>${rubros.map(o=>`<option value="${escapeHtml(o)}" ${o===r.listaRubro?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select><button type="button" data-edit-save disabled>Guardar</button><small data-edit-status>${r.listaModelo&&r.listaRubro?`${r.listaCodigo?`<span class="csm-segment-code" title="Código fijo del rubro: no cambia aunque cambie el nombre">${escapeHtml(r.listaCodigo)}</span> · `:''}${r.listaPor?`Cargado por ${escapeHtml(r.listaPor)}`:'Cargado en GHL'}`:''}</small></div>`;
 }
 function renderBusinessSegmentTable(rows, catalog=null) {
  const editable=!!catalog;const cols=editable?5:4;
@@ -1444,7 +1444,7 @@ function bindBusinessSegmentEditors(target, rows, catalog, refresh) {
   const check=()=>{save.disabled=!modelo.value||!rubro.value||(modelo.value===row?.listaModelo&&rubro.value===row?.listaRubro);};
   modelo.onchange=()=>{const opts=catalog[modelo.value]||[];rubro.innerHTML='<option value="">Rubro…</option>'+opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');rubro.disabled=!opts.length;status.textContent='';check();};
   rubro.onchange=check;
-  save.onclick=async()=>{save.disabled=true;status.textContent='Guardando…';try{const response=await fetch('/api/metricas/csm-business-segments/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({modelo:modelo.value,rubro:rubro.value})});const saved=await response.json().catch(()=>({}));if(!response.ok)throw Error(saved.message||'No se pudo guardar');if(row){row.listaModelo=saved.modelo;row.listaRubro=saved.rubro;row.modelo=saved.modelo;row.rubro=saved.rubro;row.listaPor=saved.updated_by||'';}refresh();}catch(err){status.textContent=err.message;check();}};
+  save.onclick=async()=>{save.disabled=true;status.textContent='Guardando…';try{const response=await fetch('/api/metricas/csm-business-segments/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({modelo:modelo.value,rubro:rubro.value})});const saved=await response.json().catch(()=>({}));if(!response.ok)throw Error(saved.message||'No se pudo guardar');if(row){row.listaModelo=saved.modelo;row.listaRubro=saved.rubro;row.listaCodigo=saved.rubro_codigo||'';row.modelo=saved.modelo;row.rubro=saved.rubro;row.listaPor=saved.updated_by||'';}refresh();}catch(err){status.textContent=err.message;check();}};
  });
 }
 async function renderBusinessSegments(source) {
