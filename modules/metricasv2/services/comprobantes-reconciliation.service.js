@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { extractObservaciones } = require('./info-comprobantes');
 const env = require('../config/env');
 
 const PAGE_SIZE = 500;
@@ -163,6 +164,7 @@ async function listAllComprobantes() {
   }
 
   for (const row of rows) if (/^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\]/.test(String(row.info_comprobantes || ''))) row.source_system = 'supabase_direct';
+  for (const row of rows) row.observaciones_closer = extractObservaciones(row.info_comprobantes);
   sortRowsNewestFirst(rows);
   return {
     rows,

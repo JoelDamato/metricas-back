@@ -51,7 +51,7 @@ test('Mis comprobantes acepta mes y filtro Solo Club desde el dashboard', () => 
   assert.match(script, /initialParams\.get\('mes'\)/);
   assert.match(script, /initialParams\.get\('club'\)/);
   assert.match(script, /\['all', 'exclude', 'only'\]/);
-  assert.match(html, /mis-comprobantes\.page\.js\?v=20261104-labels/);
+  assert.match(html, /mis-comprobantes\.page\.js\?v=20261125-observaciones-150/);
 });
 
 test('los clics en las pestañas actualizan el listado de comprobantes', async () => {
