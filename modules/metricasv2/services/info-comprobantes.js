@@ -8,7 +8,7 @@ const META = '\nTEST_METADATA=';
 const SOURCE_PREFIX = /^\[(TEST SUPABASE LOCAL|SUPABASE DIRECT)\] [^|]*\|\s*/;
 const HEAD_SEGMENT = /^(carga id|cargado por|responsable venta):/i;
 const PRICE_SEGMENT = /^precio [^:|]{0,60}: ARS [\d.,]+$/i;
-const TAIL_SEGMENT = /^(meses de soporte|sesiones|bonus mati|adjuntos):/i;
+const TAIL_SEGMENT = /^[.\s]*(meses de soporte|sesiones|bonus mati|adjuntos):/i;
 
 function cleanInfo(raw) {
   return String(raw || '').split(META)[0].replace(SOURCE_PREFIX, '').trim();
