@@ -285,6 +285,7 @@
               <th>Cash collected ARS</th>
               <th>TC (ARS / USD)</th>
               <th>Estado actual</th>
+              <th>Observaciones del closer</th>
               <th>Nota para el closer</th>
               <th>Cambiar estado</th>
               <th>Origen</th>
@@ -310,6 +311,7 @@
                   <td>${resolveCashAr(row) ? escapeHtml(formatCurrency(resolveCashAr(row), 'ARS')) : '—'}</td>
                   <td>${parseNumber(row.tc) > 0 ? escapeHtml(new Intl.NumberFormat('es-AR', { maximumFractionDigits: 6 }).format(parseNumber(row.tc))) : 'Sin informar'}</td>
                   <td>${stateBadge(currentState)}${row.motivo_rebote ? `<p style="white-space:pre-wrap;max-width:280px">${escapeHtml(row.motivo_rebote)}</p>` : ''}</td>
+                  <td class="conciliacion-observaciones"><p style="white-space:pre-wrap;min-width:200px;max-width:280px;margin:0">${escapeHtml(row.observaciones_closer || '—')}</p></td>
                   <td>
                     <label for="note-${escapeHtml(row.id)}">Visible para el closer</label>
                       <textarea id="note-${escapeHtml(row.id)}" data-note="${escapeHtml(row.id)}" maxlength="4000" rows="3" style="min-width:230px;width:100%">${escapeHtml(row.nota_conciliacion || '')}</textarea>

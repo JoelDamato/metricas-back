@@ -1,6 +1,7 @@
 const { saleIdFor } = require('./commission-sale-overrides.service');
 const { attachWebinarSetters, effectiveSetter, belongsToOtherWebinarSetter, isNahuelClubSale } = require('./webinar-setter.service');
 const axios = require('axios');
+const { validateObservaciones } = require('./info-comprobantes');
 const env = require('../config/env');
 const {
   NOTION_PERSON_NAME_BY_ID,
@@ -1840,7 +1841,7 @@ function normalizePayload(payload = {}, user, options = {}) {
   const dniCuit = isClubSale
     ? optionalString(payload.dniCuit)
     : requiredString(payload.dniCuit, 'el DNI / CUIT');
-  const infoComprobantes = optionalString(payload.infoComprobantes);
+  const infoComprobantes = optionalString(validateObservaciones(payload.infoComprobantes));
   const mesesSoporte = payload.mesesSoporte === '' || payload.mesesSoporte === null || payload.mesesSoporte === undefined
     ? null
     : toInteger(payload.mesesSoporte);
