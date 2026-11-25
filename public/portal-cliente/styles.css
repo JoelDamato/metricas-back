@@ -24,3 +24,5 @@ body.client-portal { margin:0; background:#07101e; color:#e9f3ff; font-family:Ar
 .portal-brand{font-size:clamp(22px,4vw,30px);overflow-wrap:anywhere}
 .csm-session-summary{min-width:0}
 .csm-session-title{overflow-wrap:anywhere}
+.portal-brand img{display:block;width:clamp(120px,18vw,150px);height:auto}
+.portal-brand span{margin-top:8px}
