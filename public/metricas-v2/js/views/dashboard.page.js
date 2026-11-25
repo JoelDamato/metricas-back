@@ -112,10 +112,36 @@
   let welcomeSpeechState = shouldPlayLoginWelcome ? 'idle' : 'silent';
   let welcomeSpeechTimeout = null;
   let welcomeFirstName = '';
+  let welcomeWord = 'Bienvenido';
   let welcomeLoaderReadyToClose = false;
   let welcomeLoaderClosing = false;
   let welcomeCloseTimeout = null;
   let dashboardEffectsStarted = false;
+
+  // Saludo con género (TA-5300): no hay campo de género en el usuario, así que se
+  // deduce del primer nombre. Lista explícita + terminación en «a» con excepciones.
+  const FEMALE_FIRST_NAMES = new Set([
+    'vale', 'valeria', 'valentina', 'patricia', 'belen', 'sofia', 'nadia', 'agostina',
+    'maria', 'carol', 'carolina', 'brenda', 'gisela', 'gisel', 'abril', 'raquel',
+    'isabel', 'maribel', 'mabel', 'ines', 'luz', 'pilar', 'rocio', 'carmen', 'beatriz',
+    'ruth', 'esther', 'noemi', 'flor', 'sol', 'mercedes', 'dolores', 'lourdes', 'nicole',
+    'denise', 'jaquelin', 'jacqueline', 'karen', 'miriam', 'iris', 'zoe', 'aylen', 'ayelen',
+    'jazmin', 'yasmin', 'ivon', 'lucy', 'magali', 'noelia', 'mili', 'cami', 'flopi',
+    'euge', 'naty', 'caro', 'marisol', 'soledad', 'consuelo', 'milagros'
+  ]);
+  const MALE_FIRST_NAMES_ENDING_IN_A = new Set([
+    'luca', 'lucca', 'joshua', 'nicola', 'andrea', 'borja', 'josema', 'juanma', 'garcia', 'bautista', 'elias', 'tobias', 'matias', 'jonas', 'lukas'
+  ]);
+
+  function isFemaleUser(user = {}) {
+    const firstName = normalize(String(user?.nombre || '').trim().split(/\s+/)[0]);
+    if (!firstName) return false;
+    if (FEMALE_FIRST_NAMES.has(firstName)) return true;
+    if (MALE_FIRST_NAMES_ENDING_IN_A.has(firstName)) return false;
+    return firstName.length > 2 && firstName.endsWith('a');
+  }
+
+  const welcomeWordFor = (user = {}) => (isFemaleUser(user) ? 'Bienvenida' : 'Bienvenido');
 
   const MALE_VOICE_TOKENS = [
     'male', 'hombre', 'masculino', 'jorge', 'diego', 'pablo', 'carlos', 'antonio',
@@ -140,10 +166,11 @@
   function setLoaderUser(user) {
     const firstName = String(user?.nombre || user?.email || '').trim().split(/\s+/)[0];
     welcomeFirstName = firstName;
+    welcomeWord = welcomeWordFor(user);
     if (refs.welcomeLoaderTitle) {
       refs.welcomeLoaderTitle.textContent = firstName
-        ? `Bienvenido, ${firstName}, a tu panel.`
-        : 'Bienvenido a tu panel.';
+        ? `${welcomeWord}, ${firstName}, a tu panel.`
+        : 'Te damos la bienvenida a tu panel.';
     }
     return firstName;
   }
@@ -192,8 +219,8 @@
       const begin = (voices = [], immediate = false) => {
         const personalizedName = String(firstName || '').trim();
         const welcomeMessage = personalizedName
-          ? `Bienvenido, ${personalizedName}, a la Central Matías Randazzo.`
-          : 'Bienvenido a la Central Matías Randazzo.';
+          ? `${welcomeWord}, ${personalizedName}, a la Central Matías Randazzo.`
+          : 'Te damos la bienvenida a la Central Matías Randazzo.';
         const utterance = new window.SpeechSynthesisUtterance(welcomeMessage);
         utterance.lang = 'es-AR';
         utterance.rate = 0.87;
@@ -716,6 +743,8 @@
     buildClubMonthlySeries,
     chooseWelcomeVoice,
     setLoaderUser,
+    isFemaleUser,
+    welcomeWordFor,
     speakWelcome,
     finishWelcomeLoaderWhenReady,
     closeWelcomeLoader

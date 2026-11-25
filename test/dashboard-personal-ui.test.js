@@ -27,7 +27,7 @@ test('el dashboard usa el mismo universo que el ranking real y excluye a Nahuel'
 });
 
 test('el dashboard personaliza saludo, métricas y fila del usuario', () => {
-  assert.match(script, /Bienvenido, \$\{firstName\}/);
+  assert.match(script, /\$\{welcomeWord\}, \$\{firstName\}/);
   assert.match(script, /is-current-user/);
   assert.match(script, /fetchMyCommercialArea/);
   assert.match(script, /Tu comisión calculada/);
@@ -89,8 +89,8 @@ test('Nahuel ve métricas propias y la evolución mensual de ventas Club', () =>
 test('muestra una bienvenida personalizada mientras termina de cargar el panel', () => {
   assert.match(html, /id="dashboardWelcomeLoader"/);
   assert.doesNotMatch(html, /id="dashboardWelcomeLoader"[^>]*hidden/);
-  assert.match(html, /Bienvenido a tu panel\./);
-  assert.match(script, /`Bienvenido, \$\{firstName\}, a tu panel\.`/);
+  assert.match(html, /Te damos la bienvenida a tu panel\./);
+  assert.match(script, /`\$\{welcomeWord\}, \$\{firstName\}, a tu panel\.`/);
   assert.match(script, /const requests = await Promise\.allSettled/);
   assert.match(script, /closeWelcomeLoader\(\);/);
   assert.match(script, /closeWelcomeLoader\(\{ hasError: true \}\);/);
@@ -105,7 +105,7 @@ test('muestra una bienvenida personalizada mientras termina de cargar el panel',
 test('reproduce una bienvenida personalizada con voz masculina seria mientras el popup está visible', () => {
   assert.match(html, /id="dashboardWelcomeSound"/);
   assert.match(html, /Escuchar bienvenida/);
-  assert.match(script, /`Bienvenido, \$\{personalizedName\}, a la Central Matías Randazzo\.`/);
+  assert.match(script, /`\$\{welcomeWord\}, \$\{personalizedName\}, a la Central Matías Randazzo\.`/);
   assert.match(script, /utterance\.lang = 'es-AR'/);
   assert.match(script, /utterance\.rate = 0\.87/);
   assert.match(script, /utterance\.pitch = 0\.72/);
@@ -229,4 +229,26 @@ test('Nahuel puede abrir Estado de Contacto desde la navegación compacta', () =
 test('el shell consulta comentarios solo si el usuario puede leerlos', () => {
   assert.match(authShell, /const canReadReportComments =/);
   assert.match(authShell, /!onlyMarketingAccess && canReadReportComments/);
+});
+
+test('dice «Bienvenida» a las usuarias y «Bienvenido» a los usuarios (TA-5300)', () => {
+  const vm = require('node:vm');
+  const el = () => ({ hidden: false, dataset: {}, classList: { add() {}, toggle() {} }, querySelector: () => null, addEventListener() {}, closest: () => ({}), textContent: '', innerHTML: '' });
+  const window = { http: { getJson: () => new Promise(() => {}) }, setTimeout() {}, clearTimeout() {} };
+  const context = {
+    window,
+    document: { getElementById: el, body: { classList: { add() {}, toggle() {} } } },
+    sessionStorage: { getItem: () => null, removeItem() {} },
+    Intl, Date, Number, String, Set, Math, Promise, console
+  };
+  vm.runInNewContext(script, context);
+  const { welcomeWordFor, setLoaderUser } = window.dashboardPageInternals;
+  const mujeres = ['Vale Calmet', 'Patricia Conti', 'Belen Herrera', 'Sofia Gallardo', 'Valentina Suarez', 'Nadia Cavallini', 'Agostina Vigliocco', 'María Eugenia Soliz', 'Carol Garay', 'Brenda Damato'];
+  const hombres = ['Nahue Randazzo', 'Juanma', 'Tomas', 'Walter Alegre', 'Carlos Tu', 'Claudio Nicolini', 'Mauro Gaitan', 'Tomás Marucho', 'Rober', 'Nahuel Iasci', 'Mati Randazzo', 'Fabian Mendarte', 'Leonardo Alaniz', 'Pablo Butera Vie', 'Tomás Mórtola', 'Ignacio Joaquin Irusta', 'Edwin Mendez', 'Sebastián Aman', 'Luca Rossi', 'Matias Perez'];
+  for (const nombre of mujeres) assert.equal(welcomeWordFor({ nombre }), 'Bienvenida', nombre);
+  for (const nombre of hombres) assert.equal(welcomeWordFor({ nombre }), 'Bienvenido', nombre);
+  assert.equal(welcomeWordFor({ nombre: 'Lucía Gómez' }), 'Bienvenida');
+  assert.equal(welcomeWordFor({}), 'Bienvenido');
+  setLoaderUser({ nombre: 'Nadia Cavallini' });
+  assert.match(script, /welcomeWord = welcomeWordFor\(user\)/);
 });
