@@ -17,7 +17,7 @@ test('VSL UNICO con emoji numérico pertenece a VSL + rt en el panel y en el bac
 });
 test('VSL + rt incluye VSL actual y RT proveniente de VSL',()=>{
  for(const row of [{origen_actual:'VSL'},{origen_actual:'VSL',primer_origen:'ORG'},{origen_actual:'VSL',primer_origen:'VSL'},{origen_actual:'3️⃣ Postulación MEG - VSL UNICO'},{origen_actual:'rt',primer_origen:'VSL'},{origen_actual:' RT ',primer_origen:'Postulación MEG - VSL - form'},{origen_actual:'Postulación MEG - RT',primer_origen:'Postulaci%C3%B3n%20MEG%20-%20VSL'}])assert.equal(cohort.matches(row,cohort.combined),true);
- for(const row of [{origen_actual:'ORG',primer_origen:'ORG'},{origen_actual:'rt',primer_origen:'ORG'},{origen_actual:'rt',origen:'VSL'},{primer_origen:'VSL'}])assert.equal(cohort.matches(row,cohort.combined),false);
+ for(const row of [{origen_actual:'ORG',primer_origen:'ORG'},{origen_actual:'rt',primer_origen:'ORG'},{primer_origen:'VSL'}])assert.equal(cohort.matches(row,cohort.combined),false);
 });
 test('comprobantes filtran usando primer origen del lead vinculado y actualizado',()=>{
  const source=fs.readFileSync('modules/metricasv2/services/supabase.service.js','utf8');
@@ -52,4 +52,16 @@ test('VSL B con flecha, tilde y URL encoding pertenece a VSL y al primer origen 
   assert.equal(cohort.matches({origen_actual:origen},'VSL'),true);
   assert.equal(cohort.matches({origen_actual:'RT',primer_origen:origen},cohort.combined),true);
  }
+});
+test('VSL + rt suma al que empezó la encuesta VSL sin terminarla y agendó por RT (TA-5636)',()=>{
+ const source=fs.readFileSync('modules/metricasv2/services/supabase.service.js','utf8');
+ const matches=vm.runInNewContext('('+source.match(/function matchesCurrentMarketingOrigin\([\s\S]*?\n}/)[0]+')',{resolveMarketingOrigin,require:()=>cohort});
+ const parcial={ghlid:'parcial',origen_actual:'Postulación MEG - RT',primer_origen:null,origen:'3️⃣ Postulación MEG - VSL UNICO'};
+ for(const row of [parcial,{...parcial,primer_origen:''},{...parcial,primer_origen:'Postulación MEG - RT'},{...parcial,origen:encodeURIComponent('3️⃣ Postulación MEG - VSL UNICO')}]){
+  assert.equal(cohort.matches(row,cohort.combined),true);
+  assert.equal(cohort.matches(row,'RT'),true);
+  assert.equal(cohort.matches(row,'VSL'),false);
+ }
+ assert.equal(matches({ghlid:'parcial'},buildMarketingLeadByGhlId([parcial]),cohort.combined),true);
+ for(const row of [{...parcial,origen:'4️⃣ Postulacion MEG - Eventos'},{...parcial,origen:'Postulación MEG - RT'},{...parcial,primer_origen:'Instagram'},{...parcial,primer_origen:'WEBINAR 26/11'},{...parcial,origen:null}])assert.equal(cohort.matches(row,cohort.combined),false);
 });

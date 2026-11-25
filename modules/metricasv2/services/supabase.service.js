@@ -2077,7 +2077,7 @@ function matchesCurrentMarketingOrigin(row, leadByGhlId, selectedOrigin) {
   if (require('../../../public/metricas-v2/js/marketing-cohort').isClientSession(currentOrigin)) return false;
   if (selectedOrigin === 'VSL + rt') {
     const linked = leadByGhlId.get(String(row.ghlid || row.ghl_id || '').trim().toLowerCase());
-    return require('../../../public/metricas-v2/js/marketing-cohort').matches({origen_actual:currentOrigin,primer_origen:linked ? linked.primer_origen : row.primer_origen},selectedOrigin);
+    return require('../../../public/metricas-v2/js/marketing-cohort').matches({origen_actual:currentOrigin,primer_origen:linked ? linked.primer_origen : row.primer_origen,origen:linked ? linked.origen : row.origen},selectedOrigin);
   }
   if (!currentOrigin) return false;
   return !selectedOrigin || normalizeMarketingOriginGroup(currentOrigin) === selectedOrigin;
@@ -2102,7 +2102,7 @@ async function loadMarketingOriginLeadsForRows(rows = []) {
     {
       headers: buildHeaders(),
       params: {
-        select: 'ghlid,origen_actual,primer_origen,last_edited_time,created_time',
+        select: 'ghlid,origen,origen_actual,primer_origen,last_edited_time,created_time',
         ghlid: `in.(${chunk.map((value) => `"${value}"`).join(',')})`,
         limit: 1000
       }
@@ -3261,7 +3261,7 @@ async function getMarketingDashboard(filters){
       listAllRows('leads_raw',agendaOptions),
       listAllRows('leads_raw',{limit:1000,from,to,dateField:'created_time'})
     ]);
-    const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
+    const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
     const slim=records=>records.map(row=>Object.fromEntries(columns.map(key=>[key,row[key]??null])));
     return {rows:rows.filter(row=>!isClientSession(row.origen) && (!origen || normalizeMarketingOriginGroup(row.origen)===normalizeMarketingOriginGroup(origen))),investment,aov,ventas,cash,campaigns,leads:slim(leads.filter(row=>!isClientSession(row.origen_actual))),traceability:slim(traceability.filter(row=>!isClientSession(row.origen_actual)))};
   });

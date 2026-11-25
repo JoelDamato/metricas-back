@@ -1,6 +1,6 @@
 # Marketing: VSL + rt y detalle de agendas
 
-El filtro VSL + rt exige las dos condiciones: origen actual RT y primer origen VSL. Reconoce los nombres históricos `Postulación MEG - RT` y `Postulación MEG - VSL - …`, espacios y enlaces codificados. No completa primer origen faltante con otros campos.
+El filtro VSL + rt exige las dos condiciones: origen actual RT y primer origen VSL. Reconoce los nombres históricos `Postulación MEG - RT` y `Postulación MEG - VSL - …`, espacios y enlaces codificados. Excepción (TA-5636, reunión del 20-10): si el origen actual es RT y el primer origen está vacío o también es RT, pero la fuente del contacto (`origen`) es VSL, cuenta en VSL + rt: es quien empezó la encuesta de la VSL sin terminarla (se lo capta en el primer campo) y agendó después por RT. Fuera de eso, no completa primer origen faltante con otros campos. El filtro VSL solo no cambia.
 
 Se aplica a agendas, aplicables, reuniones, anuncios, calidad, trazabilidad y a las consultas de ventas, cash y AOV mediante el lead vinculado por GHL ID. La cohorte combinada se calcula desde leads porque la vista diaria solo agrupa por origen actual. Las inversiones conservan su criterio existente: entradas registradas para el filtro seleccionado; no se asigna toda la inversión VSL o RT a esta subcohorte.
 
