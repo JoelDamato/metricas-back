@@ -1,5 +1,6 @@
 const {commissionAreaForUser} = require('../metricasv2/services/commission-area-identity');
 const PAGE_ROLE_ACCESS = {
+  'objetivos-comerciales.html': ['total', 'comercial'],
   'mati-world.html': ['total'],
   'tickets.html': ['total', 'comercial', 'csm'],
   'dashboard.html': ['total', 'comercial', 'csm'],
@@ -495,6 +496,7 @@ function isTrainingOnlyUser(user) {
 }
 
 function canAccessPageForUser(user, pageName) {
+  if (pageName === 'objetivos-comerciales.html') return canAccessPageForUser(user, 'mag-sistema-agendas.html');
   pageName = canonicalPageName(pageName);
   if (pageName === 'mati-world.html') return user?.role === 'total' && ['agendas-totales.html','comprobantes.html','csm-cuadro.html'].every(page => canAccessPageForUser(user,page));
   if (isTrainingOnlyUser(user)) return TRAINING_PAGES.has(pageName) && getAccessConfig(user).allowedPages.includes(pageName);
@@ -632,6 +634,7 @@ function canAccessFeatureForUser(user, featureName, options = {}) {
 function getUserPermissions(user) {
   const override = getUserAccessOverride(user);
   const allowedPages = override ? new Set(override.allowedPages) : null;
+  if (allowedPages && canAccessPageForUser(user, 'objetivos-comerciales.html')) allowedPages.add('objetivos-comerciales.html');
   if (allowedPages && user && !isTrainingOnlyUser(user)) {
     allowedPages.add('tickets.html');
     allowedPages.add('estado-contacto-comisiones.html');

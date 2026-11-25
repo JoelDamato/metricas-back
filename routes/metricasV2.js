@@ -4,6 +4,7 @@ const controller = require('../modules/metricasv2/controllers/metricas.controlle
 const authController = require('../modules/metricasv2/controllers/auth.controller');
 
 const router = express.Router();
+router.use('/commercial-objectives', require('../modules/commercial-objectives/router').createRouter());
 router.use('/mati-world', require('../modules/mati-world/router').createRouter());
 router.use('/administration', require('../modules/administration/router').createRouter());
 router.use('/settlements',require('../modules/settlements/router'));

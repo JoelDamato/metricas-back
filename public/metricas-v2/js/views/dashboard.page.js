@@ -44,6 +44,7 @@
     { page: 'ranking.html', href: '/views/ranking.html', label: 'Ranking de Ventas', description: 'Ventas, cash y facturación.', icon: '↗', roles: ['total', 'comercial'] },
     { page: 'alertas-operativas.html', href: '/views/alertas-operativas.html', label: 'Alertas Operativas', description: 'Casos que requieren atención.', icon: '!', roles: ['total', 'comercial', 'csm'] },
     { page: 'reportes.html', href: '/views/reportes.html', label: 'Reportes Comerciales', description: 'Ventas y cash por período.', icon: '▥', roles: ['total', 'comercial'] },
+    { page: 'objetivos-comerciales.html', href: '/views/objetivos-comerciales.html', label: 'Objetivos comerciales', description: 'Metas y resultados reales mes a mes.', icon: '◎', roles: ['total', 'comercial'] },
     { page: 'mag-sistema-agendas.html', href: '/views/mag-sistema-agendas.html', label: 'Sistema de Agendas', description: 'Objetivos y desempeño quincenal.', icon: '◫', roles: ['total', 'comercial'] },
     { page: 'setting.html', href: '/views/setting.html', label: 'Setting', description: 'Embudo detallado por setter.', icon: '◎', roles: ['total', 'comercial'] },
     { page: 'marketing.html', href: '/views/marketing.html', label: 'Marketing', description: 'Inversión, agendas y rentabilidad.', icon: '◔', roles: ['total', 'comercial', 'csm'] },
