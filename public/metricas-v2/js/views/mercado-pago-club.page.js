@@ -5,6 +5,7 @@ const statusNode = document.querySelector('#status');
 const summaryNode = document.querySelector('#summary');
 const rowsNode = document.querySelector('#rows');
 const countNode = document.querySelector('#count');
+const listTotalsNode = document.querySelector('#listTotals');
 const emptyNode = document.querySelector('#empty');
 const recordsTableNode = document.querySelector('#recordsTable');
 const selectedCountNode = document.querySelector('#selectedCount');
@@ -361,6 +362,29 @@ function showInvoicePreview(records) {
   });
 }
 
+const WORKFLOW_LABELS = { pending: 'Pendientes', reconciled: 'Conciliadas', excluded: 'No facturar', invoiced: 'Facturadas', credit_notes: 'Notas de crédito' };
+
+function listTotals(records) {
+  const byCurrency = new Map();
+  records.forEach((row) => {
+    const currency = row.currency || 'ARS';
+    byCurrency.set(currency, (byCurrency.get(currency) || 0) + Number(row.amount || 0));
+  });
+  if (!byCurrency.size) byCurrency.set('ARS', 0);
+  return { count: records.length, amounts: [...byCurrency.entries()].sort(([a], [b]) => (a === 'ARS' ? -1 : b === 'ARS' ? 1 : a.localeCompare(b))) };
+}
+
+function renderListTotals(records) {
+  if (!listTotalsNode) return;
+  const totals = listTotals(records);
+  const filterLabel = invoiceCategoryFilter.value ? invoiceCategoryFilter.selectedOptions[0]?.textContent : '';
+  const scope = [WORKFLOW_LABELS[activeWorkflow] || '', filterLabel].filter(Boolean).join(' · ');
+  listTotalsNode.innerHTML = `
+    <span class="list-totals-scope">Totales de ${escapeHtml(scope)}</span>
+    <span class="list-totals-item"><small>Cantidad</small><strong>${totals.count}</strong></span>
+    <span class="list-totals-item"><small>Monto</small><strong>${totals.amounts.map(([currency, amount]) => formatMoney(amount, currency)).join(' + ')}</strong></span>`;
+}
+
 function renderRecords() {
   const matchingRecords = activeRecords();
   const records = visibleRecords(matchingRecords);
@@ -369,6 +393,7 @@ function renderRecords() {
     ? ` · tanda ${currentPage}`
     : '';
   countNode.textContent = `${matchingRecords.length} resultado${matchingRecords.length === 1 ? '' : 's'}${pageLabel}`;
+  renderListTotals(matchingRecords);
   emptyNode.hidden = matchingRecords.length > 0;
   selectAllNode.checked = records.length > 0 && records.every((row) => selectedKeys.has(recordKey(row)));
   selectAllNode.indeterminate = records.some((row) => selectedKeys.has(recordKey(row))) && !selectAllNode.checked;
@@ -726,6 +751,7 @@ async function loadRecords() {
     if (generation !== loadGeneration) return;
     statusNode.textContent = error.message;
     summaryNode.innerHTML = '';
+    if (listTotalsNode) listTotalsNode.innerHTML = '';
     rowsNode.innerHTML = '';
     emptyNode.hidden = false;
   } finally {
