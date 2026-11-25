@@ -54,6 +54,10 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
     conciliacionKind: makeElement({value:'all'}),
     chequeScope: makeElement({value:'upcoming'}),
     chequeScopeLabel: makeElement(),
+    chequeFrom: makeElement(),
+    chequeFromLabel: makeElement(),
+    chequeTo: makeElement(),
+    chequeToLabel: makeElement(),
     conciliacionFiles: makeElement(),
     conciliacionFilesBody: makeElement(),
     closeConciliacionFiles: makeElement(),
@@ -86,7 +90,12 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
           { id: 'future', cliente_format: 'Cheque futuro', cheque: true, f_acreditacion: '2099-12-20', estado: null },
           { id: 'paid', cliente_format: 'Cheque acreditado', cheque: true, f_acreditacion: '2099-12-20', estado: 'Conciliado' },
           { id: 'past', cliente_format: 'Cheque anterior', cheque: 'true', f_acreditacion: '2020-01-02', estado: null },
-          { id: 'other', cliente_format: 'Mes anterior', f_acreditacion: `${otherMonth}-15`, estado: null }
+          { id: 'other', cliente_format: 'Mes anterior', f_acreditacion: `${otherMonth}-15`, estado: null },
+          { id: 'nov-a', cliente_format: 'Echeq noviembre', cheque: false, medios_de_pago_format: 'E-cheq Bco Frances', f_venta: '2020-10-15T03:00:00+00:00', f_acreditacion: '2020-11-04T03:00:00+00:00', estado: 'Conciliado' },
+          { id: 'nov-b', cliente_format: 'Cheque fin de noviembre', cheque: true, f_acreditacion: '2020-11-30T03:00:00+00:00', estado: null },
+          { id: 'dic', cliente_format: 'Cheque diciembre', cheque: true, f_acreditacion: '2020-12-01T03:00:00+00:00', estado: null },
+          { id: 'sin-fecha', cliente_format: 'Cheque sin fecha', cheque: true, f_acreditacion: null, estado: null },
+          { id: 'anio', cliente_format: 'Cheque año mal', cheque: true, f_venta: '2020-11-03T03:00:00+00:00', f_acreditacion: '2020-01-23T03:00:00+00:00', estado: null }
         ] })
       }
     }
@@ -109,10 +118,28 @@ test('muestra el mes actual al entrar y permite elegir otro mes', async () => {
   assert.equal(elements.conciliacionMonth.disabled,true);
   assert.match(elements.conciliacionTable.innerHTML,/Cheque futuro/);
   assert.match(elements.conciliacionTable.innerHTML,/Acreditado \/ conciliado/);
-  assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque anterior|Cheque acreditado|Mes anterior/);
+  // En cheques arranca en «Todos»: el acreditado también aparece.
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque acreditado/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque anterior|Mes anterior|Cheque sin fecha/);
   elements.chequeScope.value='overdue';elements.chequeScope.change();
   assert.match(elements.conciliacionTable.innerHTML,/Cheque anterior/);
   assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque futuro/);
+  // Rango de noviembre: trae los dos extremos (con hora UTC), el E-cheq sin check y el conciliado; deja afuera diciembre.
+  elements.chequeFrom.value='2020-11-01';elements.chequeFrom.change();
+  elements.chequeTo.value='2020-11-30';elements.chequeTo.change();
+  assert.equal(elements.chequeScope.value,'range');
+  assert.match(elements.conciliacionTable.innerHTML,/Echeq noviembre/);
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque fin de noviembre/);
+  assert.doesNotMatch(elements.conciliacionTable.innerHTML,/Cheque diciembre|Cheque anterior|Cheque sin fecha|Cheque año mal/);
+  assert.match(elements.conciliacionHint.textContent,/^2 cheques con acreditación del 01\/11\/2020 al 30\/11\/2020\. 1 sin fecha/);
+  // Desde y hasta invertidos: se toma igual el rango.
+  elements.chequeFrom.value='2020-11-30';elements.chequeTo.value='2020-11-01';elements.chequeTo.change();
+  assert.match(elements.conciliacionTable.innerHTML,/Echeq noviembre/);
+  // Todas las fechas: aparecen el sin fecha y el del año mal cargado, marcado.
+  elements.chequeScope.value='all';elements.chequeScope.change();
+  assert.equal(elements.chequeFrom.value,'');
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque sin fecha/);
+  assert.match(elements.conciliacionTable.innerHTML,/Cheque año mal[\s\S]*Revisar año/);
   elements.conciliacionKind.value='all';elements.conciliacionKind.change();
   assert.equal(elements.conciliacionMonth.disabled,false);
   assert.match(elements.conciliacionTable.innerHTML,/Mes anterior/);
