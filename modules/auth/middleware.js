@@ -60,6 +60,23 @@ async function metricasPageGuard(req, res, next) {
   }
 }
 
+// Buscar por nombre, mail o teléfono expone datos personales: sólo con sesión y con
+// acceso a la página «Estado del contacto».
+async function contactSearchGuard(req, res, next) {
+  try {
+    if (!req.authUser) req.authUser = authService.getSessionUserFromRequest(req);
+    if (!req.authUser) return res.status(401).json({ ok: false, message: 'Sesión requerida' });
+    const freshUser = await hydrateAuthUser(req);
+    if (!freshUser) return res.status(401).json({ ok: false, message: 'Sesión requerida' });
+    if (!access.canAccessPageForUser(freshUser, 'estado-contacto-comisiones.html')) {
+      return res.status(403).json({ ok: false, message: 'Sin permiso para buscar contactos' });
+    }
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function metricasApiGuard(req, res, next) {
   try {
     const reqPath = String(req.path || '');
@@ -274,5 +291,6 @@ async function metricasApiGuard(req, res, next) {
 module.exports = {
   attachAuthUser,
   metricasPageGuard,
-  metricasApiGuard
+  metricasApiGuard,
+  contactSearchGuard
 };

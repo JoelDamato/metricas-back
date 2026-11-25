@@ -85,8 +85,8 @@ function renderEmptyState() {
   container.innerHTML = `
     <article class="contact-card empty-state">
       <p class="card-kicker">Ficha lista para consultar</p>
-      <h2>Esperando un GHL ID</h2>
-      <p>Entrá con <code>/contacto-estado/TU_GHL_ID</code> o usá el buscador de arriba para abrir la ficha del contacto.</p>
+      <h2>Buscá un contacto</h2>
+      <p>Escribí arriba el nombre, el mail o el teléfono (o el GHL ID) y abrí su ficha.</p>
     </article>
   `;
 }
@@ -250,10 +250,73 @@ async function fetchContact(ghlId) {
   return data.contact;
 }
 
+function getSearchFromLocation() {
+  return String(new URLSearchParams(window.location.search).get('q') || '').trim();
+}
+
+function renderSearchResults(q, results) {
+  const container = document.getElementById('cardContainer');
+  if (!results.length) {
+    container.innerHTML = `
+      <article class="contact-card empty-state">
+        <p class="card-kicker">Sin resultados</p>
+        <h2>No encontramos «${escapeHtml(q)}»</h2>
+        <p>Probá con otra parte del nombre, el mail completo o los últimos números del teléfono.</p>
+      </article>`;
+    return;
+  }
+  container.innerHTML = `
+    <article class="contact-card search-results">
+      <p class="card-kicker">Resultados para «${escapeHtml(q)}»</p>
+      <h2>${results.length === 1 ? '1 contacto' : `${results.length} contactos`}</h2>
+      <ul class="search-list">
+        ${results.map((r) => `
+          <li>
+            <a class="search-item" href="/contacto-estado/${encodeURIComponent(r.ghlId)}">
+              <span class="search-avatar">${escapeHtml(getInitials(r.nombre))}</span>
+              <span class="search-main">
+                <strong>${escapeHtml(r.nombre || 'Sin nombre')}</strong>
+                <small>${escapeHtml([r.email, r.telefono].filter(Boolean).join(' · ') || 'Sin mail ni teléfono')}</small>
+              </span>
+              <span class="search-stage ${r.esCliente ? 'is-client' : ''}">${escapeHtml(r.etapa || 'Sin estado')}</span>
+            </a>
+          </li>`).join('')}
+      </ul>
+      ${results.length >= 15 ? '<p class="search-more">Hay más coincidencias: escribí algo más preciso para achicar la lista.</p>' : ''}
+    </article>`;
+}
+
+async function runSearch(q) {
+  setStatus('Buscando contacto...', 'loading');
+  document.getElementById('cardContainer').innerHTML = '';
+  try {
+    const response = await fetch(`/api/contacto-estado-buscar?q=${encodeURIComponent(q)}`, { cache: 'no-store', credentials: 'same-origin' });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) throw new Error('Tu sesión venció. Volvé a ingresar para buscar contactos.');
+    if (!response.ok || !data.ok) throw new Error(data.message || 'No pudimos hacer la búsqueda');
+    const results = data.results || [];
+    // Un solo resultado (o un GHL ID pegado tal cual): directo a la ficha.
+    if (results.length === 1 || (data.kind === 'ghlId' && !results.length)) {
+      window.location.replace(`/contacto-estado/${encodeURIComponent(results[0]?.ghlId || q)}`);
+      return;
+    }
+    clearStatus();
+    renderSearchResults(q, results);
+  } catch (error) {
+    setStatus(error.message || 'No pudimos hacer la búsqueda', 'error');
+  }
+}
+
 async function loadContact() {
   const ghlId = getGhlIdFromLocation();
   const input = document.getElementById('ghlIdInput');
-  input.value = ghlId;
+  const q = getSearchFromLocation();
+  input.value = ghlId || q;
+
+  if (!ghlId && q) {
+    runSearch(q);
+    return;
+  }
 
   if (!ghlId) {
     clearStatus();
@@ -290,13 +353,14 @@ function setupForm() {
   const form = document.getElementById('lookupForm');
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const ghlId = String(document.getElementById('ghlIdInput').value || '').trim();
-    if (!ghlId) {
-      setStatus('Ingresá un GHL ID para hacer la búsqueda.', 'error');
+    const q = String(document.getElementById('ghlIdInput').value || '').trim();
+    if (q.length < 3) {
+      setStatus('Escribí al menos 3 letras o números: nombre, mail, teléfono o GHL ID.', 'error');
       return;
     }
 
-    window.location.href = `/contacto-estado/${encodeURIComponent(ghlId)}`;
+    // La búsqueda queda en la dirección: «atrás» desde una ficha vuelve a la lista.
+    window.location.href = `/contacto-estado/?q=${encodeURIComponent(q)}`;
   });
 }
 

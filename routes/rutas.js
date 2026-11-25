@@ -23,6 +23,7 @@ router.post('/csm', webhookController5.handleWebhook);
 router.post('/comprobantes', webhookController6.handleWebhook);
 router.post('/distribuidor', webhookDistribuidor.handleWebhook);
 router.get('/distribuidor/last-verification', webhookDistribuidor.getLastVerification);
+router.get('/contacto-estado-buscar', authMiddleware.contactSearchGuard, contactStatusController.searchContactStatus);
 router.get('/contacto-estado/:ghlId?', contactStatusController.getContactStatus);
 router.post('/contacto-instagram-webhook', metricasController.receiveContactoInstagramWebhook);
 router.post('/ghl/appointment-booked', ghlAppointmentDiscordController.handleAppointmentBooked);

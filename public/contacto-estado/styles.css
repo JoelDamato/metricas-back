@@ -401,3 +401,17 @@ details.csm-appointment { display:block; padding:0; overflow:hidden; }
 .contact-actions .contact-action:focus-visible { outline:3px solid #8cd0ff; outline-offset:3px; }
 @media(max-width:700px) { .contact-actions { width:100%; } .contact-actions .contact-action { flex:1 1 180px; min-width:0; } .card-copy { width:100%; } }
 @media(prefers-reduced-motion:reduce) { .contact-actions .contact-action { transition:none; } }
+
+/* Buscador por nombre, mail o teléfono (TA-10138) */
+.search-results h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+.search-list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.search-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(85, 151, 241, 0.2); border-radius: 16px; color: var(--contact-ink); background: rgba(3, 13, 28, 0.6); text-decoration: none; transition: border-color 0.2s ease, transform 0.2s ease; }
+.search-item:hover, .search-item:focus-visible { border-color: rgba(75, 157, 255, 0.72); transform: translateY(-1px); outline: 0; }
+.search-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 12px; background: rgba(32, 92, 171, 0.3); font-weight: 800; }
+.search-main { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.search-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-main small { color: var(--contact-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-stage { flex: 0 0 auto; max-width: 40%; padding: 6px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: #b5c8e4; background: rgba(85, 151, 241, 0.12); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-stage.is-client { color: #bff3d6; background: rgba(46, 184, 114, 0.16); }
+.search-more { margin: 14px 0 0; color: var(--contact-muted); font-size: 0.88rem; }
+@media (max-width: 640px) { .search-item { flex-wrap: wrap; } .search-stage { max-width: 100%; } }

@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="/metricas-assets/favicon-m.svg" />
     <link rel="stylesheet" href="/css/styles.css?v=20260917-contact-status-brand-1" />
-    <link rel="stylesheet" href="/contacto-estado/styles.css?v=20261119-csm" />
+    <link rel="stylesheet" href="/contacto-estado/styles.css?v=20261125-buscador" />
   </head>
   <body class="contact-status-page premium-navy-background">
     <main class="page-shell">
@@ -24,15 +24,15 @@
         </div>
 
         <aside class="hero-side">
-          <p class="side-label">Búsqueda directa</p>
-          <form id="lookupForm" class="lookup-form">
+          <p class="side-label">Buscar contacto</p>
+          <form id="lookupForm" class="lookup-form" role="search">
             <label class="field">
-              <span>GHL ID</span>
-              <input id="ghlIdInput" name="ghlId" type="text" placeholder="Ej: v8VEe7k9Huub94XJ6E9j" autocomplete="off" />
+              <span>Nombre, mail, teléfono o GHL ID</span>
+              <input id="ghlIdInput" name="q" type="search" placeholder="Ej: paopesara@gmail.com" autocomplete="off" enterkeyhint="search" />
             </label>
-            <button type="submit">Ver ficha</button>
+            <button type="submit">Buscar</button>
           </form>
-          <p class="side-note">Para el cliente, usá “Copiar enlace del portal” dentro de su ficha.</p>
+          <p class="side-note">Podés pegar el mail tal cual llega, un teléfono con o sin +54 9, o parte del nombre. Para el cliente, usá “Copiar enlace del portal” dentro de su ficha.</p>
         </aside>
       </section>
 
@@ -42,6 +42,6 @@
 
     <script src="/js/auth-shell.js?v=20261013-contact-access-1"></script>
     <script src="/contacto-estado/sessions.js?v=20261020-active-sessions"></script>
-    <script src="/contacto-estado/app.js?v=20261119-csm"></script>
+    <script src="/contacto-estado/app.js?v=20261125-buscador"></script>
   </body>
   </html>

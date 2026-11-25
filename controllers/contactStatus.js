@@ -3,6 +3,7 @@ const {fetchContactMaterials,productsForContact,contractLabel,isDebtor,isApurar}
 const {buildJourney} = require('../modules/csm/program-journey');
 const {listContactReceipts,totals,cashWithoutIva,receivedCashArs,receivedCashUsd,openingBalance}=require('../modules/metricasv2/services/comprobantes-contacto.service');
 const axios = require('axios');
+const {searchContacts}=require('../modules/csm/contact-search');
 const NodeCache = require('node-cache');
 
 const responseCache = new NodeCache({
@@ -217,8 +218,21 @@ async function getContactStatus(req, res, next) {
   }
 }
 
+async function searchContactStatus(req, res, next) {
+  try {
+    const { supabaseUrl } = getSupabaseConfig();
+    const { query, results } = await searchContacts(req.query.q, { supabaseUrl, headers: buildHeaders() });
+    res.set('Cache-Control', 'no-store');
+    if (!query) return res.status(400).json({ ok: false, message: 'Escribí al menos 3 letras o números para buscar.' });
+    res.json({ ok: true, kind: query.kind, results });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getContactStatus,
+  searchContactStatus,
   invalidateCache:()=>responseCache.flushAll(),
   _test:{fetchContactByGhlId}
 };
