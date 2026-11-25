@@ -1413,11 +1413,13 @@ function businessSegmentValue(value) {
  const text=typeof value==='string'?value.trim():'';
  return !text || /^(sin (rubro|modelo)( informado)?|sin informar|no informado|n\/a|-)$/i.test(text) ? '' : text;
 }
-function buildBusinessSegmentRows(source, profiles=[]) {
+function buildBusinessSegmentRows(source, profiles=[], segments=[]) {
  const byId=new Map(profiles.map(p=>[p.ghlid,p]));
- return dedupeClientRows(source).map(r=>({...r,
-  rubro:businessSegmentValue(r.rubro)||businessSegmentValue(byId.get(r.ghlid)?.rubro),
-  modelo:businessSegmentValue(r.modelo_negocio)}));
+ const segById=new Map(segments.map(s=>[s.ghlid,s]));
+ return dedupeClientRows(source).map(r=>{const seg=segById.get(r.ghlid);return {...r,
+  rubro:businessSegmentValue(seg?.rubro)||businessSegmentValue(r.rubro)||businessSegmentValue(byId.get(r.ghlid)?.rubro),
+  modelo:businessSegmentValue(seg?.modelo)||businessSegmentValue(r.modelo_negocio),
+  listaModelo:seg?.modelo||'',listaRubro:seg?.rubro||'',listaPor:seg?.source==='panel'?(seg.updated_by||''):''};});
 }
 function filterBusinessSegmentRows(rows,{dimension='modelo',presence='all',selected='',query=''}={}) {
  const dim=dimension==='rubro'?'rubro':'modelo';
@@ -1425,13 +1427,30 @@ function filterBusinessSegmentRows(rows,{dimension='modelo',presence='all',selec
   &&(!selected||(r[dim]||'__missing__')===selected)
   &&String(r.nombre||'').toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es')));
 }
-function renderBusinessSegmentTable(rows) {
- return `<div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th><th>Ficha</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.ghlid?`<a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a>`:escapeHtml(r.nombre||'Sin nombre')}</td><td>${escapeHtml(r.modelo||'Sin modelo informado')}</td><td>${escapeHtml(r.rubro||'Sin rubro informado')}</td><td>${r.ghlid?`<a href="/contacto-estado/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">Ver estado del contacto ↗</a>`:'Sin ficha vinculada'}</td></tr>`).join('')||'<tr><td colspan="4">Sin clientes con esos filtros</td></tr>'}</tbody></table></div>`;
+function renderBusinessSegmentEditor(r, catalog) {
+ if(!r.ghlid||!catalog)return '<span>Sin ficha en GHL</span>';
+ const modelos=Object.keys(catalog);const rubros=r.listaModelo?catalog[r.listaModelo]||[]:[];
+ return `<div class="csm-segment-editor" data-segment-editor="${escapeHtml(r.ghlid)}"><select data-edit-modelo aria-label="Modelo de negocio de ${escapeHtml(r.nombre||'cliente')}"><option value="">Modelo…</option>${modelos.map(m=>`<option value="${escapeHtml(m)}" ${m===r.listaModelo?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select><select data-edit-rubro aria-label="Rubro de ${escapeHtml(r.nombre||'cliente')}" ${rubros.length?'':'disabled'}><option value="">Rubro…</option>${rubros.map(o=>`<option value="${escapeHtml(o)}" ${o===r.listaRubro?'selected':''}>${escapeHtml(o)}</option>`).join('')}</select><button type="button" data-edit-save disabled>Guardar</button><small data-edit-status>${r.listaModelo&&r.listaRubro?(r.listaPor?`Cargado por ${escapeHtml(r.listaPor)}`:'Cargado en GHL'):''}</small></div>`;
+}
+function renderBusinessSegmentTable(rows, catalog=null) {
+ const editable=!!catalog;const cols=editable?5:4;
+ return `<div class="csm-duration-scroll"><table><thead><tr><th>Cliente</th><th>Modelo de negocio</th><th>Rubro</th>${editable?'<th>Completar modelo y rubro</th>':''}<th>Ficha</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.ghlid?`<a href="https://app.gohighlevel.com/v2/location/WU2z8kl23Dr3IyBW1hv5/contacts/detail/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.nombre||'Sin nombre')}</a>`:escapeHtml(r.nombre||'Sin nombre')}</td><td>${escapeHtml(r.modelo||'Sin modelo informado')}</td><td>${escapeHtml(r.rubro||'Sin rubro informado')}</td>${editable?`<td>${renderBusinessSegmentEditor(r,catalog)}</td>`:''}<td>${r.ghlid?`<a href="/contacto-estado/${encodeURIComponent(r.ghlid)}" target="_blank" rel="noopener noreferrer">Ver estado del contacto ↗</a>`:'Sin ficha vinculada'}</td></tr>`).join('')||`<tr><td colspan="${cols}">Sin clientes con esos filtros</td></tr>`}</tbody></table></div>`;
+}
+function bindBusinessSegmentEditors(target, rows, catalog, refresh) {
+ if(!catalog)return;
+ target.querySelectorAll('[data-segment-editor]').forEach(box=>{
+  const id=box.dataset.segmentEditor,modelo=box.querySelector('[data-edit-modelo]'),rubro=box.querySelector('[data-edit-rubro]'),save=box.querySelector('[data-edit-save]'),status=box.querySelector('[data-edit-status]');
+  const row=rows.find(r=>r.ghlid===id);
+  const check=()=>{save.disabled=!modelo.value||!rubro.value||(modelo.value===row?.listaModelo&&rubro.value===row?.listaRubro);};
+  modelo.onchange=()=>{const opts=catalog[modelo.value]||[];rubro.innerHTML='<option value="">Rubro…</option>'+opts.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');rubro.disabled=!opts.length;status.textContent='';check();};
+  rubro.onchange=check;
+  save.onclick=async()=>{save.disabled=true;status.textContent='Guardando…';try{const response=await fetch('/api/metricas/csm-business-segments/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({modelo:modelo.value,rubro:rubro.value})});const saved=await response.json().catch(()=>({}));if(!response.ok)throw Error(saved.message||'No se pudo guardar');if(row){row.listaModelo=saved.modelo;row.listaRubro=saved.rubro;row.modelo=saved.modelo;row.rubro=saved.rubro;row.listaPor=saved.updated_by||'';}refresh();}catch(err){status.textContent=err.message;check();}};
+ });
 }
 async function renderBusinessSegments(source) {
  const target=document.getElementById('detailContainer');target.hidden=false;target.classList.add('csm-module-durations');target.innerHTML='<p>Cargando segmentos…</p>';
- try{const response=await fetch('/api/metricas/csm-followup');if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json();const rows=buildBusinessSegmentRows(source,profiles);let dimension='modelo',selected='',query='',presence='all';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Dato informado<select data-segment-presence><option value="all">Todos</option><option value="present">Con dato informado</option><option value="missing">Sin dato informado</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
- function update(){const missingLabel=dimension==='rubro'?'Sin rubro informado':'Sin modelo informado';const counts=new Map();filterBusinessSegmentRows(rows,{dimension,presence,query}).forEach(r=>{const key=r[dimension]||'__missing__';counts.set(key,(counts.get(key)||0)+1);});target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([key,count])=>`<button type="button" data-segment="${escapeHtml(key)}" aria-pressed="${selected===key}"><strong>${escapeHtml(key==='__missing__'?missingLabel:key)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=filterBusinessSegmentRows(rows,{dimension,presence,selected,query});target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected==='__missing__'?missingLabel:selected||'Todos los segmentos')}</p>${renderBusinessSegmentTable(filtered)}`;}
+ try{const [response,segResponse]=await Promise.all([fetch('/api/metricas/csm-followup'),fetch('/api/metricas/csm-business-segments')]);if(!response.ok)throw Error('No se pudieron cargar los rubros');const {profiles}=await response.json();const segData=segResponse.ok?await segResponse.json():{catalog:null,segments:[]};const catalog=segData.catalog;const rows=buildBusinessSegmentRows(source,profiles,segData.segments||[]);let dimension='modelo',selected='',query='',presence='all';target.innerHTML='<h2>Clientes por modelo de negocio y rubro</h2><div class="csm-followup-tools"><label>Agrupar por<select data-segment-dimension><option value="modelo">Modelo de negocio</option><option value="rubro">Rubro</option></select></label><label>Dato informado<select data-segment-presence><option value="all">Todos</option><option value="present">Con dato informado</option><option value="missing">Sin dato informado</option></select></label><label>Buscar cliente<input data-segment-search type="search" placeholder="Nombre del cliente"></label></div><div class="csm-followup-stages" data-segments></div><div data-segment-clients></div>';
+ function update(){const missingLabel=dimension==='rubro'?'Sin rubro informado':'Sin modelo informado';const counts=new Map();filterBusinessSegmentRows(rows,{dimension,presence,query}).forEach(r=>{const key=r[dimension]||'__missing__';counts.set(key,(counts.get(key)||0)+1);});target.querySelector('[data-segments]').innerHTML=[...counts].sort((a,b)=>b[1]-a[1]).map(([key,count])=>`<button type="button" data-segment="${escapeHtml(key)}" aria-pressed="${selected===key}"><strong>${escapeHtml(key==='__missing__'?missingLabel:key)}</strong><small>${count} clientes</small></button>`).join('');target.querySelectorAll('[data-segment]').forEach(b=>b.onclick=()=>{selected=selected===b.dataset.segment?'':b.dataset.segment;update();});const filtered=filterBusinessSegmentRows(rows,{dimension,presence,selected,query});target.querySelector('[data-segment-clients]').innerHTML=`<p>${filtered.length} clientes · ${escapeHtml(selected==='__missing__'?missingLabel:selected||'Todos los segmentos')}</p>${renderBusinessSegmentTable(filtered,catalog)}`;bindBusinessSegmentEditors(target,rows,catalog,update);}
  target.querySelector('[data-segment-dimension]').onchange=e=>{dimension=e.target.value;selected='';update();};target.querySelector('[data-segment-presence]').onchange=e=>{presence=e.target.value;selected='';update();};target.querySelector('[data-segment-search]').oninput=e=>{query=e.target.value;update();};update();
  }catch(e){target.textContent=e.message;}
 }
@@ -3379,6 +3398,7 @@ async function initCsmPage() {
 if (typeof window !== 'undefined') {
   window.csmPageInternals = {
     buildBusinessSegmentRows,
+    renderBusinessSegmentEditor,
     filterBusinessSegmentRows,
     renderBusinessSegmentTable,
     renderBusinessSegments,

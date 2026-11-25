@@ -39,6 +39,9 @@ router.get('/csm-diagnosis-metadata', require('../modules/csm/diagnosis-metadata
 router.get('/csm-entry-metadata', require('../modules/csm/entry-metadata').createHandler());
 router.put('/csm-followup/:ghlid', csmFollowup.save);
 router.put('/csm-followup-rules/:stage', csmFollowup.saveRule);
+const csmBusinessSegment = require('../modules/csm/business-segment');
+router.get('/csm-business-segments', csmBusinessSegment.list);
+router.put('/csm-business-segments/:ghlid', csmBusinessSegment.save);
 router.get('/diagnosticos', controller.listDiagnosticos);
 router.get('/diagnosticos/clientes-csm', controller.listDiagnosticoClients);
 router.post('/diagnosticos', controller.createDiagnostico);
