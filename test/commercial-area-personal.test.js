@@ -110,6 +110,15 @@ test('el área personal desglosa cada comprobante y reconcilia su comisión', ()
   assert.doesNotMatch(script, /person=/);
 });
 
+test('el resumen del closer no muestra «Cash neto ARS» ni «Descuentos aplicados» y deja «Base total comisionable» (TA-5834)', () => {
+  const root = path.resolve(__dirname, '..');
+  const script = fs.readFileSync(path.join(root, 'public/metricas-v2/js/views/area-comercial.page.js'), 'utf8');
+  const summary = script.slice(script.indexOf('function renderSummary'), script.indexOf('function renderDeductions'));
+  assert.match(summary, /'Base total comisionable'/);
+  assert.doesNotMatch(summary, /'Cash neto ARS'/);
+  assert.doesNotMatch(summary, /'Descuentos aplicados'/);
+});
+
 test('el detalle Club separa IVA, IIBB y comisión Acredi antes de la base neta', () => {
   const breakdown = commissions._test.computeClubNetBreakdown(121000);
   assert.equal(breakdown.grossArs, 121000);

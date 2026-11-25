@@ -24,8 +24,6 @@
       [data.commissionBreakdown ? 'Comisión total · Marketing + Closer' : data.commissionArea ? `Comisión del área ${data.commissionArea}` : 'Comisión total calculada', formatArs(data.summary?.totalCommission)],
       ['Comprobantes comisionables', String(data.summary?.transactionCount || 0)],
       ['Cash neto USD', formatUsd(data.summary?.cashUsd)],
-      ['Cash neto ARS', formatArs(data.summary?.cashArs)],
-      ['Descuentos aplicados', formatArs(data.summary?.totalDeductionsArs)],
       ['Facturación neta', formatUsd(data.summary?.facturacionUsd)],
       ['Base total comisionable', formatArs(data.summary?.totalBase)],
       ['Agendas', String(data.summary?.agendas || 0)]
