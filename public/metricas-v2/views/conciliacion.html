@@ -8,11 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/styles.css?v=20261009-release-1" />
-    <link rel="stylesheet" href="/css/conciliacion-files.css?v=20261026-cheques" />
+    <link rel="stylesheet" href="/css/conciliacion-files.css?v=20261126-arca-1" />
     <script defer src="/js/api/http.js"></script>
     <script defer src="/js/api/metricas.api.js?v=20260817-conciliacion-3"></script>
     <script defer src="/js/auth-shell.js?v=20261013-contact-access-1"></script>
-    <script defer src="/js/views/conciliacion.page.js?v=20261125-cheques-rango-2"></script>
+    <script defer src="/js/views/conciliacion.page.js?v=20261126-arca-1"></script>
+    <script defer src="/js/views/facturacion-arca.page.js?v=20261126-arca-1"></script>
     <link rel="stylesheet" href="/css/commission-sale-editor.css?v=20261102-1" />
     <script defer src="/js/commission-sale-editor.js?v=20261102-1"></script>
   </head>
@@ -42,7 +43,35 @@
         </div>
       </section>
 
-      <section class="carga-comprobantes-panel conciliacion-panel">
+      <nav class="mis-comprobantes-tabs conciliacion-views" role="tablist" aria-label="Solapas de Conciliación">
+        <button type="button" class="mis-comprobantes-tab is-active" data-conciliacion-view="conciliacion" role="tab" aria-selected="true">Conciliación</button>
+        <button type="button" class="mis-comprobantes-tab" data-conciliacion-view="arca" role="tab" aria-selected="false">Facturación ARCA <strong id="arcaPendingBadge">…</strong></button>
+      </nav>
+
+      <section id="arcaPanel" class="carga-comprobantes-panel conciliacion-panel arca-panel" hidden>
+        <div id="arcaTabs" class="mis-comprobantes-tabs" role="tablist" aria-label="Estado de facturación ARCA">
+          <button type="button" class="mis-comprobantes-tab is-active" data-arca-filter="pending" role="tab" aria-selected="true">Pendientes de facturar <strong data-arca-count="pending">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-arca-filter="billed" role="tab" aria-selected="false">Facturados <strong data-arca-count="billed">0</strong></button>
+          <button type="button" class="mis-comprobantes-tab" data-arca-filter="all" role="tab" aria-selected="false">Todos <strong data-arca-count="all">0</strong></button>
+        </div>
+        <div class="carga-comprobantes-toolbar mis-comprobantes-toolbar">
+          <div class="carga-comprobantes-toolbar-copy">
+            <strong>Comprobantes de cuentas propias para facturar en ARCA</strong>
+            <p id="arcaHint">Preparando el listado...</p>
+          </div>
+          <div class="mis-comprobantes-toolbar-actions conciliacion-toolbar-actions">
+            <select id="arcaResponsible" aria-label="Filtrar por responsable"><option value="">Todos los responsables</option></select>
+            <input id="arcaMonth" type="month" aria-label="Filtrar por mes de acreditación" />
+            <input id="arcaSearch" type="search" placeholder="Cliente, DNI / CUIT, producto o responsable" aria-label="Buscar en Facturación ARCA" />
+            <button id="arcaReload" type="button" class="metricas-secondary-button">Actualizar</button>
+          </div>
+        </div>
+        <div id="arcaStatus" class="carga-comprobantes-status" hidden></div>
+        <div id="arcaSummary" class="mis-comprobantes-summary" hidden></div>
+        <div id="arcaTable"></div>
+      </section>
+
+      <section id="conciliacionPanel" class="carga-comprobantes-panel conciliacion-panel">
         <div id="conciliacionTabs" class="mis-comprobantes-tabs mis-comprobantes-reconciliation-tabs" role="tablist" aria-label="Estado de conciliación">
           <button type="button" class="mis-comprobantes-tab" data-status-filter="all" role="tab" aria-selected="false">Todos <strong data-status-count="all">0</strong></button>
           <button type="button" class="mis-comprobantes-tab" data-status-filter="conciliated" role="tab" aria-selected="false">Conciliados <strong data-status-count="conciliated">0</strong></button>

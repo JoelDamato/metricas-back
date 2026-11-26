@@ -19,3 +19,8 @@
 #conciliacionKind, #chequeScope { min-width: 230px; }
 .conciliacion-toolbar-actions > label { display: flex; flex-direction: column; gap: 6px; }
 .conciliacion-toolbar-actions > label[hidden], #conciliacionMonth[hidden] { display: none; }
+
+/* Facturación ARCA */
+.conciliacion-views { margin: 0 0 18px; }
+.arca-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.arca-check input { width: 20px; height: 20px; cursor: pointer; }

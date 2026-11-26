@@ -137,6 +137,9 @@ router.post(
 router.patch('/comprobantes-loader/:id', controller.updateEditableComprobante);
 router.delete('/comprobantes-loader/:id', controller.deleteEditableComprobante);
 router.get('/comprobantes-reconciliation', controller.listReconciliationComprobantes);
+// Facturación ARCA (solapa de Conciliación). Va bajo /comprobantes-reconciliation para heredar el permiso de Administración.
+router.get('/comprobantes-reconciliation/arca', async (req, res, next) => { try { res.json({ ok: true, ...await require('../modules/metricasv2/services/facturacion-arca.service').listArcaComprobantes() }); } catch (error) { next(error); } });
+router.post('/comprobantes-reconciliation/arca/billed', async (req, res, next) => { try { res.json({ ok: true, ...await require('../modules/metricasv2/services/facturacion-arca.service').setArcaBilled(req.body, req.authUser) }); } catch (error) { next(error); } });
 router.patch('/comprobantes-reconciliation/:id/note', async (req,res,next) => { try { const result=await require('../modules/metricasv2/services/comprobantes-reconciliation.service').saveReconciliationNote(req.params.id,req.body,req.authUser); res.json({ok:true,...result}); } catch(error) { next(error); } });
 router.patch('/comprobantes-reconciliation/:id', controller.updateReconciliationComprobante);
 router.post('/assistant/ask', controller.askAssistant);

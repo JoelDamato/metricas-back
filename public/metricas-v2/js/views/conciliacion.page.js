@@ -395,10 +395,10 @@
   const filesBody = document.getElementById('conciliacionFilesBody');
   let filesRequest = 0;
 
-  async function openFiles(id) {
+  async function openFiles(id, clientName = '') {
     const request = ++filesRequest;
     const row = state.rows.find(row => row.id === id);
-    document.getElementById('conciliacionFilesClient').textContent = row?.cliente_format || 'Cliente';
+    document.getElementById('conciliacionFilesClient').textContent = row?.cliente_format || clientName || 'Cliente';
     filesBody.innerHTML = '<p role="status">Cargando adjuntos…</p>';
     if (!filesDialog.open) filesDialog.showModal();
     try {
@@ -426,6 +426,9 @@
       filesBody.innerHTML = `<p role="alert">${escapeHtml(error.message || 'No pude cargar los adjuntos.')}</p><button type="button" class="metricas-secondary-button" data-retry-files="${escapeHtml(id)}">Reintentar</button>`;
     }
   }
+
+  // La solapa Facturación ARCA reusa el mismo visor de adjuntos.
+  window.conciliacionOpenFiles = openFiles;
 
   document.getElementById('closeConciliacionFiles').addEventListener('click', () => filesDialog.close());
   filesDialog.addEventListener('close', () => { filesRequest += 1; filesBody.innerHTML = ''; });
