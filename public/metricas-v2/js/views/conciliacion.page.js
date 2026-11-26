@@ -16,6 +16,10 @@
     kind: document.getElementById('conciliacionKind'),
     chequeScope: document.getElementById('chequeScope'),
     chequeScopeLabel: document.getElementById('chequeScopeLabel'),
+    chequeFrom: document.getElementById('chequeFrom'),
+    chequeFromLabel: document.getElementById('chequeFromLabel'),
+    chequeTo: document.getElementById('chequeTo'),
+    chequeToLabel: document.getElementById('chequeToLabel'),
     totalChip: document.getElementById('conciliacionTotalChip'),
     tabs: document.getElementById('conciliacionTabs'),
     hint: document.getElementById('conciliacionHint'),
@@ -104,11 +108,53 @@
   }
 
   function isCheque(row) {
-    return ['true', '1'].includes(String(row.cheque).toLowerCase()) || /cheque/i.test(row.medios_de_pago_format || '');
+    // «E-cheq» no contiene «cheque»: se reconoce aparte para que no se escape del listado.
+    return ['true', '1'].includes(String(row.cheque).toLowerCase()) || /cheque|e-?cheq/i.test(row.medios_de_pago_format || '');
   }
 
   function argentinaToday() {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
+
+  function dateOnly(value) {
+    const date = String(value || '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+  }
+
+  function shiftDay(isoDate, days) {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function lastDayOfMonth(isoDate) {
+    const [year, month] = isoDate.split('-').map(Number);
+    return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  }
+
+  // Los atajos completan Desde / Hasta; el rango es lo único que filtra (ambos extremos incluidos).
+  function applyChequePreset() {
+    const today = argentinaToday();
+    const scope = refs.chequeScope?.value;
+    if (!refs.chequeFrom || !refs.chequeTo || scope === 'range') return;
+    if (scope === 'upcoming') { refs.chequeFrom.value = today; refs.chequeTo.value = ''; }
+    else if (scope === 'overdue') { refs.chequeFrom.value = ''; refs.chequeTo.value = shiftDay(today, -1); }
+    else if (scope === 'month') { refs.chequeFrom.value = `${today.slice(0, 7)}-01`; refs.chequeTo.value = lastDayOfMonth(today); }
+    else { refs.chequeFrom.value = ''; refs.chequeTo.value = ''; }
+  }
+
+  function chequeRange() {
+    let from = refs.chequeFrom?.value || '';
+    let to = refs.chequeTo?.value || '';
+    if (from && to && from > to) [from, to] = [to, from];
+    return { from, to };
+  }
+
+  // Cheque con acreditación más de 30 días antes de la venta: casi siempre es el año mal cargado (2026 en vez de 2027).
+  function suspiciousChequeYear(row) {
+    const acreditacion = dateOnly(row.f_acreditacion);
+    const venta = dateOnly(row.f_venta);
+    return Boolean(acreditacion && venta && acreditacion < shiftDay(venta, -30));
   }
 
   function isClubRow(row) {
@@ -146,7 +192,7 @@
     const query = normalizeText(refs.search.value);
     const cheques = refs.kind?.value === 'cheques';
     const month = cheques ? '' : refs.month.value;
-    const today = argentinaToday();
+    const range = chequeRange();
     const responsible = normalizeText(refs.responsible.value);
     const clubMode = refs.club.value;
 
@@ -154,9 +200,10 @@
       if (month && rowMonth(row) !== month) return false;
       if (cheques) {
         if (!isCheque(row)) return false;
-        const date = String(row.f_acreditacion || '').slice(0, 10);
-        if (refs.chequeScope.value === 'upcoming' && (!date || date < today)) return false;
-        if (refs.chequeScope.value === 'overdue' && (!date || date >= today)) return false;
+        const date = dateOnly(row.f_acreditacion);
+        if ((range.from || range.to) && !date) return false;
+        if (range.from && date < range.from) return false;
+        if (range.to && date > range.to) return false;
       }
       if (responsible && normalizeText(row.responsable_venta || row.creado_por) !== responsible) return false;
       if (clubMode === 'only' && !isClubRow(row)) return false;
@@ -238,6 +285,7 @@
               <th>Cash collected ARS</th>
               <th>TC (ARS / USD)</th>
               <th>Estado actual</th>
+              <th>Observaciones del closer</th>
               <th>Nota para el closer</th>
               <th>Cambiar estado</th>
               <th>Origen</th>
@@ -257,12 +305,13 @@
                   <td>${escapeHtml(row.tipo || '—')}</td>
                   <td>${escapeHtml(row.producto_format || '—')}</td>
                   <td>${escapeHtml(formatDate(row.f_acreditacion))}</td>
-                  <td>${isCheque(row) ? '<strong>Cheque</strong><br>' : ''}${escapeHtml(row.medios_de_pago_format || '—')}</td>
+                  <td>${isCheque(row) ? '<strong>Cheque</strong><br>' : ''}${isCheque(row) && suspiciousChequeYear(row) ? '<span class="conciliacion-state-badge is-bounced" title="La fecha de acreditación es anterior a la venta: revisá el año">Revisar año</span><br>' : ''}${escapeHtml(row.medios_de_pago_format || '—')}</td>
                   <td>${row.facturacion ? escapeHtml(formatCurrency(row.facturacion)) : '—'}</td>
                   <td>${resolveCashUsd(row) ? escapeHtml(formatCurrency(resolveCashUsd(row))) : '—'}</td>
                   <td>${resolveCashAr(row) ? escapeHtml(formatCurrency(resolveCashAr(row), 'ARS')) : '—'}</td>
                   <td>${parseNumber(row.tc) > 0 ? escapeHtml(new Intl.NumberFormat('es-AR', { maximumFractionDigits: 6 }).format(parseNumber(row.tc))) : 'Sin informar'}</td>
                   <td>${stateBadge(currentState)}${row.motivo_rebote ? `<p style="white-space:pre-wrap;max-width:280px">${escapeHtml(row.motivo_rebote)}</p>` : ''}</td>
+                  <td class="conciliacion-observaciones"><p style="white-space:pre-wrap;min-width:200px;max-width:280px;margin:0">${escapeHtml(row.observaciones_closer || '—')}</p></td>
                   <td>
                     <label for="note-${escapeHtml(row.id)}">Visible para el closer</label>
                       <textarea id="note-${escapeHtml(row.id)}" data-note="${escapeHtml(row.id)}" maxlength="4000" rows="3" style="min-width:230px;width:100%">${escapeHtml(row.nota_conciliacion || '')}</textarea>
@@ -297,7 +346,16 @@
     refs.totalChip.textContent = `${state.rows.length} comprobantes`;
     refs.status.hidden = true;
     if (refs.kind?.value === 'cheques') {
-      refs.hint.textContent = `${state.filteredRows.length} cheques. Elegí Acreditado / conciliado y Guardar al confirmar el ingreso. Los pendientes no suman al cash conciliado.`;
+      const { from, to } = chequeRange();
+      const rangeText = from && to ? ` con acreditación del ${formatDate(from)} al ${formatDate(to)}`
+        : from ? ` con acreditación desde el ${formatDate(from)}`
+        : to ? ` con acreditación hasta el ${formatDate(to)}` : '';
+      const undated = (from || to) ? state.rows.filter((row) => isCheque(row) && !dateOnly(row.f_acreditacion)).length : 0;
+      const suspicious = state.filteredRows.filter(suspiciousChequeYear).length;
+      refs.hint.textContent = `${state.filteredRows.length} cheques${rangeText}.`
+        + (undated ? ` ${undated} sin fecha de acreditación no entran en el rango (elegí «Todas las fechas» para verlos).` : '')
+        + (suspicious ? ` ${suspicious} con «Revisar año»: la acreditación es anterior a la venta.` : '')
+        + ' Elegí Acreditado / conciliado y Guardar al confirmar el ingreso. Los pendientes no suman al cash conciliado.';
       return;
     }
     refs.hint.textContent = `${state.filteredRows.length} comprobantes visibles de ${state.rows.length} totales en Supabase.${selectedMonth ? ` Mes de acreditación: ${selectedMonth}.` : ''}`;
@@ -418,10 +476,18 @@
     refs.month.disabled = cheques;
     refs.month.hidden = cheques;
     refs.chequeScopeLabel.hidden = !cheques;
-    state.statusFilter = 'not_conciliated';
+    if (refs.chequeFromLabel) refs.chequeFromLabel.hidden = !cheques;
+    if (refs.chequeToLabel) refs.chequeToLabel.hidden = !cheques;
+    if (cheques) applyChequePreset();
+    // En cheques se arranca en «Todos» para que el rango muestre todos los cheques, conciliados o no.
+    state.statusFilter = cheques ? 'all' : 'not_conciliated';
     renderAll();
   });
-  refs.chequeScope?.addEventListener('change', renderAll);
+  refs.chequeScope?.addEventListener('change', () => { applyChequePreset(); renderAll(); });
+  [refs.chequeFrom, refs.chequeTo].forEach((node) => node?.addEventListener('change', () => {
+    if (refs.chequeScope) refs.chequeScope.value = 'range';
+    renderAll();
+  }));
   [refs.responsible, refs.month, refs.club].forEach((node) => node?.addEventListener('change', renderAll));
   refs.search?.addEventListener('input', renderAll);
   refs.reload?.addEventListener('click', loadRows);

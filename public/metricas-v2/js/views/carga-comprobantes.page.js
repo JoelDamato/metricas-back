@@ -1802,6 +1802,19 @@
     }
   });
 
+  // Contador de caracteres de las observaciones (tope 150, SOL-261124-108).
+  function updateCharCounter(textarea) {
+    const counter = document.getElementById(textarea?.dataset?.charCounter || '');
+    if (!counter) return;
+    const max = Number(textarea.getAttribute('maxlength')) || 150;
+    const length = textarea.value.length;
+    counter.textContent = length > max ? `${length}/${max} · acortalo a ${max} para guardar cambios` : `${length}/${max}`;
+    counter.style.color = length >= max ? '#c0392b' : '';
+  }
+  document.addEventListener?.('input', (event) => {
+    if (event.target?.matches?.('textarea[data-char-counter]')) updateCharCounter(event.target);
+  });
+
   syncAutomaticDates();
   bootstrap();
 })();

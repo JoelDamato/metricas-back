@@ -909,3 +909,31 @@ test('Nadia edita un comprobante ajeno sin adquirir permiso de borrado', async (
   row.rebotar_pago = true;
   assert.equal(service._test.canEditRow(row, NADIA), true);
 });
+
+test('la edición muestra sólo las observaciones del closer, con tope de 150 y sin perder la auditoría', async () => {
+  const row = {
+    id: '10000000-0000-4000-8000-000000000002', tipo: 'Venta',
+    responsable_venta: 'Otro Usuario', created_by_email: OTHER.email,
+    estado: null, f_venta: '2026-11-01', f_acreditacion: '2026-11-01',
+    info_comprobantes: '[SUPABASE DIRECT] k9 | Carga ID: k9 | Cargado por: Otro Usuario | Responsable venta: Otro Usuario | ' + 'z'.repeat(300) + ' | Meses de soporte: 6 | Adjuntos: a.pdf\nTEST_METADATA={"mode":"supabase_direct"}'
+  };
+  let saved;
+  const repository = {
+    getComprobante: async () => row,
+    getConfig: async () => config(),
+    updateComprobante: async (payload) => { saved = payload; return { row }; }
+  };
+  const options = { repository, bypassSafety: true, allowOperationalUser: true };
+  const editable = await service.getEditableComprobante(row.id, NADIA, options);
+  assert.equal(editable.infoComprobantes, 'z'.repeat(300));
+  assert.equal(editable.observacionesMax, 150);
+  // Lo ya cargado se puede guardar igual (no se toca), pero no se puede escribir algo nuevo de más de 150.
+  await service.updateEditableComprobante(row.id, salePayload({ infoComprobantes: 'z'.repeat(300) }), NADIA, options);
+  await assert.rejects(service.updateEditableComprobante(row.id, salePayload({ infoComprobantes: 'w'.repeat(151) }), NADIA, options), { statusCode: 400 });
+  await service.updateEditableComprobante(row.id, salePayload({ infoComprobantes: 'Corto' }), NADIA, options);
+  assert.equal(saved.patch.info_comprobantes, 'Carga ID: k9 | Cargado por: Otro Usuario | Responsable venta: Otro Usuario | Corto | Meses de soporte: 6 | Adjuntos: a.pdf');
+});
+
+test('la carga nueva rechaza observaciones de más de 150 caracteres', async () => {
+  await assert.rejects(service.preview(salePayload({ infoComprobantes: 'x'.repeat(151) }), MATI, { repository: { getConfig: async () => config(), getLead: async () => lead() }, bypassSafety: true, allowMissingAttachments: true }), { statusCode: 400 });
+});

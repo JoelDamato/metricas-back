@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const env = require('../config/env');
 const auditedPaymentMethods = require('../config/comprobantes-payment-methods.audit.json');
 const comprobantesLoaderService = require('./comprobantes-loader.service');
+const infoComprobantesText = require('./info-comprobantes');
 
 const LAB_ALLOWED_EMAILS = new Set([
   'matirandazzo@gmail.com',
@@ -1630,7 +1631,8 @@ function editableData(row = {}, bootstrap = {}) {
     productName: row.producto_format || '',
     facturacionUsd: row.facturacion ?? '',
     cantidadPagos: Number(payments) || '',
-    infoComprobantes: row.info_comprobantes || '',
+    infoComprobantes: infoComprobantesText.extractObservaciones(row.info_comprobantes),
+    observacionesMax: infoComprobantesText.OBSERVACIONES_MAX,
     mediosDePagoOptions: bootstrap.mediosDePagoOptions || [],
     products: bootstrap.products || [],
     cantidadPagosOptions: bootstrap.cantidadPagosOptions || []
@@ -1676,7 +1678,15 @@ async function updateEditableComprobante(rawId, payload, user, options = {}) {
   }
   const ivaArs = includedAmount(cashArs, payment.ivaRate);
   const commissionArs = includedAmount(cashArs, payment.commissionRate);
-  const info = String(payload.infoComprobantes ?? row.info_comprobantes ?? '').trim();
+  const info = payload.infoComprobantes === undefined || payload.infoComprobantes === null
+    ? String(row.info_comprobantes ?? '').trim()
+    : infoComprobantesText.mergeObservaciones(
+      row.info_comprobantes,
+      infoComprobantesText.validateObservaciones(
+        payload.infoComprobantes,
+        infoComprobantesText.extractObservaciones(row.info_comprobantes)
+      )
+    );
   const salePeriod = period(saleDate);
   const accreditationPeriod = period(accreditationDate);
   const patch = {

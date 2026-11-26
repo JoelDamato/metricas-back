@@ -335,7 +335,7 @@
           ${isVenta ? `<label class="carga-field carga-field--full"><span>Producto adquirido</span><select name="productName" required>${productOptions.map((item) => editorOption(item, comprobante.productName)).join('')}</select></label>` : ''}
           ${(isVenta || isDevolucion) ? `<label class="carga-field"><span>Facturación USD</span><input name="facturacionUsd" inputmode="decimal" value="${escapeHtml(comprobante.facturacionUsd)}" ${isVenta ? 'required' : ''} /></label>` : ''}
           ${isVenta && !comprobante.isCheque ? `<label class="carga-field"><span>Cantidad de pagos</span><select name="cantidadPagos" required>${paymentCountOptions.map((item) => editorOption(item, comprobante.cantidadPagos)).join('')}</select></label>` : ''}
-          <label class="carga-field carga-field--full"><span>Info Comprobantes</span><textarea name="infoComprobantes" rows="4">${escapeHtml(comprobante.infoComprobantes)}</textarea></label>
+          <label class="carga-field carga-field--full"><span>Info Comprobantes</span><textarea name="infoComprobantes" rows="3" maxlength="${Number(comprobante.observacionesMax) || 150}" data-char-counter="misComprobantesInfoCount" placeholder="Observación corta para conciliación (hasta 150 caracteres)">${escapeHtml(comprobante.infoComprobantes)}</textarea><small id="misComprobantesInfoCount" class="carga-char-count" aria-live="polite" style="display:block;margin-top:4px;font-size:12px;opacity:.75;text-align:right">${String(comprobante.infoComprobantes || '').length}/${Number(comprobante.observacionesMax) || 150}</small></label>
         </div>
         <p id="misComprobantesEditorStatus" class="mis-comprobantes-editor-status">Revisá los datos antes de guardar.</p>
         <div class="mis-comprobantes-editor-actions">
@@ -545,6 +545,19 @@
   });
 
   ensureDefaultMonth();
+  // Contador de caracteres de las observaciones (tope 150, SOL-261124-108).
+  function updateCharCounter(textarea) {
+    const counter = document.getElementById(textarea?.dataset?.charCounter || '');
+    if (!counter) return;
+    const max = Number(textarea.getAttribute('maxlength')) || 150;
+    const length = textarea.value.length;
+    counter.textContent = length > max ? `${length}/${max} · acortalo a ${max} para guardar cambios` : `${length}/${max}`;
+    counter.style.color = length >= max ? '#c0392b' : '';
+  }
+  document.addEventListener?.('input', (event) => {
+    if (event.target?.matches?.('textarea[data-char-counter]')) updateCharCounter(event.target);
+  });
+
   loadPage().then(() => {
     const editId = new URLSearchParams(window.location.search).get('editar');
     if (editId) openEditor(editId);

@@ -2,3 +2,27 @@ body.commercial-objectives{margin:0;background:#f6f8fc;color:#071730;font-family
 .co-container,.co-card,.co-panel,.co-scroll{min-width:0;box-sizing:border-box}.co-label,.co-goal,.co-meta{overflow-wrap:anywhere}.co-funnel,.co-rates{min-width:0}.commercial-objectives .co-scroll{max-width:100%}
 @media(max-width:600px){.co-funnel{grid-template-columns:minmax(0,1fr)}body.commercial-objectives.auth-sidebar-layout{padding-left:0}.co-number{overflow-wrap:normal;font-size:34px}}
 .co-channels{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}.co-channels button[aria-pressed="true"]{background:#0759f7;color:#fff;border-color:#0759f7}.commercial-objectives select{font:inherit;padding:11px;border:1px solid #cdd8e2;border-radius:9px;background:white;color:#10243e;max-width:100%}.co-toolbar label{max-width:100%}.co-toolbar input{max-width:100%;box-sizing:border-box}
+
+.co-period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.co-period label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.co-period select {
+  font-size: 16px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.co-period select:focus-visible {
+  outline: 3px solid #80afff;
+  outline-offset: 3px;
+}
+.commercial-objectives .co-toolbar:has(.co-period) {
+  align-items: end;
+}
