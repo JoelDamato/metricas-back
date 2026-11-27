@@ -68,21 +68,22 @@ test('metas de eventos se mantienen aisladas del acumulado mensual',async t=>{
  assert.equal((await api.read('2026-11','lanzamiento','webinar-2')).agendas,50);
  assert.equal((await api.read('2026-10','lanzamiento','webinar-1')).agendas,70);
 });
-test('resumen y detalle de webinar incluyen todos sus meses y usan la misma etiqueta',async t=>{
- const axios=require('axios'),service=require('../modules/metricasv2/services/supabase.service');
- t.mock.method(axios,'get',async()=>{throw {response:{status:404}};});
+test('resumen y detalle cuentan a cada persona una vez aunque tenga reservas en distintos meses',async t=>{
+ const axios=require('axios'),bookings=require('../modules/commercial-objectives/webinar-bookings');
  const calls=[];
- t.mock.method(service,'listAllRows',async(resource,options)=>{
-  calls.push({resource,options});
-  return resource==='commercial_webinar_summary'?[{...row('Carlos Tu',2,1,1,3500),origen:'Webinar',mes:11},{...row('Carlos Tu',3,1,0,0),origen:'Webinar',mes:12}]:[];
+ t.mock.method(axios,'get',async url=>{
+  if(url.includes('/rpc/')){calls.push(url);return {data:{agendas:[],sales:[]}};}
+  throw {response:{status:404}};
  });
+ const booking={nombre:'Persona A',ghlid:'same-person',origen:'Webinar',closer:'Carlos Tu',aplica:'Aplica',agendo:'Agendo',llamada_meg:'Pendiente'};
+ t.mock.method(bookings,'getSnapshot',async()=>({rows:[{...booking,id:'first',fecha_agenda:'2026-11-28'},{...booking,id:'second',fecha_agenda:'2026-12-02'}],verifiedAt:'2026-11-27T01:00Z'}));
  const router=api.createRouter();
  const get=path=>new Promise((resolve,reject)=>{const url=new URL(path,'http://local');router.handle({method:'GET',url:path,query:Object.fromEntries(url.searchParams),authUser:{role:'comercial',email:'test'}},{json:resolve},reject);});
  const data=await get('/?channel=lanzamiento&webinar=webinar-2&month=2026-10');
- assert.equal(data.actual.agendas,5);assert.equal(data.event.id,'webinar-2');
- await get('/leads?channel=lanzamiento&webinar=webinar-2');
- assert.deepEqual(calls.map(c=>c.resource),['commercial_webinar_summary','commercial_webinar_leads']);
- for(const {options} of calls){assert.deepEqual(options.eqFilters,{webinar_id:'webinar-2'});assert.equal(options.from,undefined);assert.equal(options.to,undefined);}
+ assert.equal(data.actual.agendas,1);assert.equal(data.event.id,'webinar-2');
+ const detail=await get('/leads?channel=lanzamiento&webinar=webinar-2');
+ assert.equal(detail.leads.length,1);
+ assert.equal(calls.length,1);
 });
 
 test('detalle de cada etapa conserva los predicados del embudo y el responsable de venta',()=>{
@@ -97,8 +98,9 @@ test('detalle de cada etapa conserva los predicados del embudo y el responsable 
  assert.throws(()=>model.stageKey('cash'));
 });
 test('detalle del embudo respeta permisos y consulta la selección completa',async t=>{
- const service=require('../modules/metricasv2/services/supabase.service'),calls=[];
- t.mock.method(service,'listAllRows',async(resource,options)=>{calls.push({resource,options});return [];});
+ const axios=require('axios'),bookings=require('../modules/commercial-objectives/webinar-bookings'),calls=[];
+ t.mock.method(axios,'get',async url=>{calls.push(url);return {data:{agendas:[],sales:[]}};});
+ t.mock.method(bookings,'getSnapshot',async()=>({rows:[],verifiedAt:'2026-11-27T01:00Z'}));
  const router=api.createRouter();
  const get=(stage,authUser)=>new Promise((resolve,reject)=>{const path='/details?channel=lanzamiento&webinar=webinar-2&stage='+stage;const url=new URL(path,'http://local');const res={statusCode:200,status(n){this.statusCode=n;return this;},json(body){resolve({status:this.statusCode,body});}};router.handle({method:'GET',url:path,query:Object.fromEntries(url.searchParams),authUser},res,reject);});
  const restricted={role:'comercial',access_config:{useCustomAccess:true,allowedPages:['mag-sistema-agendas.html']}};
@@ -107,6 +109,6 @@ test('detalle del embudo respeta permisos y consulta la selección completa',asy
  assert.equal(calls.length,0);
  const full={role:'total',email:'test'};
  for(const stage of ['agendas','calls','sales','billing'])assert.equal((await get(stage,full)).status,200);
- assert.deepEqual(calls.map(r=>r.resource),['commercial_webinar_leads','commercial_webinar_leads','commercial_objectives_sales','commercial_objectives_sales']);
- for(const call of calls){assert.deepEqual(call.options.eqFilters,{webinar_id:'webinar-2'});assert.equal(call.options.from,undefined);}
+ assert.equal(calls.length,1);
+ assert.match(calls[0],/commercial_webinar_crm_read$/);
 });

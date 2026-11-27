@@ -1,6 +1,6 @@
 const TEAM=['Walter Alegre','Carlos Tu','Claudio Nicolini','Mauro Gaitan','Pablo Butera','Patricia Conti'];
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-const name=s=>TEAM.find(n=>normalize(n)===normalize(s).replace(/ vie$/,''));
+const name=s=>s==='Sin asignar'?s:TEAM.find(n=>normalize(n)===normalize(s).replace(/ vie$/,''));
 const fields={agendas:'total_aplica',calls:'total_efectuadas',sales:'total_ventas',billing:'facturacion_f_agenda'};
 function monthKey(value){if(typeof value!=='string'||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(value))throw Object.assign(new Error('Mes inválido (AAAA-MM).'),{statusCode:400});return value;}
 function validate(input){const out={};for(const k of [...Object.keys(fields),'attendance','closing']){const v=input[k];if(v===null||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))||Number(v)<0||Number(v)>1e12)throw Object.assign(new Error(`Objetivo inválido: ${k}`),{statusCode:400});out[k]=Number(v);if(['agendas','calls','sales'].includes(k)&&!Number.isInteger(out[k]))throw Object.assign(new Error('Las cantidades deben ser enteras.'),{statusCode:400});}if(out.attendance>100||out.closing>100)throw Object.assign(new Error('Las tasas deben estar entre 0 y 100.'),{statusCode:400});return out;}
@@ -13,7 +13,7 @@ Object.assign(module.exports,{channelKey,channelRows,leadDetails});
 
 const WEBINARS = [
   { id: 'webinar-1', label: 'Webinar 1 · 28/10/2026', month: '2026-10' },
-  { id: 'webinar-2', label: 'Webinar 2 · 26/11/2026', month: '2026-11' },
+  { id: 'webinar-2', label: 'Webinar 2 · 26/11/2026', month: '2026-11', bookingCutoff: require('./webinar-bookings').LIVE_CUTOFF.at },
   { id: 'unassigned', label: 'Sin identificar', month: '2026-11' }
 ];
 function webinarKey(value = 'all') {
@@ -56,7 +56,13 @@ function funnelDetails(records, channel, stage) {
       date:sale?r.f_venta:r.fecha_llamada, status:sale?'Venta':(r.llamada_meg || 'Pendiente'),
       product:sale?(r.producto_format || '—'):null,
       amount:sale?Number(r.facturacion || 0):null,
-      attribution:r.attribution_note || null
+      attribution:r.attribution_note || null,
+      bookedAt:r.booked_at || null,
+      durationMinutes:r.duration_minutes ?? null,
+      otherBookings:(r.otras_reservas || []).map(booking=>({
+        date:booking.fecha_llamada, startsAt:booking.starts_at, status:booking.llamada_meg,
+        durationMinutes:booking.duration_minutes, closer:booking.closer
+      }))
     };
   });
 }
