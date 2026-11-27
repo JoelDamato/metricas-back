@@ -266,10 +266,11 @@
   }
 
   try {
-    const response = await fetch('/api/metricas/auth/session', { credentials: 'same-origin' });
-    if (!response.ok) return;
-    const data = await response.json();
-    const user = data.user;
+    const data = typeof window.http?.getJson === 'function'
+      ? await window.http.getJson('/api/metricas/auth/session')
+      : await fetch('/api/metricas/auth/session', { credentials: 'same-origin', cache: 'no-store' })
+        .then(response => response.ok ? response.json() : null);
+    const user = data?.user;
     if (!user) return;
     const permissions = user.permissions || {};
     const onlyMarketingAccess = permissions.onlyMarketingAccess === true;

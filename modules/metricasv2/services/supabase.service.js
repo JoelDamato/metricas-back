@@ -307,7 +307,9 @@ async function listRows(resourceName, options = {}) {
   try {
     const load = async () => (await axios.get(url, {
       headers: buildHeaders(),
-      ...(agendaRpc ? { timeout: 35000 } : options.timeoutMs ? { timeout: options.timeoutMs } : {}),
+      ...(agendaRpc ? { timeout: 35000 } : options.timeoutMs
+        ? { timeout: options.timeoutMs }
+        : CACHED_REPORTS.has(resource) ? { timeout: 30000 } : {}),
       params
     })).data;
     // Include every normalized filter, column and page in the key. Authorization
@@ -318,7 +320,7 @@ async function listRows(resourceName, options = {}) {
   } catch (err) {
     const message = err.response?.data?.message || err.message;
     const error = new Error(`Error consultando ${resource}: ${message}`);
-    error.statusCode = err.response?.status || 500;
+    error.statusCode = err.response?.status || err.statusCode || 500;
     error.code = err.code;
     error.details = err.response?.data || null;
     throw error;
@@ -2840,18 +2842,34 @@ async function getMarketingCashCollectedAgenda({ from, to, origen }) {
   };
 }
 
+// Shared by attribution, the dashboard response and the export it powers.
+const MARKETING_LEAD_COLUMNS = [
+  'id', 'ghlid', 'nombre', 'mail', 'telefono', 'fecha_agenda', 'agendo', 'origen_actual',
+  'primer_origen', 'closer', 'setter', 'aplica', 'call_confirm', 'llamada_cc',
+  'cc_whatsapp', 'llamada_meg', 'campaign', 'adset', 'adname', 'calidad_lead',
+  'fecha_venta', 'created_time', 'last_edited_time'
+];
+const MARKETING_LEAD_SELECT = MARKETING_LEAD_COLUMNS.join(',');
+
+function listMarketingAgendaLeads(from, to) {
+  // Keep the same query options for campaign totals and dashboard detail so
+  // they share the paginated result within a request.
+  return listAllRows('leads_raw', {
+    limit: 1000,
+    from,
+    to,
+    dateField: 'fecha_agenda',
+    orderBy: 'fecha_agenda',
+    orderDir: 'desc',
+    select: MARKETING_LEAD_SELECT
+  });
+}
+
 async function getMarketingCampaignTotals({ from, to, origen }) {
   validateDateRange(from, to);
 
   const [leadRows, comprobanteRows] = await Promise.all([
-    listAllRows('leads_raw', {
-      limit: 1000,
-      from,
-      to,
-      dateField: 'fecha_agenda',
-      orderBy: 'fecha_agenda',
-      orderDir: 'desc'
-    }),
+    listMarketingAgendaLeads(from, to),
     listAllRows('comprobantes', {
       limit: 1000,
       from,
@@ -3254,15 +3272,13 @@ async function getMarketingDashboard(filters){
   validateDateRange(filters.from,filters.to);
   return requestData.run(async()=>{
     const {from,to,origen}=filters;
-    const agendaOptions={limit:1000,from,to,dateField:'fecha_agenda',orderBy:'fecha_agenda',orderDir:'desc'};
     const [rows,investment,aov,ventas,cash,campaigns,leads,traceability]=await Promise.all([
       origen==='VSL + rt'?[]:listAllRows('kpi_marketing_diario',{limit:1000,from,to,dateField:'fecha'}),
       getMarketingInvestment(filters),getMarketingAovDia1(filters),getMarketingVentasTotales(filters),getMarketingCashCollectedAgenda(filters),getMarketingCampaignTotals(filters),
-      listAllRows('leads_raw',agendaOptions),
-      listAllRows('leads_raw',{limit:1000,from,to,dateField:'created_time'})
+      listMarketingAgendaLeads(from, to),
+      listAllRows('leads_raw', {limit:1000, from, to, dateField:'created_time', select:MARKETING_LEAD_SELECT})
     ]);
-    const columns=['id','ghlid','nombre','mail','telefono','fecha_agenda','agendo','origen_actual','primer_origen','closer','setter','aplica','call_confirm','llamada_cc','cc_whatsapp','llamada_meg','campaign','adset','adname','calidad_lead','fecha_venta','created_time','last_edited_time'];
-    const slim=records=>records.map(row=>Object.fromEntries(columns.map(key=>[key,row[key]??null])));
+    const slim=records=>records.map(row=>Object.fromEntries(MARKETING_LEAD_COLUMNS.map(key=>[key,row[key]??null])));
     return {rows:rows.filter(row=>!isClientSession(row.origen) && (!origen || normalizeMarketingOriginGroup(row.origen)===normalizeMarketingOriginGroup(origen))),investment,aov,ventas,cash,campaigns,leads:slim(leads.filter(row=>!isClientSession(row.origen_actual))),traceability:slim(traceability.filter(row=>!isClientSession(row.origen_actual)))};
   });
 }

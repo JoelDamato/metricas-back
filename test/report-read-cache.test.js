@@ -31,3 +31,30 @@ test('completed cache has a bounded size', async()=>{
   await cache.read('a',load);await cache.read('b',load);await cache.read('c',load);
   assert.equal(await cache.read('a',load),4);
 });
+
+
+test('overload rejects new keys but identical callers still share the active query', async () => {
+  const cache = createReportReadCache({concurrency:1, maxPending:2});
+  let release;
+  const blocking = () => new Promise(resolve => { release = resolve; });
+  const current = cache.read('running', blocking);
+  const queued = cache.read('queued', async () => 2);
+  const shared = cache.read('running', () => assert.fail('duplicate query'));
+  await assert.rejects(cache.read('other', () => assert.fail('over capacity')), {
+    statusCode:503, code:'REPORT_QUEUE_BUSY'
+  });
+  release(1);
+  assert.deepEqual(await Promise.all([current, queued, shared]), [1,2,1]);
+});
+
+test('queued requests expire instead of starting late when the database is slow', async () => {
+  const cache = createReportReadCache({concurrency:1, queueWaitMs:10});
+  let release;
+  const current = cache.read('running', () => new Promise(resolve => { release = resolve; }));
+  await assert.rejects(cache.read('late', () => assert.fail('expired work reached the database')), {
+    statusCode:503, code:'REPORT_QUEUE_BUSY'
+  });
+  release('finished');
+  assert.equal(await current, 'finished');
+  assert.equal(await cache.read('late', async () => 'retry'), 'retry');
+});

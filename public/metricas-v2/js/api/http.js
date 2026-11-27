@@ -119,7 +119,26 @@ async function fetchJson(url, signal) {
   return res.json();
 }
 
+const AUTH_SESSION_URL = '/api/metricas/auth/session';
+let pendingAuthSession = null;
+let authSessionChanges = 0;
+
+async function readAuthSession() {
+  // Share only the active request in this document. No user or permission
+  // information is retained for a later request.
+  if (!pendingAuthSession) {
+    const request = fetchJson(AUTH_SESSION_URL).finally(() => {
+      if (pendingAuthSession === request) pendingAuthSession = null;
+    });
+    pendingAuthSession = request;
+  }
+  return structuredClone(await pendingAuthSession);
+}
+
 async function getJson(url, options = {}) {
+  if (url === AUTH_SESSION_URL && !options.fresh && !options.signal && !authSessionChanges) {
+    return readAuthSession();
+  }
   if (!cacheable(url) || options.fresh) {
     const data = await fetchJson(url, options.signal);
     if (cacheable(url)) writeCache(url, data);
@@ -134,6 +153,11 @@ async function getJson(url, options = {}) {
 
 async function postJson(url, payload) {
   clearCache();
+  const changingSession = ['/api/metricas/auth/login', '/api/metricas/auth/logout'].includes(url);
+  if (changingSession) {
+    authSessionChanges++;
+    pendingAuthSession = null;
+  }
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'same-origin',
@@ -141,6 +165,11 @@ async function postJson(url, payload) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload || {})
+  }).finally(() => {
+    if (changingSession) {
+      authSessionChanges--;
+      pendingAuthSession = null;
+    }
   });
 
   if (!res.ok) {

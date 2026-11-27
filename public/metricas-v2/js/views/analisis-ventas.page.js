@@ -79,9 +79,7 @@ function getSessionResponsibleName() {
 async function ensureSessionUser() {
   if (window.metricasAuthUser) return window.metricasAuthUser;
   try {
-    const response = await fetch('/api/metricas/auth/session', { credentials: 'same-origin' });
-    if (!response.ok) return null;
-    const data = await response.json();
+    const data = await window.http.getJson('/api/metricas/auth/session');
     if (data?.user) {
       window.metricasAuthUser = data.user;
       return data.user;
