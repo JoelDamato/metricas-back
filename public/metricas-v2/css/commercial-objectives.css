@@ -26,3 +26,11 @@ body.commercial-objectives{margin:0;background:#f6f8fc;color:#071730;font-family
 .commercial-objectives .co-toolbar:has(.co-period) {
   align-items: end;
 }
+
+.co-detail-button{margin-top:18px;width:100%;font-size:13px!important;color:#0759f7!important}
+#co-detail-dialog{width:min(1180px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:1px solid #d9e3e9;border-radius:16px;padding:24px;color:#10243e;background:white}
+#co-detail-dialog::backdrop{background:#07173099}
+.co-dialog-header{display:flex;align-items:start;justify-content:space-between;gap:16px}.co-dialog-header h2{margin:0}
+.co-attribution{display:block;white-space:normal;max-width:300px;min-width:170px;font-size:12px;font-weight:400;color:#617586;margin-top:6px}
+#co-detail-dialog a{color:#0759f7}#co-detail-dialog .co-toolbar label,#co-webinar-control{display:grid;gap:7px}
+@media(max-width:600px){#co-detail-dialog{padding:16px}.co-dialog-header h2{font-size:20px}#co-detail-dialog .co-toolbar{display:grid}}

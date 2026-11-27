@@ -10,3 +10,54 @@ function channelKey(value='evergreen'){if(!['evergreen','lanzamiento'].includes(
 function channelRows(rows,channel){channelKey(channel);return rows.filter(r=>{if(r.origen===undefined)throw new Error('Falta el origen para clasificar el resultado.');const launch=/webinar|lanzamiento/.test(normalize(r.origen));return channel==='lanzamiento'?launch:!launch;});}
 function leadDetails(rows,channel){return channelRows(rows,channel).filter(r=>name(r.closer)&&r.fecha_agenda).map(r=>{const call=normalize(r.llamada_meg);const status=call==='efectuada'?'Asistió':call==='no show'?'Ausente':call==='cancelado'?'Cancelada':normalize(r.agendo)==='agendo'&&normalize(r.aplica)==='aplica'&&['','pendiente'].includes(call)?'Pendiente':'Sin clasificar';return {name:r.nombre||'Sin nombre',closer:name(r.closer),agenda:r.fecha_agenda,callDate:r.fecha_llamada,status,applies:r.aplica||'Sin calificación',ghlid:r.ghlid||null};});}
 Object.assign(module.exports,{channelKey,channelRows,leadDetails});
+
+const WEBINARS = [
+  { id: 'webinar-1', label: 'Webinar 1 · 28/10/2026', month: '2026-10' },
+  { id: 'webinar-2', label: 'Webinar 2 · 26/11/2026', month: '2026-11' },
+  { id: 'unassigned', label: 'Sin identificar', month: '2026-11' }
+];
+function webinarKey(value = 'all') {
+  if (value !== 'all' && !WEBINARS.some(w => w.id === value)) {
+    throw Object.assign(new Error('Lanzamiento inválido.'), { statusCode: 400 });
+  }
+  return value;
+}
+function scope(input) {
+  const channel = channelKey(input.channel);
+  const webinar = webinarKey(input.webinar);
+  if (channel !== 'lanzamiento' && webinar !== 'all') {
+    throw Object.assign(new Error('El lanzamiento solo corresponde al canal Lanzamiento.'), { statusCode: 400 });
+  }
+  const event = WEBINARS.find(w => w.id === webinar);
+  return { channel, webinar, month: event ? event.month : monthKey(input.month), event };
+}
+Object.assign(module.exports, { WEBINARS, webinarKey, scope });
+
+const STAGES = ['agendas', 'calls', 'sales', 'billing'];
+function stageKey(value) {
+  if (!STAGES.includes(value)) throw Object.assign(new Error('Etapa del embudo inválida.'), {statusCode:400});
+  return value;
+}
+function funnelDetails(records, channel, stage) {
+  stageKey(stage);
+  return channelRows(records, channel).filter(r => {
+    const closer = stage === 'sales' || stage === 'billing'
+      ? name(String(r.responsable_venta || '').trim() || r.creado_por) : name(r.closer);
+    if (!closer || (!['sales','billing'].includes(stage) && !r.fecha_agenda)) return false;
+    if (stage === 'agendas') return r.aplica === 'Aplica';
+    if (stage === 'calls') return r.aplica === 'Aplica' && r.agendo === 'Agendo' && r.llamada_meg === 'Efectuada';
+    return true; // Sales are prefiltered with the report's SQL predicate.
+  }).map(r => {
+    const sale = stage === 'sales' || stage === 'billing';
+    return {
+      id:r.id, name:sale?(r.cliente_format || 'Sin nombre'):(r.nombre || 'Sin nombre'),
+      closer:sale?name(String(r.responsable_venta || '').trim() || r.creado_por):name(r.closer),
+      ghlid:r.ghlid || null, agenda:sale?r.fecha_de_agendamiento:r.fecha_agenda,
+      date:sale?r.f_venta:r.fecha_llamada, status:sale?'Venta':(r.llamada_meg || 'Pendiente'),
+      product:sale?(r.producto_format || '—'):null,
+      amount:sale?Number(r.facturacion || 0):null,
+      attribution:r.attribution_note || null
+    };
+  });
+}
+Object.assign(module.exports, {STAGES, stageKey, funnelDetails});
