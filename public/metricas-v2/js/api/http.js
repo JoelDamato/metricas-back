@@ -106,10 +106,11 @@ function clearCache() {
 
 if (/login/i.test(window.location.pathname)) clearCache();
 
-async function fetchJson(url) {
+async function fetchJson(url, signal) {
   const res = await fetch(url, {
     credentials: 'same-origin',
-    cache: 'no-store'
+    cache: 'no-store',
+    signal
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -120,13 +121,13 @@ async function fetchJson(url) {
 
 async function getJson(url, options = {}) {
   if (!cacheable(url) || options.fresh) {
-    const data = await fetchJson(url);
+    const data = await fetchJson(url, options.signal);
     if (cacheable(url)) writeCache(url, data);
     return data;
   }
   const cached = await readCache(url);
   if (cached) return cached;
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options.signal);
   writeCache(url, data);
   return data;
 }

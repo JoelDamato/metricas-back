@@ -1,5 +1,29 @@
 (()=>{
 const $=id=>document.getElementById(id),state={channel:'evergreen',webinar:'webinar-2',leads:[],leadId:0,data:null,loadId:0,historyId:0,detailId:0,detailRows:[],detailStage:null,saving:false};
+const selection = new URLSearchParams(window.location.search);
+const webinarOptions = Array.from($('co-webinar').options, option => option.value);
+const initialWebinar = selection.get('webinar');
+if (selection.get('channel') === 'lanzamiento') {
+  state.channel = 'lanzamiento';
+  if (webinarOptions.includes(initialWebinar)) state.webinar = initialWebinar;
+}
+$('co-webinar').value = state.webinar;
+let activeSummary;
+
+function syncSelection() {
+  const url = new URL(window.location.href);
+  if (state.channel === 'lanzamiento') {
+    url.searchParams.set('channel', state.channel);
+    url.searchParams.set('webinar', state.webinar);
+  } else {
+    url.searchParams.delete('channel');
+    url.searchParams.delete('webinar');
+  }
+  if (url.href !== window.location.href) window.history.replaceState(null, '', url);
+  for (const tab of document.querySelectorAll('[data-channel]')) {
+    tab.setAttribute('aria-pressed', String(tab.dataset.channel === state.channel));
+  }
+}
 const scopeQuery=()=>state.channel==='lanzamiento'?'&webinar='+encodeURIComponent(state.webinar):'';
 const fields=[['agendas','Agendas aplicables','number'],['calls','Llamadas efectuadas','number'],['sales','Ventas','number'],['billing','Facturación USD','money'],['attendance','Tasa de asistencia','percent'],['closing','Tasa de cierre','percent']];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -57,7 +81,55 @@ function bookingSummary(data) {
   return `<p class="co-meta">GoHighLevel · ${number(reservations,0)} reservas confirmadas al ${esc(bookingTime(verifiedAt))}. <strong>${number(count,0)} citas confirmadas al corte del vivo (${esc(bookingTime(data.event.bookingCutoff))}).</strong></p>`;
 }
 function render(data){const {actual:a,target:t,closers}=data;const current=!data.event&&data.month===currentPeriod; $('co-results').innerHTML=`<h2 class="co-month-heading">${data.event?esc(data.event.label):'Evergreen · '+esc(monthName(data.month))}</h2><p class="co-meta">${data.event?'Todas las fechas del lanzamiento. ':''}${current?'Mes en curso · resultados parciales. ':''}${!t&&data.legacyTarget?'Existe un objetivo anterior sin canal asignado; no se aplica automáticamente a esta pestaña. ':''}${t?'Objetivos guardados · '+esc(new Date(t.updatedAt).toLocaleString('es-AR')):'Sin objetivos cargados para esta selección. Los resultados reales se muestran igualmente.'}</p>${bookingSummary(data)}${data.crmAvailable===false?'<p class="co-meta">El CRM no respondió. Las llamadas pueden estar incompletas y falta consultar ventas y facturación.</p>':''}<div class="co-funnel">${fields.slice(0,4).map(([k,l,type])=>card(k,stageLabel(data,k,l),type,a,t)).join('')}</div><div class="co-rates">${data.event?'':card('fortnightAverage','Promedio de agendas por quincena','number',a,t?{fortnightAverage:t.agendas/2}:null)}${fields.slice(4).map(([k,l,type])=>card(k,l,type,a,t)).join('')}</div><p class="co-meta">Ticket promedio real: <b>${fmt(a.ticket,'money')}</b> · Ticket objetivo: <b>${fmt(t?.sales?t.billing/t.sales:null,'money')}</b></p><section class="co-panel"><h2>Detalle real por closer</h2><div class="co-scroll"><table><thead><tr><th>Closer</th><th>${stageLabel(data,'agendas','Agendas aplicables')}</th><th>Llamadas</th><th>Ventas</th><th>Facturación</th><th>Asistencia</th><th>Cierre</th></tr></thead><tbody>${closers.length?closers.map(r=>`<tr><td>${esc(r.closer)}</td>${fields.map(([k,,type])=>`<td>${fmt(r[k],type)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="7">Sin registros para esta selección.</td></tr>'}</tbody><tfoot><tr><th>Total equipo</th>${fields.map(([k,,type])=>`<th>${fmt(a[k],type)}</th>`).join('')}</tr></tfoot></table></div></section>`;}
-async function load(){const id=++state.loadId,month=selectedPeriod();state.data=null;state.detailId++;$('co-detail-dialog').close();$('co-period').hidden=state.channel==='lanzamiento';$('co-webinar-control').hidden=state.channel!=='lanzamiento';$('co-history-button').hidden=state.channel==='lanzamiento';state.historyId++;state.leadId++;state.leads=[];$('co-lead-panel').hidden=true;$('co-leads').hidden=true;$('co-lead-search').value='';$('co-lead-status').value='';$('co-channel-description').textContent=state.channel==='lanzamiento'?'Elegí la etiqueta del lanzamiento. Incluye todas sus fechas y tiene objetivos propios. Sin identificar reúne registros sin evidencia suficiente para asignarlos a un evento.':'Evergreen: resultados habituales, excluyendo Webinar y Lanzamiento. Objetivos independientes por mes.';$('co-history').hidden=true;$('co-editor').hidden=true;$('co-edit').hidden=true;$('co-results').innerHTML='';$('co-status').className='';$('co-status').textContent='Consultando objetivos y resultados reales…';try{const data=await window.http.getJson('/api/metricas/commercial-objectives?month='+encodeURIComponent(month)+'&channel='+state.channel+scopeQuery());if(id!==state.loadId)return;state.data=data;render(data);$('co-edit').hidden=!data.canEdit;$('co-lead-panel').hidden=data.canViewLeads!==true;$('co-status').textContent='Datos consultados: '+new Date(data.consultedAt).toLocaleString('es-AR');}catch(e){if(id!==state.loadId)return;$('co-status').className='co-error';$('co-status').textContent=e.message||'No se pudieron cargar los resultados. Reintentá con Actualizar resultados.';}}
+async function load() {
+  const month = selectedPeriod();
+  const url = '/api/metricas/commercial-objectives?month=' + encodeURIComponent(month) +
+    '&channel=' + state.channel + scopeQuery();
+  if (activeSummary?.url === url) return;
+  activeSummary?.controller.abort();
+  const controller = new AbortController();
+  activeSummary = { url, controller };
+  const id = ++state.loadId;
+  syncSelection();
+  state.data = null;
+  state.detailId++;
+  state.historyId++;
+  state.leadId++;
+  state.leads = [];
+  $('co-detail-dialog').close();
+  const launch = state.channel === 'lanzamiento';
+  $('co-period').hidden = launch;
+  $('co-webinar-control').hidden = !launch;
+  $('co-history-button').hidden = launch;
+  $('co-lead-panel').hidden = true;
+  $('co-leads').hidden = true;
+  $('co-lead-search').value = '';
+  $('co-lead-status').value = '';
+  $('co-channel-description').textContent = launch
+    ? 'Elegí la etiqueta del lanzamiento. Incluye todas sus fechas y tiene objetivos propios. Sin identificar reúne registros sin evidencia suficiente para asignarlos a un evento.'
+    : 'Evergreen: resultados habituales, excluyendo Webinar y Lanzamiento. Objetivos independientes por mes.';
+  $('co-history').hidden = true;
+  $('co-editor').hidden = true;
+  $('co-edit').hidden = true;
+  $('co-results').innerHTML = '';
+  $('co-status').className = '';
+  $('co-status').textContent = 'Consultando objetivos y resultados reales…';
+  try {
+    const data = await window.http.getJson(url, {signal:controller.signal});
+    if (id !== state.loadId) return;
+    state.data = data;
+    render(data);
+    $('co-edit').hidden = !data.canEdit;
+    $('co-lead-panel').hidden = data.canViewLeads !== true;
+    $('co-status').textContent = 'Datos consultados: ' + new Date(data.consultedAt).toLocaleString('es-AR');
+  } catch (e) {
+    if (id !== state.loadId) return;
+    $('co-status').className = 'co-error';
+    $('co-status').textContent = e.message || 'No se pudieron cargar los resultados. Reintentá con Actualizar resultados.';
+  } finally {
+    if (activeSummary?.controller === controller) activeSummary = null;
+  }
+}
 $('co-webinar').addEventListener('change',()=>{state.webinar=$('co-webinar').value;load();});
 monthSelect.addEventListener('change', load);
 yearSelect.addEventListener('change', load);
@@ -67,7 +139,7 @@ $('co-example').onclick=()=>{const reference={agendas:170,calls:77,sales:19,bill
 $('co-cancel').onclick=()=>{$('co-editor').hidden=true;};
 $('co-form').onsubmit=async e=>{e.preventDefault();if(state.saving||!state.data)return;const month=state.data.month;const payload={month,channel:state.channel,webinar:state.channel==='lanzamiento'?state.webinar:'all',...Object.fromEntries(fields.map(([k])=>[k,Number($('co-form').elements[k].value)]))};state.saving=true;$('co-webinar').disabled=true;$('co-save').disabled=true;monthSelect.disabled=true;yearSelect.disabled=true;$('co-refresh').disabled=true;try{await window.http.postJson('/api/metricas/commercial-objectives',payload);await load();if(state.data)$('co-status').textContent='Objetivos guardados correctamente.';else $('co-status').textContent='Los objetivos se guardaron, pero no se pudieron actualizar los resultados. Reintentá con Actualizar resultados.';}catch(error){$('co-save-status').textContent=error.message||'No se pudieron guardar los objetivos.';}finally{state.saving=false;$('co-webinar').disabled=false;$('co-save').disabled=false;monthSelect.disabled=false;yearSelect.disabled=false;$('co-refresh').disabled=false;}};
 $('co-history-button').onclick=async()=>{const id=++state.historyId,year=yearSelect.value;$('co-history').hidden=false;$('co-history-content').textContent='Cargando comparación de '+year+'…';try{const {months}=await window.http.getJson('/api/metricas/commercial-objectives/history?year='+year+'&channel='+state.channel+scopeQuery());if(id!==state.historyId)return;$('co-history-content').innerHTML='<p class="co-meta">Cada celda muestra real / objetivo. Seleccioná un mes para consultar o editar sus metas.</p><div class="co-scroll"><table><thead><tr><th>Mes</th>'+fields.map(([,label])=>'<th>'+label+'</th>').join('')+'</tr></thead><tbody>'+months.map(r=>`<tr><td><button data-month="${r.month}">${esc(monthName(r.month))}</button></td>${fields.map(([key,,type])=>`<td>${fmt(r.actual[key],type)} / ${fmt(r.target?.[key],type)}</td>`).join('')}</tr>`).join('')+'</tbody></table></div>';for(const button of $('co-history-content').querySelectorAll('[data-month]'))button.onclick=()=>{if(state.saving)return;selectPeriod(button.dataset.month);load();};}catch(e){if(id===state.historyId)$('co-history-content').textContent=e.message||'No se pudo consultar el historial.';}};
-for(const button of document.querySelectorAll('[data-channel]'))button.onclick=()=>{if(state.saving||button.dataset.channel===state.channel)return;state.channel=button.dataset.channel;for(const tab of document.querySelectorAll('[data-channel]'))tab.setAttribute('aria-pressed',String(tab.dataset.channel===state.channel));load();};
+for(const button of document.querySelectorAll('[data-channel]'))button.onclick=()=>{if(state.saving||button.dataset.channel===state.channel)return;state.channel=button.dataset.channel;load();};
 const date=value=>value?new Date(String(value).length===10?value+'T12:00:00':value).toLocaleDateString('es-AR',{timeZone:'UTC'}):'—';
 function renderLeads(){const closer=$('co-lead-closer').value,status=$('co-lead-status').value,search=$('co-lead-search').value.toLocaleLowerCase('es');const rows=state.leads.filter(r=>(!closer||r.closer===closer)&&(!status||r.status===status)&&r.name.toLocaleLowerCase('es').includes(search));const summary=['Asistió','Ausente','Cancelada','Pendiente','Sin clasificar'].map(s=>s+': '+rows.filter(r=>r.status===s).length).join(' · ');$('co-lead-content').innerHTML=`<p class="co-meta">${rows.length} agendas · ${summary}</p><p class="co-meta">Incluye agendas que no aplican, por eso puede diferir de «Agendas aplicables» del embudo. ${state.data?.bookingTotals?'Una fila por persona. El detalle incluye contactos que solo tuvieron reservas canceladas.':'Incluye canceladas. Son registros de agenda del CRM, no un conteo de reservas confirmadas del vivo.'} ${state.data?.event?'Se muestran todas las fechas del lanzamiento seleccionado.':''}</p><div class="co-scroll"><table><thead><tr><th>Prospecto</th><th>Closer</th><th>Agenda</th><th>Llamada</th><th>Estado</th><th>Calificación</th><th>Contacto</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.closer)}</td><td>${date(r.agenda)}</td><td>${date(r.callDate)}</td><td>${esc(r.status)}</td><td>${esc(r.applies)}</td><td>${r.ghlid?personLinks(r):'—'}</td></tr>`).join('')||'<tr><td colspan="7">Sin leads para estos filtros.</td></tr>'}</tbody></table></div>`;}
 const detailDialog=$('co-detail-dialog');
