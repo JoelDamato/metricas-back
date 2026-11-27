@@ -112,3 +112,62 @@ test('detalle del embudo respeta permisos y consulta la selección completa',asy
  assert.equal(calls.length,1);
  assert.match(calls[0],/commercial_webinar_crm_read$/);
 });
+
+test('el CRM de lanzamientos espera tras un fallo y conserva las reservas verificadas', async t => {
+  const axios = require('axios');
+  const bookings = require('../modules/commercial-objectives/webinar-bookings');
+  let now = Date.now();
+  let crmRequests = 0;
+  let recovered = false;
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(axios, 'get', async url => {
+    if (!url.includes('/rpc/')) throw { response: { status: 404 } };
+    crmRequests++;
+    if (!recovered) throw new Error('timeout');
+    return { data: { agendas: [], sales: [{
+      origen: 'Webinar', responsable_venta: 'Carlos Tu', ghlid: 'contact-a',
+      fecha_de_agendamiento: '2026-11-28T12:00:00-03:00', facturacion: 400
+    }] } };
+  });
+  t.mock.method(bookings, 'getSnapshot', async () => ({
+    verifiedAt: '2026-11-27T01:00:00Z',
+    rows: [{
+      id: 'booking-a', nombre: 'Persona A', ghlid: 'contact-a', origen: 'Webinar',
+      closer: 'Carlos Tu', aplica: 'Aplica', agendo: 'Agendo',
+      llamada_meg: 'Pendiente', fecha_agenda: '2026-11-28'
+    }]
+  }));
+
+  const router = api.createRouter();
+  function get(path) {
+    const url = new URL(path, 'http://local');
+    const authUser = { role: 'total', email: 'test' };
+    const query = Object.fromEntries(url.searchParams);
+    return new Promise((resolve, reject) => {
+      router.handle({ method: 'GET', url: path, query, authUser }, { json: resolve }, reject);
+    });
+  }
+
+  const webinar2 = '/?channel=lanzamiento&webinar=webinar-2';
+  const unavailable = await get(webinar2);
+  assert.equal(unavailable.actual.agendas, 1);
+  assert.equal(unavailable.crmAvailable, false);
+  assert.equal(unavailable.actual.sales, null);
+  assert.equal(unavailable.actual.billing, null);
+  assert.equal(unavailable.canViewStages.sales, false);
+
+  now += 59_999;
+  assert.equal((await get(webinar2)).actual.agendas, 1);
+  await assert.rejects(get('/?channel=lanzamiento&webinar=webinar-1'), { statusCode: 503 });
+  assert.equal(crmRequests, 1);
+
+  now++;
+  recovered = true;
+  const summary = await get(webinar2);
+  assert.equal(summary.crmAvailable, true);
+  assert.equal(summary.actual.agendas, 1);
+  assert.equal(summary.actual.sales, 1);
+  assert.equal(summary.actual.billing, 400);
+  assert.equal((await get(webinar2)).actual.billing, 400);
+  assert.equal(crmRequests, 2);
+});

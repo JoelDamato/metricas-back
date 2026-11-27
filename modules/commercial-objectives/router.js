@@ -5,25 +5,40 @@ const service=require('../metricasv2/services/supabase.service');
 const access=require('../auth/access');
 const model=require('./model');
 const bookings=require('./webinar-bookings');
+const CRM_CACHE_MS = 30_000;
+const CRM_RETRY_COOLDOWN_MS = 60_000;
+
+function crmUnavailable() {
+  return Object.assign(new Error('El CRM de lanzamientos no está disponible. Volvé a intentarlo en un minuto.'), {
+    statusCode: 503
+  });
+}
+
 function createEventFunnelReader() {
   let crmCache;
   let crmRequest;
+  let crmRetryAt = 0;
 
-  function readEventCrm() {
-    if (crmCache && Date.now() - crmCache.fetchedAt < 30_000) return crmCache.records;
-    if (!crmRequest) {
-      crmRequest = axios.get(env.supabaseUrl + '/rest/v1/rpc/commercial_webinar_crm_read', {
-        headers:headers(), timeout:33000
-      }).then(({data})=>{
-        if (!Array.isArray(data?.agendas) || !Array.isArray(data?.sales)) {
-          throw new Error('La consulta del CRM devolvió datos incompletos.');
-        }
-        crmCache={records:data,fetchedAt:Date.now()};
-        return data;
-      }).catch(()=>{
-        throw Object.assign(new Error('No se pudieron consultar los registros de lanzamiento en el CRM.'),{statusCode:502});
-      }).finally(()=>{crmRequest=null;});
-    }
+  async function readEventCrm() {
+    const now = Date.now();
+    if (crmCache && now - crmCache.fetchedAt < CRM_CACHE_MS) return crmCache.records;
+    if (now < crmRetryAt) throw crmUnavailable();
+    if (crmRequest) return crmRequest;
+
+    crmRequest = axios.get(env.supabaseUrl + '/rest/v1/rpc/commercial_webinar_crm_read', {
+      headers: headers(), timeout: 33000
+    }).then(({ data }) => {
+      if (!Array.isArray(data?.agendas) || !Array.isArray(data?.sales)) {
+        throw new Error('La consulta del CRM devolvió datos incompletos.');
+      }
+      crmCache = { records: data, fetchedAt: Date.now() };
+      return data;
+    }).catch(() => {
+      crmRetryAt = Date.now() + CRM_RETRY_COOLDOWN_MS;
+      throw crmUnavailable();
+    }).finally(() => {
+      crmRequest = null;
+    });
     return crmRequest;
   }
 
